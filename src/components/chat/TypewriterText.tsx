@@ -7,8 +7,13 @@ interface TypewriterTextProps {
 
 export function TypewriterText({ content, isFast = false }: TypewriterTextProps) {
   const [displayed, setDisplayed] = useState('');
+  const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
+    // If content hasn't changed (e.g. hydrated from persistence), show immediately
+    setIsComplete(false);
+    setDisplayed('');
+
     let characterIndex = 0;
     const interval = window.setInterval(
       () => {
@@ -18,6 +23,7 @@ export function TypewriterText({ content, isFast = false }: TypewriterTextProps)
           return;
         }
 
+        setIsComplete(true);
         window.clearInterval(interval);
       },
       isFast ? 5 : 20,
@@ -26,5 +32,10 @@ export function TypewriterText({ content, isFast = false }: TypewriterTextProps)
     return () => window.clearInterval(interval);
   }, [content, isFast]);
 
-  return <div className="whitespace-pre-wrap">{displayed}</div>;
+  return (
+    <div className="whitespace-pre-wrap">
+      {displayed}
+      {!isComplete && <span className="animate-pulse text-primary">▌</span>}
+    </div>
+  );
 }

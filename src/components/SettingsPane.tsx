@@ -1,114 +1,39 @@
-import { useState, type ChangeEvent, type ReactNode } from 'react';
-import type { LucideIcon } from 'lucide-react';
-import { Cpu, Globe, Image as ImageIcon, Loader2, Palette, Sparkles, Type, Volume2 } from 'lucide-react';
+/**
+ * MODULE: Settings Pane
+ * 
+ * PURPOSE:
+ * This component orchestrates the UI for the user settings panel. 
+ * By extracting individual controls into submodules (e.g., `SettingCard`, `ToggleSetting`), 
+ * this file is kept DRY and acts primarily as a composition layer connecting the UI 
+ * to the global Zustand store (`useUIStore`).
+ * 
+ * WHY IS THIS A SEPARATE COMPONENT FROM `SettingsWindow`?
+ * `SettingsWindow` is responsible for the physics-based drag interactions, the title bar, 
+ * and the glassmorphic shell. `SettingsPane` is purely the scrollable content inside.
+ * This Separation of Concerns means we could easily render `SettingsPane` inside a modal
+ * or a full-page layout without changing its logic.
+ */
+import { useState, type ChangeEvent } from 'react';
+import { Cpu, Globe, Image as ImageIcon, Loader2, Sparkles, Type, Volume2 } from 'lucide-react';
 import { SectionHeader } from './common/SectionHeader';
 import { extractThemeFromImage } from '../lib/imageTheme';
-import { formatPaletteName, palettes, type PaletteKey, type ThemeVars } from '../lib/themeEngine';
+import { palettes, type PaletteKey } from '../lib/themeEngine';
 import { useUIStore, type AiModel } from '../store/uiStore';
 
+// Import our newly extracted submodules
+import { SettingCard } from './settings/SettingCard';
+import { ToggleSetting } from './settings/ToggleSetting';
+import { PaletteOption } from './settings/PaletteOption';
+
 const modelOptions: Array<{ label: string; value: AiModel }> = [
-  { label: 'Gemini 3.1 Pro Preview', value: 'gemini-3.1-pro-preview' },
-  { label: 'Gemini 1.5 Pro', value: 'gemini-1.5-pro' },
-  { label: 'Gemini 1.5 Flash', value: 'gemini-1.5-flash' },
+  { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
+  { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
+  { label: 'Gemini 2.0 Flash', value: 'gemini-2.0-flash' },
 ];
-
-const paletteSwatches: Array<keyof ThemeVars> = [
-  '--theme-bg-base',
-  '--theme-primary',
-  '--theme-accent-triad-1',
-  '--theme-accent-triad-2',
-  '--theme-accent-phi-1',
-  '--theme-accent-phi-2',
-];
-
-interface SettingCardProps {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  children: ReactNode;
-}
-
-function SettingCard({ icon: Icon, title, description, children }: SettingCardProps) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-panel-border/60 bg-panel/55 p-4 transition-colors hover:border-primary/40">
-      <div className="flex min-w-0 items-center gap-4">
-        <Icon className="h-5 w-5 shrink-0 text-text-muted" />
-        <div className="min-w-0">
-          <div className="font-mono text-sm tracking-wide text-text-main">{title}</div>
-          <div className="mt-1 text-xs text-text-muted">{description}</div>
-        </div>
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  );
-}
-
-interface ToggleSettingProps {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}
-
-function ToggleSetting({ icon, title, description, checked, onChange }: ToggleSettingProps) {
-  return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-panel-border/60 bg-panel/55 p-4 transition-colors hover:border-primary/40">
-      <div className="flex min-w-0 items-center gap-4">
-        {(() => {
-          const Icon = icon;
-          return <Icon className="h-5 w-5 shrink-0 text-text-muted" />;
-        })()}
-        <div className="min-w-0">
-          <div className="font-mono text-sm tracking-wide text-text-main">{title}</div>
-          <div className="mt-1 text-xs text-text-muted">{description}</div>
-        </div>
-      </div>
-      <input
-        type="checkbox"
-        className="h-4 w-4 shrink-0 accent-[var(--theme-primary)]"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-    </label>
-  );
-}
-
-function PaletteOption({ paletteKey }: { paletteKey: PaletteKey }) {
-  const activePalette = useUIStore((state) => state.activePalette);
-  const setActivePalette = useUIStore((state) => state.setActivePalette);
-  const palette = palettes[paletteKey];
-  const isActive = activePalette === paletteKey;
-
-  return (
-    <button
-      key={paletteKey}
-      onClick={() => setActivePalette(paletteKey)}
-      className={`flex items-center justify-between gap-4 rounded-lg border p-4 text-left transition-colors ${
-        isActive
-          ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_color-mix(in_srgb,var(--theme-primary)_14%,transparent)]'
-          : 'border-panel-border/60 bg-panel/55 text-text-muted hover:border-primary/40'
-      }`}
-    >
-      <div className="flex min-w-0 items-center gap-4">
-        <Palette className="h-5 w-5 shrink-0" style={{ color: palette['--theme-primary'] }} />
-        <span className="truncate font-mono text-sm tracking-wide">{formatPaletteName(paletteKey)}</span>
-      </div>
-      <div className="flex max-w-[92px] flex-wrap justify-end gap-1.5">
-        {paletteSwatches.map((token) => (
-          <span
-            key={token}
-            className="h-3 w-3 rounded-full border border-black/20"
-            style={{ background: palette[token] }}
-            title={token.replace('--theme-', '')}
-          />
-        ))}
-      </div>
-    </button>
-  );
-}
 
 export function SettingsPane() {
+  // STORE BINDINGS
+  // We extract exactly what we need from the store to prevent over-rendering.
   const customWallpaper = useUIStore((state) => state.customWallpaper);
   const setCustomWallpaper = useUIStore((state) => state.setCustomWallpaper);
   const setDynamicTheme = useUIStore((state) => state.setDynamicTheme);
@@ -122,17 +47,28 @@ export function SettingsPane() {
   const setAiModel = useUIStore((state) => state.setAiModel);
   const systemInstructions = useUIStore((state) => state.systemInstructions);
   const setSystemInstructions = useUIStore((state) => state.setSystemInstructions);
+  
+  // LOCAL STATE
+  // `isExtracting` is true while the async image processing happens.
   const [isExtracting, setIsExtracting] = useState(false);
 
+  /**
+   * Cleans up the uploaded wallpaper to prevent memory leaks.
+   */
   const clearWallpaper = () => {
+    // SYNTAX NOTE: URL.revokeObjectURL
+    // Browsers keep `blob:` URLs in memory until the document unloads.
+    // We explicitly revoke it here to free up RAM since we no longer need it.
     if (customWallpaper?.startsWith('blob:')) {
       URL.revokeObjectURL(customWallpaper);
     }
-
     setCustomWallpaper(null);
     setDynamicTheme(null);
   };
 
+  /**
+   * Handles user file uploads for wallpaper and theme extraction.
+   */
   const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -142,15 +78,18 @@ export function SettingsPane() {
     }
 
     setIsExtracting(true);
+    // Create a temporary local URL for the selected file without uploading to a server.
     const url = URL.createObjectURL(file);
     setCustomWallpaper(url);
 
     try {
+      // Analyze the image to build a cohesive UI color palette dynamically.
       setDynamicTheme(await extractThemeFromImage(url));
     } catch (error) {
-      console.error('Theme extraction failed', error);
+      console.error('[Silver Wolf VI] Theme extraction failed:', error);
     } finally {
       setIsExtracting(false);
+      // Reset the input so the user can upload the same file again if they want to.
       event.target.value = '';
     }
   };
@@ -158,6 +97,8 @@ export function SettingsPane() {
   return (
     <div className="h-full w-full overflow-y-auto bg-transparent">
       <div className="flex max-w-2xl flex-col gap-10 p-5 text-[15px] text-text-main sm:p-8">
+        
+        {/* APPEARANCE SECTION */}
         <section>
           <SectionHeader title="Appearance" eyebrow="Theme" />
           <div className="relative z-20 mb-5 flex flex-col gap-3">
@@ -180,7 +121,7 @@ export function SettingsPane() {
               <div className="min-w-0">
                 <div className="font-mono text-sm tracking-wide text-text-main">Wallpaper</div>
                 <div className="mt-1 text-xs text-text-muted">
-                  {isExtracting ? 'Extracting matching colors...' : 'Use an image to tint the interface'}
+                  {isExtracting ? 'Extracting matching colors…' : 'Use an image to tint the interface'}
                 </div>
               </div>
             </div>
@@ -203,6 +144,7 @@ export function SettingsPane() {
           )}
         </section>
 
+        {/* INTERFACE SECTION */}
         <section>
           <SectionHeader title="Interface" eyebrow="Controls" />
           <div className="flex flex-col gap-3">
@@ -236,11 +178,13 @@ export function SettingsPane() {
           </div>
         </section>
 
+        {/* AI SECTION */}
         <section>
           <SectionHeader title="AI" eyebrow="Agent" />
           <div className="flex flex-col gap-3">
             <SettingCard icon={Globe} title="Model" description="Choose the Gemini model used for chat responses">
               <select
+                id="ai-model-select"
                 value={aiModel}
                 onChange={(event) => setAiModel(event.target.value as AiModel)}
                 className="rounded-lg border border-panel-border bg-base px-3 py-1.5 text-sm text-text-main outline-none focus:border-primary"
@@ -262,6 +206,7 @@ export function SettingsPane() {
                 </div>
               </div>
               <textarea
+                id="system-instructions-input"
                 className="min-h-[96px] w-full resize-none rounded-lg border border-panel-border bg-base p-3 text-sm text-text-main outline-none focus:border-primary"
                 value={systemInstructions}
                 onChange={(event) => setSystemInstructions(event.target.value)}
