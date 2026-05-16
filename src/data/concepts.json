@@ -1,0 +1,34 @@
+[
+  {
+    "id": "cyb-1",
+    "title": "Neural Link Synchronization",
+    "description": "Fine-tuning the latency between human neural firing and synthetic interface response.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["Cybernetics", "Neural"]
+  },
+  {
+    "id": "cyb-2",
+    "title": "Ghost in the Machine Protocol",
+    "description": "Dealing with residual memory artifacts in decommissioned AI cores.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["AI", "Philosophy"]
+  },
+  {
+    "id": "cyb-3",
+    "title": "ICE (Intrusion Countermeasure Electronics)",
+    "description": "High-level defensive software that active-responds to unauthorized neural access.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["Cybersecurity", "Cyberpunk"]
+  },
+  {
+    "id": "cyber-1",
+    "title": "SQL Injection (SQLi)",
+    "description": "Cybersecurity concept focusing on sql injection (sqli) and its implications in neural systems.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["Cybersecurity", "Security"]
+  }
+]

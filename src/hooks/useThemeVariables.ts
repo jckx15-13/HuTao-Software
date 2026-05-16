@@ -15,7 +15,7 @@ export function useThemeVariables(): AppliedTheme {
 
   const currentPalette = useMemo<ThemeVars>(() => {
     const basePalette = palettes[activePalette] || palettes.holographic;
-    return customWallpaper && dynamicTheme ? { ...basePalette, ...dynamicTheme } : basePalette;
+    return customWallpaper && dynamicTheme ? { ...basePalette, ...dynamicTheme } as ThemeVars : basePalette;
   }, [activePalette, customWallpaper, dynamicTheme]);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export function useThemeVariables(): AppliedTheme {
   }, [currentPalette]);
 
   const appStyle = useMemo<CSSProperties>(() => {
-    const themeStyle = currentPalette as CSSProperties;
+    const themeStyle = currentPalette as unknown as CSSProperties;
 
     if (!customWallpaper) {
       return themeStyle;

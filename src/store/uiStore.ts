@@ -1,50 +1,147 @@
-/**
- * MODULE: Root Store
- * FEATURE: Global Application State
- *
- * PURPOSE:
- * This file acts as the master aggregator for our application's state. 
- * Instead of having one massive 300-line file, we use the "Zustand Slice Pattern" 
- * to divide domains of logic (Chat, Settings, System) into their own files.
- * 
- * WHY USE A SINGLE ROOT STORE (WITH SLICES)?
- * 1. Simplicity: Components only ever need to import `useUIStore`.
- * 2. Cross-slice Reactivity: If `SettingsSlice` needs to read something from `ChatSlice`, 
- *    it can do so easily because they are technically merged into one big object at runtime.
- * 
- * ALTERNATIVE TO ZUSTAND: Redux Toolkit (RTK)
- * Why rejected: RTK requires a lot of boilerplate (actions, reducers, dispatchers). 
- * Zustand gives us Redux-like global state without the boilerplate, treating state 
- * as a simple hook.
- */
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { createInitialMessages, createResetMessages, type Message } from '../lib/messages';
+import type { PaletteKey, ThemeVars } from '../lib/themeEngine';
 
-// Import our modular slice definitions and creators
-import { createSystemSlice, type SystemSlice } from './slices/systemSlice';
-import { createChatSlice, type ChatSlice } from './slices/chatSlice';
-import { createSettingsSlice, type SettingsSlice } from './slices/settingsSlice';
+export type AiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-2.0-flash' | 'local-assistant';
 
-/**
- * SYNTAX NOTE: Type Intersection (`&`)
- * We combine our multiple slice interfaces into one master interface.
- * This guarantees that `UIStore` contains all properties from all slices.
- */
-export type UIStore = SystemSlice & ChatSlice & SettingsSlice;
+export interface SystemMetrics {
+  ramUsage: number;
+  networkLatency: number;
+  storageUsage: number;
+  batteryLevel: number;
+}
 
-/**
- * SYNTAX NOTE: `create<UIStore>()(...)`
- * We initialize the store by calling `create` and passing the combined type.
- * Inside the creator callback, we spread `...` the results of our individual slice creators.
- * 
- * The `(...a)` syntax passes the `set`, `get`, and `api` arguments from Zustand 
- * down to each individual slice creator so they can manipulate the global state.
- */
-export const useUIStore = create<UIStore>()((...a) => ({
-  ...createSystemSlice(...a),
-  ...createChatSlice(...a),
-  ...createSettingsSlice(...a),
-}));
+export interface UIStore {
+  // Chat
+  messages: Message[];
+  isProcessing: boolean;
+  addMessage: (msg: Message) => void;
+  clearMessages: () => void;
+  setIsProcessing: (b: boolean) => void;
 
-// We re-export the AiModel type for convenience so components don't have to guess 
-// which file it came from.
-export type { AiModel } from './slices/settingsSlice';
+  // Theme / Appearance
+  activePalette: PaletteKey;
+  customWallpaper: string | null;
+  dynamicTheme: Partial<ThemeVars> | null;
+
+  // AI Config
+  aiModel: AiModel;
+  systemInstructions: string;
+
+  // Sensory
+  audioFeedback: boolean;
+  particleEffects: boolean;
+
+  // UI State
+  showSettings: boolean;
+  settingsDocked: boolean;
+  sidebarOpen: boolean;
+  rightPanelMode: 'monitor' | 'learning';
+
+  // System Monitor
+  cpuLoad: number;
+  setCpuLoad: (v: number) => void;
+  systemMetrics: SystemMetrics;
+  updateSystemMetrics: (m: Partial<SystemMetrics>) => void;
+
+  // AI Sync
+  syncStatus: 'idle' | 'syncing' | 'success' | 'error';
+  lastSyncTime: number | null;
+  setSyncStatus: (status: UIStore['syncStatus']) => void;
+
+  // Notion Connector
+  notionEnabled: boolean;
+  notionApiKey: string;
+  notionDatabaseId: string;
+  setNotionEnabled: (v: boolean) => void;
+  setNotionApiKey: (v: string) => void;
+  setNotionDatabaseId: (v: string) => void;
+
+  // Direct setters for common toggles
+  setShowSettings: (v: boolean) => void;
+  setSidebarOpen: (v: boolean) => void;
+  setRightPanelMode: (v: 'monitor' | 'learning') => void;
+
+  // Generic settings updater (used by settings sub-panels)
+  updateSettings: (settings: Partial<UIStore>) => void;
+}
+
+export const useUIStore = create<UIStore>()(
+  persist(
+    (set) => ({
+      // Chat
+      messages: createInitialMessages(),
+      isProcessing: false,
+      addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
+      clearMessages: () => set({ messages: createResetMessages() }),
+      setIsProcessing: (isProcessing) => set({ isProcessing }),
+
+      // Theme / Appearance
+      activePalette: 'holographic' as PaletteKey,
+      customWallpaper: null,
+      dynamicTheme: null,
+
+      // AI Config
+      aiModel: 'gemini-2.5-flash',
+      systemInstructions: 'You are Silver Wolf VI, a cyberpunk AI companion.',
+
+      // Sensory
+      audioFeedback: false,
+      particleEffects: true,
+
+      // UI State
+      showSettings: false,
+      settingsDocked: false,
+      sidebarOpen: false,
+      rightPanelMode: 'monitor',
+
+      // System Monitor
+      cpuLoad: 0.2,
+      setCpuLoad: (cpuLoad) => set({ cpuLoad }),
+      systemMetrics: {
+        ramUsage: 0.35,
+        networkLatency: 0.6,
+        storageUsage: 0.45,
+        batteryLevel: 0.9,
+      },
+      updateSystemMetrics: (m) =>
+        set((s) => ({ systemMetrics: { ...s.systemMetrics, ...m } })),
+
+      // AI Sync
+      syncStatus: 'idle',
+      lastSyncTime: null,
+      setSyncStatus: (syncStatus) => set({ syncStatus, lastSyncTime: Date.now() }),
+
+      // Notion Connector
+      notionEnabled: false,
+      notionApiKey: '',
+      notionDatabaseId: '',
+      setNotionEnabled: (notionEnabled) => set({ notionEnabled }),
+      setNotionApiKey: (notionApiKey) => set({ notionApiKey }),
+      setNotionDatabaseId: (notionDatabaseId) => set({ notionDatabaseId }),
+
+      // Direct setters
+      setShowSettings: (showSettings) => set({ showSettings }),
+      setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+      setRightPanelMode: (rightPanelMode) => set({ rightPanelMode }),
+
+      // Generic updater
+      updateSettings: (settings) => set((s) => ({ ...s, ...settings })),
+    }),
+    {
+      name: 'silver-wolf-v6-core',
+      partialize: (s) => ({
+        activePalette: s.activePalette,
+        aiModel: s.aiModel,
+        systemInstructions: s.systemInstructions,
+        audioFeedback: s.audioFeedback,
+        particleEffects: s.particleEffects,
+        lastSyncTime: s.lastSyncTime,
+        notionEnabled: s.notionEnabled,
+        notionApiKey: s.notionApiKey,
+        notionDatabaseId: s.notionDatabaseId,
+      }),
+    }
+  )
+);

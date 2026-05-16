@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DEFAULT_CONCEPTS } from '../data/defaultConcepts';
-import { CYBERNETIC_CONCEPTS } from '../data/cyberneticConcepts';
+import conceptsData from '../data/concepts.json';
 
 export interface Concept {
   id: string;
@@ -16,21 +15,27 @@ export interface LearningState {
   concepts: Concept[];
   isLearningMode: boolean;
   activeConceptId: string | null;
+  searchQuery: string;
+  activeCategory: string;
   
   // Actions
   addConcept: (concept: Omit<Concept, 'mastery' | 'lastReviewed'>) => void;
   updateMastery: (id: string, delta: number) => void;
   setLearningMode: (active: boolean) => void;
   setActiveConcept: (id: string | null) => void;
+  setSearchQuery: (query: string) => void;
+  setActiveCategory: (category: string) => void;
   removeConcept: (id: string) => void;
 }
 
 export const useLearningStore = create<LearningState>()(
   persist(
     (set) => ({
-      concepts: [...DEFAULT_CONCEPTS, ...CYBERNETIC_CONCEPTS],
+      concepts: conceptsData as Concept[],
       isLearningMode: false,
       activeConceptId: null,
+      searchQuery: '',
+      activeCategory: 'all',
 
       addConcept: (concept) =>
         set((state) => ({
@@ -56,6 +61,10 @@ export const useLearningStore = create<LearningState>()(
       setLearningMode: (active) => set({ isLearningMode: active }),
       
       setActiveConcept: (id) => set({ activeConceptId: id }),
+
+      setSearchQuery: (searchQuery) => set({ searchQuery }),
+
+      setActiveCategory: (activeCategory) => set({ activeCategory }),
 
       removeConcept: (id) =>
         set((state) => ({
