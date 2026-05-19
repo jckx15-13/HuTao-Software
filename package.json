@@ -4,28 +4,18 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
-    "bridge": "cd bridge && python server.py",
-    "start": "npm run dev & npm run bridge",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
+    "dev": "node ./node_modules/vite/bin/vite.js --port=3000 --host=127.0.0.1",
+    "bridge": "python ./bridge/server.py",
+    "start": "node ./node_modules/vite/bin/vite.js --port=3000 --host=127.0.0.1",
+    "build": "node ./node_modules/typescript/bin/tsc --noEmit && node ./node_modules/vite/bin/vite.js build",
+    "preview": "node ./node_modules/vite/bin/vite.js preview --host=127.0.0.1",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
-    "lint": "tsc --noEmit"
+    "lint": "node ./node_modules/typescript/bin/tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^1.29.0",
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.6.1",
-    "@types/three": "^0.184.1",
     "lucide-react": "^0.546.0",
-    "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "react-markdown": "^10.1.0",
-    "react-textarea-autosize": "^8.5.9",
-    "remark-gfm": "^4.0.1",
-    "three": "^0.184.0",
     "zustand": "^5.0.13"
   },
   "devDependencies": {

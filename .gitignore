@@ -28,6 +28,8 @@ desktop.ini
 *.log
 vite.out.log
 vite.err.log
+bridge/latest_sync.txt
+launcher.log
 
 # TypeScript build info
 *.tsbuildinfo

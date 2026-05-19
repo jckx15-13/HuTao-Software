@@ -38,7 +38,7 @@ export function FeedbackSettings() {
               </span>
             </div>
             <div className={`w-8 h-4 rounded-full transition-all relative ${item.val ? 'bg-primary/30' : 'bg-white/10'}`}>
-              <div className={`absolute top-1 w-2 h-2 rounded-full transition-all ${item.val ? 'right-1 bg-primary shadow-[0_0_8px_rgba(var(--theme-primary-rgb),1)]' : 'left-1 bg-white/20'}`} />
+              <div className={`absolute top-1 w-2 h-2 rounded-full transition-all ${item.val ? 'right-1 bg-primary shadow-[0_0_8px_var(--primary-glow)]' : 'left-1 bg-white/20'}`} />
             </div>
           </div>
         ))}

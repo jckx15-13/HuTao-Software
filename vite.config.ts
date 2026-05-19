@@ -1,15 +1,11 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+import {defineConfig} from 'vite';
 
-export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
+export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -23,11 +19,12 @@ export default defineConfig(({mode}) => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            react: ['react', 'react-dom'],
-            ai: ['@google/genai'],
-            markdown: ['react-markdown', 'remark-gfm'],
-            motion: ['motion'],
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('react') || id.includes('react-dom')) return 'react';
+            if (id.includes('lucide-react')) return 'icons';
+            if (id.includes('zustand')) return 'state';
+            return 'vendor';
           },
         },
       },

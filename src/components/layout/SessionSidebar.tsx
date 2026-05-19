@@ -1,4 +1,4 @@
-import { MessageSquare, Plus, Settings, Activity, GraduationCap } from 'lucide-react';
+import { MessageSquare, Plus, Settings, Activity, GraduationCap, Globe2 } from 'lucide-react';
 import { IconButton } from '../common/IconButton';
 import { useUIStore } from '../../store/uiStore';
 
@@ -10,7 +10,7 @@ interface SessionSidebarProps {
 }
 
 export function SessionSidebar({ onNewSession, onOpenSettings, isOpen = false, onClose }: SessionSidebarProps) {
-  const { rightPanelMode, setRightPanelMode } = useUIStore();
+  const { primaryView, setPrimaryView, rightPanelMode, setRightPanelMode } = useUIStore();
 
   const handleNewSession = () => {
     onNewSession();
@@ -19,6 +19,16 @@ export function SessionSidebar({ onNewSession, onOpenSettings, isOpen = false, o
 
   const handleOpenSettings = () => {
     onOpenSettings();
+    onClose?.();
+  };
+
+  const handlePrimaryView = (view: 'chat' | 'earth') => {
+    setPrimaryView(view);
+    onClose?.();
+  };
+
+  const handleRightPanelMode = (mode: 'monitor' | 'learning') => {
+    setRightPanelMode(mode);
     onClose?.();
   };
 
@@ -49,7 +59,29 @@ export function SessionSidebar({ onNewSession, onOpenSettings, isOpen = false, o
         </div>
         <div className="flex flex-col gap-1">
           <button
-            onClick={() => setRightPanelMode('monitor')}
+            onClick={() => handlePrimaryView('chat')}
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+              primaryView === 'chat'
+                ? 'border border-primary/10 bg-panel-border/30 text-primary'
+                : 'text-text-muted hover:bg-white/5 hover:text-text-main'
+            }`}
+          >
+            <MessageSquare className="h-4 w-4 opacity-70" />
+            <span>Neural Chat</span>
+          </button>
+          <button
+            onClick={() => handlePrimaryView('earth')}
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+              primaryView === 'earth'
+                ? 'border border-primary/10 bg-panel-border/30 text-primary'
+                : 'text-text-muted hover:bg-white/5 hover:text-text-main'
+            }`}
+          >
+            <Globe2 className="h-4 w-4 opacity-70" />
+            <span>Earth Explorer</span>
+          </button>
+          <button
+            onClick={() => handleRightPanelMode('monitor')}
             className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
               rightPanelMode === 'monitor' 
                 ? 'border border-primary/10 bg-panel-border/30 text-primary' 
@@ -60,7 +92,7 @@ export function SessionSidebar({ onNewSession, onOpenSettings, isOpen = false, o
             <span>System Monitor</span>
           </button>
           <button
-            onClick={() => setRightPanelMode('learning')}
+            onClick={() => handleRightPanelMode('learning')}
             className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
               rightPanelMode === 'learning' 
                 ? 'border border-primary/10 bg-panel-border/30 text-primary' 

@@ -1,8 +1,13 @@
+import { lazy, Suspense } from 'react';
 import { ChatPanel } from '../ChatPanel';
 import { SystemMonitor } from '../SystemMonitor';
 import { LearningHub } from '../learning/LearningHub';
 import { useUIStore } from '../../store/uiStore';
 import { SessionSidebar } from './SessionSidebar';
+
+const EarthExplorer = lazy(() =>
+  import('../learning/GoogleEarthRemix').then((module) => ({ default: module.default })),
+);
 
 export function DockedLayout() {
   const setShowSettings = useUIStore((s) => s.setShowSettings);
@@ -12,6 +17,7 @@ export function DockedLayout() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const rightPanelMode = useUIStore((s) => s.rightPanelMode);
+  const primaryView = useUIStore((s) => s.primaryView);
 
   const hideSystemMonitor = showSettings && settingsDocked;
 
@@ -35,7 +41,13 @@ export function DockedLayout() {
 
       <main className="flex-1 flex flex-col relative z-10 bg-transparent min-w-0">
         <div className="w-full h-full relative">
-          <ChatPanel />
+          {primaryView === 'earth' ? (
+            <Suspense fallback={<div className="grid h-full place-items-center text-xs uppercase tracking-[0.3em] text-text-muted">Loading Earth Explorer</div>}>
+              <EarthExplorer />
+            </Suspense>
+          ) : (
+            <ChatPanel />
+          )}
         </div>
       </main>
 

@@ -2,6 +2,8 @@ import { useUIStore, type AiModel } from '../../store/uiStore';
 import { SettingsSection } from './SettingsSection';
 
 const ModelOptions: { label: string; value: AiModel }[] = [
+  { label: 'Gemini 3 Flash', value: 'gemini-3-flash' },
+  { label: 'Gemini 3 Pro', value: 'gemini-3-pro' },
   { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
   { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
   { label: 'Gemini 2.0 Flash', value: 'gemini-2.0-flash' },

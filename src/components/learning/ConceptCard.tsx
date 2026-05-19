@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { Concept } from '../../data/learning';
 
 interface ConceptCardProps {
@@ -9,13 +8,9 @@ interface ConceptCardProps {
 }
 
 export const ConceptCard: React.FC<ConceptCardProps> = ({ concept, index, onClick }) => (
-  <motion.div
-    layout
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, scale: 0.95 }}
-    transition={{ delay: index * 0.05 }}
+  <div
     onClick={onClick}
+    style={{ animationDelay: `${index * 40}ms` }}
     className="group relative p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all cursor-pointer overflow-hidden panel-glass"
   >
     <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary to-secondary opacity-50 group-hover:opacity-100 transition-opacity" />
@@ -46,11 +41,10 @@ export const ConceptCard: React.FC<ConceptCardProps> = ({ concept, index, onClic
     </div>
 
     <div className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden">
-      <motion.div 
-        initial={{ width: 0 }}
-        animate={{ width: `${concept.mastery * 100}%` }}
+      <div
+        style={{ width: `${concept.mastery * 100}%` }}
         className="h-full bg-gradient-to-r from-primary to-secondary"
       />
     </div>
-  </motion.div>
+  </div>
 );

@@ -1,4 +1,3 @@
-import { motion } from 'motion/react';
 import { User, Bot } from 'lucide-react';
 import { MarkdownMessage } from '../MarkdownMessage';
 
@@ -11,11 +10,7 @@ export function ChatMessage({ sender, content }: ChatMessageProps) {
   const isUser = sender === 'user';
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`flex gap-4 ${isUser ? 'flex-row-reverse' : ''}`}
-    >
+    <div className={`message-enter flex gap-4 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border shadow-lg ${
         isUser
           ? 'bg-primary/20 border-primary/30 text-primary'
@@ -32,6 +27,6 @@ export function ChatMessage({ sender, content }: ChatMessageProps) {
       >
         <MarkdownMessage content={content} />
       </div>
-    </motion.div>
+    </div>
   );
 }

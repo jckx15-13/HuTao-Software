@@ -1,25 +1,25 @@
 # Silver Wolf VI
 
-A stunning, cyberpunk-themed AI assistant interface powered by the Gemini API. Designed with a holographic aesthetic, advanced motion physics, and local-first architecture.
+A lightweight cyberpunk AI assistant interface with a Google-Earth-style explorer, local bridge support, and local-first settings. The app is optimized for smaller production bundles and avoids persisting secrets in browser storage.
 
 ![Silver Wolf VI Preview](./public/favicon.svg)
 
 ## Features
 
 - **Holographic UI**: A glassmorphic, 2.5D interface inspired by advanced sci-fi terminals.
-- **Gemini Powered**: Full multi-turn conversational AI integration with Google's Gemini models (2.5 Flash, 2.5 Pro, 2.0 Flash).
+- **AI Workspace**: Chat UI with model selection and optional localhost bridge integration.
+- **Earth Explorer**: A lazy-loaded, Google-Earth-style educational globe interface without a heavyweight 3D runtime.
 - **Dynamic Theming**: Extract beautiful, complementary color palettes directly from uploaded wallpapers using advanced quantization.
-- **Physics Engine**: The settings panel features fluid, mass-spring-damper physics that react to your drag velocity with skew and rotation.
 - **System Telemetry**: Simulated (but visually striking) system monitors tracking RAM, CPU, Network, and Battery.
-- **Performance Focused**: Built with React 19, Vite, and Tailwind v4. Uses Web Workers for off-main-thread particle simulation.
-- **Local First**: All chat history and user settings are persisted locally in your browser.
+- **Performance Focused**: Built with React 19, Vite, and Tailwind v4. Expensive views are lazy-loaded and optional particles run off the main thread.
+- **Local First**: Chat history and non-secret preferences are persisted locally in your browser.
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 20+
-- A Google Gemini API Key
+- Python 3.10+ if you want to run the optional local bridge
 
 ### Installation
 
@@ -28,10 +28,10 @@ A stunning, cyberpunk-themed AI assistant interface powered by the Gemini API. D
    npm install
    ```
 
-2. Configure your environment variables:
-   Create a `.env.local` file in the root directory and add your Gemini API key:
+2. Configure optional bridge environment variables:
    ```env
-   GEMINI_API_KEY=your_api_key_here
+   HF_TOKEN=your_hugging_face_token
+   BRIDGE_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
    ```
    *(See `.env.example` for details).*
 
@@ -44,15 +44,17 @@ A stunning, cyberpunk-themed AI assistant interface powered by the Gemini API. D
 
 - **State Management**: Zustand handles the centralized `uiStore` for themes, messages, and settings.
 - **Styling**: Tailwind CSS v4 handles core utilities, heavily extended by a custom CSS variables system (`src/lib/themeEngine.ts`) for dynamic theming.
-- **Animations**: `motion/react` drives the fluid transitions and draggable 2.5D panels.
-- **Markdown**: `react-markdown` with `remark-gfm` renders the AI's responses with proper code highlighting and table support.
+- **Animations**: CSS transitions keep the interface responsive without shipping a separate animation runtime.
+- **Markdown**: A small safe renderer handles common chat formatting without evaluating raw HTML.
+- **Bridge Security**: `bridge/server.py` reads `HF_TOKEN`, `BRIDGE_HOST`, `BRIDGE_PORT`, and `BRIDGE_CORS_ORIGINS` from the environment. It defaults to localhost and mock mode when no token is present.
 
 ## Building for Production
 
 To create a production-ready bundle:
 
 ```bash
-npm run build
+node ./node_modules/typescript/bin/tsc --noEmit
+node ./node_modules/vite/bin/vite.js build
 ```
 
 The output will be placed in the `dist` directory, ready to be deployed to any static hosting service (Vercel, Netlify, GitHub Pages, etc.).

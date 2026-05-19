@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { createInitialMessages, createResetMessages, type Message } from '../lib/messages';
 import type { PaletteKey, ThemeVars } from '../lib/themeEngine';
 
-export type AiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-2.0-flash' | 'local-assistant';
+export type AiModel = 'gemini-3-flash' | 'gemini-3-pro' | 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-2.0-flash' | 'local-assistant';
 
 export interface SystemMetrics {
   ramUsage: number;
@@ -37,6 +37,7 @@ export interface UIStore {
   showSettings: boolean;
   settingsDocked: boolean;
   sidebarOpen: boolean;
+  primaryView: 'chat' | 'earth';
   rightPanelMode: 'monitor' | 'learning';
 
   // System Monitor
@@ -61,6 +62,7 @@ export interface UIStore {
   // Direct setters for common toggles
   setShowSettings: (v: boolean) => void;
   setSidebarOpen: (v: boolean) => void;
+  setPrimaryView: (v: 'chat' | 'earth') => void;
   setRightPanelMode: (v: 'monitor' | 'learning') => void;
 
   // Generic settings updater (used by settings sub-panels)
@@ -94,6 +96,7 @@ export const useUIStore = create<UIStore>()(
       showSettings: false,
       settingsDocked: false,
       sidebarOpen: false,
+      primaryView: 'chat',
       rightPanelMode: 'monitor',
 
       // System Monitor
@@ -124,6 +127,7 @@ export const useUIStore = create<UIStore>()(
       // Direct setters
       setShowSettings: (showSettings) => set({ showSettings }),
       setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+      setPrimaryView: (primaryView) => set({ primaryView }),
       setRightPanelMode: (rightPanelMode) => set({ rightPanelMode }),
 
       // Generic updater
@@ -131,6 +135,14 @@ export const useUIStore = create<UIStore>()(
     }),
     {
       name: 'silver-wolf-v6-core',
+      version: 2,
+      migrate: (persistedState) => {
+        if (!persistedState || typeof persistedState !== 'object') return persistedState;
+        const { notionApiKey: _notionApiKey, ...safeState } = persistedState as Partial<UIStore> & {
+          notionApiKey?: string;
+        };
+        return safeState;
+      },
       partialize: (s) => ({
         activePalette: s.activePalette,
         aiModel: s.aiModel,
@@ -139,7 +151,6 @@ export const useUIStore = create<UIStore>()(
         particleEffects: s.particleEffects,
         lastSyncTime: s.lastSyncTime,
         notionEnabled: s.notionEnabled,
-        notionApiKey: s.notionApiKey,
         notionDatabaseId: s.notionDatabaseId,
       }),
     }

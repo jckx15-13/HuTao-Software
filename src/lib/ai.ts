@@ -9,8 +9,8 @@ export async function aiChat(model: string, text: string, contents: any[], syste
     } catch { return { text: '', error: 'Local bridge unreachable.' }; }
   }
   
-  // Gemini implementation (simplified for example, assuming @google/genai is available)
-  // In a real app, you'd handle the API key securely.
+  // Remote AI providers should be called from a server-side boundary.
+  // The browser keeps this response local unless the localhost bridge is selected.
   return { text: "AI Response simulation (API key needed for real requests)" };
 }
 

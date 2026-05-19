@@ -1,54 +1,37 @@
-import { useEffect } from 'react';
-import { AnimatePresence } from 'motion/react';
-import { Globe } from 'lucide-react';
-import { TopAppBar } from './components/layout/TopAppBar';
+import { lazy, Suspense } from 'react';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { DockedLayout } from './components/layout/DockedLayout';
-import { BackgroundEarth } from './components/layout/BackgroundEarth';
-import { SettingsWindow } from './components/SettingsWindow';
+import { TopAppBar } from './components/layout/TopAppBar';
+import { ParticleOverlay } from './components/ParticleOverlay';
 import { useThemeVariables } from './hooks/useThemeVariables';
 import { useUIStore } from './store/uiStore';
 
+const SettingsWindow = lazy(() =>
+  import('./components/SettingsWindow').then((module) => ({ default: module.SettingsWindow })),
+);
+
 export default function App() {
+  const { appStyle, isHighLoad } = useThemeVariables();
   const showSettings = useUIStore((state) => state.showSettings);
   const setShowSettings = useUIStore((state) => state.setShowSettings);
-  const { appStyle, isHighLoad } = useThemeVariables();
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowSettings(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setShowSettings]);
 
   return (
-    <div
-      className={`relative h-screen w-full overflow-hidden bg-black text-text-main transition-colors duration-500 ${isHighLoad ? 'state-high-load' : ''}`}
-      style={appStyle}
-    >
-      <BackgroundEarth />
+    <ErrorBoundary>
+      <div className="app-shell h-screen w-screen overflow-hidden bg-base text-text-main" style={appStyle}>
+        <div className="app-stars" aria-hidden="true" />
+        <div className="app-aurora" aria-hidden="true" />
 
-      {/* Geospatial Link badge — no float animation to prevent wobble */}
-      <div className="absolute bottom-8 right-8 z-20 flex items-center gap-4 panel-glass px-5 py-2.5 pointer-events-none">
-        <div className="relative">
-          <Globe className="w-5 h-5 text-primary" />
-          <div className="absolute inset-0 bg-primary/20 blur-md rounded-full animate-pulse" />
+        <TopAppBar />
+        {!isHighLoad && <ParticleOverlay />}
+
+        <div className="relative z-10 h-full pt-14">
+          <DockedLayout />
         </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase">Geospatial Link</span>
-          <span className="text-[9px] text-white/40 uppercase">Earth // Live Render</span>
-        </div>
+
+        <Suspense fallback={null}>
+          {showSettings && <SettingsWindow onClose={() => setShowSettings(false)} />}
+        </Suspense>
       </div>
-
-      <TopAppBar />
-
-      <main className="relative z-10 flex h-full w-full pt-14">
-        <DockedLayout />
-      </main>
-
-      <AnimatePresence>
-        {showSettings && <SettingsWindow onClose={() => setShowSettings(false)} />}
-      </AnimatePresence>
-    </div>
+    </ErrorBoundary>
   );
 }

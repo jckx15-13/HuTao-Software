@@ -7,7 +7,6 @@
 import { useEffect, useState } from 'react';
 import { useUIStore } from '../store/uiStore';
 import { Activity, Brain, ShieldCheck, Zap, AlertTriangle, type LucideIcon } from 'lucide-react';
-import { motion } from 'motion/react';
 import { useIdleTask } from '../hooks/useIdleTask';
 
 const SvgRing = ({ value, color, label }: { value: number, color: string, label: string }) => {
@@ -20,13 +19,12 @@ const SvgRing = ({ value, color, label }: { value: number, color: string, label:
       <div className="relative w-20 h-20 flex items-center justify-center">
         <svg className="absolute inset-0 w-full h-full transform -rotate-90">
           <circle cx="40" cy="40" r={radius} fill="transparent" stroke="var(--theme-bg-panel-border)" strokeWidth="4" />
-          <motion.circle 
+          <circle
             cx="40" cy="40" r={radius} 
             fill="transparent" stroke={color} strokeWidth="4"
             strokeDasharray={circumference}
-            initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset: offset }}
-            transition={{ type: "spring", stiffness: 100, damping: 20 }}
+            strokeDashoffset={offset}
+            className="transition-[stroke-dashoffset] duration-500 ease-out"
             strokeLinecap="round"
           />
         </svg>
@@ -130,12 +128,9 @@ function TelemetryRow({ label, value, icon: Icon, color = "var(--theme-primary)"
       {!isStatic ? (
         <div className="flex items-center gap-3">
           <div className="w-16 h-1.5 bg-base rounded-full relative overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]">
-            <motion.div 
+            <div
               className="absolute left-0 top-0 h-full rounded-full"
-              style={{ backgroundColor: color }}
-              initial={{ width: 0 }}
-              animate={{ width: `${value * 100}%` }}
-              transition={{ type: "spring", bounce: 0, damping: 20 }}
+              style={{ backgroundColor: color, width: `${value * 100}%` }}
             />
           </div>
           <span className="text-[10px] w-8 text-right font-mono text-white text-shadow-sm">{(value * 100).toFixed(0)}</span>

@@ -50,7 +50,7 @@ export function NotionSettings() {
         </div>
 
         <p className="text-[8px] text-white/30 uppercase leading-relaxed">
-          Syncs your messages to Notion. Antigravity can then read your input via the Notion MCP server.
+          API keys are kept in memory for this session only and are not written to browser storage.
         </p>
       </div>
     </SettingsSection>

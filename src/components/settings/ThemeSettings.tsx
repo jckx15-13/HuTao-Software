@@ -33,7 +33,7 @@ export function ThemeSettings() {
             onClick={() => updateSettings({ activePalette: pk })} 
             className={`flex items-center justify-between px-4 py-3 rounded-xl border text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${
               activePalette === pk 
-                ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(var(--theme-primary-rgb),0.2)]' 
+                ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_var(--primary-glow)]'
                 : 'border-white/5 bg-white/5 text-white/40 hover:border-white/20 hover:text-white/60'
             }`}
           >

@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { Zap } from 'lucide-react';
 import { Concept } from '../../data/learning';
 
@@ -9,17 +8,11 @@ interface ConceptOverlayProps {
 }
 
 export const ConceptOverlay: React.FC<ConceptOverlayProps> = ({ concept, onClose }) => (
-  <motion.div 
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
+  <div
     className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm"
     onClick={onClose}
   >
-    <motion.div 
-      initial={{ scale: 0.9, y: 20 }}
-      animate={{ scale: 1, y: 0 }}
-      exit={{ scale: 0.9, y: 20 }}
+    <div
       className="w-full max-w-lg bg-bg-card border border-secondary/30 rounded-2xl p-8 shadow-2xl relative"
       onClick={e => e.stopPropagation()}
     >
@@ -65,6 +58,6 @@ export const ConceptOverlay: React.FC<ConceptOverlayProps> = ({ concept, onClose
           </button>
         </div>
       </div>
-    </motion.div>
-  </motion.div>
+    </div>
+  </div>
 );

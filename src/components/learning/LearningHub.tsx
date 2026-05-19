@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { BookOpen, Search } from 'lucide-react';
-import { AnimatePresence } from 'motion/react';
 import { INITIAL_CONCEPTS, Concept } from '../../data/learning';
 import { ConceptCard } from './ConceptCard';
 import { ConceptOverlay } from './ConceptOverlay';
@@ -35,26 +34,22 @@ export function LearningHub() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scroller">
-        <AnimatePresence mode="popLayout">
-          {filteredConcepts.map((concept, index) => (
-            <ConceptCard 
-              key={concept.id} 
-              concept={concept} 
-              index={index} 
-              onClick={() => setActiveConcept(concept)} 
-            />
-          ))}
-        </AnimatePresence>
+        {filteredConcepts.map((concept, index) => (
+          <ConceptCard
+            key={concept.id}
+            concept={concept}
+            index={index}
+            onClick={() => setActiveConcept(concept)}
+          />
+        ))}
       </div>
 
-      <AnimatePresence>
-        {activeConcept && (
-          <ConceptOverlay 
-            concept={activeConcept} 
-            onClose={() => setActiveConcept(null)} 
-          />
-        )}
-      </AnimatePresence>
+      {activeConcept && (
+        <ConceptOverlay
+          concept={activeConcept}
+          onClose={() => setActiveConcept(null)}
+        />
+      )}
     </div>
   );
 }
