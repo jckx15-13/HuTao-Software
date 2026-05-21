@@ -1,0 +1,5388 @@
+diff --git a/.env.example b/.env.example
+index 96015bd..8b58228 100644
+--- a/.env.example
++++ b/.env.example
+@@ -1,3 +1,6 @@
++# Google Maps Platform (for Photorealistic 3D Tiles in Cesium)
++VITE_GOOGLE_MAPS_API_KEY=
++
+ # Optional local assistant bridge settings.
+ # The bridge runs in mock mode when HF_TOKEN is empty.
+ HF_TOKEN=
+diff --git a/index.html b/index.html
+index b30f64e..5ef542c 100644
+--- a/index.html
++++ b/index.html
+@@ -10,6 +10,9 @@
+     <meta property="og:description" content="Cyberpunk AI assistant interface powered by Gemini" />
+     <meta property="og:type" content="website" />
+     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
++    <link rel="preconnect" href="https://fonts.googleapis.com">
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Outfit:wght@300;400;700;900&display=swap" rel="stylesheet">
+     <title>Silver Wolf VI</title>
+     <style>
+       /* Critical inline styles for instant loading feedback */
+diff --git a/package-lock.json b/package-lock.json
+index 15906ca..3492057 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -16,11 +16,15 @@
+       "devDependencies": {
+         "@tailwindcss/vite": "^4.1.14",
+         "@types/node": "^22.14.0",
++        "@types/react": "^19.2.15",
++        "@types/react-dom": "^19.2.3",
+         "@vitejs/plugin-react": "^5.0.4",
+         "autoprefixer": "^10.4.21",
++        "cesium": "^1.141.0",
+         "tailwindcss": "^4.1.14",
+         "typescript": "~5.8.2",
+-        "vite": "^6.2.3"
++        "vite": "^6.2.3",
++        "vite-plugin-cesium": "^1.2.23"
+       }
+     },
+     "node_modules/@babel/code-frame": {
+@@ -305,6 +309,60 @@
+         "node": ">=6.9.0"
+       }
+     },
++    "node_modules/@cesium/engine": {
++      "version": "25.0.0",
++      "resolved": "https://registry.npmjs.org/@cesium/engine/-/engine-25.0.0.tgz",
++      "integrity": "sha512-vJZfgAAB7WTvUPsI8dFV+wKleweCZgpJj1ckcTIERnC+NWvJ9bjlAx0xPl0We57NoQKcdMDy+6UiFjOvPB/yGg==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "dependencies": {
++        "@cesium/wasm-splats": "^0.1.0-alpha.2",
++        "@spz-loader/core": "0.3.1",
++        "@tweenjs/tween.js": "^25.0.0",
++        "@zip.js/zip.js": "^2.8.1",
++        "autolinker": "^4.0.0",
++        "bitmap-sdf": "^1.0.3",
++        "dompurify": "^3.3.0",
++        "draco3d": "^1.5.1",
++        "earcut": "^3.0.0",
++        "grapheme-splitter": "^1.0.4",
++        "jsep": "^1.3.8",
++        "kdbush": "^4.0.1",
++        "ktx-parse": "^1.0.0",
++        "lerc": "^2.0.0",
++        "mersenne-twister": "^1.1.0",
++        "meshoptimizer": "^1.0.1",
++        "pako": "^2.0.4",
++        "protobufjs": "^8.0.0",
++        "rbush": "^4.0.1",
++        "topojson-client": "^3.1.0",
++        "urijs": "^1.19.7"
++      },
++      "engines": {
++        "node": ">=22.0.0"
++      }
++    },
++    "node_modules/@cesium/wasm-splats": {
++      "version": "0.1.0-alpha.2",
++      "resolved": "https://registry.npmjs.org/@cesium/wasm-splats/-/wasm-splats-0.1.0-alpha.2.tgz",
++      "integrity": "sha512-t9pMkknv31hhIbLpMa8yPvmqfpvs5UkUjgqlQv9SeO8VerCXOYnyP8/486BDaFrztM0A7FMbRjsXtNeKvqQghA==",
++      "dev": true,
++      "license": "Apache-2.0"
++    },
++    "node_modules/@cesium/widgets": {
++      "version": "15.0.0",
++      "resolved": "https://registry.npmjs.org/@cesium/widgets/-/widgets-15.0.0.tgz",
++      "integrity": "sha512-a0udi+EKEeCyM4F+pxp9Qx8HXgh2eWVQrksxGO4lSu3f35XWc+eKdYiJBEP2t1d4tjw2MxOsjbVyMj7VQZ4JDw==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "dependencies": {
++        "@cesium/engine": "^25.0.0",
++        "nosleep.js": "^0.12.0"
++      },
++      "engines": {
++        "node": ">=22.0.0"
++      }
++    },
+     "node_modules/@jridgewell/gen-mapping": {
+       "version": "0.3.13",
+       "resolved": "https://registry.npmjs.org/@jridgewell/gen-mapping/-/gen-mapping-0.3.13.tgz",
+@@ -362,6 +420,33 @@
+       "dev": true,
+       "license": "MIT"
+     },
++    "node_modules/@rollup/pluginutils": {
++      "version": "4.2.1",
++      "resolved": "https://registry.npmjs.org/@rollup/pluginutils/-/pluginutils-4.2.1.tgz",
++      "integrity": "sha512-iKnFXr7NkdZAIHiIWE+BX5ULi/ucVFYWD6TbAV+rZctiRTY2PL6tsIKhoIOaoskiWAkgu+VsbXgUVDNLHf+InQ==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "estree-walker": "^2.0.1",
++        "picomatch": "^2.2.2"
++      },
++      "engines": {
++        "node": ">= 8.0.0"
++      }
++    },
++    "node_modules/@rollup/pluginutils/node_modules/picomatch": {
++      "version": "2.3.2",
++      "resolved": "https://registry.npmjs.org/picomatch/-/picomatch-2.3.2.tgz",
++      "integrity": "sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">=8.6"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/jonschlinkert"
++      }
++    },
+     "node_modules/@rollup/rollup-android-arm-eabi": {
+       "version": "4.60.3",
+       "resolved": "https://registry.npmjs.org/@rollup/rollup-android-arm-eabi/-/rollup-android-arm-eabi-4.60.3.tgz",
+@@ -712,6 +797,17 @@
+         "win32"
+       ]
+     },
++    "node_modules/@spz-loader/core": {
++      "version": "0.3.1",
++      "resolved": "https://registry.npmjs.org/@spz-loader/core/-/core-0.3.1.tgz",
++      "integrity": "sha512-8qJ1WIBXaJu8HjnJAjYniE0kYcr0kCe5Hp7kDzYiGVvvd7zyrOBwbF5imoW5mvwx1Qba0hxGEK5R9jEoaHKJFA==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "engines": {
++        "node": ">=16",
++        "pnpm": ">=8"
++      }
++    },
+     "node_modules/@tailwindcss/node": {
+       "version": "4.2.4",
+       "resolved": "https://registry.npmjs.org/@tailwindcss/node/-/node-4.2.4.tgz",
+@@ -1048,6 +1144,13 @@
+         "vite": "^5.2.0 || ^6 || ^7 || ^8"
+       }
+     },
++    "node_modules/@tweenjs/tween.js": {
++      "version": "25.0.0",
++      "resolved": "https://registry.npmjs.org/@tweenjs/tween.js/-/tween.js-25.0.0.tgz",
++      "integrity": "sha512-XKLA6syeBUaPzx4j3qwMqzzq+V4uo72BnlbOjmuljLrRqdsd3qnzvZZoxvMHZ23ndsRS4aufU6JOZYpCbU6T1A==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/@types/babel__core": {
+       "version": "7.20.5",
+       "resolved": "https://registry.npmjs.org/@types/babel__core/-/babel__core-7.20.5.tgz",
+@@ -1110,6 +1213,34 @@
+         "undici-types": "~6.21.0"
+       }
+     },
++    "node_modules/@types/react": {
++      "version": "19.2.15",
++      "resolved": "https://registry.npmjs.org/@types/react/-/react-19.2.15.tgz",
++      "integrity": "sha512-eRwcGNHve+E8qtEQSSRl6urh+rFop4v8gm6O8rGv25CodbvFdLjA1vVQ1KkiFE0w0UPOnb8tDiFKL5lp0rtY5Q==",
++      "devOptional": true,
++      "license": "MIT",
++      "dependencies": {
++        "csstype": "^3.2.2"
++      }
++    },
++    "node_modules/@types/react-dom": {
++      "version": "19.2.3",
++      "resolved": "https://registry.npmjs.org/@types/react-dom/-/react-dom-19.2.3.tgz",
++      "integrity": "sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==",
++      "dev": true,
++      "license": "MIT",
++      "peerDependencies": {
++        "@types/react": "^19.2.0"
++      }
++    },
++    "node_modules/@types/trusted-types": {
++      "version": "2.0.7",
++      "resolved": "https://registry.npmjs.org/@types/trusted-types/-/trusted-types-2.0.7.tgz",
++      "integrity": "sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==",
++      "dev": true,
++      "license": "MIT",
++      "optional": true
++    },
+     "node_modules/@vitejs/plugin-react": {
+       "version": "5.2.0",
+       "resolved": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-5.2.0.tgz",
+@@ -1131,6 +1262,41 @@
+         "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
+       }
+     },
++    "node_modules/@zip.js/zip.js": {
++      "version": "2.8.26",
++      "resolved": "https://registry.npmjs.org/@zip.js/zip.js/-/zip.js-2.8.26.tgz",
++      "integrity": "sha512-RQ4h9F6DOiHxpdocUDrOl6xBM+yOtz+LkUol47AVWcfebGBDpZ7w7Xvz9PS24JgXvLGiXXzSAfdCdVy1tPlaFA==",
++      "dev": true,
++      "license": "BSD-3-Clause",
++      "engines": {
++        "bun": ">=0.7.0",
++        "deno": ">=1.0.0",
++        "node": ">=18.0.0"
++      }
++    },
++    "node_modules/at-least-node": {
++      "version": "1.0.0",
++      "resolved": "https://registry.npmjs.org/at-least-node/-/at-least-node-1.0.0.tgz",
++      "integrity": "sha512-+q/t7Ekv1EDY2l6Gda6LLiX14rU9TV20Wa3ofeQmwPFZbOMo9DXrLbOjFaaclkXKWidIaopwAObQDqwWtGUjqg==",
++      "dev": true,
++      "license": "ISC",
++      "engines": {
++        "node": ">= 4.0.0"
++      }
++    },
++    "node_modules/autolinker": {
++      "version": "4.1.5",
++      "resolved": "https://registry.npmjs.org/autolinker/-/autolinker-4.1.5.tgz",
++      "integrity": "sha512-vEfYZPmvVOIuE567XBVCsx8SBgOYtjB2+S1iAaJ+HgH+DNjAcrHem2hmAeC9yaNGWayicv4yR+9UaJlkF3pvtw==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "tslib": "^2.8.1"
++      },
++      "engines": {
++        "pnpm": ">=10.10.0"
++      }
++    },
+     "node_modules/autoprefixer": {
+       "version": "10.5.0",
+       "resolved": "https://registry.npmjs.org/autoprefixer/-/autoprefixer-10.5.0.tgz",
+@@ -1181,6 +1347,13 @@
+         "node": ">=6.0.0"
+       }
+     },
++    "node_modules/bitmap-sdf": {
++      "version": "1.0.4",
++      "resolved": "https://registry.npmjs.org/bitmap-sdf/-/bitmap-sdf-1.0.4.tgz",
++      "integrity": "sha512-1G3U4n5JE6RAiALMxu0p1XmeZkTeCwGKykzsLTCqVzfSDaN6S7fKnkIkfejogz+iwqBWc0UYAIKnKHNN7pSfDg==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/browserslist": {
+       "version": "4.28.2",
+       "resolved": "https://registry.npmjs.org/browserslist/-/browserslist-4.28.2.tgz",
+@@ -1236,6 +1409,32 @@
+       ],
+       "license": "CC-BY-4.0"
+     },
++    "node_modules/cesium": {
++      "version": "1.141.0",
++      "resolved": "https://registry.npmjs.org/cesium/-/cesium-1.141.0.tgz",
++      "integrity": "sha512-bRwgABDjsXRqNLjeJAxSlCrWCTvAt/yWJD30fY5CbqtoEKR6g/YCOcJW37vk4w/Gq3uMW7sF1uP74ajRrktjEw==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "workspaces": [
++        "packages/engine",
++        "packages/widgets",
++        "packages/sandcastle"
++      ],
++      "dependencies": {
++        "@cesium/engine": "^25.0.0",
++        "@cesium/widgets": "^15.0.0"
++      },
++      "engines": {
++        "node": ">=22.0.0"
++      }
++    },
++    "node_modules/commander": {
++      "version": "2.20.3",
++      "resolved": "https://registry.npmjs.org/commander/-/commander-2.20.3.tgz",
++      "integrity": "sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/convert-source-map": {
+       "version": "2.0.0",
+       "resolved": "https://registry.npmjs.org/convert-source-map/-/convert-source-map-2.0.0.tgz",
+@@ -1243,6 +1442,13 @@
+       "dev": true,
+       "license": "MIT"
+     },
++    "node_modules/csstype": {
++      "version": "3.2.3",
++      "resolved": "https://registry.npmjs.org/csstype/-/csstype-3.2.3.tgz",
++      "integrity": "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==",
++      "devOptional": true,
++      "license": "MIT"
++    },
+     "node_modules/debug": {
+       "version": "4.4.3",
+       "resolved": "https://registry.npmjs.org/debug/-/debug-4.4.3.tgz",
+@@ -1261,6 +1467,27 @@
+         }
+       }
+     },
++    "node_modules/depd": {
++      "version": "2.0.0",
++      "resolved": "https://registry.npmjs.org/depd/-/depd-2.0.0.tgz",
++      "integrity": "sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
++    "node_modules/destroy": {
++      "version": "1.2.0",
++      "resolved": "https://registry.npmjs.org/destroy/-/destroy-1.2.0.tgz",
++      "integrity": "sha512-2sJGJTaXIIaR1w4iJSNoN0hnMY7Gpc/n8D4qSCJw8QqFWXf7cuAgnEHxBpweaVcPevC2l3KpjYCx3NypQQgaJg==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8",
++        "npm": "1.2.8000 || >= 1.4.16"
++      }
++    },
+     "node_modules/detect-libc": {
+       "version": "2.1.2",
+       "resolved": "https://registry.npmjs.org/detect-libc/-/detect-libc-2.1.2.tgz",
+@@ -1271,6 +1498,37 @@
+         "node": ">=8"
+       }
+     },
++    "node_modules/dompurify": {
++      "version": "3.4.5",
++      "resolved": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.5.tgz",
++      "integrity": "sha512-OrwIBKsdNSVEeubdJ1HBv/wNENRM9ytAVCv7YXt//A3vPdVMNuACRqK9mXCGCBW2ln7BT/A4X0jXHo2Gu89miA==",
++      "dev": true,
++      "license": "(MPL-2.0 OR Apache-2.0)",
++      "optionalDependencies": {
++        "@types/trusted-types": "^2.0.7"
++      }
++    },
++    "node_modules/draco3d": {
++      "version": "1.5.7",
++      "resolved": "https://registry.npmjs.org/draco3d/-/draco3d-1.5.7.tgz",
++      "integrity": "sha512-m6WCKt/erDXcw+70IJXnG7M3awwQPAsZvJGX5zY7beBqpELw6RDGkYVU0W43AFxye4pDZ5i2Lbyc/NNGqwjUVQ==",
++      "dev": true,
++      "license": "Apache-2.0"
++    },
++    "node_modules/earcut": {
++      "version": "3.0.2",
++      "resolved": "https://registry.npmjs.org/earcut/-/earcut-3.0.2.tgz",
++      "integrity": "sha512-X7hshQbLyMJ/3RPhyObLARM2sNxxmRALLKx1+NVFFnQ9gKzmCrxm9+uLIAdBcvc8FNLpctqlQ2V6AE92Ol9UDQ==",
++      "dev": true,
++      "license": "ISC"
++    },
++    "node_modules/ee-first": {
++      "version": "1.1.1",
++      "resolved": "https://registry.npmjs.org/ee-first/-/ee-first-1.1.1.tgz",
++      "integrity": "sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/electron-to-chromium": {
+       "version": "1.5.352",
+       "resolved": "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.352.tgz",
+@@ -1278,6 +1536,16 @@
+       "dev": true,
+       "license": "ISC"
+     },
++    "node_modules/encodeurl": {
++      "version": "2.0.0",
++      "resolved": "https://registry.npmjs.org/encodeurl/-/encodeurl-2.0.0.tgz",
++      "integrity": "sha512-Q0n9HRi4m6JuGIV1eFlmvJB7ZEVxu93IrMyiMsGC0lrMJMWzRgx6WGquyfQgZVb31vhGgXnfmPNNXmxnOkRBrg==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
+     "node_modules/enhanced-resolve": {
+       "version": "5.21.0",
+       "resolved": "https://registry.npmjs.org/enhanced-resolve/-/enhanced-resolve-5.21.0.tgz",
+@@ -1302,6 +1570,30 @@
+         "node": ">=6"
+       }
+     },
++    "node_modules/escape-html": {
++      "version": "1.0.3",
++      "resolved": "https://registry.npmjs.org/escape-html/-/escape-html-1.0.3.tgz",
++      "integrity": "sha512-NiSupZ4OeuGwr68lGIeym/ksIZMJodUGOSCZ/FSnTxcrekbvqrgdUxlJOMpijaKZVjAJrWrGs/6Jy8OMuyj9ow==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/estree-walker": {
++      "version": "2.0.2",
++      "resolved": "https://registry.npmjs.org/estree-walker/-/estree-walker-2.0.2.tgz",
++      "integrity": "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/etag": {
++      "version": "1.8.1",
++      "resolved": "https://registry.npmjs.org/etag/-/etag-1.8.1.tgz",
++      "integrity": "sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
+     "node_modules/fdir": {
+       "version": "6.5.0",
+       "resolved": "https://registry.npmjs.org/fdir/-/fdir-6.5.0.tgz",
+@@ -1334,6 +1626,32 @@
+         "url": "https://github.com/sponsors/rawify"
+       }
+     },
++    "node_modules/fresh": {
++      "version": "0.5.2",
++      "resolved": "https://registry.npmjs.org/fresh/-/fresh-0.5.2.tgz",
++      "integrity": "sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/fs-extra": {
++      "version": "9.1.0",
++      "resolved": "https://registry.npmjs.org/fs-extra/-/fs-extra-9.1.0.tgz",
++      "integrity": "sha512-hcg3ZmepS30/7BSFqRvoo3DOMQu7IjqxO5nCDt+zM9XWjb33Wg7ziNT+Qvqbuc3+gWpzO02JubVyk2G4Zvo1OQ==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "at-least-node": "^1.0.0",
++        "graceful-fs": "^4.2.0",
++        "jsonfile": "^6.0.1",
++        "universalify": "^2.0.0"
++      },
++      "engines": {
++        "node": ">=10"
++      }
++    },
+     "node_modules/fsevents": {
+       "version": "2.3.3",
+       "resolved": "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz",
+@@ -1366,6 +1684,51 @@
+       "dev": true,
+       "license": "ISC"
+     },
++    "node_modules/grapheme-splitter": {
++      "version": "1.0.4",
++      "resolved": "https://registry.npmjs.org/grapheme-splitter/-/grapheme-splitter-1.0.4.tgz",
++      "integrity": "sha512-bzh50DW9kTPM00T8y4o8vQg89Di9oLJVLW/KaOGIXJWP/iqCN6WKYkbNOF04vFLJhwcpYUh9ydh/+5vpOqV4YQ==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/http-errors": {
++      "version": "2.0.1",
++      "resolved": "https://registry.npmjs.org/http-errors/-/http-errors-2.0.1.tgz",
++      "integrity": "sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "depd": "~2.0.0",
++        "inherits": "~2.0.4",
++        "setprototypeof": "~1.2.0",
++        "statuses": "~2.0.2",
++        "toidentifier": "~1.0.1"
++      },
++      "engines": {
++        "node": ">= 0.8"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/express"
++      }
++    },
++    "node_modules/inherits": {
++      "version": "2.0.4",
++      "resolved": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz",
++      "integrity": "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==",
++      "dev": true,
++      "license": "ISC"
++    },
++    "node_modules/is-reference": {
++      "version": "1.2.1",
++      "resolved": "https://registry.npmjs.org/is-reference/-/is-reference-1.2.1.tgz",
++      "integrity": "sha512-U82MsXXiFIrjCK4otLT+o2NA2Cd2g5MLoOVXUZjIOhLurrRxpEXzI8O0KZHr3IjLvlAH1kTPYSuqer5T9ZVBKQ==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/estree": "*"
++      }
++    },
+     "node_modules/jiti": {
+       "version": "2.7.0",
+       "resolved": "https://registry.npmjs.org/jiti/-/jiti-2.7.0.tgz",
+@@ -1383,6 +1746,16 @@
+       "dev": true,
+       "license": "MIT"
+     },
++    "node_modules/jsep": {
++      "version": "1.4.0",
++      "resolved": "https://registry.npmjs.org/jsep/-/jsep-1.4.0.tgz",
++      "integrity": "sha512-B7qPcEVE3NVkmSJbaYxvv4cHkVW7DQsZz13pUMrfS8z8Q/BuShN+gcTXrUlPiGqM2/t/EEaI030bpxMqY8gMlw==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 10.16.0"
++      }
++    },
+     "node_modules/jsesc": {
+       "version": "3.1.0",
+       "resolved": "https://registry.npmjs.org/jsesc/-/jsesc-3.1.0.tgz",
+@@ -1409,6 +1782,40 @@
+         "node": ">=6"
+       }
+     },
++    "node_modules/jsonfile": {
++      "version": "6.2.1",
++      "resolved": "https://registry.npmjs.org/jsonfile/-/jsonfile-6.2.1.tgz",
++      "integrity": "sha512-zwOTdL3rFQ/lRdBnntKVOX6k5cKJwEc1HdilT71BWEu7J41gXIB2MRp+vxduPSwZJPWBxEzv4yH1wYLJGUHX4Q==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "universalify": "^2.0.0"
++      },
++      "optionalDependencies": {
++        "graceful-fs": "^4.1.6"
++      }
++    },
++    "node_modules/kdbush": {
++      "version": "4.0.2",
++      "resolved": "https://registry.npmjs.org/kdbush/-/kdbush-4.0.2.tgz",
++      "integrity": "sha512-WbCVYJ27Sz8zi9Q7Q0xHC+05iwkm3Znipc2XTlrnJbsHMYktW4hPhXUE8Ys1engBrvffoSCqbil1JQAa7clRpA==",
++      "dev": true,
++      "license": "ISC"
++    },
++    "node_modules/ktx-parse": {
++      "version": "1.1.0",
++      "resolved": "https://registry.npmjs.org/ktx-parse/-/ktx-parse-1.1.0.tgz",
++      "integrity": "sha512-mKp3y+FaYgR7mXWAbyyzpa/r1zDWeaunH+INJO4fou3hb45XuNSwar+7llrRyvpMWafxSIi99RNFJ05MHedaJQ==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/lerc": {
++      "version": "2.0.0",
++      "resolved": "https://registry.npmjs.org/lerc/-/lerc-2.0.0.tgz",
++      "integrity": "sha512-7qo1Mq8ZNmaR4USHHm615nEW2lPeeWJ3bTyoqFbd35DLx0LUH7C6ptt5FDCTAlbIzs3+WKrk5SkJvw8AFDE2hg==",
++      "dev": true,
++      "license": "Apache-2.0"
++    },
+     "node_modules/lightningcss": {
+       "version": "1.32.0",
+       "resolved": "https://registry.npmjs.org/lightningcss/-/lightningcss-1.32.0.tgz",
+@@ -1670,6 +2077,13 @@
+         "url": "https://opencollective.com/parcel"
+       }
+     },
++    "node_modules/long": {
++      "version": "5.3.2",
++      "resolved": "https://registry.npmjs.org/long/-/long-5.3.2.tgz",
++      "integrity": "sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==",
++      "dev": true,
++      "license": "Apache-2.0"
++    },
+     "node_modules/lru-cache": {
+       "version": "5.1.1",
+       "resolved": "https://registry.npmjs.org/lru-cache/-/lru-cache-5.1.1.tgz",
+@@ -1699,6 +2113,33 @@
+         "@jridgewell/sourcemap-codec": "^1.5.5"
+       }
+     },
++    "node_modules/mersenne-twister": {
++      "version": "1.1.0",
++      "resolved": "https://registry.npmjs.org/mersenne-twister/-/mersenne-twister-1.1.0.tgz",
++      "integrity": "sha512-mUYWsMKNrm4lfygPkL3OfGzOPTR2DBlTkBNHM//F6hGp8cLThY897crAlk3/Jo17LEOOjQUrNAx6DvgO77QJkA==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/meshoptimizer": {
++      "version": "1.1.1",
++      "resolved": "https://registry.npmjs.org/meshoptimizer/-/meshoptimizer-1.1.1.tgz",
++      "integrity": "sha512-oRFNWJRDA/WTrVj7NWvqa5HqE1t9MYDj2VaWirQCzCCrAd2GHrqR/sQezCxiWATPNlKTcRaPRHPJwIRoPBAp5g==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/mime": {
++      "version": "1.6.0",
++      "resolved": "https://registry.npmjs.org/mime/-/mime-1.6.0.tgz",
++      "integrity": "sha512-x0Vn8spI+wuJ1O6S7gnbaQg8Pxh4NNHb7KSINmEWKiPE4RKOplvijn+NkmYmmRgP68mc70j2EbeTFRsrswaQeg==",
++      "dev": true,
++      "license": "MIT",
++      "bin": {
++        "mime": "cli.js"
++      },
++      "engines": {
++        "node": ">=4"
++      }
++    },
+     "node_modules/ms": {
+       "version": "2.1.3",
+       "resolved": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
+@@ -1732,6 +2173,43 @@
+       "dev": true,
+       "license": "MIT"
+     },
++    "node_modules/nosleep.js": {
++      "version": "0.12.0",
++      "resolved": "https://registry.npmjs.org/nosleep.js/-/nosleep.js-0.12.0.tgz",
++      "integrity": "sha512-9d1HbpKLh3sdWlhXMhU6MMH+wQzKkrgfRkYV0EBdvt99YJfj0ilCJrWRDYG2130Tm4GXbEoTCx5b34JSaP+HhA==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/on-finished": {
++      "version": "2.4.1",
++      "resolved": "https://registry.npmjs.org/on-finished/-/on-finished-2.4.1.tgz",
++      "integrity": "sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "ee-first": "1.1.1"
++      },
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
++    "node_modules/pako": {
++      "version": "2.1.0",
++      "resolved": "https://registry.npmjs.org/pako/-/pako-2.1.0.tgz",
++      "integrity": "sha512-w+eufiZ1WuJYgPXbV/PO3NCMEc3xqylkKHzp8bxp1uW4qaSNQUkwmLLEc3kKsfz8lpV1F8Ht3U1Cm+9Srog2ug==",
++      "dev": true,
++      "license": "(MIT AND Zlib)"
++    },
++    "node_modules/parseurl": {
++      "version": "1.3.3",
++      "resolved": "https://registry.npmjs.org/parseurl/-/parseurl-1.3.3.tgz",
++      "integrity": "sha512-CiyeOxFT/JZyN5m0z9PfXw4SCBJ6Sygz1Dpl0wqjlhDEGGBP1GnsUVEL0p63hoG1fcj3fHynXi9NYO4nWOL+qQ==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
+     "node_modules/picocolors": {
+       "version": "1.1.1",
+       "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+@@ -1788,6 +2266,47 @@
+       "dev": true,
+       "license": "MIT"
+     },
++    "node_modules/protobufjs": {
++      "version": "8.4.0",
++      "resolved": "https://registry.npmjs.org/protobufjs/-/protobufjs-8.4.0.tgz",
++      "integrity": "sha512-iriNhQ57SYA5Jbdi+41AyPdx6jPPkFO7DODzkOBmqFhgYn/JzX2HxgxYPY18eQAs3CP/AWqtPvkWn8rclRAxdQ==",
++      "dev": true,
++      "hasInstallScript": true,
++      "license": "BSD-3-Clause",
++      "dependencies": {
++        "long": "^5.3.2"
++      },
++      "engines": {
++        "node": ">=12.0.0"
++      }
++    },
++    "node_modules/quickselect": {
++      "version": "3.0.0",
++      "resolved": "https://registry.npmjs.org/quickselect/-/quickselect-3.0.0.tgz",
++      "integrity": "sha512-XdjUArbK4Bm5fLLvlm5KpTFOiOThgfWWI4axAZDWg4E/0mKdZyI9tNEfds27qCi1ze/vwTR16kvmmGhRra3c2g==",
++      "dev": true,
++      "license": "ISC"
++    },
++    "node_modules/range-parser": {
++      "version": "1.2.1",
++      "resolved": "https://registry.npmjs.org/range-parser/-/range-parser-1.2.1.tgz",
++      "integrity": "sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.6"
++      }
++    },
++    "node_modules/rbush": {
++      "version": "4.0.1",
++      "resolved": "https://registry.npmjs.org/rbush/-/rbush-4.0.1.tgz",
++      "integrity": "sha512-IP0UpfeWQujYC8Jg162rMNc01Rf0gWMMAb2Uxus/Q0qOFw4lCcq6ZnQEZwUoJqWyUGJ9th7JjwI4yIWo+uvoAQ==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "quickselect": "^3.0.0"
++      }
++    },
+     "node_modules/react": {
+       "version": "19.2.6",
+       "resolved": "https://registry.npmjs.org/react/-/react-19.2.6.tgz",
+@@ -1880,6 +2399,71 @@
+         "semver": "bin/semver.js"
+       }
+     },
++    "node_modules/send": {
++      "version": "0.19.2",
++      "resolved": "https://registry.npmjs.org/send/-/send-0.19.2.tgz",
++      "integrity": "sha512-VMbMxbDeehAxpOtWJXlcUS5E8iXh6QmN+BkRX1GARS3wRaXEEgzCcB10gTQazO42tpNIya8xIyNx8fll1OFPrg==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "debug": "2.6.9",
++        "depd": "2.0.0",
++        "destroy": "1.2.0",
++        "encodeurl": "~2.0.0",
++        "escape-html": "~1.0.3",
++        "etag": "~1.8.1",
++        "fresh": "~0.5.2",
++        "http-errors": "~2.0.1",
++        "mime": "1.6.0",
++        "ms": "2.1.3",
++        "on-finished": "~2.4.1",
++        "range-parser": "~1.2.1",
++        "statuses": "~2.0.2"
++      },
++      "engines": {
++        "node": ">= 0.8.0"
++      }
++    },
++    "node_modules/send/node_modules/debug": {
++      "version": "2.6.9",
++      "resolved": "https://registry.npmjs.org/debug/-/debug-2.6.9.tgz",
++      "integrity": "sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "ms": "2.0.0"
++      }
++    },
++    "node_modules/send/node_modules/debug/node_modules/ms": {
++      "version": "2.0.0",
++      "resolved": "https://registry.npmjs.org/ms/-/ms-2.0.0.tgz",
++      "integrity": "sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/serve-static": {
++      "version": "1.16.3",
++      "resolved": "https://registry.npmjs.org/serve-static/-/serve-static-1.16.3.tgz",
++      "integrity": "sha512-x0RTqQel6g5SY7Lg6ZreMmsOzncHFU7nhnRWkKgWuMTu5NN0DR5oruckMqRvacAN9d5w6ARnRBXl9xhDCgfMeA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "encodeurl": "~2.0.0",
++        "escape-html": "~1.0.3",
++        "parseurl": "~1.3.3",
++        "send": "~0.19.1"
++      },
++      "engines": {
++        "node": ">= 0.8.0"
++      }
++    },
++    "node_modules/setprototypeof": {
++      "version": "1.2.0",
++      "resolved": "https://registry.npmjs.org/setprototypeof/-/setprototypeof-1.2.0.tgz",
++      "integrity": "sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==",
++      "dev": true,
++      "license": "ISC"
++    },
+     "node_modules/source-map-js": {
+       "version": "1.2.1",
+       "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+@@ -1890,6 +2474,24 @@
+         "node": ">=0.10.0"
+       }
+     },
++    "node_modules/sourcemap-codec": {
++      "version": "1.4.8",
++      "resolved": "https://registry.npmjs.org/sourcemap-codec/-/sourcemap-codec-1.4.8.tgz",
++      "integrity": "sha512-9NykojV5Uih4lgo5So5dtw+f0JgJX30KCNI8gwhz2J9A15wD0Ml6tjHKwf6fTSa6fAdVBdZeNOs9eJ71qCk8vA==",
++      "deprecated": "Please use @jridgewell/sourcemap-codec instead",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/statuses": {
++      "version": "2.0.2",
++      "resolved": "https://registry.npmjs.org/statuses/-/statuses-2.0.2.tgz",
++      "integrity": "sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 0.8"
++      }
++    },
+     "node_modules/tailwindcss": {
+       "version": "4.2.4",
+       "resolved": "https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.2.4.tgz",
+@@ -1928,13 +2530,37 @@
+         "url": "https://github.com/sponsors/SuperchupuDev"
+       }
+     },
++    "node_modules/toidentifier": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/toidentifier/-/toidentifier-1.0.1.tgz",
++      "integrity": "sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">=0.6"
++      }
++    },
++    "node_modules/topojson-client": {
++      "version": "3.1.0",
++      "resolved": "https://registry.npmjs.org/topojson-client/-/topojson-client-3.1.0.tgz",
++      "integrity": "sha512-605uxS6bcYxGXw9qi62XyrV6Q3xwbndjachmNxu8HWTtVPxZfEJN9fd/SZS1Q54Sn2y0TMyMxFj/cJINqGHrKw==",
++      "dev": true,
++      "license": "ISC",
++      "dependencies": {
++        "commander": "2"
++      },
++      "bin": {
++        "topo2geo": "bin/topo2geo",
++        "topomerge": "bin/topomerge",
++        "topoquantize": "bin/topoquantize"
++      }
++    },
+     "node_modules/tslib": {
+       "version": "2.8.1",
+       "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz",
+       "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==",
+       "dev": true,
+-      "license": "0BSD",
+-      "optional": true
++      "license": "0BSD"
+     },
+     "node_modules/typescript": {
+       "version": "5.8.3",
+@@ -1957,6 +2583,16 @@
+       "dev": true,
+       "license": "MIT"
+     },
++    "node_modules/universalify": {
++      "version": "2.0.1",
++      "resolved": "https://registry.npmjs.org/universalify/-/universalify-2.0.1.tgz",
++      "integrity": "sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 10.0.0"
++      }
++    },
+     "node_modules/update-browserslist-db": {
+       "version": "1.2.3",
+       "resolved": "https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz",
+@@ -1988,6 +2624,13 @@
+         "browserslist": ">= 4.21.0"
+       }
+     },
++    "node_modules/urijs": {
++      "version": "1.19.11",
++      "resolved": "https://registry.npmjs.org/urijs/-/urijs-1.19.11.tgz",
++      "integrity": "sha512-HXgFDgDommxn5/bIv0cnQZsPhHDA90NPHD6+c/v21U5+Sx5hoP8+dP9IZXBU1gIfvdRfhG8cel9QNPeionfcCQ==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/vite": {
+       "version": "6.4.2",
+       "resolved": "https://registry.npmjs.org/vite/-/vite-6.4.2.tgz",
+@@ -2063,6 +2706,65 @@
+         }
+       }
+     },
++    "node_modules/vite-plugin-cesium": {
++      "version": "1.2.23",
++      "resolved": "https://registry.npmjs.org/vite-plugin-cesium/-/vite-plugin-cesium-1.2.23.tgz",
++      "integrity": "sha512-x9A8ZCEoegceXg/E+LnxKr0XBsI9CR4cgYWQ2Dd3cUEYwKcTnHQ3kBfpol7BUcGtgQnQos/mtVrRmuVQBXFjHw==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "fs-extra": "^9.1.0",
++        "rollup-plugin-external-globals": "^0.6.1",
++        "serve-static": "^1.14.1"
++      },
++      "peerDependencies": {
++        "cesium": "^1.95.0",
++        "vite": ">=2.7.1"
++      }
++    },
++    "node_modules/vite-plugin-cesium/node_modules/magic-string": {
++      "version": "0.25.9",
++      "resolved": "https://registry.npmjs.org/magic-string/-/magic-string-0.25.9.tgz",
++      "integrity": "sha512-RmF0AsMzgt25qzqqLc1+MbHmhdx0ojF2Fvs4XnOqz2ZOBXzzkEwc/dJQZCYHAn7v1jbVOjAZfK8msRn4BxO4VQ==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "sourcemap-codec": "^1.4.8"
++      }
++    },
++    "node_modules/vite-plugin-cesium/node_modules/rollup": {
++      "version": "2.80.0",
++      "resolved": "https://registry.npmjs.org/rollup/-/rollup-2.80.0.tgz",
++      "integrity": "sha512-cIFJOD1DESzpjOBl763Kp1AH7UE/0fcdHe6rZXUdQ9c50uvgigvW97u3IcSeBwOkgqL/PXPBktBCh0KEu5L8XQ==",
++      "dev": true,
++      "license": "MIT",
++      "peer": true,
++      "bin": {
++        "rollup": "dist/bin/rollup"
++      },
++      "engines": {
++        "node": ">=10.0.0"
++      },
++      "optionalDependencies": {
++        "fsevents": "~2.3.2"
++      }
++    },
++    "node_modules/vite-plugin-cesium/node_modules/rollup-plugin-external-globals": {
++      "version": "0.6.1",
++      "resolved": "https://registry.npmjs.org/rollup-plugin-external-globals/-/rollup-plugin-external-globals-0.6.1.tgz",
++      "integrity": "sha512-mlp3KNa5sE4Sp9UUR2rjBrxjG79OyZAh/QC18RHIjM+iYkbBwNXSo8DHRMZWtzJTrH8GxQ+SJvCTN3i14uMXIA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@rollup/pluginutils": "^4.0.0",
++        "estree-walker": "^2.0.1",
++        "is-reference": "^1.2.1",
++        "magic-string": "^0.25.7"
++      },
++      "peerDependencies": {
++        "rollup": "^2.25.0"
++      }
++    },
+     "node_modules/vite/node_modules/@esbuild/aix-ppc64": {
+       "version": "0.25.12",
+       "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.25.12.tgz",
+diff --git a/package.json b/package.json
+index c785c79..f56b373 100644
+--- a/package.json
++++ b/package.json
+@@ -21,10 +21,14 @@
+   "devDependencies": {
+     "@tailwindcss/vite": "^4.1.14",
+     "@types/node": "^22.14.0",
++    "@types/react": "^19.2.15",
++    "@types/react-dom": "^19.2.3",
+     "@vitejs/plugin-react": "^5.0.4",
+     "autoprefixer": "^10.4.21",
++    "cesium": "^1.141.0",
+     "tailwindcss": "^4.1.14",
+     "typescript": "~5.8.2",
+-    "vite": "^6.2.3"
++    "vite": "^6.2.3",
++    "vite-plugin-cesium": "^1.2.23"
+   }
+ }
+diff --git a/src/App.tsx b/src/App.tsx
+index 7920f15..3719241 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,36 +1,74 @@
+-import { lazy, Suspense } from 'react';
++import { Suspense } from 'react';
+ import { ErrorBoundary } from './components/ErrorBoundary';
+-import { DockedLayout } from './components/layout/DockedLayout';
+-import { TopAppBar } from './components/layout/TopAppBar';
+-import { ParticleOverlay } from './components/ParticleOverlay';
+ import { useThemeVariables } from './hooks/useThemeVariables';
+ import { useUIStore } from './store/uiStore';
+-
+-const SettingsWindow = lazy(() =>
+-  import('./components/SettingsWindow').then((module) => ({ default: module.SettingsWindow })),
+-);
++import { WorkspaceHeader } from './components/layout/WorkspaceHeader';
++import { LeftPanel } from './components/panels/LeftPanel';
++import { CenterPanel } from './components/panels/CenterPanel';
++import { RightPanel } from './components/panels/RightPanel';
++import { CesiumBackground } from './components/background/CesiumBackground';
++import { LauncherPage } from './components/launcher/LauncherPage';
++import { SettingsPage } from './components/settings/SettingsPage';
++import { SidebarTrigger } from './components/panels/SidebarTrigger';
+ 
+ export default function App() {
+-  const { appStyle, isHighLoad } = useThemeVariables();
+-  const showSettings = useUIStore((state) => state.showSettings);
+-  const setShowSettings = useUIStore((state) => state.setShowSettings);
++  const { appStyle } = useThemeVariables();
++  const currentPage = useUIStore((s) => s.currentPage);
++  const interactionMode = useUIStore((s) => s.interactionMode);
++  
++  // Custom customWallpaper / theme background styles
++  const customWallpaper = useUIStore((s) => s.customWallpaper);
++
++  // Background style overlay
++  const backgroundStyle = customWallpaper
++    ? { backgroundImage: `url(${customWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
++    : undefined;
+ 
+   return (
+     <ErrorBoundary>
+-      <div className="app-shell h-screen w-screen overflow-hidden bg-base text-text-main" style={appStyle}>
+-        <div className="app-stars" aria-hidden="true" />
+-        <div className="app-aurora" aria-hidden="true" />
++      <div 
++        className="app-shell relative h-screen w-screen overflow-hidden text-text-main font-sans flex flex-col" 
++        style={{ ...appStyle, ...backgroundStyle }}
++      >
++        {/* Background layer: Persistent 3D Cesium Earth Map */}
++        {!customWallpaper && (
++          <CesiumBackground interactive={interactionMode === 'earth'} />
++        )}
++
++        {/* Scanline overlay for cyberpunk feel */}
++        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[size:100%_4px] pointer-events-none z-10" />
++
++        {/* Foreground Layer: App Screens */}
++        {currentPage === 'launcher' ? (
++          <LauncherPage />
++        ) : (
++          <div className="relative flex flex-col h-full w-full z-10">
++            {/* Header */}
++            <WorkspaceHeader />
++
++            {/* Main 3-panel container */}
++            <div className="flex-1 flex w-full min-h-0 relative overflow-hidden">
++              {/* Floating trigger when sidebar collapsed */}
++              {interactionMode !== 'earth' && <SidebarTrigger />}
++
++              {/* Panel 1: Sidebar Left */}
++              {interactionMode !== 'earth' && <LeftPanel />}
+ 
+-        <TopAppBar />
+-        {!isHighLoad && <ParticleOverlay />}
++              {/* Panel 2: Center (Interactive Globe viewports and Chats) */}
++              <CenterPanel />
+ 
+-        <div className="relative z-10 h-full pt-14">
+-          <DockedLayout />
+-        </div>
++              {/* Panel 3: Context Right */}
++              {interactionMode !== 'earth' && <RightPanel />}
++            </div>
+ 
+-        <Suspense fallback={null}>
+-          {showSettings && <SettingsWindow onClose={() => setShowSettings(false)} />}
+-        </Suspense>
++            {/* Settings Overlay Portal */}
++            {currentPage === 'settings' && (
++              <Suspense fallback={null}>
++                <SettingsPage />
++              </Suspense>
++            )}
++          </div>
++        )}
+       </div>
+     </ErrorBoundary>
+   );
+diff --git a/src/components/ChatPanel.tsx b/src/components/ChatPanel.tsx
+index 8ff71a5..fcb9c07 100644
+--- a/src/components/ChatPanel.tsx
++++ b/src/components/ChatPanel.tsx
+@@ -1,46 +1,31 @@
+ import { useRef, useEffect } from 'react';
+-import { Trash2, Sparkles } from 'lucide-react';
+-import { useAIChat } from '../hooks/useAIChat';
+ import { useUIStore } from '../store/uiStore';
+ import { ChatMessage } from './chat/ChatMessage';
+-import { ChatInput } from './chat/ChatInput';
+ 
+ export function ChatPanel() {
++  // Directly pull messages from the active session via store
+   const messages = useUIStore((s) => s.messages);
+   const isProcessing = useUIStore((s) => s.isProcessing);
+-  const clearMessages = useUIStore((s) => s.clearMessages);
+-  const { sendMessage } = useAIChat();
+   const scrollRef = useRef<HTMLDivElement>(null);
+ 
++  // Auto scroll to bottom when new messages arrive
+   useEffect(() => {
+     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+   }, [messages]);
+ 
+   return (
+     <div className="flex h-full w-full flex-col bg-transparent font-sans">
+-      <header className="flex h-12 items-center justify-between px-6 border-b border-white/5 bg-white/2">
+-        <div className="flex items-center gap-2 text-primary">
+-          <Sparkles size={16} className="glow-pulse" />
+-          <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Neural Interface</span>
+-        </div>
+-        <button onClick={clearMessages} className="text-white/20 hover:text-red-400 transition-colors">
+-          <Trash2 size={16} />
+-        </button>
+-      </header>
+-
+       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth scroller">
+         {messages.map((m) => (
+           <ChatMessage key={m.id} sender={m.sender} content={m.content} />
+         ))}
+         {isProcessing && (
+-          <div className="flex gap-4 animate-pulse">
+-            <div className="h-8 w-8 rounded-lg bg-white/10" />
++          <div className="flex gap-4 animate-pulse px-4">
++            <div className="h-7 w-7 rounded-lg bg-white/10" />
+             <div className="h-10 w-24 rounded-2xl bg-white/5" />
+           </div>
+         )}
+       </div>
+-
+-      <ChatInput onSend={sendMessage} disabled={isProcessing} />
+     </div>
+   );
+ }
+diff --git a/src/components/ErrorBoundary.tsx b/src/components/ErrorBoundary.tsx
+index 1c7e669..6fea343 100644
+--- a/src/components/ErrorBoundary.tsx
++++ b/src/components/ErrorBoundary.tsx
+@@ -1,4 +1,4 @@
+-import { Component, type ErrorInfo, type ReactNode } from 'react';
++import React, { Component, type ErrorInfo, type ReactNode } from 'react';
+ 
+ interface ErrorBoundaryProps {
+   children: ReactNode;
+@@ -9,7 +9,7 @@ interface ErrorBoundaryState {
+   error: Error | null;
+ }
+ 
+-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
++export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+   constructor(props: ErrorBoundaryProps) {
+     super(props);
+     this.state = { hasError: false, error: null };
+diff --git a/src/components/MarkdownMessage.tsx b/src/components/MarkdownMessage.tsx
+index 6e5d9e1..ff75a8a 100644
+--- a/src/components/MarkdownMessage.tsx
++++ b/src/components/MarkdownMessage.tsx
+@@ -181,7 +181,7 @@ function InlineText({ text }: { text: string }) {
+   return <>{nodes}</>;
+ }
+ 
+-function CodeBlock({ language, value }: { language: string; value: string }) {
++function CodeBlock({ language, value }: { language: string; value: string; key?: any }) {
+   const [copied, setCopied] = useState(false);
+ 
+   const handleCopy = async () => {
+diff --git a/src/components/ParticleOverlay.tsx b/src/components/ParticleOverlay.tsx
+index dfde7c0..bd7a8cc 100644
+--- a/src/components/ParticleOverlay.tsx
++++ b/src/components/ParticleOverlay.tsx
+@@ -83,6 +83,13 @@ export function ParticleOverlay() {
+           ctx.arc(frame[base], frame[base + 1], frame[base + 2], 0, Math.PI * 2);
+           ctx.fill();
+         }
++
++        // Return the ArrayBuffer back to the Web Worker for reuse (double-buffering)
++        if (worker && usingWorker) {
++          const buffer = frame.buffer;
++          frameRef.current = null; // Detach locally to prevent drawing detaching buffer
++          worker.postMessage({ type: 'releaseBuffer', buffer }, [buffer]);
++        }
+       }
+ 
+       rafId = window.requestAnimationFrame(drawFrame);
+diff --git a/src/components/SettingsWindow.tsx b/src/components/SettingsWindow.tsx
+deleted file mode 100644
+index cb953e3..0000000
+--- a/src/components/SettingsWindow.tsx
++++ /dev/null
+@@ -1,82 +0,0 @@
+-import { useRef, useState } from 'react';
+-import { Settings2, X } from 'lucide-react';
+-import { ThemeSettings } from './settings/ThemeSettings';
+-import { AiSettings } from './settings/AiSettings';
+-import { FeedbackSettings } from './settings/FeedbackSettings';
+-import { NotionSettings } from './settings/NotionSettings';
+-
+-interface Point {
+-  x: number;
+-  y: number;
+-}
+-
+-export function SettingsWindow({ onClose }: { onClose: () => void }) {
+-  const [position, setPosition] = useState<Point>({ x: 12, y: 72 });
+-  const dragStart = useRef<{ pointer: Point; origin: Point } | null>(null);
+-
+-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+-    event.currentTarget.setPointerCapture(event.pointerId);
+-    dragStart.current = {
+-      pointer: { x: event.clientX, y: event.clientY },
+-      origin: position,
+-    };
+-  };
+-
+-  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+-    if (!dragStart.current) return;
+-    const nextX = dragStart.current.origin.x + event.clientX - dragStart.current.pointer.x;
+-    const nextY = dragStart.current.origin.y + event.clientY - dragStart.current.pointer.y;
+-    const panelWidth = Math.min(440, window.innerWidth - 24);
+-    setPosition({
+-      x: Math.max(12, Math.min(window.innerWidth - panelWidth - 12, nextX)),
+-      y: Math.max(64, Math.min(window.innerHeight - 160, nextY)),
+-    });
+-  };
+-
+-  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+-    dragStart.current = null;
+-    event.currentTarget.releasePointerCapture(event.pointerId);
+-  };
+-
+-  return (
+-    <section
+-      className="settings-window fixed left-0 top-0 z-[100] flex max-h-[80vh] flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/55 shadow-[0_0_50px_rgba(0,0,0,0.5)] panel-glass backdrop-blur-2xl"
+-      style={{ left: position.x, top: position.y, width: 'min(440px, calc(100vw - 24px))' }}
+-      aria-label="System configuration"
+-    >
+-      <div
+-        className="flex h-14 shrink-0 cursor-grab items-center justify-between border-b border-white/5 px-6 active:cursor-grabbing"
+-        onPointerDown={handlePointerDown}
+-        onPointerMove={handlePointerMove}
+-        onPointerUp={handlePointerUp}
+-        onPointerCancel={handlePointerUp}
+-      >
+-        <div className="flex items-center gap-3 font-mono text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+-          <Settings2 size={14} className="animate-spin-slow" />
+-          <span>System Config</span>
+-        </div>
+-        <button
+-          type="button"
+-          onClick={onClose}
+-          className="rounded-full p-2 text-white/30 transition-colors hover:bg-white/5 hover:text-white"
+-          aria-label="Close settings"
+-        >
+-          <X size={16} />
+-        </button>
+-      </div>
+-
+-      <div className="scroller flex-1 space-y-10 overflow-y-auto p-8 pb-12">
+-        <ThemeSettings />
+-        <AiSettings />
+-        <FeedbackSettings />
+-        <NotionSettings />
+-
+-        <div className="border-t border-white/5 pt-8">
+-          <div className="text-center font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-white/20">
+-            Silver Wolf Protocol // v6.4.0-PRIME
+-          </div>
+-        </div>
+-      </div>
+-    </section>
+-  );
+-}
+diff --git a/src/components/chat/ChatMessage.tsx b/src/components/chat/ChatMessage.tsx
+index 2d6359e..07042c2 100644
+--- a/src/components/chat/ChatMessage.tsx
++++ b/src/components/chat/ChatMessage.tsx
+@@ -1,30 +1,51 @@
+ import { User, Bot } from 'lucide-react';
+ import { MarkdownMessage } from '../MarkdownMessage';
++import { useUIStore } from '../../store/uiStore';
+ 
+ interface ChatMessageProps {
+-  sender: 'user' | 'ai' | 'system';
++  sender: 'user' | 'ai' | 'system' | 'assistant';
+   content: string;
++  key?: any;
+ }
+ 
+ export function ChatMessage({ sender, content }: ChatMessageProps) {
+   const isUser = sender === 'user';
++  const { chatBubbleStyle, iconStyle } = useUIStore((s) => s.personalisation);
++
++  // Icon styling based on iconStyle and sender
++  const iconBaseClass = `h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-lg transition-all ${
++    iconStyle === 'filled'
++      ? isUser
++        ? 'bg-primary text-white border-none'
++        : 'bg-white/15 text-white border-none'
++      : isUser
++        ? 'bg-primary/20 border border-primary/30 text-primary'
++        : 'bg-white/5 border border-white/10 text-white/40'
++  }`;
++
++  // Bubble styling based on chatBubbleStyle and sender
++  let bubbleClass = 'max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-relaxed transition-all ';
++  if (chatBubbleStyle === 'glass') {
++    bubbleClass += isUser
++      ? 'bg-primary/10 border border-primary/25 text-white/90 backdrop-blur-md shadow-lg shadow-primary/5'
++      : 'bg-white/5 border border-white/10 text-white/80 backdrop-blur-md shadow-lg';
++  } else if (chatBubbleStyle === 'solid') {
++    bubbleClass += isUser
++      ? 'bg-primary text-white border border-primary-hover shadow-md'
++      : 'bg-[#151720] border border-[#252836] text-white/90 shadow-md';
++  } else {
++    // minimal
++    bubbleClass += isUser
++      ? 'bg-transparent border-r-2 border-primary text-white/90 rounded-none px-3 py-1 shadow-none'
++      : 'bg-transparent border-l-2 border-white/20 text-white/80 rounded-none px-3 py-1 shadow-none';
++  }
+ 
+   return (
+     <div className={`message-enter flex gap-4 ${isUser ? 'flex-row-reverse' : ''}`}>
+-      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border shadow-lg ${
+-        isUser
+-          ? 'bg-primary/20 border-primary/30 text-primary'
+-          : 'bg-white/5 border-white/10 text-white/40'
+-      }`}>
+-        {isUser ? <User size={14} /> : <Bot size={14} />}
++      <div className={iconBaseClass}>
++        {isUser ? <User size={14} className={iconStyle === 'filled' ? 'fill-current' : ''} /> : <Bot size={14} className={iconStyle === 'filled' ? 'fill-current' : ''} />}
+       </div>
+-      <div
+-        className={`max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-relaxed backdrop-blur-md shadow-2xl ${
+-          isUser
+-            ? 'bg-primary/5 border border-primary/20 text-white/90'
+-            : 'bg-white/2 border border-white/10 text-white/80'
+-        }`}
+-      >
++      <div className={bubbleClass}>
+         <MarkdownMessage content={content} />
+       </div>
+     </div>
+diff --git a/src/components/common/IconButton.tsx b/src/components/common/IconButton.tsx
+index c7b8993..476f6ef 100644
+--- a/src/components/common/IconButton.tsx
++++ b/src/components/common/IconButton.tsx
+@@ -1,4 +1,4 @@
+-import type { ButtonHTMLAttributes } from 'react';
++import React, { type ButtonHTMLAttributes } from 'react';
+ import type { LucideIcon } from 'lucide-react';
+ 
+ type IconButtonVariant = 'ghost' | 'primary' | 'danger';
+@@ -8,6 +8,8 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+   label: string;
+   variant?: IconButtonVariant;
+   showLabel?: boolean;
++  className?: string;
++  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+ }
+ 
+ const variantClasses: Record<IconButtonVariant, string> = {
+diff --git a/src/components/layout/DockedLayout.tsx b/src/components/layout/DockedLayout.tsx
+deleted file mode 100644
+index b87eb70..0000000
+--- a/src/components/layout/DockedLayout.tsx
++++ /dev/null
+@@ -1,63 +0,0 @@
+-import { lazy, Suspense } from 'react';
+-import { ChatPanel } from '../ChatPanel';
+-import { SystemMonitor } from '../SystemMonitor';
+-import { LearningHub } from '../learning/LearningHub';
+-import { useUIStore } from '../../store/uiStore';
+-import { SessionSidebar } from './SessionSidebar';
+-
+-const EarthExplorer = lazy(() =>
+-  import('../learning/GoogleEarthRemix').then((module) => ({ default: module.default })),
+-);
+-
+-export function DockedLayout() {
+-  const setShowSettings = useUIStore((s) => s.setShowSettings);
+-  const clearMessages = useUIStore((s) => s.clearMessages);
+-  const settingsDocked = useUIStore((s) => s.settingsDocked);
+-  const showSettings = useUIStore((s) => s.showSettings);
+-  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
+-  const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
+-  const rightPanelMode = useUIStore((s) => s.rightPanelMode);
+-  const primaryView = useUIStore((s) => s.primaryView);
+-
+-  const hideSystemMonitor = showSettings && settingsDocked;
+-
+-  return (
+-    <div className="flex h-full w-full overflow-hidden bg-transparent">
+-      {/* Mobile sidebar overlay */}
+-      {sidebarOpen && (
+-        <div
+-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+-          onClick={() => setSidebarOpen(false)}
+-          aria-hidden="true"
+-        />
+-      )}
+-
+-      <SessionSidebar
+-        onNewSession={clearMessages}
+-        onOpenSettings={() => setShowSettings(true)}
+-        isOpen={sidebarOpen}
+-        onClose={() => setSidebarOpen(false)}
+-      />
+-
+-      <main className="flex-1 flex flex-col relative z-10 bg-transparent min-w-0">
+-        <div className="w-full h-full relative">
+-          {primaryView === 'earth' ? (
+-            <Suspense fallback={<div className="grid h-full place-items-center text-xs uppercase tracking-[0.3em] text-text-muted">Loading Earth Explorer</div>}>
+-              <EarthExplorer />
+-            </Suspense>
+-          ) : (
+-            <ChatPanel />
+-          )}
+-        </div>
+-      </main>
+-
+-      {!hideSystemMonitor ? (
+-        <aside className="relative z-20 hidden w-80 shrink-0 flex-col border-l border-panel-border bg-panel panel-glass ambient-glow transition-opacity duration-300 xl:flex">
+-          {rightPanelMode === 'monitor' ? <SystemMonitor /> : <LearningHub />}
+-        </aside>
+-      ) : (
+-        <div className="hidden w-[400px] shrink-0 xl:block" />
+-      )}
+-    </div>
+-  );
+-}
+diff --git a/src/components/layout/SessionSidebar.tsx b/src/components/layout/SessionSidebar.tsx
+deleted file mode 100644
+index 27d776c..0000000
+--- a/src/components/layout/SessionSidebar.tsx
++++ /dev/null
+@@ -1,129 +0,0 @@
+-import { MessageSquare, Plus, Settings, Activity, GraduationCap, Globe2 } from 'lucide-react';
+-import { IconButton } from '../common/IconButton';
+-import { useUIStore } from '../../store/uiStore';
+-
+-interface SessionSidebarProps {
+-  onNewSession: () => void;
+-  onOpenSettings: () => void;
+-  isOpen?: boolean;
+-  onClose?: () => void;
+-}
+-
+-export function SessionSidebar({ onNewSession, onOpenSettings, isOpen = false, onClose }: SessionSidebarProps) {
+-  const { primaryView, setPrimaryView, rightPanelMode, setRightPanelMode } = useUIStore();
+-
+-  const handleNewSession = () => {
+-    onNewSession();
+-    onClose?.();
+-  };
+-
+-  const handleOpenSettings = () => {
+-    onOpenSettings();
+-    onClose?.();
+-  };
+-
+-  const handlePrimaryView = (view: 'chat' | 'earth') => {
+-    setPrimaryView(view);
+-    onClose?.();
+-  };
+-
+-  const handleRightPanelMode = (mode: 'monitor' | 'learning') => {
+-    setRightPanelMode(mode);
+-    onClose?.();
+-  };
+-
+-  return (
+-    <aside
+-      className={`
+-        fixed inset-y-0 left-0 z-40 w-64 shrink-0 flex-col border-r border-panel-border bg-panel panel-glass ambient-glow
+-        transition-transform duration-300 ease-in-out
+-        md:relative md:z-20 md:translate-x-0 md:flex
+-        ${isOpen ? 'flex translate-x-0' : 'hidden -translate-x-full md:flex md:translate-x-0'}
+-      `}
+-      role="navigation"
+-      aria-label="Sidebar navigation"
+-    >
+-      <div className="flex flex-1 flex-col gap-3 p-4 pt-16 md:pt-4">
+-        <div className="mb-2 font-mono text-xs uppercase tracking-widest text-primary/80">Workspace</div>
+-        <button
+-          id="new-chat-button"
+-          onClick={handleNewSession}
+-          className="flex w-full items-center gap-3 rounded-lg border border-primary/20 px-3 py-2.5 text-left text-sm text-text-main transition-colors hover:bg-primary/10 hover:text-primary"
+-        >
+-          <Plus className="h-4 w-4" />
+-          <span className="font-medium">New chat</span>
+-        </button>
+-
+-        <div className="mt-6 px-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+-          Views
+-        </div>
+-        <div className="flex flex-col gap-1">
+-          <button
+-            onClick={() => handlePrimaryView('chat')}
+-            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+-              primaryView === 'chat'
+-                ? 'border border-primary/10 bg-panel-border/30 text-primary'
+-                : 'text-text-muted hover:bg-white/5 hover:text-text-main'
+-            }`}
+-          >
+-            <MessageSquare className="h-4 w-4 opacity-70" />
+-            <span>Neural Chat</span>
+-          </button>
+-          <button
+-            onClick={() => handlePrimaryView('earth')}
+-            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+-              primaryView === 'earth'
+-                ? 'border border-primary/10 bg-panel-border/30 text-primary'
+-                : 'text-text-muted hover:bg-white/5 hover:text-text-main'
+-            }`}
+-          >
+-            <Globe2 className="h-4 w-4 opacity-70" />
+-            <span>Earth Explorer</span>
+-          </button>
+-          <button
+-            onClick={() => handleRightPanelMode('monitor')}
+-            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+-              rightPanelMode === 'monitor' 
+-                ? 'border border-primary/10 bg-panel-border/30 text-primary' 
+-                : 'text-text-muted hover:bg-white/5 hover:text-text-main'
+-            }`}
+-          >
+-            <Activity className="h-4 w-4 opacity-70" />
+-            <span>System Monitor</span>
+-          </button>
+-          <button
+-            onClick={() => handleRightPanelMode('learning')}
+-            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+-              rightPanelMode === 'learning' 
+-                ? 'border border-primary/10 bg-panel-border/30 text-primary' 
+-                : 'text-text-muted hover:bg-white/5 hover:text-text-main'
+-            }`}
+-          >
+-            <GraduationCap className="h-4 w-4 opacity-70" />
+-            <span>Learning Module</span>
+-          </button>
+-        </div>
+-
+-        <div className="mt-6 px-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+-          Sessions
+-        </div>
+-        <button
+-          className="flex w-full items-center gap-3 rounded-lg border border-primary/10 bg-panel-border/30 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-primary/20"
+-        >
+-          <MessageSquare className="h-4 w-4 opacity-70" />
+-          <span className="truncate">Current chat</span>
+-        </button>
+-      </div>
+-
+-      <div className="border-t border-panel-border bg-base/30 p-4">
+-        <IconButton
+-          icon={Settings}
+-          label="Settings"
+-          showLabel
+-          onClick={handleOpenSettings}
+-          className="w-full justify-start font-mono text-xs uppercase tracking-wider"
+-        />
+-      </div>
+-    </aside>
+-  );
+-}
+diff --git a/src/components/layout/TopAppBar.tsx b/src/components/layout/TopAppBar.tsx
+deleted file mode 100644
+index f39f78f..0000000
+--- a/src/components/layout/TopAppBar.tsx
++++ /dev/null
+@@ -1,86 +0,0 @@
+-import { Settings, Cpu, Wifi, Battery, Menu, Globe2, MessageSquare } from 'lucide-react';
+-import { useUIStore } from '../../store/uiStore';
+-import { IconButton } from '../common/IconButton';
+-
+-export function TopAppBar() {
+-  const showSettings = useUIStore((s) => s.showSettings);
+-  const setShowSettings = useUIStore((s) => s.setShowSettings);
+-  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
+-  const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
+-  const primaryView = useUIStore((s) => s.primaryView);
+-  const setPrimaryView = useUIStore((s) => s.setPrimaryView);
+-  const cpuLoad = useUIStore((s) => s.cpuLoad);
+-  const metrics = useUIStore((s) => s.systemMetrics);
+-
+-  return (
+-    <header
+-      id="top-app-bar"
+-      className="fixed left-0 top-0 z-50 flex h-14 w-full items-center justify-between px-6 bg-black/20 backdrop-blur-md border-b border-white/5"
+-    >
+-      <div className="flex items-center gap-6">
+-        <button
+-          type="button"
+-          className="rounded-lg border border-white/10 bg-white/5 p-2 text-white/60 transition-colors hover:text-primary md:hidden"
+-          onClick={() => setSidebarOpen(!sidebarOpen)}
+-          aria-label="Open navigation"
+-        >
+-          <Menu className="h-4 w-4" />
+-        </button>
+-        <div className="flex items-center gap-3 font-mono text-xs font-black uppercase tracking-[0.3em] text-primary glow-text">
+-          <div className="relative h-2 w-2">
+-            <div className="absolute inset-0 bg-primary rounded-full animate-ping opacity-75" />
+-            <div className="relative h-2 w-2 rounded-full bg-primary" />
+-          </div>
+-          <span>Silver Wolf VI</span>
+-        </div>
+-
+-        <div className="hidden md:flex items-center gap-4 border-l border-white/10 pl-6 h-6">
+-          <Metric icon={Cpu} value={cpuLoad * 100} label="CPU" />
+-          <Metric icon={Wifi} value={metrics.networkLatency * 100} label="NET" />
+-          <Metric icon={Battery} value={metrics.batteryLevel * 100} label="PWR" />
+-        </div>
+-      </div>
+-
+-      <div className="flex items-center gap-4">
+-        <div className="hidden rounded-full border border-white/10 bg-white/5 p-1 md:flex">
+-          <button
+-            type="button"
+-            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] uppercase tracking-widest transition-colors ${
+-              primaryView === 'chat' ? 'bg-primary/20 text-primary' : 'text-white/40 hover:text-white'
+-            }`}
+-            onClick={() => setPrimaryView('chat')}
+-          >
+-            <MessageSquare className="h-3 w-3" />
+-            Chat
+-          </button>
+-          <button
+-            type="button"
+-            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] uppercase tracking-widest transition-colors ${
+-              primaryView === 'earth' ? 'bg-primary/20 text-primary' : 'text-white/40 hover:text-white'
+-            }`}
+-            onClick={() => setPrimaryView('earth')}
+-          >
+-            <Globe2 className="h-3 w-3" />
+-            Earth
+-          </button>
+-        </div>
+-        <IconButton
+-          icon={Settings}
+-          label="Configuration"
+-          onClick={() => setShowSettings(!showSettings)}
+-          className={showSettings ? 'text-primary' : ''}
+-        />
+-      </div>
+-    </header>
+-  );
+-}
+-
+-function Metric({ icon: Icon, value, label }: { icon: any; value: number; label: string }) {
+-  return (
+-    <div className="flex items-center gap-2 text-[10px] text-white/40 font-mono">
+-      <Icon className="w-3 h-3" />
+-      <span className="w-8 text-right">{Math.round(value)}%</span>
+-      <span className="opacity-50">{label}</span>
+-    </div>
+-  );
+-}
+diff --git a/src/components/learning/GoogleEarthRemix.css b/src/components/learning/GoogleEarthRemix.css
+index 60c94d0..17d6bd3 100644
+--- a/src/components/learning/GoogleEarthRemix.css
++++ b/src/components/learning/GoogleEarthRemix.css
+@@ -1,116 +1,174 @@
++/* Google Earth Remix Stylesheet */
++
+ .earth-remix {
+   display: flex;
+   flex-direction: column;
+   height: 100%;
+   width: 100%;
+   overflow: hidden;
+-  background: #05070d;
+-  color: #1f2937;
+-  font-family: Inter, Outfit, system-ui, sans-serif;
++  background: transparent;
++  color: #fff;
++  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
++  user-select: none;
+ }
+ 
++/* Classic Pro-Style Top Menu Bar */
+ .earth-menu {
+   display: flex;
+   align-items: center;
+-  gap: 1.2rem;
+-  height: 45px;
+-  padding: 0 1.25rem;
+-  background: #fff;
+-  color: #2b2f35;
+-  border-bottom: 1px solid #eef1f5;
++  gap: 1rem;
++  height: 38px;
++  padding: 0 1rem;
++  background: #111217;
++  color: #c4c6cf;
++  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
++  font-size: 0.75rem;
++  z-index: 25;
++}
++
++.earth-logo-container {
++  display: flex;
++  align-items: center;
++  gap: 0.5rem;
++  margin-right: 1.5rem;
++}
++
++.earth-logo {
++  width: 20px;
++  height: 20px;
++  border-radius: 50%;
++  background: radial-gradient(circle at 30% 35%, #8ab4f8 0 20%, transparent 22%),
++              linear-gradient(135deg, #4285f4, #1a73e8);
++  box-shadow: 0 0 8px rgba(66, 133, 244, 0.5);
+ }
+ 
+-.earth-menu button,
+-.earth-toolbar button {
++.earth-logo-text {
++  font-weight: 700;
++  color: #fff;
++  letter-spacing: 0.05em;
++}
++
++.earth-menu-item {
+   border: 0;
+   background: transparent;
+   color: inherit;
+-  font: inherit;
++  font-size: inherit;
+   cursor: pointer;
++  padding: 0.25rem 0.5rem;
++  border-radius: 4px;
++  transition: all 0.15s ease;
+ }
+ 
+-.earth-logo {
+-  width: 34px;
+-  height: 34px;
+-  border-radius: 50%;
+-  background:
+-    radial-gradient(circle at 30% 35%, #d7ecff 0 22%, transparent 23%),
+-    linear-gradient(140deg, #78b7ff 0 35%, #4a7cf4 35% 62%, #d4edff 62%);
++.earth-menu-item:hover {
++  background: rgba(255, 255, 255, 0.06);
++  color: #fff;
+ }
+ 
+-.earth-toolbar {
++.earth-menu-spacer {
++  flex: 1;
++}
++
++.earth-menu-badge {
++  background: rgba(66, 133, 244, 0.15);
++  border: 1px solid rgba(66, 133, 244, 0.3);
++  color: #8ab4f8;
++  padding: 0.15rem 0.5rem;
++  border-radius: 99px;
++  font-size: 0.65rem;
++  font-family: monospace;
++  letter-spacing: 0.05em;
++}
++
++/* Sidebar & Main Screen Workspace Layout */
++.earth-workspace {
+   display: flex;
+-  align-items: center;
+-  gap: 0.75rem;
+-  height: 61px;
+-  padding: 0 1.3rem;
+-  background: #fff;
+-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+-  color: #4b5563;
++  flex: 1;
++  width: 100%;
++  height: calc(100% - 38px);
++  position: relative;
++  overflow: hidden;
+ }
+ 
+-.earth-search {
++/* Vertical Left Sidebar */
++.earth-sidebar {
+   display: flex;
++  flex-direction: column;
++  width: 56px;
++  height: 100%;
++  background: #111217;
++  border-right: 1px solid rgba(255, 255, 255, 0.05);
+   align-items: center;
+-  gap: 0.75rem;
+-  min-width: min(360px, 40vw);
+-  height: 48px;
+-  padding: 0 1rem;
+-  border-radius: 999px;
+-  background: #f2f5f9;
+-  color: #68717d;
++  padding: 0.75rem 0;
++  gap: 0.5rem;
++  z-index: 20;
+ }
+ 
+-.earth-search input {
+-  width: 100%;
++.earth-sidebar-btn {
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  justify-content: center;
++  width: 42px;
++  height: 42px;
++  border-radius: 8px;
+   border: 0;
+-  outline: 0;
+   background: transparent;
+-  color: #202124;
+-  font-size: 1rem;
++  color: #80868b;
++  cursor: pointer;
++  gap: 0.2rem;
++  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+ }
+ 
+-.earth-search input::placeholder {
+-  color: #777f8b;
++.earth-sidebar-btn span {
++  font-size: 0.55rem;
++  font-weight: 500;
+ }
+ 
+-.earth-tool,
+-.earth-collapse {
+-  display: grid;
+-  place-items: center;
+-  width: 38px;
+-  height: 38px;
+-  border-radius: 50%;
+-  color: #4f565e;
++.earth-sidebar-btn:hover {
++  background: rgba(255, 255, 255, 0.05);
++  color: #fff;
+ }
+ 
+-.earth-tool:hover,
+-.earth-collapse:hover {
+-  background: #eef3fb;
+-  color: #0b57d0;
++.earth-sidebar-btn.active {
++  background: rgba(66, 133, 244, 0.15);
++  color: #8ab4f8;
++  box-shadow: inset 0 0 0 1px rgba(66, 133, 244, 0.3);
+ }
+ 
+-.earth-toolbar-spacer {
++.earth-sidebar-spacer {
+   flex: 1;
+ }
+ 
++/* Core Stage (Viewer & Overlays) */
+ .earth-stage {
+   position: relative;
+   flex: 1;
++  height: 100%;
++  overflow: hidden;
++  background: transparent;
++  pointer-events: none;
++}
++
++/* Fallback 2D Sphere Styles when Cesium has not loaded */
++.earth-globe-fallback {
++  position: absolute;
++  inset: 0;
++  display: flex;
++  align-items: center;
++  justify-content: center;
+   overflow: hidden;
+-  background: #02040a;
++  background: #05070d;
++  pointer-events: auto;
+ }
+ 
+ .earth-starfield {
+   position: absolute;
+   inset: 0;
+   background:
+-    radial-gradient(circle at 20% 30%, rgba(130, 180, 255, 0.55) 0 1px, transparent 2px),
+-    radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.65) 0 1px, transparent 2px),
+-    radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.45) 0 1px, transparent 2px),
+-    radial-gradient(ellipse at 65% 45%, rgba(52, 90, 130, 0.5), transparent 42%),
+-    linear-gradient(115deg, #01030a, #070b12 55%, #010205);
+-  background-size: 170px 170px, 230px 230px, 310px 310px, auto, auto;
++    radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.15) 0 1px, transparent 2px),
++    radial-gradient(circle at 80% 40%, rgba(255, 255, 255, 0.1) 0 1px, transparent 2px),
++    radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.15) 0 1px, transparent 2px);
++  background-size: 200px 200px;
+ }
+ 
+ .earth-globe {
+@@ -122,27 +180,27 @@
+   inset: 0;
+   display: grid;
+   place-items: center;
+-  perspective: 1300px;
++  perspective: 1200px;
+ }
+ 
+ .earth-sphere {
+   position: relative;
+-  width: min(72vw, 840px);
++  width: min(65vw, 680px);
+   aspect-ratio: 1;
+   border-radius: 50%;
+   transform: rotateZ(var(--earth-tilt)) rotateY(var(--earth-rotate)) scale(var(--earth-scale));
+-  transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
++  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+   background:
+-    radial-gradient(circle at 32% 32%, rgba(255, 255, 255, 0.45), transparent 17%),
+-    radial-gradient(circle at 43% 42%, #6bb06b 0 7%, transparent 8%),
+-    radial-gradient(circle at 58% 52%, #4e935c 0 10%, transparent 11%),
+-    radial-gradient(circle at 36% 62%, #caa36b 0 9%, transparent 10%),
+-    radial-gradient(circle at 70% 32%, #5e9b68 0 9%, transparent 10%),
+-    radial-gradient(circle at 50% 50%, #3166b8, #173d83 60%, #0f224c 78%, #061027 100%);
++    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent 20%),
++    radial-gradient(circle at 45% 40%, #5ba862 0 6%, transparent 7%),
++    radial-gradient(circle at 55% 55%, #468c54 0 10%, transparent 11%),
++    radial-gradient(circle at 35% 60%, #c4995f 0 8%, transparent 9%),
++    radial-gradient(circle at 75% 35%, #559160 0 8%, transparent 9%),
++    radial-gradient(circle at 50% 50%, #2b61b3, #15397a 60%, #0d1d3f 80%, #030814 100%);
+   box-shadow:
+-    inset -95px -40px 120px rgba(0, 0, 0, 0.7),
+-    inset 35px 20px 55px rgba(255, 255, 255, 0.24),
+-    0 0 48px rgba(92, 151, 255, 0.45);
++    inset -80px -40px 100px rgba(0, 0, 0, 0.8),
++    inset 30px 15px 50px rgba(255, 255, 255, 0.2),
++    0 0 40px rgba(66, 133, 244, 0.3);
+ }
+ 
+ .earth-clouds {
+@@ -150,320 +208,954 @@
+   inset: 0;
+   border-radius: 50%;
+   background:
+-    radial-gradient(ellipse at 28% 35%, rgba(255, 255, 255, 0.65) 0 7%, transparent 8%),
+-    radial-gradient(ellipse at 52% 26%, rgba(255, 255, 255, 0.5) 0 9%, transparent 10%),
+-    radial-gradient(ellipse at 66% 56%, rgba(255, 255, 255, 0.5) 0 8%, transparent 9%);
++    radial-gradient(ellipse at 25% 30%, rgba(255, 255, 255, 0.6) 0 8%, transparent 9%),
++    radial-gradient(ellipse at 60% 25%, rgba(255, 255, 255, 0.4) 0 10%, transparent 11%),
++    radial-gradient(ellipse at 70% 60%, rgba(255, 255, 255, 0.45) 0 8%, transparent 9%);
+   mix-blend-mode: screen;
+-  opacity: 0.72;
+-  animation: earth-cloud-drift 32s linear infinite;
++  opacity: 0.65;
++  animation: cloudDrift 45s linear infinite;
+ }
+ 
+ .earth-terminator {
+   position: absolute;
+   inset: 0;
+   border-radius: 50%;
+-  background: linear-gradient(100deg, transparent 0 52%, rgba(0, 0, 0, 0.36) 68%, rgba(0, 0, 0, 0.78));
++  background: linear-gradient(105deg, transparent 0 50%, rgba(0, 0, 0, 0.35) 65%, rgba(0, 0, 0, 0.8));
+ }
+ 
+ .earth-marker {
+   position: absolute;
+-  z-index: 4;
+-  width: 14px;
+-  height: 14px;
+-  translate: -50% -50%;
+-  border: 2px solid #fff;
++  z-index: 5;
++  width: 10px;
++  height: 10px;
++  transform: translate(-50%, -50%);
++  border: 1.5px solid #fff;
+   border-radius: 50%;
+   background: #ea4335;
+-  box-shadow: 0 0 0 4px rgba(234, 67, 53, 0.2), 0 4px 14px rgba(0, 0, 0, 0.4);
++  box-shadow: 0 0 0 3px rgba(234, 67, 53, 0.3), 0 2px 6px rgba(0, 0, 0, 0.5);
++  cursor: pointer;
+ }
+ 
+ .earth-marker.active {
+-  width: 19px;
+-  height: 19px;
+-  background: #1a73e8;
+-  box-shadow: 0 0 0 7px rgba(26, 115, 232, 0.22), 0 4px 20px rgba(0, 0, 0, 0.5);
++  width: 14px;
++  height: 14px;
++  background: #4285f4;
++  box-shadow: 0 0 0 5px rgba(66, 133, 244, 0.4), 0 2px 8px rgba(0, 0, 0, 0.6);
+ }
+ 
+ .earth-label {
+   position: absolute;
+-  z-index: 3;
+-  translate: -50% -50%;
+-  color: #fff;
+-  font-size: clamp(0.72rem, 1.2vw, 1rem);
++  z-index: 4;
++  transform: translate(-50%, -50%);
++  color: rgba(255, 255, 255, 0.9);
++  font-size: 0.7rem;
+   font-weight: 700;
+-  text-shadow: 0 2px 3px #000, 0 0 4px #000;
++  text-shadow: 0 1px 2px #000, 0 0 4px #000;
+   pointer-events: none;
+ }
+ 
+-.earth-results,
+-.earth-place,
+-.earth-layers,
+-.earth-tour {
++/* Floating Modular Sidebar Panels */
++.earth-panel {
+   position: absolute;
+-  z-index: 8;
+-  border: 1px solid rgba(255, 255, 255, 0.14);
+-  background: rgba(17, 24, 39, 0.74);
+-  color: #f9fafb;
+-  backdrop-filter: blur(18px);
+-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
+-}
+-
+-.earth-results {
+-  left: 1.25rem;
+-  top: 1.25rem;
+-  width: min(330px, calc(100vw - 2.5rem));
++  left: 0.75rem;
++  top: 0.75rem;
++  width: 320px;
++  max-height: calc(100% - 3.5rem);
++  background: rgba(18, 19, 26, 0.85);
++  border: 1px solid rgba(255, 255, 255, 0.08);
+   border-radius: 12px;
+-  padding: 1rem;
++  backdrop-filter: blur(20px);
++  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
++  display: flex;
++  flex-direction: column;
++  z-index: 10;
++  pointer-events: auto;
++  overflow: hidden;
++}
++
++.earth-panel-header {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  padding: 0.75rem 1rem;
++  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+ }
+ 
+ .earth-panel-title {
+-  margin-bottom: 0.75rem;
+-  font-size: 0.7rem;
+-  font-weight: 800;
+-  letter-spacing: 0.18em;
++  font-size: 0.75rem;
++  font-weight: 700;
+   text-transform: uppercase;
++  letter-spacing: 0.1em;
++  color: #8ab4f8;
+ }
+ 
+-.earth-result-list {
++.earth-panel-close {
++  background: transparent;
++  border: 0;
++  color: rgba(255, 255, 255, 0.4);
++  cursor: pointer;
++  padding: 0.2rem;
++  border-radius: 4px;
+   display: grid;
+-  gap: 0.45rem;
++  place-items: center;
+ }
+ 
+-.earth-result-list button {
+-  display: grid;
+-  gap: 0.2rem;
++.earth-panel-close:hover {
++  background: rgba(255, 255, 255, 0.06);
++  color: #fff;
++}
++
++/* Search Input inside panels */
++.earth-search-input-wrapper {
++  display: flex;
++  align-items: center;
++  gap: 0.5rem;
++  background: rgba(255, 255, 255, 0.05);
++  border: 1px solid rgba(255, 255, 255, 0.08);
++  border-radius: 8px;
++  margin: 0.75rem 1rem;
++  padding: 0 0.75rem;
++  height: 38px;
++  color: rgba(255, 255, 255, 0.5);
++}
++
++.earth-search-input-wrapper input {
++  flex: 1;
++  background: transparent;
++  border: 0;
++  outline: 0;
++  color: #fff;
++  font-size: 0.85rem;
++}
++
++.earth-search-clear {
++  background: transparent;
+   border: 0;
++  color: rgba(255, 255, 255, 0.4);
++  cursor: pointer;
++  font-size: 0.8rem;
++}
++
++/* Results Scroller */
++.earth-result-list {
++  flex: 1;
++  overflow-y: auto;
++  padding: 0 0.75rem 0.75rem;
++  display: flex;
++  flex-direction: column;
++  gap: 0.4rem;
++}
++
++.earth-result-item {
++  display: flex;
++  flex-direction: column;
++  text-align: left;
++  border: 0;
++  background: rgba(255, 255, 255, 0.02);
+   border-radius: 8px;
+   padding: 0.7rem;
+-  background: rgba(255, 255, 255, 0.06);
+-  color: inherit;
+-  text-align: left;
++  color: #fff;
++  cursor: pointer;
++  transition: all 0.15s ease;
++  border: 1px solid transparent;
+ }
+ 
+-.earth-result-list button:hover,
+-.earth-result-list button.selected {
+-  background: rgba(66, 133, 244, 0.28);
++.earth-result-item:hover {
++  background: rgba(255, 255, 255, 0.05);
++  border-color: rgba(255, 255, 255, 0.08);
+ }
+ 
+-.earth-result-list small,
+-.earth-place p {
+-  color: rgba(255, 255, 255, 0.68);
++.earth-result-item.selected {
++  background: rgba(66, 133, 244, 0.15);
++  border-color: rgba(66, 133, 244, 0.35);
+ }
+ 
+-.earth-place {
+-  right: 1.25rem;
+-  top: 1.25rem;
++.earth-result-name {
++  font-size: 0.8rem;
++  font-weight: 600;
++}
++
++.earth-result-meta {
++  font-size: 0.65rem;
++  color: rgba(255, 255, 255, 0.5);
++  margin-top: 0.15rem;
++}
++
++/* Voyager Tours list */
++.earth-tour-list {
++  flex: 1;
++  overflow-y: auto;
++  padding: 0.75rem;
++  display: flex;
++  flex-direction: column;
++  gap: 0.75rem;
++}
++
++.earth-tour-card {
++  background: rgba(255, 255, 255, 0.02);
++  border: 1px solid rgba(255, 255, 255, 0.05);
++  border-radius: 8px;
++  overflow: hidden;
++  display: flex;
++  flex-direction: column;
++}
++
++.earth-tour-card-img {
++  width: 100%;
++  height: 120px;
++  object-fit: cover;
++}
++
++.earth-tour-card-content {
++  padding: 0.75rem;
++  display: flex;
++  flex-direction: column;
++  gap: 0.4rem;
++}
++
++.earth-tour-card-content h3 {
++  font-size: 0.85rem;
++  font-weight: 700;
++  margin: 0;
++  color: #fff;
++}
++
++.earth-tour-card-content p {
++  font-size: 0.7rem;
++  color: rgba(255, 255, 255, 0.6);
++  margin: 0;
++  line-height: 1.35;
++}
++
++.earth-tour-start-btn {
++  margin-top: 0.5rem;
++  background: #1a73e8;
++  color: #fff;
++  border: 0;
++  padding: 0.4rem;
++  border-radius: 4px;
++  font-size: 0.75rem;
++  font-weight: 600;
++  cursor: pointer;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  gap: 0.25rem;
++  transition: background 0.15s ease;
++}
++
++.earth-tour-start-btn:hover {
++  background: #1557b0;
++}
++
++/* Layers & Map Style panel */
++.earth-layers-list {
++  padding: 1rem;
++  display: flex;
++  flex-direction: column;
++  gap: 1.25rem;
++}
++
++.earth-layer-preset-grid {
+   display: grid;
+-  grid-template-columns: 100px 1fr;
++  grid-template-columns: 1fr 1fr;
++  gap: 0.5rem;
++}
++
++.earth-preset-card {
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  justify-content: center;
++  background: rgba(255, 255, 255, 0.03);
++  border: 1px solid rgba(255, 255, 255, 0.06);
++  padding: 1rem 0.5rem;
++  border-radius: 8px;
++  color: rgba(255, 255, 255, 0.7);
++  cursor: pointer;
++  gap: 0.5rem;
++  transition: all 0.2s ease;
++}
++
++.earth-preset-card span {
++  font-size: 0.7rem;
++  font-weight: 600;
++}
++
++.earth-preset-card:hover {
++  background: rgba(255, 255, 255, 0.06);
++  color: #fff;
++}
++
++.earth-preset-card.active {
++  background: rgba(66, 133, 244, 0.12);
++  border-color: rgba(66, 133, 244, 0.4);
++  color: #8ab4f8;
++}
++
++.earth-layer-toggles {
++  display: flex;
++  flex-direction: column;
++  gap: 0.75rem;
++}
++
++.earth-layer-checkbox-label {
++  display: flex;
++  align-items: center;
++  gap: 0.6rem;
++  font-size: 0.75rem;
++  color: rgba(255, 255, 255, 0.75);
++  cursor: pointer;
++}
++
++.earth-layer-checkbox-label input {
++  cursor: pointer;
++  accent-color: #8ab4f8;
++}
++
++/* Measurement panel */
++.earth-measure-content {
++  padding: 1rem;
++  display: flex;
++  flex-direction: column;
+   gap: 1rem;
+-  width: min(430px, calc(100vw - 2.5rem));
+-  border-radius: 12px;
++}
++
++.earth-measure-instructions {
++  font-size: 0.7rem;
++  color: rgba(255, 255, 255, 0.5);
++  line-height: 1.4;
++  margin: 0;
++}
++
++.earth-measure-selectors {
++  display: flex;
++  flex-direction: column;
++  gap: 0.75rem;
++}
++
++.earth-measure-node {
++  display: flex;
++  flex-direction: column;
++  gap: 0.3rem;
++}
++
++.earth-measure-node label {
++  font-size: 0.65rem;
++  text-transform: uppercase;
++  letter-spacing: 0.05em;
++  color: rgba(255, 255, 255, 0.4);
++}
++
++.earth-measure-select {
++  background: rgba(255, 255, 255, 0.05);
++  border: 1px solid rgba(255, 255, 255, 0.08);
++  color: #fff;
++  border-radius: 6px;
++  padding: 0.4rem 0.5rem;
++  font-size: 0.8rem;
++  outline: 0;
++}
++
++.earth-measure-select option {
++  background: #12131a;
++  color: #fff;
++}
++
++.earth-measure-result {
++  background: rgba(66, 133, 244, 0.08);
++  border: 1px solid rgba(66, 133, 244, 0.2);
++  border-radius: 8px;
+   padding: 1rem;
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  justify-content: center;
++  margin-top: 0.5rem;
++}
++
++.earth-result-val {
++  font-size: 1.8rem;
++  font-weight: 800;
++  color: #8ab4f8;
++  font-family: monospace;
++}
++
++.earth-result-val span {
++  font-size: 0.9rem;
++  font-weight: 500;
++  color: rgba(255, 255, 255, 0.75);
++  margin-left: 0.2rem;
++}
++
++.earth-result-val-miles {
++  font-size: 0.9rem;
++  color: rgba(255, 255, 255, 0.5);
++  font-family: monospace;
++  margin-top: 0.15rem;
++}
++
++.earth-result-val-miles span {
++  font-size: 0.75rem;
++}
++
++.earth-measure-reset-wrapper {
++  margin-top: 0.75rem;
++}
++
++.earth-measure-reset-btn {
++  background: transparent;
++  border: 1px solid rgba(255, 255, 255, 0.15);
++  color: rgba(255, 255, 255, 0.6);
++  font-size: 0.7rem;
++  padding: 0.3rem 0.75rem;
++  border-radius: 4px;
++  cursor: pointer;
++  display: flex;
++  align-items: center;
++  gap: 0.3rem;
++  transition: all 0.15s ease;
++}
++
++.earth-measure-reset-btn:hover {
++  background: rgba(255, 255, 255, 0.05);
++  color: #fff;
++  border-color: rgba(255, 255, 255, 0.25);
++}
++
++/* Right-Side Knowledge Card Panel (Selected Place) */
++.earth-place {
++  position: absolute;
++  right: 1rem;
++  top: 1rem;
++  width: 330px;
++  max-height: calc(100% - 4.5rem);
++  background: rgba(18, 19, 26, 0.85);
++  border: 1px solid rgba(255, 255, 255, 0.08);
++  border-radius: 12px;
++  backdrop-filter: blur(20px);
++  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
++  display: flex;
++  flex-direction: column;
++  overflow: hidden;
++  z-index: 10;
++  pointer-events: auto;
++}
++
++.earth-place-close {
++  position: absolute;
++  top: 0.75rem;
++  right: 0.75rem;
++  z-index: 12;
++  background: rgba(0, 0, 0, 0.5);
++  border: 0;
++  color: rgba(255, 255, 255, 0.6);
++  width: 26px;
++  height: 26px;
++  border-radius: 50%;
++  cursor: pointer;
++  display: grid;
++  place-items: center;
++  transition: all 0.15s ease;
++}
++
++.earth-place-close:hover {
++  background: rgba(0, 0, 0, 0.75);
++  color: #fff;
+ }
+ 
+ .earth-place img {
+-  width: 100px;
+-  height: 100px;
++  width: 100%;
++  height: 150px;
+   object-fit: cover;
+-  border-radius: 8px;
++  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
++}
++
++.earth-place-content {
++  padding: 1rem;
++  display: flex;
++  flex-direction: column;
++  overflow-y: auto;
++}
++
++.earth-place-category {
++  font-size: 0.6rem;
++  text-transform: uppercase;
++  letter-spacing: 0.1em;
++  color: #8ab4f8;
++  font-weight: 700;
+ }
+ 
+-.earth-place p {
+-  margin: 0 0 0.8rem;
+-  font-size: 0.82rem;
++.earth-place-name {
++  font-size: 1.1rem;
++  font-weight: 700;
++  color: #fff;
++  margin: 0.2rem 0;
++}
++
++.earth-place-country {
++  font-size: 0.75rem;
++  color: rgba(255, 255, 255, 0.55);
++  margin-bottom: 0.75rem;
++}
++
++.earth-place-content p {
++  font-size: 0.75rem;
++  color: rgba(255, 255, 255, 0.75);
++  margin: 0 0 1rem;
+   line-height: 1.45;
++  max-height: 100px;
++  overflow-y: auto;
+ }
+ 
+-.earth-facts {
++.earth-facts-grid {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 0.5rem;
++  background: rgba(255, 255, 255, 0.02);
++  border: 1px solid rgba(255, 255, 255, 0.04);
++  padding: 0.6rem;
++  border-radius: 8px;
++  margin-bottom: 1rem;
++}
++
++.earth-fact-node {
+   display: flex;
+-  flex-wrap: wrap;
+-  gap: 0.4rem;
++  flex-direction: column;
+ }
+ 
+-.earth-facts span {
+-  border-radius: 999px;
+-  background: rgba(255, 255, 255, 0.09);
+-  padding: 0.25rem 0.55rem;
+-  font-size: 0.68rem;
++.earth-fact-node .lbl {
++  font-size: 0.55rem;
++  text-transform: uppercase;
++  color: rgba(255, 255, 255, 0.4);
++  letter-spacing: 0.02em;
+ }
+ 
+-.earth-layers {
+-  left: 1.25rem;
+-  bottom: 4.4rem;
+-  border-radius: 999px;
+-  overflow: hidden;
++.earth-fact-node .val {
++  font-size: 0.75rem;
++  font-weight: 600;
++  color: #fff;
++  margin-top: 0.1rem;
++}
++
++.earth-facts-bullet h4 {
++  font-size: 0.75rem;
++  font-weight: 700;
++  color: #8ab4f8;
++  margin: 0 0 0.4rem;
++}
++
++.earth-facts-bullet ul {
++  padding-left: 1rem;
++  margin: 0;
++  display: flex;
++  flex-direction: column;
++  gap: 0.35rem;
++}
++
++.earth-facts-bullet li {
++  font-size: 0.7rem;
++  color: rgba(255, 255, 255, 0.65);
++  line-height: 1.35;
+ }
+ 
+-.earth-layers.open {
++/* Active Voyager Tour Step Overlay (Bottom Left) */
++.earth-tour-guide {
++  position: absolute;
++  left: 0.75rem;
++  bottom: 3.5rem;
++  width: 320px;
++  background: rgba(18, 19, 26, 0.9);
++  border: 1px solid rgba(255, 255, 255, 0.08);
+   border-radius: 12px;
++  backdrop-filter: blur(20px);
++  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
++  z-index: 10;
++  pointer-events: auto;
++  overflow: hidden;
+ }
+ 
+-.earth-layers button {
++.earth-tour-guide-header {
+   display: flex;
+   align-items: center;
+-  gap: 0.4rem;
+-  border: 0;
++  justify-content: space-between;
++  padding: 0.5rem 0.75rem;
++  background: rgba(66, 133, 244, 0.1);
++  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
++}
++
++.earth-tour-guide-name {
++  font-size: 0.7rem;
++  font-weight: 700;
++  color: #8ab4f8;
++  white-space: nowrap;
++  overflow: hidden;
++  text-overflow: ellipsis;
++  max-width: 250px;
++}
++
++.earth-tour-close {
+   background: transparent;
+-  color: inherit;
+-  padding: 0.7rem 0.9rem;
++  border: 0;
++  color: rgba(255, 255, 255, 0.5);
++  cursor: pointer;
++  font-size: 0.75rem;
+ }
+ 
+-.earth-layers div {
+-  display: grid;
+-  gap: 0.55rem;
+-  padding: 0 0.9rem 0.9rem;
+-  font-size: 0.76rem;
++.earth-tour-close:hover {
++  color: #fff;
+ }
+ 
+-.earth-tour {
+-  right: 1.25rem;
+-  bottom: 4.4rem;
+-  display: grid;
+-  gap: 0.2rem;
+-  width: 260px;
+-  border-radius: 12px;
+-  padding: 0.9rem;
++.earth-tour-step-card {
++  display: flex;
++  flex-direction: column;
+ }
+ 
+-.earth-tour span {
+-  color: rgba(255, 255, 255, 0.55);
+-  font-size: 0.68rem;
++.earth-tour-step-img {
++  width: 100%;
++  height: 110px;
++  object-fit: cover;
++}
++
++.earth-tour-step-content {
++  padding: 0.75rem;
++  display: flex;
++  flex-direction: column;
++}
++
++.earth-tour-step-badge {
++  font-size: 0.6rem;
++  color: #8ab4f8;
++  font-weight: 700;
+   text-transform: uppercase;
+-  letter-spacing: 0.16em;
+ }
+ 
+-.earth-tour button {
+-  margin-top: 0.45rem;
+-  border: 0;
+-  border-radius: 999px;
+-  background: #1a73e8;
++.earth-tour-step-content h2 {
++  font-size: 0.95rem;
++  font-weight: 700;
++  margin: 0.15rem 0;
++  color: #fff;
++}
++
++.earth-tour-step-meta {
++  font-size: 0.65rem;
++  color: rgba(255, 255, 255, 0.5);
++  margin-bottom: 0.5rem;
++}
++
++.earth-tour-step-content p {
++  font-size: 0.7rem;
++  color: rgba(255, 255, 255, 0.75);
++  margin: 0 0 0.75rem;
++  line-height: 1.4;
++  max-height: 80px;
++  overflow-y: auto;
++}
++
++.earth-tour-controls {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  border-top: 1px solid rgba(255, 255, 255, 0.05);
++  padding-top: 0.5rem;
++}
++
++.earth-tour-btn-nav {
++  background: rgba(255, 255, 255, 0.04);
++  border: 1px solid rgba(255, 255, 255, 0.06);
+   color: #fff;
+-  padding: 0.45rem 0.75rem;
++  border-radius: 4px;
++  width: 28px;
++  height: 28px;
++  cursor: pointer;
++  display: grid;
++  place-items: center;
+ }
+ 
+-.earth-minimap,
+-.earth-controls button,
+-.earth-zoom {
+-  border-radius: 999px;
+-  background: rgba(245, 247, 250, 0.9);
+-  color: #3f454c;
+-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
++.earth-tour-btn-nav:hover {
++  background: rgba(255, 255, 255, 0.08);
+ }
+ 
++.earth-tour-streetview-btn {
++  flex: 1;
++  margin: 0 0.5rem;
++  background: #ea4335;
++  color: #fff;
++  border: 0;
++  border-radius: 4px;
++  height: 28px;
++  font-size: 0.7rem;
++  font-weight: 700;
++  cursor: pointer;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  gap: 0.3rem;
++  box-shadow: 0 2px 6px rgba(234, 67, 53, 0.3);
++}
++
++.earth-tour-streetview-btn:hover {
++  background: #d93025;
++}
++
++/* Radar Minimap */
+ .earth-minimap {
+   position: absolute;
+-  left: 1.25rem;
+-  bottom: 1.25rem;
+-  z-index: 9;
++  left: 1rem;
++  bottom: 3.5rem;
++  width: 60px;
++  height: 60px;
++  border: 2px solid rgba(255, 255, 255, 0.15);
++  border-radius: 50%;
++  background: rgba(18, 19, 26, 0.8);
++  backdrop-filter: blur(8px);
+   display: grid;
+   place-items: center;
+-  width: 76px;
+-  height: 76px;
+-  border: 4px solid #fff;
+-  background:
+-    linear-gradient(135deg, rgba(52, 168, 83, 0.35), rgba(66, 133, 244, 0.28)),
+-    #e8f1ff;
++  z-index: 5;
++  overflow: hidden;
++  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
++}
++
++.earth-minimap-icon {
++  color: #8ab4f8;
++  opacity: 0.7;
++}
++
++.earth-radar-ping {
++  position: absolute;
++  width: 100%;
++  height: 100%;
++  border-radius: 50%;
++  background: radial-gradient(circle, transparent 40%, rgba(66, 133, 244, 0.15) 100%);
++  animation: radarPulse 3s linear infinite;
+ }
+ 
++/* Bottom Right Globe Navigation Controls */
+ .earth-controls {
+   position: absolute;
+-  right: 1.25rem;
+-  bottom: 1.25rem;
+-  z-index: 10;
++  right: 1rem;
++  bottom: 3.5rem;
+   display: flex;
+-  align-items: center;
+-  gap: 0.65rem;
++  flex-direction: column;
++  gap: 0.5rem;
++  z-index: 15;
++  pointer-events: auto;
+ }
+ 
+-.earth-controls button {
++.earth-ctrl-btn {
++  width: 40px;
++  height: 40px;
++  border-radius: 50%;
++  background: rgba(18, 19, 26, 0.85);
++  border: 1px solid rgba(255, 255, 255, 0.08);
++  color: #fff;
++  cursor: pointer;
+   display: grid;
+   place-items: center;
+-  width: 52px;
+-  height: 52px;
+-  border: 0;
++  backdrop-filter: blur(12px);
++  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
++  transition: all 0.2s ease;
+ }
+ 
+-.earth-controls button:hover {
+-  color: #0b57d0;
++.earth-ctrl-btn:hover {
++  background: #1a73e8;
++  border-color: #4285f4;
++  transform: translateY(-2px);
+ }
+ 
+-.earth-zoom {
++.pegman-btn {
++  color: #fbbc04;
++}
++
++.pegman-btn:hover {
++  background: #fbbc04;
++  color: #000;
++  border-color: #fbbc04;
++}
++
++/* Zoom Cluster Control */
++.earth-zoom-cluster {
+   display: flex;
++  flex-direction: column;
++  align-items: center;
++  background: rgba(18, 19, 26, 0.85);
++  border: 1px solid rgba(255, 255, 255, 0.08);
++  border-radius: 20px;
+   overflow: hidden;
++  backdrop-filter: blur(12px);
++  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
++}
++
++.earth-zoom-cluster button {
++  width: 40px;
++  height: 38px;
++  border: 0;
++  background: transparent;
++  color: #fff;
++  cursor: pointer;
++  display: grid;
++  place-items: center;
++  transition: background 0.15s ease;
+ }
+ 
+-.earth-zoom button {
+-  width: 46px;
+-  box-shadow: none;
++.earth-zoom-cluster button:hover {
++  background: rgba(255, 255, 255, 0.06);
++  color: #8ab4f8;
++}
++
++.earth-zoom-bar {
++  width: 20px;
++  height: 1px;
++  background: rgba(255, 255, 255, 0.1);
+ }
+ 
++/* Draggable Street View Panorama Overlayer */
++.earth-panorama-overlay {
++  position: absolute;
++  inset: 0;
++  z-index: 100;
++  background: #000;
++  display: flex;
++  flex-direction: column;
++}
++
++.earth-panorama-close {
++  position: absolute;
++  top: 1rem;
++  right: 1rem;
++  z-index: 102;
++  width: 40px;
++  height: 40px;
++  border-radius: 50%;
++  background: rgba(0, 0, 0, 0.6);
++  border: 1px solid rgba(255, 255, 255, 0.2);
++  color: #fff;
++  font-size: 1rem;
++  cursor: pointer;
++  display: grid;
++  place-items: center;
++  transition: all 0.15s ease;
++}
++
++.earth-panorama-close:hover {
++  background: #ea4335;
++  border-color: #ea4335;
++}
++
++.earth-panorama-container {
++  flex: 1;
++  width: 100%;
++  overflow-x: scroll;
++  overflow-y: hidden;
++  display: flex;
++  align-items: center;
++  scrollbar-width: none; /* Hide scrollbar for clean view */
++}
++
++.earth-panorama-container::-webkit-scrollbar {
++  display: none;
++}
++
++.earth-panorama-image {
++  height: 100%;
++  min-width: 320%; /* Allow wider horizontal scrolling */
++  object-fit: cover;
++}
++
++.earth-panorama-help {
++  position: absolute;
++  bottom: 2rem;
++  left: 50%;
++  transform: translateX(-50%);
++  background: rgba(0, 0, 0, 0.7);
++  border: 1px solid rgba(255, 255, 255, 0.1);
++  padding: 0.5rem 1.25rem;
++  border-radius: 99px;
++  color: rgba(255, 255, 255, 0.7);
++  font-size: 0.65rem;
++  font-family: monospace;
++  letter-spacing: 0.1em;
++  pointer-events: none;
++  text-align: center;
++}
++
++/* Bottom Status Bar */
+ .earth-status {
+   position: absolute;
+-  inset-inline: 0;
++  left: 0;
++  right: 0;
+   bottom: 0;
+-  z-index: 7;
++  height: 24px;
++  background: #111217;
++  border-top: 1px solid rgba(255, 255, 255, 0.05);
+   display: flex;
+   justify-content: flex-end;
+-  gap: 1.2rem;
+-  height: 34px;
+-  padding: 0.45rem 1.25rem;
+-  background: rgba(241, 243, 244, 0.92);
+-  color: #3c4043;
+-  font-size: 0.78rem;
++  align-items: center;
++  padding: 0 1rem;
++  gap: 1.5rem;
++  font-size: 0.65rem;
++  color: #80868b;
++  font-family: monospace;
++  z-index: 10;
++  pointer-events: auto;
++}
++
++.earth-copyright {
++  margin-right: auto;
++}
++
++.earth-status-spacer {
++  flex: 1;
+ }
+ 
+-@keyframes earth-cloud-drift {
++/* Animations */
++@keyframes cloudDrift {
+   from { transform: rotate(0deg); }
+   to { transform: rotate(360deg); }
+ }
+ 
+-@media (max-width: 900px) {
+-  .earth-menu {
+-    display: none;
+-  }
++@keyframes radarPulse {
++  0% { transform: scale(0.6); opacity: 0.8; }
++  100% { transform: scale(1.3); opacity: 0; }
++}
+ 
+-  .earth-toolbar {
+-    height: auto;
+-    flex-wrap: wrap;
+-    gap: 0.45rem;
+-    padding: 0.7rem;
+-  }
++/* Scroller utility */
++.scroller::-webkit-scrollbar {
++  width: 4px;
++  height: 4px;
++}
++.scroller::-webkit-scrollbar-track {
++  background: transparent;
++}
++.scroller::-webkit-scrollbar-thumb {
++  background: rgba(255, 255, 255, 0.1);
++  border-radius: 2px;
++}
++.scroller::-webkit-scrollbar-thumb:hover {
++  background: rgba(255, 255, 255, 0.2);
++}
+ 
+-  .earth-search {
+-    order: -1;
+-    width: 100%;
+-    min-width: 100%;
+-    height: 42px;
++/* Responsiveness adjustments */
++@media (max-width: 768px) {
++  .earth-menu {
++    display: none;
+   }
+-
+-  .earth-tool {
+-    width: 34px;
+-    height: 34px;
++  .earth-workspace {
++    height: 100%;
+   }
+-
+-  .earth-results {
+-    display: none;
++  .earth-panel {
++    width: 280px;
+   }
+-
+   .earth-place {
+-    left: 0.75rem;
+-    right: 0.75rem;
+-    top: 0.75rem;
+-    width: auto;
++    width: 280px;
++    right: 0.5rem;
++    top: 0.5rem;
+   }
+-
+-  .earth-tour,
+-  .earth-layers {
+-    display: none;
++  .earth-controls {
++    right: 0.5rem;
++    bottom: 2rem;
+   }
+-
+-  .earth-sphere {
+-    width: 92vw;
+-  }
+-
+-  .earth-status {
+-    justify-content: flex-start;
+-    overflow: hidden;
+-    white-space: nowrap;
++  .earth-minimap {
++    display: none;
+   }
+ }
+diff --git a/src/components/learning/GoogleEarthRemix.tsx b/src/components/learning/GoogleEarthRemix.tsx
+index beacbfa..319d9ab 100644
+--- a/src/components/learning/GoogleEarthRemix.tsx
++++ b/src/components/learning/GoogleEarthRemix.tsx
+@@ -1,4 +1,4 @@
+-import { useMemo, useState } from 'react';
++import React, { useMemo, useState, useEffect, useRef } from 'react';
+ import type { CSSProperties, ReactNode } from 'react';
+ import {
+   ChevronDown,
+@@ -15,21 +15,580 @@ import {
+   Settings,
+   UserCircle,
+   Waypoints,
++  X,
++  ChevronLeft,
++  ChevronRight,
++  Eye,
++  Camera,
++  Play,
++  RotateCcw,
++  Check,
+ } from 'lucide-react';
++import * as Cesium from 'cesium';
++import { useUIStore } from '../../store/uiStore';
+ import { locations, type LocationData } from '../../data/locations';
+-import { tours } from '../../data/tours';
++import { tours, type Tour, type TourStep } from '../../data/tours';
++import {
++  LANDMASS_POINTS_3D,
++  MERIDIANS_3D,
++  PARALLELS_3D,
++  projectUnitVector,
++  projectLatLng,
++  latLngToVector,
++  slerp,
++} from '../../lib/globeProjection';
+ import './GoogleEarthRemix.css';
+ 
+ const menuItems = ['File', 'Edit', 'View', 'Add', 'Tools', 'Help'];
+ const mapLabels = ['India', 'China', 'Thailand', 'Vietnam', 'Malaysia', 'Indonesia', 'Japan', 'Australia'];
+ 
++
+ export default function GoogleEarthRemix() {
++  // 1. Primitive useState hooks
+   const [query, setQuery] = useState('');
+-  const [activeLocation, setActiveLocation] = useState<LocationData>(locations[0]);
+   const [zoom, setZoom] = useState(42);
+-  const [layersOpen, setLayersOpen] = useState(false);
+-  const [tourIndex, setTourIndex] = useState(0);
++  const [showBorders, setShowBorders] = useState(true);
++  const [showTerrain, setShowTerrain] = useState(true);
++  const [showRoads, setShowRoads] = useState(false);
++  const [selectedTour, setSelectedTour] = useState<Tour | null>(null);
++  const [currentStepIndex, setCurrentStepIndex] = useState(0);
++  const [measureStart, setMeasureStart] = useState<LocationData | null>(null);
++  const [measureEnd, setMeasureEnd] = useState<LocationData | null>(null);
++  const [measureDistance, setMeasureDistance] = useState<number | null>(null);
++  const [activePanorama, setActivePanorama] = useState<string | null>(null);
++  const [hasCesium, setHasCesium] = useState(false);
++  const [activePanel, setActivePanel] = useState<'search' | 'voyager' | 'places' | 'layers' | 'measure' | null>('search');
++
++  // 2. Zustand Store integrations
++  const activeLocation = useUIStore((s) => s.activeLocation);
++  const setActiveLocation = useUIStore((s) => s.setActiveLocation);
++  const setIssFeedOpen = useUIStore((s) => s.setIssFeedOpen);
++
++  // 3. Fallback Interactive Canvas Refs
++  const canvasRef = useRef<HTMLCanvasElement>(null);
++  const cameraRef = useRef({ lng: 0, lat: 20 });
++  const targetRef = useRef({ lng: 0, lat: 20 });
++  const isDraggingRef = useRef(false);
++  const lastMousePosRef = useRef({ x: 0, y: 0 });
++  const clickStartPosRef = useRef({ x: 0, y: 0 });
++  const hoverLocationRef = useRef<LocationData | null>(null);
++
++
++  // Synchronize target coordinates with active location
++  useEffect(() => {
++    if (activeLocation) {
++      targetRef.current = {
++        lng: activeLocation.lng,
++        lat: activeLocation.lat,
++      };
++    }
++  }, [activeLocation]);
++
++  // Set initial camera position if location selected on load
++  useEffect(() => {
++    const initialLoc = useUIStore.getState().activeLocation;
++    if (initialLoc) {
++      cameraRef.current = { lng: initialLoc.lng, lat: initialLoc.lat };
++      targetRef.current = { lng: initialLoc.lng, lat: initialLoc.lat };
++    }
++  }, []);
++
++  // Mouse drag & click handlers for canvas fallback globe
++  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
++    isDraggingRef.current = true;
++    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
++    clickStartPosRef.current = { x: e.clientX, y: e.clientY };
++  };
++
++  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
++    const canvas = canvasRef.current;
++    if (!canvas) return;
++    const rect = canvas.getBoundingClientRect();
++    const mouseX = e.clientX - rect.left;
++    const mouseY = e.clientY - rect.top;
++
++    if (isDraggingRef.current) {
++      const dx = e.clientX - lastMousePosRef.current.x;
++      const dy = e.clientY - lastMousePosRef.current.y;
++      
++      const scale = 0.45 * (42 / zoom);
++      cameraRef.current.lng -= dx * scale;
++      cameraRef.current.lat += dy * scale;
++      
++      // Clamp lat to prevent upside-down camera flips
++      cameraRef.current.lat = Math.max(-85, Math.min(85, cameraRef.current.lat));
++      
++      // Keep target synchronized so it doesn't glide back to previous location on release
++      targetRef.current.lng = cameraRef.current.lng;
++      targetRef.current.lat = cameraRef.current.lat;
++      
++      lastMousePosRef.current = { x: e.clientX, y: e.clientY };
++    } else {
++      // Hover coordinate checks
++      const cx = rect.width / 2;
++      const cy = rect.height / 2;
++      const R_base = Math.min(rect.width, rect.height) * 0.35;
++      const R = R_base * (zoom / 42);
++      
++      let foundHover: LocationData | null = null;
++      for (const loc of locations) {
++        const p = projectLatLng(loc.lat, loc.lng, (cameraRef.current.lng * Math.PI) / 180, (cameraRef.current.lat * Math.PI) / 180, R, cx, cy);
++        if (p.visible) {
++          const dist = Math.hypot(mouseX - p.x, mouseY - p.y);
++          if (dist < 8) {
++            foundHover = loc;
++            break;
++          }
++        }
++      }
++      
++      hoverLocationRef.current = foundHover;
++      canvas.style.cursor = foundHover ? 'pointer' : 'default';
++    }
++  };
++
++  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
++    isDraggingRef.current = false;
++    const dx = Math.abs(e.clientX - clickStartPosRef.current.x);
++    const dy = Math.abs(e.clientY - clickStartPosRef.current.y);
++    // If movement was minimal, handle as click
++    if (dx < 3 && dy < 3) {
++      if (hoverLocationRef.current) {
++        setActiveLocation(hoverLocationRef.current);
++      }
++    }
++  };
++
++  // Touch drag handlers for mobile devices
++  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
++    if (e.touches.length === 1) {
++      isDraggingRef.current = true;
++      const touch = e.touches[0];
++      lastMousePosRef.current = { x: touch.clientX, y: touch.clientY };
++      clickStartPosRef.current = { x: touch.clientX, y: touch.clientY };
++    }
++  };
++
++  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
++    const canvas = canvasRef.current;
++    if (!canvas) return;
++
++    if (isDraggingRef.current && e.touches.length === 1) {
++      const touch = e.touches[0];
++      const dx = touch.clientX - lastMousePosRef.current.x;
++      const dy = touch.clientY - lastMousePosRef.current.y;
++      
++      const scale = 0.45 * (42 / zoom);
++      cameraRef.current.lng -= dx * scale;
++      cameraRef.current.lat += dy * scale;
++      cameraRef.current.lat = Math.max(-85, Math.min(85, cameraRef.current.lat));
++      
++      targetRef.current.lng = cameraRef.current.lng;
++      targetRef.current.lat = cameraRef.current.lat;
++      
++      lastMousePosRef.current = { x: touch.clientX, y: touch.clientY };
++    }
++  };
++
++  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
++    isDraggingRef.current = false;
++    if (e.changedTouches.length === 1) {
++      const touch = e.changedTouches[0];
++      const dx = Math.abs(touch.clientX - clickStartPosRef.current.x);
++      const dy = Math.abs(touch.clientY - clickStartPosRef.current.y);
++      if (dx < 5 && dy < 5) {
++        const rect = canvasRef.current?.getBoundingClientRect();
++        if (rect) {
++          const touchX = touch.clientX - rect.left;
++          const touchY = touch.clientY - rect.top;
++          const cx = rect.width / 2;
++          const cy = rect.height / 2;
++          const R_base = Math.min(rect.width, rect.height) * 0.35;
++          const R = R_base * (zoom / 42);
++          
++          for (const loc of locations) {
++            const p = projectLatLng(loc.lat, loc.lng, (cameraRef.current.lng * Math.PI) / 180, (cameraRef.current.lat * Math.PI) / 180, R, cx, cy);
++            if (p.visible) {
++              const dist = Math.hypot(touchX - p.x, touchY - p.y);
++              if (dist < 15) {
++                setActiveLocation(loc);
++                break;
++              }
++            }
++          }
++        }
++      }
++    }
++  };
++
++  // High performance Canvas 2D Vector Globe rendering loop
++  useEffect(() => {
++    if (hasCesium) return;
++
++    let active = true;
++    const canvas = canvasRef.current;
++    if (!canvas) return;
++
++    const ctx = canvas.getContext('2d');
++    if (!ctx) return;
++
++    // Apply high-DPI scaling
++    const dpr = window.devicePixelRatio || 1;
++    const rect = canvas.getBoundingClientRect();
++    canvas.width = rect.width * dpr;
++    canvas.height = rect.height * dpr;
++    ctx.scale(dpr, dpr);
++
++    const renderFrame = () => {
++      if (!active) return;
++
++      const rect = canvas.getBoundingClientRect();
++      const cx = rect.width / 2;
++      const cy = rect.height / 2;
++      const R_base = Math.min(rect.width, rect.height) * 0.35;
++      const R = R_base * (zoom / 42);
++
++      // Smooth camera glide (LERP)
++      const current = cameraRef.current;
++      const target = targetRef.current;
++      
++      let diffLng = target.lng - current.lng;
++      diffLng = ((diffLng + 180) % 360) - 180;
++      current.lng += diffLng * 0.12; // Slow glide LERP
++      
++      const diffLat = target.lat - current.lat;
++      current.lat += diffLat * 0.12;
++
++      const rotationRad = (current.lng * Math.PI) / 180;
++      const tiltRad = (current.lat * Math.PI) / 180;
++
++      const sinRot = Math.sin(rotationRad);
++      const cosRot = Math.cos(rotationRad);
++      const sinTilt = Math.sin(tiltRad);
++      const cosTilt = Math.cos(tiltRad);
++
++      // Clear viewport
++      ctx.clearRect(0, 0, rect.width, rect.height);
++
++      // 1. Atmosphere edge glow
++      ctx.strokeStyle = 'rgba(66, 133, 244, 0.4)';
++      ctx.lineWidth = 2;
++      ctx.beginPath();
++      ctx.arc(cx, cy, R, 0, 2 * Math.PI);
++      ctx.stroke();
++
++      // 2. Spherical gradient ocean fill
++      const oceanGrad = ctx.createRadialGradient(cx - R / 3, cy - R / 3, 5, cx, cy, R);
++      oceanGrad.addColorStop(0, '#2b61b3');
++      oceanGrad.addColorStop(0.65, '#15397a');
++      oceanGrad.addColorStop(1, '#030814');
++      ctx.fillStyle = oceanGrad;
++      ctx.beginPath();
++      ctx.arc(cx, cy, R, 0, 2 * Math.PI);
++      ctx.fill();
++
++      // 3. Meridians (Longitudinal grid lines)
++      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
++      ctx.lineWidth = 0.5;
++      for (const path of MERIDIANS_3D) {
++        ctx.beginPath();
++        let firstPoint = true;
++        const len = path.length;
++        for (let i = 0; i < len; i += 3) {
++          const pt = projectUnitVector(
++            path[i],
++            path[i + 1],
++            path[i + 2],
++            sinRot,
++            cosRot,
++            sinTilt,
++            cosTilt,
++            R,
++            cx,
++            cy
++          );
++          if (pt.visible) {
++            if (firstPoint) {
++              ctx.moveTo(pt.x, pt.y);
++              firstPoint = false;
++            } else {
++              ctx.lineTo(pt.x, pt.y);
++            }
++          } else {
++            firstPoint = true;
++          }
++        }
++        ctx.stroke();
++      }
++
++      // 4. Parallels (Latitudinal grid lines)
++      for (const path of PARALLELS_3D) {
++        ctx.beginPath();
++        let firstPoint = true;
++        const len = path.length;
++        for (let i = 0; i < len; i += 3) {
++          const pt = projectUnitVector(
++            path[i],
++            path[i + 1],
++            path[i + 2],
++            sinRot,
++            cosRot,
++            sinTilt,
++            cosTilt,
++            R,
++            cx,
++            cy
++          );
++          if (pt.visible) {
++            if (firstPoint) {
++              ctx.moveTo(pt.x, pt.y);
++              firstPoint = false;
++            } else {
++              ctx.lineTo(pt.x, pt.y);
++            }
++          } else {
++            firstPoint = true;
++          }
++        }
++        ctx.stroke();
++      }
++
++      // 5. Landmass continent node markers
++      ctx.fillStyle = 'rgba(91, 168, 98, 0.65)';
++      const pointSize = Math.max(1, 1.8 * (zoom / 42));
++      const pointsLen = LANDMASS_POINTS_3D.length;
++      for (let i = 0; i < pointsLen; i += 3) {
++        const p = projectUnitVector(
++          LANDMASS_POINTS_3D[i],
++          LANDMASS_POINTS_3D[i + 1],
++          LANDMASS_POINTS_3D[i + 2],
++          sinRot,
++          cosRot,
++          sinTilt,
++          cosTilt,
++          R,
++          cx,
++          cy
++        );
++        if (p.visible) {
++          ctx.beginPath();
++          ctx.arc(p.x, p.y, pointSize, 0, 2 * Math.PI);
++          ctx.fill();
++        }
++      }
+ 
++      // 6. Spherical terminator overlay shadow
++      const shadowGrad = ctx.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
++      shadowGrad.addColorStop(0, 'rgba(0,0,0,0)');
++      shadowGrad.addColorStop(0.5, 'rgba(0,0,0,0.15)');
++      shadowGrad.addColorStop(0.75, 'rgba(0,0,0,0.5)');
++      shadowGrad.addColorStop(1, 'rgba(0,0,0,0.85)');
++      ctx.fillStyle = shadowGrad;
++      ctx.beginPath();
++      ctx.arc(cx, cy, R, 0, 2 * Math.PI);
++      ctx.fill();
++
++      // 7. Distance Ruler Geodetic Line (Great Circle Path)
++      if (measureStart && measureEnd) {
++        const v1 = latLngToVector(measureStart.lat, measureStart.lng);
++        const v2 = latLngToVector(measureEnd.lat, measureEnd.lng);
++        
++        ctx.strokeStyle = 'rgba(66, 133, 244, 0.85)';
++        ctx.lineWidth = 3;
++        ctx.beginPath();
++        
++        let firstPt = true;
++        const segments = 45;
++        for (let i = 0; i <= segments; i++) {
++          const t = i / segments;
++          const v = slerp(v1, v2, t);
++          const lat = (Math.asin(v.z) * 180) / Math.PI;
++          const lng = (Math.atan2(v.y, v.x) * 180) / Math.PI;
++          
++          const opt = projectLatLng(lat, lng, rotationRad, tiltRad, R, cx, cy);
++          if (opt.visible) {
++            if (firstPt) {
++              ctx.moveTo(opt.x, opt.y);
++              firstPt = false;
++            } else {
++              ctx.lineTo(opt.x, opt.y);
++            }
++          } else {
++            firstPt = true;
++          }
++        }
++        ctx.stroke();
++
++        // Start and End nodes drawing
++        const ptStart = projectLatLng(measureStart.lat, measureStart.lng, rotationRad, tiltRad, R, cx, cy);
++        const ptEnd = projectLatLng(measureEnd.lat, measureEnd.lng, rotationRad, tiltRad, R, cx, cy);
++
++        if (ptStart.visible) {
++          ctx.fillStyle = '#34a853';
++          ctx.beginPath();
++          ctx.arc(ptStart.x, ptStart.y, 5, 0, 2 * Math.PI);
++          ctx.fill();
++          ctx.strokeStyle = '#ffffff';
++          ctx.lineWidth = 1;
++          ctx.stroke();
++        }
++
++        if (ptEnd.visible) {
++          ctx.fillStyle = '#ea4335';
++          ctx.beginPath();
++          ctx.arc(ptEnd.x, ptEnd.y, 5, 0, 2 * Math.PI);
++          ctx.fill();
++          ctx.strokeStyle = '#ffffff';
++          ctx.lineWidth = 1;
++          ctx.stroke();
++        }
++      }
++
++      // 8. Locations / Landmark Markers
++      for (const loc of locations) {
++        const p = projectLatLng(loc.lat, loc.lng, rotationRad, tiltRad, R, cx, cy);
++        if (p.visible) {
++          const isActive = activeLocation && loc.id === activeLocation.id;
++          const isHovered = hoverLocationRef.current && loc.id === hoverLocationRef.current.id;
++
++          ctx.beginPath();
++          ctx.arc(p.x, p.y, isActive ? 6 : (isHovered ? 5 : 4), 0, 2 * Math.PI);
++          ctx.fillStyle = isActive ? '#4285f4' : '#ea4335';
++          ctx.fill();
++          ctx.strokeStyle = '#ffffff';
++          ctx.lineWidth = isActive || isHovered ? 2 : 1;
++          ctx.stroke();
++
++          // Active/Hover pulse indicator rings
++          if (isActive || isHovered) {
++            const pulse = (Math.sin(Date.now() / 150) + 1) / 2;
++            ctx.strokeStyle = isActive ? 'rgba(66, 133, 244, 0.4)' : 'rgba(234, 67, 53, 0.4)';
++            ctx.lineWidth = 2;
++            ctx.beginPath();
++            ctx.arc(p.x, p.y, (isActive ? 10 : 8) + pulse * 4, 0, 2 * Math.PI);
++            ctx.stroke();
++          }
++
++          // Text labels for landmarks
++          if (showBorders || isActive || isHovered) {
++            ctx.font = isHovered || isActive ? 'bold 9px system-ui' : '9px system-ui';
++            ctx.fillStyle = '#ffffff';
++            ctx.shadowColor = '#000000';
++            ctx.shadowBlur = 4;
++            ctx.shadowOffsetX = 1;
++            ctx.shadowOffsetY = 1;
++            ctx.textAlign = 'left';
++            ctx.fillText(loc.name.split(',')[0], p.x + 8, p.y + 3);
++            
++            // Clear text shadow context
++            ctx.shadowBlur = 0;
++            ctx.shadowOffsetX = 0;
++            ctx.shadowOffsetY = 0;
++          }
++        }
++      }
++
++      requestAnimationFrame(renderFrame);
++    };
++
++    requestAnimationFrame(renderFrame);
++
++    return () => {
++      active = false;
++    };
++  }, [hasCesium, zoom, measureStart, measureEnd, showBorders, activeLocation]);
++
++  useEffect(() => {
++    const checkCesium = () => {
++      const viewer = (window as any).cesiumViewer;
++      if (viewer) {
++        setHasCesium(true);
++      }
++    };
++    checkCesium();
++    const interval = setInterval(checkCesium, 1000);
++    return () => clearInterval(interval);
++  }, []);
++
++
++  // Sync Borders and Labels visibility to Cesium
++  useEffect(() => {
++    const viewer = (window as any).cesiumViewer;
++    if (!viewer) return;
++
++    for (let i = 0; i < viewer.entities.values.length; i++) {
++      const entity = viewer.entities.values[i];
++      if (entity.label) {
++        entity.label.show = new Cesium.ConstantProperty(showBorders);
++      }
++      if (entity.point) {
++        entity.point.show = new Cesium.ConstantProperty(showBorders);
++      }
++    }
++    viewer.scene.requestRender();
++  }, [showBorders, hasCesium]);
++
++  // Sync Terrain layers to Cesium
++  useEffect(() => {
++    const viewer = (window as any).cesiumViewer;
++    if (!viewer) return;
++
++    for (let i = 0; i < viewer.scene.primitives.length; i++) {
++      const primitive = viewer.scene.primitives.get(i);
++      if (primitive.show !== undefined) {
++        primitive.show = showTerrain;
++      }
++    }
++    for (let i = 0; i < viewer.imageryLayers.length; i++) {
++      const layer = viewer.imageryLayers.get(i);
++      layer.show = showTerrain;
++    }
++    viewer.scene.requestRender();
++  }, [showTerrain, hasCesium]);
++
++  // Draw holographic measurement line in Cesium
++  useEffect(() => {
++    const viewer = (window as any).cesiumViewer;
++    if (!viewer) return;
++
++    let polylineEntity: Cesium.Entity | null = null;
++
++    if (measureStart && measureEnd) {
++      polylineEntity = viewer.entities.add({
++        id: 'measure-line',
++        polyline: {
++          positions: Cesium.Cartesian3.fromDegreesArray([
++            measureStart.lng, measureStart.lat,
++            measureEnd.lng, measureEnd.lat,
++          ]),
++          width: 3,
++          material: Cesium.Color.fromCssColorString('#4285f4'),
++          clampToGround: true,
++        },
++      });
++
++      // Calculate great circle distance
++      const distance = calculateDistance(
++        measureStart.lat,
++        measureStart.lng,
++        measureEnd.lat,
++        measureEnd.lng
++      );
++      setMeasureDistance(distance);
++      viewer.scene.requestRender();
++    } else {
++      setMeasureDistance(null);
++    }
++
++    return () => {
++      if (viewer && polylineEntity) {
++        viewer.entities.remove(polylineEntity);
++        viewer.scene.requestRender();
++      }
++    };
++  }, [measureStart, measureEnd, hasCesium]);
++
++  // Search filter
+   const filteredLocations = useMemo(() => {
+     const term = query.trim().toLowerCase();
+     if (!term) return locations.slice(0, 5);
+@@ -38,156 +597,654 @@ export default function GoogleEarthRemix() {
+     );
+   }, [query]);
+ 
+-  const activeTour = tours[tourIndex % tours.length];
+-  const rotate = activeLocation ? activeLocation.lng * -0.24 : 0;
+-  const tilt = activeLocation ? activeLocation.lat * 0.18 : 0;
++  // Calculate distance formula (Haversine)
++  function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
++    const R = 6371; // Radius of earth in km
++    const dLat = ((lat2 - lat1) * Math.PI) / 180;
++    const dLon = ((lon2 - lon1) * Math.PI) / 180;
++    const a =
++      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
++      Math.cos((lat1 * Math.PI) / 180) *
++        Math.cos((lat2 * Math.PI) / 180) *
++        Math.sin(dLon / 2) *
++        Math.sin(dLon / 2);
++    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
++    return R * c;
++  }
++
++  // Camera flights
++  const handleZoomIn = () => {
++    const viewer = (window as any).cesiumViewer;
++    if (viewer) {
++      viewer.camera.zoomIn(viewer.camera.positionCartographic.height * 0.35);
++      viewer.scene.requestRender();
++    } else {
++      setZoom((value) => Math.min(72, value + 8));
++    }
++  };
++
++  const handleZoomOut = () => {
++    const viewer = (window as any).cesiumViewer;
++    if (viewer) {
++      viewer.camera.zoomOut(viewer.camera.positionCartographic.height * 0.35);
++      viewer.scene.requestRender();
++    } else {
++      setZoom((value) => Math.max(24, value - 8));
++    }
++  };
++
++  const handleCompass = () => {
++    const viewer = (window as any).cesiumViewer;
++    if (viewer) {
++      viewer.camera.flyTo({
++        destination: viewer.camera.position,
++        orientation: {
++          heading: 0.0,
++          pitch: -Cesium.Math.PI_OVER_TWO,
++          roll: 0.0,
++        },
++        duration: 1.5,
++        complete: () => viewer.scene.requestRender(),
++      });
++    }
++  };
++
++  const handleRecenter = () => {
++    const viewer = (window as any).cesiumViewer;
++    if (viewer) {
++      if (activeLocation) {
++        viewer.camera.flyTo({
++          destination: Cesium.Cartesian3.fromDegrees(activeLocation.lng, activeLocation.lat, 1800000),
++          duration: 1.5,
++          complete: () => viewer.scene.requestRender(),
++        });
++      } else {
++        viewer.camera.flyTo({
++          destination: Cesium.Cartesian3.fromDegrees(0, 20, 20000000),
++          duration: 1.5,
++          complete: () => viewer.scene.requestRender(),
++        });
++      }
++    }
++  };
++
++  // Tour Step Handlers
++  const handleStartTour = (tour: Tour) => {
++    setSelectedTour(tour);
++    setCurrentStepIndex(0);
++    flyToStep(tour.steps[0]);
++  };
++
++  const handleNextStep = () => {
++    if (!selectedTour) return;
++    const nextIndex = (currentStepIndex + 1) % selectedTour.steps.length;
++    setCurrentStepIndex(nextIndex);
++    flyToStep(selectedTour.steps[nextIndex]);
++  };
++
++  const handlePrevStep = () => {
++    if (!selectedTour) return;
++    const prevIndex = (currentStepIndex - 1 + selectedTour.steps.length) % selectedTour.steps.length;
++    setCurrentStepIndex(prevIndex);
++    flyToStep(selectedTour.steps[prevIndex]);
++  };
++
++  const flyToStep = (step: TourStep) => {
++    const viewer = (window as any).cesiumViewer;
++    if (viewer) {
++      viewer.camera.flyTo({
++        destination: Cesium.Cartesian3.fromDegrees(step.lng, step.lat, 250000), // Fly close (250km)
++        duration: 2.0,
++        complete: () => viewer.scene.requestRender(),
++      });
++
++      // Maintain rendering
++      const listener = viewer.scene.preUpdate.addEventListener(() => viewer.scene.requestRender());
++      setTimeout(() => listener(), 2500);
++    }
++  };
++
++  const activeTourStep = selectedTour?.steps[currentStepIndex];
+ 
+   return (
+     <section className="earth-remix" aria-label="Earth explorer">
++      {/* Top Pro-Style Menu Bar */}
+       <header className="earth-menu">
+-        <div className="earth-logo" aria-hidden="true" />
++        <div className="earth-logo-container">
++          <div className="earth-logo" aria-hidden="true" />
++          <span className="earth-logo-text">Google Earth</span>
++        </div>
+         {menuItems.map((item) => (
+-          <button key={item} type="button">{item}</button>
++          <button key={item} type="button" className="earth-menu-item">{item}</button>
+         ))}
++        <div className="earth-menu-spacer" />
++        <span className="earth-menu-badge">Remix Edition</span>
+       </header>
+ 
+-      <div className="earth-toolbar">
+-        <div className="earth-search">
+-          <Search size={18} />
+-          <input
+-            value={query}
+-            onChange={(event) => setQuery(event.target.value)}
+-            placeholder="Search Earth Explorer"
+-            aria-label="Search Earth Explorer"
+-          />
+-        </div>
+-
+-        <ToolbarIcon label="Voyager"><Compass size={20} /></ToolbarIcon>
+-        <ToolbarIcon label="Places"><Pin size={20} /></ToolbarIcon>
+-        <ToolbarIcon label="Projects"><Waypoints size={20} /></ToolbarIcon>
+-        <ToolbarIcon label="Map style"><Layers size={20} /></ToolbarIcon>
+-        <ToolbarIcon label="Measure"><Ruler size={20} /></ToolbarIcon>
+-        <ToolbarIcon label="Tours"><FolderKanban size={20} /></ToolbarIcon>
+-
+-        <div className="earth-toolbar-spacer" />
+-        <button type="button" className="earth-collapse" aria-label="Collapse toolbar">
+-          <ChevronDown size={18} />
+-        </button>
+-        <ToolbarIcon label="Settings"><Settings size={20} /></ToolbarIcon>
+-        <ToolbarIcon label="Profile"><UserCircle size={24} /></ToolbarIcon>
+-      </div>
++      <div className="earth-workspace">
++        {/* Left Side Vertical Toolbar */}
++        <aside className="earth-sidebar" aria-label="Sidebar Toolbar">
++          <button
++            type="button"
++            className={`earth-sidebar-btn ${activePanel === 'search' ? 'active' : ''}`}
++            onClick={() => setActivePanel(activePanel === 'search' ? null : 'search')}
++            title="Search Locations"
++          >
++            <Search size={20} />
++            <span>Search</span>
++          </button>
++          <button
++            type="button"
++            className={`earth-sidebar-btn ${activePanel === 'voyager' ? 'active' : ''}`}
++            onClick={() => setActivePanel(activePanel === 'voyager' ? null : 'voyager')}
++            title="Voyager Guided Tours"
++          >
++            <Compass size={20} />
++            <span>Voyager</span>
++          </button>
++          <button
++            type="button"
++            className={`earth-sidebar-btn ${activePanel === 'places' ? 'active' : ''}`}
++            onClick={() => setActivePanel(activePanel === 'places' ? null : 'places')}
++            title="Saved Places"
++          >
++            <Pin size={20} />
++            <span>Places</span>
++          </button>
++          <button
++            type="button"
++            className={`earth-sidebar-btn ${activePanel === 'layers' ? 'active' : ''}`}
++            onClick={() => setActivePanel(activePanel === 'layers' ? null : 'layers')}
++            title="Map Style Layers"
++          >
++            <Layers size={20} />
++            <span>Style</span>
++          </button>
++          <button
++            type="button"
++            className={`earth-sidebar-btn ${activePanel === 'measure' ? 'active' : ''}`}
++            onClick={() => setActivePanel(activePanel === 'measure' ? null : 'measure')}
++            title="Measure Distance"
++          >
++            <Ruler size={20} />
++            <span>Measure</span>
++          </button>
++          
++          <div className="earth-sidebar-spacer" />
++          
++          <button type="button" className="earth-sidebar-btn" title="Settings">
++            <Settings size={20} />
++          </button>
++          <button type="button" className="earth-sidebar-btn" title="User Account">
++            <UserCircle size={20} />
++          </button>
++        </aside>
+ 
+-      <div className="earth-stage">
+-        <div className="earth-starfield" aria-hidden="true" />
+-        <div
+-          className="earth-globe"
+-          style={{
+-            '--earth-zoom': `${zoom}%`,
+-            '--earth-scale': zoom / 42,
+-            '--earth-rotate': `${rotate}deg`,
+-            '--earth-tilt': `${tilt}deg`,
+-          } as CSSProperties}
+-          aria-hidden="true"
+-        >
+-          <div className="earth-sphere">
+-            <div className="earth-clouds" />
+-            <div className="earth-terminator" />
+-            {locations.slice(0, 10).map((location) => (
+-              <button
+-                key={location.id}
+-                type="button"
+-                className={`earth-marker ${location.id === activeLocation.id ? 'active' : ''}`}
+-                style={markerStyle(location)}
+-                onClick={() => setActiveLocation(location)}
+-                aria-label={`Open ${location.name}`}
++        {/* Core Stage */}
++        <div className="earth-stage">
++          
++          {/* Fallback 2D Sphere Globe when Cesium has not loaded */}
++          {!hasCesium && (
++            <div className="earth-globe-fallback">
++              <div className="earth-starfield" aria-hidden="true" />
++              <canvas
++                ref={canvasRef}
++                onMouseDown={handleMouseDown}
++                onMouseMove={handleMouseMove}
++                onMouseUp={handleMouseUp}
++                onTouchStart={handleTouchStart}
++                onTouchMove={handleTouchMove}
++                onTouchEnd={handleTouchEnd}
++                className="w-[min(65vw,680px)] aspect-square max-h-[75vh]"
++                style={{ display: 'block', touchAction: 'none' }}
+               />
+-            ))}
+-            {mapLabels.map((label, index) => (
+-              <span key={label} className="earth-label" style={labelStyle(index)}>
+-                {label}
+-              </span>
+-            ))}
+-          </div>
+-        </div>
++            </div>
++          )}
++
++          {/* Floating Panels: Rendered absolute on top of the stage next to sidebar */}
++
++          {/* 1. Search Results / Explore Panel */}
++          {activePanel === 'search' && (
++            <aside className="earth-panel earth-results-panel" aria-label="Search Panel">
++              <div className="earth-panel-header">
++                <span className="earth-panel-title">Search & Explore</span>
++                <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
++              </div>
++              <div className="earth-search-input-wrapper">
++                <Search size={16} />
++                <input
++                  value={query}
++                  onChange={(event) => setQuery(event.target.value)}
++                  placeholder="Search cities, monuments, peaks..."
++                  aria-label="Search locations"
++                />
++                {query && (
++                  <button type="button" onClick={() => setQuery('')} className="earth-search-clear">✕</button>
++                )}
++              </div>
++              <div className="earth-result-list scroller">
++                {filteredLocations.map((location) => (
++                  <button
++                    key={location.id}
++                    type="button"
++                    className={`earth-result-item ${activeLocation && location.id === activeLocation.id ? 'selected' : ''}`}
++                    onClick={() => setActiveLocation(location)}
++                  >
++                    <span className="earth-result-name">{location.name}</span>
++                    <small className="earth-result-meta">{location.country} · {location.category}</small>
++                  </button>
++                ))}
++              </div>
++            </aside>
++          )}
++
++          {/* 2. Voyager Guided Tours Panel */}
++          {activePanel === 'voyager' && (
++            <aside className="earth-panel earth-voyager-panel" aria-label="Voyager Tours Panel">
++              <div className="earth-panel-header">
++                <span className="earth-panel-title">Voyager Stories</span>
++                <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
++              </div>
++              <div className="earth-tour-list scroller">
++                {tours.map((tour) => (
++                  <div key={tour.id} className="earth-tour-card">
++                    <img src={tour.image} alt={tour.title} className="earth-tour-card-img" />
++                    <div className="earth-tour-card-content">
++                      <h3>{tour.title}</h3>
++                      <p>{tour.description}</p>
++                      <button 
++                        type="button" 
++                        className="earth-tour-start-btn" 
++                        onClick={() => {
++                          handleStartTour(tour);
++                          setActivePanel(null); // Close sidebar panel to see guide
++                        }}
++                      >
++                        <Play size={12} style={{ fill: 'currentColor' }} /> Start Tour
++                      </button>
++                    </div>
++                  </div>
++                ))}
++              </div>
++            </aside>
++          )}
++
++          {/* 3. Places Location Database Explorer */}
++          {activePanel === 'places' && (
++            <aside className="earth-panel earth-places-panel" aria-label="Saved Places Panel">
++              <div className="earth-panel-header">
++                <span className="earth-panel-title">Landmark Database</span>
++                <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
++              </div>
++              <div className="earth-result-list scroller">
++                {locations.map((location) => (
++                  <button
++                    key={location.id}
++                    type="button"
++                    className={`earth-result-item ${activeLocation && location.id === activeLocation.id ? 'selected' : ''}`}
++                    onClick={() => setActiveLocation(location)}
++                  >
++                    <div className="flex items-center gap-2">
++                      <Pin size={12} className="text-red-500 shrink-0" />
++                      <span className="earth-result-name">{location.name}</span>
++                    </div>
++                  </button>
++                ))}
++              </div>
++            </aside>
++          )}
++
++          {/* 4. Map Style & Layers Panel */}
++          {activePanel === 'layers' && (
++            <aside className="earth-panel earth-layers-panel" aria-label="Map Style Panel">
++              <div className="earth-panel-header">
++                <span className="earth-panel-title">Map Style Layers</span>
++                <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
++              </div>
++              <div className="earth-layers-list">
++                <div className="earth-layer-preset-grid">
++                  <button 
++                    type="button" 
++                    className={`earth-preset-card ${showBorders && showTerrain ? 'active' : ''}`}
++                    onClick={() => { setShowBorders(true); setShowTerrain(true); }}
++                  >
++                    <Map size={18} />
++                    <span>Exploration</span>
++                  </button>
++                  <button 
++                    type="button" 
++                    className={`earth-preset-card ${!showBorders && showTerrain ? 'active' : ''}`}
++                    onClick={() => { setShowBorders(false); setShowTerrain(true); }}
++                  >
++                    <Eye size={18} />
++                    <span>Clean Globe</span>
++                  </button>
++                </div>
++                
++                <div className="earth-layer-toggles">
++                  <label className="earth-layer-checkbox-label">
++                    <input 
++                      type="checkbox" 
++                      checked={showBorders} 
++                      onChange={(e) => setShowBorders(e.target.checked)} 
++                    />
++                    <span>Borders and Landmarks Labels</span>
++                  </label>
++                  <label className="earth-layer-checkbox-label">
++                    <input 
++                      type="checkbox" 
++                      checked={showTerrain} 
++                      onChange={(e) => setShowTerrain(e.target.checked)} 
++                    />
++                    <span>Photoreal 3D Terrain Tiles</span>
++                  </label>
++                  <label className="earth-layer-checkbox-label">
++                    <input 
++                      type="checkbox" 
++                      checked={showRoads} 
++                      onChange={(e) => setShowRoads(e.target.checked)} 
++                    />
++                    <span>Show Atmospheric Shadows</span>
++                  </label>
++                </div>
++              </div>
++            </aside>
++          )}
++
++          {/* 5. Measurement Tool Panel */}
++          {activePanel === 'measure' && (
++            <aside className="earth-panel earth-measure-panel" aria-label="Measure Distance Panel">
++              <div className="earth-panel-header">
++                <span className="earth-panel-title">Distance Ruler</span>
++                <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
++              </div>
++              <div className="earth-measure-content">
++                <p className="earth-measure-instructions">
++                  Calculate distance by selecting a Start and End landmark.
++                </p>
++
++                <div className="earth-measure-selectors">
++                  <div className="earth-measure-node">
++                    <label>Start Location:</label>
++                    <select 
++                      value={measureStart?.id || ''} 
++                      onChange={(e) => {
++                        const loc = locations.find(l => l.id === e.target.value);
++                        setMeasureStart(loc || null);
++                      }}
++                      className="earth-measure-select"
++                    >
++                      <option value="">-- Select Point A --</option>
++                      {locations.map(l => (
++                        <option key={l.id} value={l.id}>{l.name}</option>
++                      ))}
++                    </select>
++                  </div>
++
++                  <div className="earth-measure-node">
++                    <label>End Location:</label>
++                    <select 
++                      value={measureEnd?.id || ''} 
++                      onChange={(e) => {
++                        const loc = locations.find(l => l.id === e.target.value);
++                        setMeasureEnd(loc || null);
++                      }}
++                      className="earth-measure-select"
++                    >
++                      <option value="">-- Select Point B --</option>
++                      {locations.map(l => (
++                        <option key={l.id} value={l.id}>{l.name}</option>
++                      ))}
++                    </select>
++                  </div>
++                </div>
++
++                {measureDistance !== null && (
++                  <div className="earth-measure-result">
++                    <div className="earth-result-val">
++                      {measureDistance.toFixed(2)} <span>km</span>
++                    </div>
++                    <div className="earth-result-val-miles">
++                      {(measureDistance * 0.621371).toFixed(2)} <span>miles</span>
++                    </div>
++                    <div className="earth-measure-reset-wrapper">
++                      <button 
++                        type="button" 
++                        className="earth-measure-reset-btn"
++                        onClick={() => {
++                          setMeasureStart(null);
++                          setMeasureEnd(null);
++                        }}
++                      >
++                        <RotateCcw size={12} /> Reset Ruler
++                      </button>
++                    </div>
++                  </div>
++                )}
++              </div>
++            </aside>
++          )}
+ 
+-        <aside className="earth-results" aria-label="Search results">
+-          <div className="earth-panel-title">Explore</div>
+-          <div className="earth-result-list">
+-            {filteredLocations.map((location) => (
+-              <button
+-                key={location.id}
+-                type="button"
+-                className={location.id === activeLocation.id ? 'selected' : ''}
+-                onClick={() => setActiveLocation(location)}
++          {/* Active Voyager Tour Step Overlay */}
++          {selectedTour && activeTourStep && (
++            <aside className="earth-tour-guide" aria-label="Tour step guides">
++              <div className="earth-tour-guide-header">
++                <span className="earth-tour-guide-name">{selectedTour.title}</span>
++                <button 
++                  type="button" 
++                  className="earth-tour-close" 
++                  onClick={() => setSelectedTour(null)}
++                  title="End Tour"
++                >
++                  ✕
++                </button>
++              </div>
++              <div className="earth-tour-step-card">
++                {activeTourStep.image && (
++                  <img src={activeTourStep.image} alt={activeTourStep.title} className="earth-tour-step-img" />
++                )}
++                <div className="earth-tour-step-content">
++                  <div className="earth-tour-step-badge">Step {currentStepIndex + 1} of {selectedTour.steps.length}</div>
++                  <h2>{activeTourStep.title}</h2>
++                  <small className="earth-tour-step-meta">{activeTourStep.location}</small>
++                  <p className="scroller">{activeTourStep.description}</p>
++                  
++                  <div className="earth-tour-controls">
++                    <button type="button" onClick={handlePrevStep} className="earth-tour-btn-nav"><ChevronLeft size={16} /></button>
++                    {activeTourStep.panoramaUrl && (
++                      <button 
++                        type="button" 
++                        onClick={() => setActivePanorama(activeTourStep.panoramaUrl || null)}
++                        className="earth-tour-streetview-btn"
++                      >
++                        <Camera size={14} /> Street View
++                      </button>
++                    )}
++                    <button type="button" onClick={handleNextStep} className="earth-tour-btn-nav"><ChevronRight size={16} /></button>
++                  </div>
++                </div>
++              </div>
++            </aside>
++          )}
++
++          {/* Right-Side Google Earth Knowledge Card (Slides in when location selected) */}
++          {activeLocation && !selectedTour && (
++            <aside className="earth-place pointer-events-auto" aria-label="Selected place details">
++              <button 
++                type="button" 
++                className="earth-place-close"
++                onClick={() => setActiveLocation(null)}
++                title="Dismiss knowledge card"
+               >
+-                <span>{location.name}</span>
+-                <small>{location.country} · {location.category}</small>
++                <X size={16} />
+               </button>
+-            ))}
++              <img src={activeLocation.image} alt="" loading="lazy" />
++              <div className="earth-place-content">
++                <span className="earth-place-category">{activeLocation.category}</span>
++                <h2 className="earth-place-name">{activeLocation.name}</h2>
++                <span className="earth-place-country">{activeLocation.country}</span>
++                
++                <p className="scroller">{activeLocation.description}</p>
++                
++                <div className="earth-facts-grid">
++                  <div className="earth-fact-node">
++                    <span className="lbl">Elevation</span>
++                    <span className="val">{activeLocation.elevation}</span>
++                  </div>
++                  <div className="earth-fact-node">
++                    <span className="lbl">Coordinates</span>
++                    <span className="val">{activeLocation.lat.toFixed(3)}° N, {activeLocation.lng.toFixed(3)}° E</span>
++                  </div>
++                </div>
++                
++                {activeLocation.facts && activeLocation.facts.length > 0 && (
++                  <div className="earth-facts-bullet">
++                    <h4>Landmark Codex</h4>
++                    <ul>
++                      {activeLocation.facts.map((fact, idx) => (
++                        <li key={idx}>{fact}</li>
++                      ))}
++                    </ul>
++                  </div>
++                )}
++              </div>
++            </aside>
++          )}
++
++          {/* Minimap (Radar Grid) */}
++          <div className="earth-minimap" title="Orbital Minimap">
++            <Map size={20} className="earth-minimap-icon" />
++            <div className="earth-radar-ping" />
+           </div>
+-        </aside>
+ 
+-        <aside className="earth-place" aria-label="Selected place">
+-          <img src={activeLocation.image} alt="" loading="lazy" />
+-          <div>
+-            <div className="earth-panel-title">{activeLocation.name}</div>
+-            <p>{activeLocation.description}</p>
+-            <div className="earth-facts">
+-              <span>{activeLocation.country}</span>
+-              <span>{activeLocation.elevation}</span>
+-              <span>{activeLocation.category}</span>
++          {/* Bottom Right Globe Navigation Controls */}
++          <div className="earth-controls" aria-label="Map controls">
++            <button 
++              type="button" 
++              className="earth-ctrl-btn pegman-btn" 
++              title="Drag Pegman / ISS Tracker"
++              onClick={() => setIssFeedOpen(true)}
++            >
++              <UserCircle size={22} />
++            </button>
++            <button 
++              type="button" 
++              className="earth-ctrl-btn" 
++              onClick={handleRecenter} 
++              title="Fly to active location"
++            >
++              <Navigation size={20} />
++            </button>
++            <button 
++              type="button" 
++              className="earth-ctrl-btn compass-btn" 
++              onClick={handleCompass} 
++              title="Reset camera heading (North up)"
++            >
++              <Compass size={20} />
++            </button>
++            <div className="earth-zoom-cluster">
++              <button type="button" onClick={handleZoomOut} title="Zoom Out">
++                <Minus size={20} />
++              </button>
++              <div className="earth-zoom-bar" />
++              <button type="button" onClick={handleZoomIn} title="Zoom In">
++                <Plus size={20} />
++              </button>
+             </div>
+           </div>
+-        </aside>
+ 
+-        <aside className={`earth-layers ${layersOpen ? 'open' : ''}`}>
+-          <button type="button" onClick={() => setLayersOpen((open) => !open)}>
+-            <Layers size={16} />
+-            Layers
+-          </button>
+-          {layersOpen && (
+-            <div>
+-              <label><input type="checkbox" defaultChecked /> Borders and labels</label>
+-              <label><input type="checkbox" defaultChecked /> Photoreal terrain</label>
+-              <label><input type="checkbox" /> Roads</label>
+-            </div>
++          {/* Draggable Street View Panorama Overlayer */}
++          {activePanorama && (
++            <PanoramaViewer 
++              imageUrl={activePanorama} 
++              onClose={() => setActivePanorama(null)} 
++            />
+           )}
+-        </aside>
+ 
+-        <aside className="earth-tour">
+-          <span>Voyager</span>
+-          <strong>{activeTour.title}</strong>
+-          <button type="button" onClick={() => setTourIndex((index) => index + 1)}>
+-            Next tour
+-          </button>
+-        </aside>
+-
+-        <div className="earth-minimap">
+-          <Map size={18} />
++          {/* Bottom Status Information Bar */}
++          <footer className="earth-status">
++            <span className="earth-copyright">Map data ©2026 Google</span>
++            <span className="earth-status-spacer" />
++            <span>Camera Altitude: {hasCesium ? 'Dynamic' : `${Math.round((78 - zoom) * 920)} km`}</span>
++            <span>Scale: {hasCesium ? 'Dynamic' : (zoom < 36 ? '10,000 km' : '1,000 km')}</span>
++            {activeLocation && (
++              <span>Coords: {activeLocation.lat.toFixed(4)}° N, {activeLocation.lng.toFixed(4)}° E</span>
++            )}
++          </footer>
+         </div>
++      </div>
++    </section>
++  );
++}
+ 
+-        <div className="earth-controls" aria-label="Map controls">
+-          <button type="button" aria-label="Street View"><UserCircle size={22} /></button>
+-          <button type="button" aria-label="Recenter"><Navigation size={22} /></button>
+-          <button type="button" aria-label="Compass"><Compass size={22} /></button>
+-          <div className="earth-zoom">
+-            <button type="button" onClick={() => setZoom((value) => Math.max(24, value - 8))} aria-label="Zoom out">
+-              <Minus size={20} />
+-            </button>
+-            <button type="button" onClick={() => setZoom((value) => Math.min(72, value + 8))} aria-label="Zoom in">
+-              <Plus size={20} />
+-            </button>
+-          </div>
+-        </div>
++// Draggable 360-degree Panorama Component
++function PanoramaViewer({ imageUrl, onClose }: { imageUrl: string; onClose: () => void }) {
++  const containerRef = useRef<HTMLDivElement>(null);
++  const [isDragging, setIsDragging] = useState(false);
++  const [startX, setStartX] = useState(0);
++  const [scrollLeft, setScrollLeft] = useState(0);
+ 
+-        <footer className="earth-status">
+-          <span>Google-style educational remix</span>
+-          <span>{zoom < 36 ? '10,000 km' : '1,000 km'}</span>
+-          <span>Camera: {Math.round((78 - zoom) * 920)} km</span>
+-          <span>{activeLocation.lat.toFixed(4)}° {activeLocation.lng.toFixed(4)}°</span>
+-        </footer>
++  // Center the panorama image on mount
++  useEffect(() => {
++    if (containerRef.current) {
++      const scrollWidth = containerRef.current.scrollWidth;
++      const clientWidth = containerRef.current.clientWidth;
++      containerRef.current.scrollLeft = (scrollWidth - clientWidth) / 2;
++    }
++  }, [imageUrl]);
++
++  const handleMouseDown = (e: React.MouseEvent) => {
++    setIsDragging(true);
++    setStartX(e.pageX - (containerRef.current?.offsetLeft || 0));
++    setScrollLeft(containerRef.current?.scrollLeft || 0);
++  };
++
++  const handleMouseMove = (e: React.MouseEvent) => {
++    if (!isDragging) return;
++    e.preventDefault();
++    const x = e.pageX - (containerRef.current?.offsetLeft || 0);
++    const walk = (x - startX) * 1.8; // Scroll speed
++    if (containerRef.current) {
++      containerRef.current.scrollLeft = scrollLeft - walk;
++    }
++  };
++
++  const handleMouseUpOrLeave = () => {
++    setIsDragging(false);
++  };
++
++  return (
++    <div className="earth-panorama-overlay pointer-events-auto">
++      <button 
++        type="button" 
++        className="earth-panorama-close" 
++        onClick={onClose} 
++        aria-label="Exit Street View"
++        title="Exit Street View"
++      >
++        ✕
++      </button>
++      <div 
++        ref={containerRef}
++        className="earth-panorama-container"
++        onMouseDown={handleMouseDown}
++        onMouseMove={handleMouseMove}
++        onMouseUp={handleMouseUpOrLeave}
++        onMouseLeave={handleMouseUpOrLeave}
++        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
++      >
++        <img 
++          src={imageUrl} 
++          alt="Street View 360" 
++          className="earth-panorama-image"
++          draggable="false"
++        />
+       </div>
+-    </section>
++      <div className="earth-panorama-help">
++        DRAG MOUSE TO PAN 360° STREET VIEW // PRESS ESC OR CLICK CLOSE TO EXIT
++      </div>
++    </div>
+   );
+ }
+ 
+diff --git a/src/data/concepts.json b/src/data/concepts.json
+index c878833..c5aaf40 100644
+--- a/src/data/concepts.json
++++ b/src/data/concepts.json
+@@ -30,5 +30,85 @@
+     "mastery": 0,
+     "lastReviewed": null,
+     "tags": ["Cybersecurity", "Security"]
++  },
++  {
++    "id": "cyb-4",
++    "title": "Synthetic Telepathy",
++    "description": "Direct brain-to-brain data transfer via neural lace, bypassing verbal communication.",
++    "mastery": 0,
++    "lastReviewed": null,
++    "tags": ["Neural", "Communication"]
++  },
++  {
++    "id": "cyb-5",
++    "title": "Quantum Encryption Bio-Keys",
++    "description": "Using DNA sequences as dynamic seeds for quantum-resistant encryption protocols.",
++    "mastery": 0,
++    "lastReviewed": null,
++    "tags": ["Security", "Bio-tech"]
++  },
++  {
++    "id": "cyb-6",
++    "title": "Memetic Firewalling",
++    "description": "Techniques to prevent cognitive infiltration via malicious visual or auditory stimuli.",
++    "mastery": 0,
++    "lastReviewed": null,
++    "tags": ["Cybersecurity", "Cognitive"]
++  },
++  {
++    "id": "cyb-7",
++    "title": "Exocortex Modularization",
++    "description": "Offloading specific cognitive tasks to hot-swappable external hardware modules.",
++    "mastery": 0,
++    "lastReviewed": null,
++    "tags": ["Hardware", "Neural"]
++  },
++  {
++    "id": "cyb-8",
++    "title": "Biometric Cloaking",
++    "description": "Scrambling thermal and electrical signatures to bypass advanced sentinel detection.",
++    "mastery": 0,
++    "lastReviewed": null,
++    "tags": ["Stealth", "Bio-metrics"]
++  },
++  {
++    "id": "cyb-9",
++    "title": "Recursive Self-Repair Nano-swarms",
++    "description": "Microscopic robots that identify and fix structural failures in cybernetic systems.",
++    "mastery": 0,
++    "lastReviewed": null,
++    "tags": ["Nanotech", "Maintenance"]
++  },
++  {
++    "id": "cyb-10",
++    "title": "Neural Plasticity Overclocking",
++    "description": "Temporary boosting of learning speed by modulating neurotransmitter levels.",
++    "mastery": 0,
++    "lastReviewed": null,
++    "tags": ["Neural", "Enhancement"]
++  },
++  {
++    "id": "cyb-11",
++    "title": "Digital Soul Fragmenting",
++    "description": "Distributing consciousness across decentralized nodes to prevent hardware-bound death.",
++    "mastery": 0,
++    "lastReviewed": null,
++    "tags": ["AI", "Philosophy"]
++  },
++  {
++    "id": "cyb-12",
++    "title": "Haptic Feedback Ghosting",
++    "description": "Simulating physical touch in virtual environments with zero-latency response.",
++    "mastery": 0,
++    "lastReviewed": null,
++    "tags": ["Virtual Reality", "Haptics"]
++  },
++  {
++    "id": "cyb-13",
++    "title": "Atmospheric Data Siphoning",
++    "description": "Extracting encrypted information from environmental oscillations and radio noise.",
++    "mastery": 0,
++    "lastReviewed": null,
++    "tags": ["Espionage", "Data"]
+   }
+ ]
+diff --git a/src/hooks/useThemeVariables.ts b/src/hooks/useThemeVariables.ts
+index 5ad7a87..feae19b 100644
+--- a/src/hooks/useThemeVariables.ts
++++ b/src/hooks/useThemeVariables.ts
+@@ -12,19 +12,67 @@ export function useThemeVariables(): AppliedTheme {
+   const activePalette = useUIStore((state) => state.activePalette);
+   const dynamicTheme = useUIStore((state) => state.dynamicTheme);
+   const cpuLoad = useUIStore((state) => state.cpuLoad);
++  const personalisation = useUIStore((state) => state.personalisation);
+ 
+   const currentPalette = useMemo<ThemeVars>(() => {
+     const basePalette = palettes[activePalette] || palettes.holographic;
+-    return customWallpaper && dynamicTheme ? { ...basePalette, ...dynamicTheme } as ThemeVars : basePalette;
+-  }, [activePalette, customWallpaper, dynamicTheme]);
++    const palette = customWallpaper && dynamicTheme ? { ...basePalette, ...dynamicTheme } as ThemeVars : basePalette;
+ 
++    // If user set an accent color override, apply it
++    if (personalisation.accentColor) {
++      return { ...palette, '--theme-primary': personalisation.accentColor } as ThemeVars;
++    }
++    return palette;
++  }, [activePalette, customWallpaper, dynamicTheme, personalisation.accentColor]);
++
++  // Apply theme palette CSS vars
+   useEffect(() => {
+     Object.entries(currentPalette).forEach(([key, value]) => {
+-      document.documentElement.style.setProperty(key, value);
+-      document.body.style.setProperty(key, value);
++      document.documentElement.style.setProperty(key, value as string);
++      document.body.style.setProperty(key, value as string);
+     });
+   }, [currentPalette]);
+ 
++  // Apply personalisation CSS vars
++  useEffect(() => {
++    const root = document.documentElement;
++    root.style.setProperty('--ui-opacity', String(personalisation.panelOpacity));
++    root.style.setProperty('--ui-blur', `${personalisation.blurIntensity}px`);
++    root.style.setProperty('--ui-radius', String(personalisation.cornerRadius));
++    root.style.setProperty('--ui-shadow-intensity', String(personalisation.shadowIntensity));
++    root.style.setProperty('--ui-animation-speed', String(personalisation.animationIntensity > 0 ? 1 / personalisation.animationIntensity : 0));
++    root.style.setProperty('--ui-font-scale', String(personalisation.fontScale));
++
++    // Density
++    const rowHeight = personalisation.uiDensity === 'compact' ? 28 : personalisation.uiDensity === 'spacious' ? 44 : 36;
++    root.style.setProperty('--ui-density-row-height', `${rowHeight}px`);
++
++    // Border style
++    const borderOpacity = personalisation.borderStyle === 'none' ? 0
++      : personalisation.borderStyle === 'subtle' ? 0.08
++      : personalisation.borderStyle === 'solid' ? 0.2
++      : 0.12; // glow handled separately
++    root.style.setProperty('--ui-border-opacity', String(borderOpacity));
++
++    root.classList.remove('border-style-none', 'border-style-subtle', 'border-style-solid', 'border-style-glow');
++    root.classList.add(`border-style-${personalisation.borderStyle}`);
++
++    // Font family
++    const fontMap = {
++      'Outfit': "'Outfit', 'Inter', system-ui, sans-serif",
++      'Inter': "'Inter', 'Outfit', system-ui, sans-serif",
++      'system-ui': "system-ui, -apple-system, sans-serif",
++    };
++    root.style.setProperty('--font-sans', fontMap[personalisation.fontFamily] || fontMap['Outfit']);
++
++    // Reduced motion
++    if (personalisation.motionReduced) {
++      root.classList.add('motion-reduced');
++    } else {
++      root.classList.remove('motion-reduced');
++    }
++  }, [personalisation]);
++
+   const appStyle = useMemo<CSSProperties>(() => {
+     const themeStyle = currentPalette as unknown as CSSProperties;
+ 
+diff --git a/src/index.css b/src/index.css
+index 47813f4..9a5908b 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -17,7 +17,6 @@
+   --color-secondary-text: var(--theme-secondary-text, #051010);
+   --color-bg-card: var(--theme-bg-panel, rgba(15, 16, 25, 0.9));
+ 
+-  
+   --font-sans: 'Outfit', 'Inter', system-ui, sans-serif;
+   --font-mono: 'JetBrains Mono', monospace;
+ 
+@@ -30,9 +29,19 @@
+   }
+ }
+ 
+-/* === Critical root vars === */
++/* === Personalisation Tokens === */
+ :root {
+   --primary-glow: var(--theme-glow, rgba(138, 91, 199, 0.4));
++
++  /* UI personalisation — set by JS from store */
++  --ui-opacity: 0.75;
++  --ui-blur: 16px;
++  --ui-radius: 12px;
++  --ui-shadow-intensity: 0.5;
++  --ui-animation-speed: 1;
++  --ui-font-scale: 1;
++  --ui-density-row-height: 36px;
++  --ui-border-opacity: 0.08;
+ }
+ 
+ /* === Base === */
+@@ -41,6 +50,7 @@ body {
+   color: var(--theme-text-main, #EAECEE);
+   overflow: hidden;
+   -webkit-font-smoothing: antialiased;
++  font-size: calc(14px * var(--ui-font-scale, 1));
+ }
+ 
+ #root {
+@@ -52,37 +62,99 @@ body {
+   isolation: isolate;
+ }
+ 
+-.app-stars {
+-  position: fixed;
+-  inset: 0;
+-  z-index: 0;
+-  pointer-events: none;
+-  opacity: 0.5;
+-  background:
+-    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.42) 0 1px, transparent 1.5px),
+-    radial-gradient(circle at 80% 30%, rgba(141, 184, 255, 0.35) 0 1px, transparent 1.5px),
+-    radial-gradient(circle at 45% 75%, rgba(255, 255, 255, 0.28) 0 1px, transparent 1.5px),
+-    linear-gradient(135deg, color-mix(in srgb, var(--theme-bg-base) 90%, #10233f), var(--theme-bg-base));
+-  background-size: 180px 180px, 260px 260px, 320px 320px, auto;
++/* === Glass Panel System === */
++.glass-panel {
++  background: rgba(15, 17, 26, var(--ui-opacity, 0.75));
++  backdrop-filter: blur(var(--ui-blur, 16px));
++  -webkit-backdrop-filter: blur(var(--ui-blur, 16px));
++  border-radius: calc(var(--ui-radius, 12px) * 1px);
++  border: 1px solid rgba(255, 255, 255, var(--ui-border-opacity, 0.08));
++  box-shadow:
++    0 8px 32px rgba(0, 0, 0, calc(var(--ui-shadow-intensity, 0.5) * 0.6)),
++    inset 0 1px 0 rgba(255, 255, 255, 0.03);
++}
++
++.glass-panel-subtle {
++  background: rgba(15, 17, 26, calc(var(--ui-opacity, 0.75) * 0.5));
++  backdrop-filter: blur(calc(var(--ui-blur, 16px) * 0.5));
++  -webkit-backdrop-filter: blur(calc(var(--ui-blur, 16px) * 0.5));
++  border-radius: calc(var(--ui-radius, 12px) * 1px);
++  border: 1px solid rgba(255, 255, 255, calc(var(--ui-border-opacity, 0.08) * 0.5));
++}
++
++.glass-panel-strong {
++  background: rgba(15, 17, 26, calc(var(--ui-opacity, 0.75) * 1.2));
++  backdrop-filter: blur(calc(var(--ui-blur, 16px) * 1.5));
++  -webkit-backdrop-filter: blur(calc(var(--ui-blur, 16px) * 1.5));
++  border-radius: calc(var(--ui-radius, 12px) * 1px);
++  border: 1px solid rgba(255, 255, 255, var(--ui-border-opacity, 0.08));
++  box-shadow:
++    0 16px 48px rgba(0, 0, 0, calc(var(--ui-shadow-intensity, 0.5) * 0.8)),
++    inset 0 1px 0 rgba(255, 255, 255, 0.04);
++}
++
++/* Border style variants */
++.border-style-none .glass-panel,
++.border-style-none .glass-panel-subtle,
++.border-style-none .glass-panel-strong {
++  border: none !important;
+ }
+ 
++.border-style-glow .glass-panel,
++.border-style-glow .glass-panel-subtle,
++.border-style-glow .glass-panel-strong {
++  border: 1.5px solid var(--theme-primary, #8A5BC7) !important;
++  box-shadow: 
++    0 0 18px color-mix(in srgb, var(--theme-primary) 30%, transparent),
++    inset 0 0 10px color-mix(in srgb, var(--theme-primary) 12%, transparent),
++    0 8px 32px rgba(0, 0, 0, calc(var(--ui-shadow-intensity, 0.5) * 0.6)) !important;
++}
++
++.border-style-solid .glass-panel,
++.border-style-solid .glass-panel-subtle,
++.border-style-solid .glass-panel-strong {
++  border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
++}
++
++/* === Aurora Background === */
+ .app-aurora {
+   position: fixed;
+   inset: 0;
+-  z-index: 0;
++  z-index: 1;
+   pointer-events: none;
+   background:
+-    linear-gradient(120deg, rgba(138, 91, 199, 0.14), transparent 36%),
+-    linear-gradient(300deg, rgba(46, 204, 113, 0.09), transparent 46%);
++    linear-gradient(120deg, rgba(138, 91, 199, 0.08), transparent 36%),
++    linear-gradient(300deg, rgba(46, 204, 113, 0.05), transparent 46%);
+   mask-image: radial-gradient(ellipse at center, black 0 58%, transparent 78%);
+ }
+ 
++/* === Animations === */
+ .message-enter {
+-  animation: interface-enter 180ms ease-out both;
++  animation: interface-enter calc(180ms * var(--ui-animation-speed, 1)) ease-out both;
++}
++
++.settings-enter {
++  animation: settings-slide-in calc(300ms * var(--ui-animation-speed, 1)) cubic-bezier(0.16, 1, 0.3, 1) both;
++}
++
++.settings-exit {
++  animation: settings-slide-out calc(200ms * var(--ui-animation-speed, 1)) ease-in both;
++}
++
++.panel-slide-left {
++  animation: slide-from-left calc(300ms * var(--ui-animation-speed, 1)) cubic-bezier(0.16, 1, 0.3, 1) both;
+ }
+ 
+-.settings-window {
+-  animation: panel-fade-in 160ms ease-out both;
++.panel-slide-right {
++  animation: slide-from-right calc(300ms * var(--ui-animation-speed, 1)) cubic-bezier(0.16, 1, 0.3, 1) both;
++}
++
++.mode-crossfade-enter {
++  animation: mode-fade-in calc(400ms * var(--ui-animation-speed, 1)) ease-out both;
++}
++
++.launcher-breathe {
++  animation: launcher-pulse 2.4s ease-in-out infinite;
+ }
+ 
+ @keyframes interface-enter {
+@@ -90,11 +162,46 @@ body {
+   to { opacity: 1; transform: translateY(0); }
+ }
+ 
+-@keyframes panel-fade-in {
++@keyframes settings-slide-in {
++  from { opacity: 0; transform: scale(0.97); }
++  to { opacity: 1; transform: scale(1); }
++}
++
++@keyframes settings-slide-out {
++  from { opacity: 1; transform: scale(1); }
++  to { opacity: 0; transform: scale(0.97); }
++}
++
++@keyframes slide-from-left {
++  from { opacity: 0; transform: translateX(-20px); }
++  to { opacity: 1; transform: translateX(0); }
++}
++
++@keyframes slide-from-right {
++  from { opacity: 0; transform: translateX(20px); }
++  to { opacity: 1; transform: translateX(0); }
++}
++
++@keyframes mode-fade-in {
+   from { opacity: 0; }
+   to { opacity: 1; }
+ }
+ 
++@keyframes launcher-pulse {
++  0%, 100% { box-shadow: 0 0 20px rgba(138, 91, 199, 0.3), 0 0 60px rgba(138, 91, 199, 0.1); }
++  50% { box-shadow: 0 0 30px rgba(138, 91, 199, 0.5), 0 0 80px rgba(138, 91, 199, 0.2); }
++}
++
++@keyframes glow-pulse {
++  0%, 100% { opacity: 0.7; }
++  50% { opacity: 1; }
++}
++
++@keyframes float-subtle {
++  0%, 100% { transform: translateY(0); }
++  50% { transform: translateY(-4px); }
++}
++
+ /* === Scrollbar === */
+ .scroller::-webkit-scrollbar { width: 4px; }
+ .scroller::-webkit-scrollbar-track { background: transparent; }
+@@ -116,3 +223,12 @@ body {
+   scrollbar-width: thin;
+   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+ }
++
++/* === Reduced Motion === */
++@media (prefers-reduced-motion: reduce) {
++  *, *::before, *::after {
++    animation-duration: 0.01ms !important;
++    animation-iteration-count: 1 !important;
++    transition-duration: 0.01ms !important;
++  }
++}
+diff --git a/src/store/uiStore.ts b/src/store/uiStore.ts
+index 3f88af9..18024b7 100644
+--- a/src/store/uiStore.ts
++++ b/src/store/uiStore.ts
+@@ -2,6 +2,7 @@ import { create } from 'zustand';
+ import { persist } from 'zustand/middleware';
+ import { createInitialMessages, createResetMessages, type Message } from '../lib/messages';
+ import type { PaletteKey, ThemeVars } from '../lib/themeEngine';
++import { type LocationData } from '../data/locations';
+ 
+ export type AiModel = 'gemini-3-flash' | 'gemini-3-pro' | 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-2.0-flash' | 'local-assistant';
+ 
+@@ -12,8 +13,88 @@ export interface SystemMetrics {
+   batteryLevel: number;
+ }
+ 
++export interface Personalisation {
++  panelOpacity: number;
++  blurIntensity: number;
++  animationIntensity: number;
++  motionReduced: boolean;
++  cornerRadius: number;
++  borderStyle: 'subtle' | 'glow' | 'solid' | 'none';
++  shadowIntensity: number;
++  chatBubbleStyle: 'glass' | 'solid' | 'minimal';
++  iconStyle: 'outlined' | 'filled';
++  uiDensity: 'comfortable' | 'compact' | 'spacious';
++  fontScale: number;
++  accentColor: string;
++  fontFamily: 'Outfit' | 'Inter' | 'system-ui';
++}
++
++export interface ChatSession {
++  id: string;
++  name: string;
++  type: 'global' | 'project';
++  projectName?: string;
++  messages: Message[];
++  lastActive: number;
++  createdAt: number;
++}
++
++export interface DiagnosticEntry {
++  id: string;
++  level: 'info' | 'warning' | 'error' | 'success';
++  message: string;
++  timestamp: number;
++  source: string;
++}
++
++export type InteractionMode = 'chat' | 'earth';
++export type CurrentPage = 'launcher' | 'workspace' | 'settings';
++export type RightPanelTab = 'context' | 'browser' | 'changes';
++export type SettingsCategory = 'personalisation' | 'ai' | 'connections' | 'feedback' | 'about';
++
++const defaultPersonalisation: Personalisation = {
++  panelOpacity: 0.75,
++  blurIntensity: 16,
++  animationIntensity: 0.7,
++  motionReduced: false,
++  cornerRadius: 12,
++  borderStyle: 'subtle',
++  shadowIntensity: 0.5,
++  chatBubbleStyle: 'glass',
++  iconStyle: 'outlined',
++  uiDensity: 'comfortable',
++  fontScale: 1.0,
++  accentColor: '',
++  fontFamily: 'Outfit',
++};
++
++function createGlobalChat(): ChatSession {
++  const now = Date.now();
++  return {
++    id: 'global-main',
++    name: 'Main Chat',
++    type: 'global',
++    messages: createInitialMessages(now),
++    lastActive: now,
++    createdAt: now,
++  };
++}
++
++let sessionCounter = 0;
++function generateSessionId(): string {
++  sessionCounter += 1;
++  return `session-${Date.now()}-${sessionCounter}`;
++}
++
+ export interface UIStore {
+-  // Chat
++  // Chat Sessions
++  chatSessions: ChatSession[];
++  activeChatId: string;
++  addChatSession: (name: string, type: 'global' | 'project', projectName?: string) => void;
++  removeChatSession: (id: string) => void;
++  setActiveChatId: (id: string) => void;
++
++  // Active chat messages (derived from active session)
+   messages: Message[];
+   isProcessing: boolean;
+   addMessage: (msg: Message) => void;
+@@ -25,6 +106,10 @@ export interface UIStore {
+   customWallpaper: string | null;
+   dynamicTheme: Partial<ThemeVars> | null;
+ 
++  // Personalisation
++  personalisation: Personalisation;
++  updatePersonalisation: (p: Partial<Personalisation>) => void;
++
+   // AI Config
+   aiModel: AiModel;
+   systemInstructions: string;
+@@ -33,12 +118,49 @@ export interface UIStore {
+   audioFeedback: boolean;
+   particleEffects: boolean;
+ 
+-  // UI State
+-  showSettings: boolean;
+-  settingsDocked: boolean;
+-  sidebarOpen: boolean;
+-  primaryView: 'chat' | 'earth';
+-  rightPanelMode: 'monitor' | 'learning';
++  // Navigation
++  currentPage: CurrentPage;
++  setCurrentPage: (page: CurrentPage) => void;
++
++  // Interaction Mode
++  interactionMode: InteractionMode;
++  setInteractionMode: (mode: InteractionMode) => void;
++
++  // Location Selection
++  activeLocation: LocationData | null;
++  setActiveLocation: (loc: LocationData | null) => void;
++
++  // ISS Tracking & Stream
++  issFeedOpen: boolean;
++  setIssFeedOpen: (open: boolean) => void;
++  issTelemetry: {
++    latitude: number;
++    longitude: number;
++    altitude: number;
++    velocity: number;
++    timestamp: number;
++    simulated?: boolean;
++  } | null;
++  setIssTelemetry: (t: any) => void;
++
++  // Panel State
++  leftPanelOpen: boolean;
++  setLeftPanelOpen: (v: boolean) => void;
++  rightPanelOpen: boolean;
++  setRightPanelOpen: (v: boolean) => void;
++  rightPanelTab: RightPanelTab;
++  setRightPanelTab: (tab: RightPanelTab) => void;
++
++  // Settings
++  settingsCategory: SettingsCategory;
++  setSettingsCategory: (cat: SettingsCategory) => void;
++
++  // Launcher
++  launcherDismissed: boolean;
++  setLauncherDismissed: (v: boolean) => void;
++  diagnostics: DiagnosticEntry[];
++  addDiagnostic: (entry: Omit<DiagnosticEntry, 'id' | 'timestamp'>) => void;
++  clearDiagnostics: () => void;
+ 
+   // System Monitor
+   cpuLoad: number;
+@@ -59,83 +181,198 @@ export interface UIStore {
+   setNotionApiKey: (v: string) => void;
+   setNotionDatabaseId: (v: string) => void;
+ 
+-  // Direct setters for common toggles
++  // Legacy compatibility aliases
++  showSettings: boolean;
+   setShowSettings: (v: boolean) => void;
++  sidebarOpen: boolean;
+   setSidebarOpen: (v: boolean) => void;
++  primaryView: 'chat' | 'earth';
+   setPrimaryView: (v: 'chat' | 'earth') => void;
++  rightPanelMode: 'monitor' | 'learning';
+   setRightPanelMode: (v: 'monitor' | 'learning') => void;
++  settingsDocked: boolean;
+ 
+-  // Generic settings updater (used by settings sub-panels)
++  // Generic settings updater
+   updateSettings: (settings: Partial<UIStore>) => void;
+ }
+ 
++let diagCounter = 0;
++
+ export const useUIStore = create<UIStore>()(
+   persist(
+-    (set) => ({
+-      // Chat
+-      messages: createInitialMessages(),
+-      isProcessing: false,
+-      addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
+-      clearMessages: () => set({ messages: createResetMessages() }),
+-      setIsProcessing: (isProcessing) => set({ isProcessing }),
+-
+-      // Theme / Appearance
+-      activePalette: 'holographic' as PaletteKey,
+-      customWallpaper: null,
+-      dynamicTheme: null,
+-
+-      // AI Config
+-      aiModel: 'gemini-2.5-flash',
+-      systemInstructions: 'You are Silver Wolf VI, a cyberpunk AI companion.',
+-
+-      // Sensory
+-      audioFeedback: false,
+-      particleEffects: true,
+-
+-      // UI State
+-      showSettings: false,
+-      settingsDocked: false,
+-      sidebarOpen: false,
+-      primaryView: 'chat',
+-      rightPanelMode: 'monitor',
+-
+-      // System Monitor
+-      cpuLoad: 0.2,
+-      setCpuLoad: (cpuLoad) => set({ cpuLoad }),
+-      systemMetrics: {
+-        ramUsage: 0.35,
+-        networkLatency: 0.6,
+-        storageUsage: 0.45,
+-        batteryLevel: 0.9,
+-      },
+-      updateSystemMetrics: (m) =>
+-        set((s) => ({ systemMetrics: { ...s.systemMetrics, ...m } })),
+-
+-      // AI Sync
+-      syncStatus: 'idle',
+-      lastSyncTime: null,
+-      setSyncStatus: (syncStatus) => set({ syncStatus, lastSyncTime: Date.now() }),
+-
+-      // Notion Connector
+-      notionEnabled: false,
+-      notionApiKey: '',
+-      notionDatabaseId: '',
+-      setNotionEnabled: (notionEnabled) => set({ notionEnabled }),
+-      setNotionApiKey: (notionApiKey) => set({ notionApiKey }),
+-      setNotionDatabaseId: (notionDatabaseId) => set({ notionDatabaseId }),
+-
+-      // Direct setters
+-      setShowSettings: (showSettings) => set({ showSettings }),
+-      setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+-      setPrimaryView: (primaryView) => set({ primaryView }),
+-      setRightPanelMode: (rightPanelMode) => set({ rightPanelMode }),
+-
+-      // Generic updater
+-      updateSettings: (settings) => set((s) => ({ ...s, ...settings })),
+-    }),
++    (set, get) => {
++      const globalChat = createGlobalChat();
++
++      return {
++        // Chat Sessions
++        chatSessions: [globalChat],
++        activeChatId: globalChat.id,
++        addChatSession: (name, type, projectName) => {
++          const id = generateSessionId();
++          const now = Date.now();
++          const newSession: ChatSession = {
++            id,
++            name,
++            type,
++            projectName,
++            messages: [
++              { id: `system-${now}-init`, sender: 'system', content: 'SESSION // INITIALIZED.', timestamp: now },
++            ],
++            lastActive: now,
++            createdAt: now,
++          };
++          set((s) => ({
++            chatSessions: [...s.chatSessions, newSession],
++            activeChatId: id,
++          }));
++        },
++        removeChatSession: (id) => {
++          if (id === 'global-main') return;
++          set((s) => {
++            const sessions = s.chatSessions.filter((cs) => cs.id !== id);
++            const newActive = s.activeChatId === id ? 'global-main' : s.activeChatId;
++            return { chatSessions: sessions, activeChatId: newActive };
++          });
++        },
++        setActiveChatId: (activeChatId) => set({ activeChatId }),
++
++        // Active chat messages — computed from active session
++        get messages() {
++          const state = get();
++          const session = state.chatSessions.find((s) => s.id === state.activeChatId);
++          return session?.messages ?? [];
++        },
++        isProcessing: false,
++        addMessage: (msg) =>
++          set((s) => ({
++            chatSessions: s.chatSessions.map((cs) =>
++              cs.id === s.activeChatId
++                ? { ...cs, messages: [...cs.messages, msg], lastActive: Date.now() }
++                : cs,
++            ),
++          })),
++        clearMessages: () =>
++          set((s) => ({
++            chatSessions: s.chatSessions.map((cs) =>
++              cs.id === s.activeChatId
++                ? { ...cs, messages: createResetMessages(), lastActive: Date.now() }
++                : cs,
++            ),
++          })),
++        setIsProcessing: (isProcessing) => set({ isProcessing }),
++
++        // Theme / Appearance
++        activePalette: 'holographic' as PaletteKey,
++        customWallpaper: null,
++        dynamicTheme: null,
++
++        // Personalisation
++        personalisation: { ...defaultPersonalisation },
++        updatePersonalisation: (p) =>
++          set((s) => ({ personalisation: { ...s.personalisation, ...p } })),
++
++        // AI Config
++        aiModel: 'gemini-2.5-flash',
++        systemInstructions: 'You are Silver Wolf VI, a cyberpunk AI companion.',
++
++        // Sensory
++        audioFeedback: false,
++        particleEffects: true,
++
++        // Navigation
++        currentPage: 'launcher',
++        setCurrentPage: (currentPage) => set({ currentPage }),
++
++        // Interaction Mode
++        interactionMode: 'chat',
++        setInteractionMode: (interactionMode) => set({ interactionMode }),
++
++        // Location Selection
++        activeLocation: null,
++        setActiveLocation: (activeLocation) => set({ activeLocation }),
++
++        // ISS Tracking & Stream
++        issFeedOpen: false,
++        setIssFeedOpen: (issFeedOpen) => set({ issFeedOpen }),
++        issTelemetry: null,
++        setIssTelemetry: (issTelemetry) => set({ issTelemetry }),
++
++        // Panel State
++        leftPanelOpen: true,
++        setLeftPanelOpen: (leftPanelOpen) => set({ leftPanelOpen }),
++        rightPanelOpen: true,
++        setRightPanelOpen: (rightPanelOpen) => set({ rightPanelOpen }),
++        rightPanelTab: 'context',
++        setRightPanelTab: (rightPanelTab) => set({ rightPanelTab }),
++
++        // Settings
++        settingsCategory: 'personalisation',
++        setSettingsCategory: (settingsCategory) => set({ settingsCategory }),
++
++        // Launcher
++        launcherDismissed: false,
++        setLauncherDismissed: (launcherDismissed) => set({ launcherDismissed, currentPage: 'workspace' }),
++        diagnostics: [],
++        addDiagnostic: (entry) => {
++          diagCounter += 1;
++          set((s) => ({
++            diagnostics: [
++              ...s.diagnostics,
++              { ...entry, id: `diag-${Date.now()}-${diagCounter}`, timestamp: Date.now() },
++            ],
++          }));
++        },
++        clearDiagnostics: () => set({ diagnostics: [] }),
++
++        // System Monitor
++        cpuLoad: 0.2,
++        setCpuLoad: (cpuLoad) => set({ cpuLoad }),
++        systemMetrics: {
++          ramUsage: 0.35,
++          networkLatency: 0.6,
++          storageUsage: 0.45,
++          batteryLevel: 0.9,
++        },
++        updateSystemMetrics: (m) =>
++          set((s) => ({ systemMetrics: { ...s.systemMetrics, ...m } })),
++
++        // AI Sync
++        syncStatus: 'idle',
++        lastSyncTime: null,
++        setSyncStatus: (syncStatus) => set({ syncStatus, lastSyncTime: Date.now() }),
++
++        // Notion Connector
++        notionEnabled: false,
++        notionApiKey: '',
++        notionDatabaseId: '',
++        setNotionEnabled: (notionEnabled) => set({ notionEnabled }),
++        setNotionApiKey: (notionApiKey) => set({ notionApiKey }),
++        setNotionDatabaseId: (notionDatabaseId) => set({ notionDatabaseId }),
++
++        // Legacy compatibility
++        get showSettings() {
++          return get().currentPage === 'settings';
++        },
++        setShowSettings: (v) => set({ currentPage: v ? 'settings' : 'workspace' }),
++        get sidebarOpen() {
++          return get().leftPanelOpen;
++        },
++        setSidebarOpen: (sidebarOpen) => set({ leftPanelOpen: sidebarOpen }),
++        get primaryView() {
++          return get().interactionMode;
++        },
++        setPrimaryView: (v) => set({ interactionMode: v }),
++        rightPanelMode: 'monitor',
++        setRightPanelMode: (rightPanelMode) => set({ rightPanelMode }),
++        settingsDocked: false,
++
++        // Generic updater
++        updateSettings: (settings) => set((s) => ({ ...s, ...settings })),
++      };
++    },
+     {
+       name: 'silver-wolf-v6-core',
+-      version: 2,
++      version: 3,
+       migrate: (persistedState) => {
+         if (!persistedState || typeof persistedState !== 'object') return persistedState;
+         const { notionApiKey: _notionApiKey, ...safeState } = persistedState as Partial<UIStore> & {
+@@ -152,7 +389,12 @@ export const useUIStore = create<UIStore>()(
+         lastSyncTime: s.lastSyncTime,
+         notionEnabled: s.notionEnabled,
+         notionDatabaseId: s.notionDatabaseId,
++        personalisation: s.personalisation,
++        launcherDismissed: s.launcherDismissed,
++        interactionMode: s.interactionMode,
++        leftPanelOpen: s.leftPanelOpen,
++        rightPanelOpen: s.rightPanelOpen,
+       }),
+-    }
+-  )
++    },
++  ),
+ );
+diff --git a/src/types/particleWorker.ts b/src/types/particleWorker.ts
+index abeb96d..e178bdd 100644
+--- a/src/types/particleWorker.ts
++++ b/src/types/particleWorker.ts
+@@ -22,11 +22,17 @@ export interface ParticleWorkerStopMessage {
+   type: 'stop';
+ }
+ 
++export interface ParticleWorkerReleaseBufferMessage {
++  type: 'releaseBuffer';
++  buffer: ArrayBuffer;
++}
++
+ export type ParticleWorkerMessage =
+   | ParticleWorkerInitMessage
+   | ParticleWorkerResizeMessage
+   | ParticleWorkerTickMessage
+-  | ParticleWorkerStopMessage;
++  | ParticleWorkerStopMessage
++  | ParticleWorkerReleaseBufferMessage;
+ 
+ export interface ParticleWorkerFrameMessage {
+   type: 'frame';
+diff --git a/src/workers/particleWorker.ts b/src/workers/particleWorker.ts
+index cea6c88..310120c 100644
+--- a/src/workers/particleWorker.ts
++++ b/src/workers/particleWorker.ts
+@@ -60,11 +60,20 @@ function step(deltaMs: number) {
+   }
+ }
+ 
++const bufferPool: ArrayBuffer[] = [];
++
+ function toFrameBuffer() {
+   if (!state) return new ArrayBuffer(0);
+ 
+   const count = state.radius.length;
+-  const frame = new Float32Array(count * 4);
++  const byteLength = count * 4 * 4; // count * 4 floats * 4 bytes per float
++
++  let buffer = bufferPool.pop();
++  if (!buffer || buffer.byteLength !== byteLength) {
++    buffer = new ArrayBuffer(byteLength);
++  }
++
++  const frame = new Float32Array(buffer);
+   for (let i = 0; i < count; i += 1) {
+     const srcIdx = i * 2;
+     const dstIdx = i * 4;
+@@ -74,12 +83,17 @@ function toFrameBuffer() {
+     frame[dstIdx + 3] = state.alpha[i];
+   }
+ 
+-  return frame.buffer;
++  return buffer;
+ }
+ 
+ workerScope.onmessage = (event: MessageEvent<ParticleWorkerMessage>) => {
+   const message = event.data;
+ 
++  if (message.type === 'releaseBuffer') {
++    bufferPool.push(message.buffer);
++    return;
++  }
++
+   if (message.type === 'init') {
+     state = createState(message.width, message.height, message.count, message.speed);
+     const ready: ParticleWorkerResponse = { type: 'ready' };
+@@ -97,6 +111,7 @@ workerScope.onmessage = (event: MessageEvent<ParticleWorkerMessage>) => {
+ 
+   if (message.type === 'stop') {
+     state = null;
++    bufferPool.length = 0; // Clear references to free memory
+     return;
+   }
+ 
+diff --git a/vite.config.ts b/vite.config.ts
+index e0662c9..91f161e 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -2,10 +2,11 @@ import tailwindcss from '@tailwindcss/vite';
+ import react from '@vitejs/plugin-react';
+ import path from 'path';
+ import {defineConfig} from 'vite';
++import cesium from 'vite-plugin-cesium';
+ 
+ export default defineConfig(() => {
+   return {
+-    plugins: [react(), tailwindcss()],
++    plugins: [react(), tailwindcss(), cesium()],
+     resolve: {
+       alias: {
+         '@': path.resolve(__dirname, '.'),
+@@ -15,12 +16,17 @@ export default defineConfig(() => {
+       // HMR is disabled in AI Studio via DISABLE_HMR env var.
+       // File watching can be disabled to prevent flickering during agent edits.
+       hmr: process.env.DISABLE_HMR !== 'true',
++      watch: {
++        ignored: ['**/bridge/**', '**/launcher.log', '**/dist/**'],
++      },
+     },
+     build: {
++      chunkSizeWarningLimit: 800, // Suppress Cesium chunk size warnings
+       rollupOptions: {
+         output: {
+           manualChunks(id) {
+             if (!id.includes('node_modules')) return undefined;
++            if (id.includes('cesium')) return 'cesium'; // Isolate Cesium for caching
+             if (id.includes('react') || id.includes('react-dom')) return 'react';
+             if (id.includes('lucide-react')) return 'icons';
+             if (id.includes('zustand')) return 'state';

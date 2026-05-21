@@ -1,0 +1,143 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+import * as Cesium from 'cesium';
+import { setupImagery } from '../../lib/imageryFactory';
+
+/**
+ * Cesium viewer hook with WWV-inspired performance optimizations.
+ *
+ * Key techniques adopted from WorldWideView:
+ * - requestRenderMode + maximumRenderTimeChange (render only when needed)
+ * - WebGL2 context with anti-aliasing
+ * - Configurable resolutionScale for low-power devices
+ * - MSAA control with Firefox detection
+ * - depthTestAgainstTerrain for proper occlusion
+ * - Screen-space camera controller tweaks
+ */
+export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | null>) {
+  const viewerRef = useRef<Cesium.Viewer | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Stable error setter for child components
+  const onError = useCallback((msg: string) => setError(msg), []);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // Pre-flight: WebGL availability check
+    try {
+      if (/HeadlessChrome/i.test(navigator.userAgent) || navigator.webdriver) {
+        throw new Error('WebGL disabled in headless browser environment');
+      }
+      const canvas = document.createElement('canvas');
+      if (!(canvas.getContext('webgl2') || canvas.getContext('webgl'))) {
+        throw new Error('WebGL context creation failed');
+      }
+    } catch (err: any) {
+      setError(err?.message ?? String(err));
+      setIsLoaded(true);
+      return;
+    }
+
+    let viewer: Cesium.Viewer;
+    try {
+      // Firefox detection for MSAA workaround (from WWV)
+      const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
+
+      viewer = new Cesium.Viewer(containerRef.current, {
+        // Disable all default UI widgets — we render our own
+        animation: false,
+        baseLayerPicker: false,
+        fullscreenButton: false,
+        vrButton: false,
+        geocoder: false,
+        homeButton: false,
+        infoBox: false,
+        sceneModePicker: false,
+        selectionIndicator: false,
+        timeline: false,
+        navigationHelpButton: false,
+        navigationInstructionsInitiallyVisible: false,
+
+        // Performance: 3D-only mode eliminates 2D/Columbus overhead
+        scene3DOnly: true,
+
+        // WWV key optimization: Only render when the scene actually changes.
+        // maximumRenderTimeChange=0.5 means "re-render if 0.5s have passed since
+        // last render OR if scene.requestRender() was called". Far better than
+        // Infinity (missed clock updates) or 0 (continuous rendering).
+        requestRenderMode: true,
+        maximumRenderTimeChange: 0.5,
+
+        // WWV pattern: Request WebGL2 for better performance + built-in AA
+        contextOptions: { requestWebgl1: false, webgl: { antialias: true } },
+
+        // MSAA: 1 sample on Firefox (buggy), 2x elsewhere for quality/perf balance
+        msaaSamples: isFirefox ? 1 : 2,
+
+        // Hide Cesium credits in a detached element
+        creditContainer: document.createElement('div'),
+      });
+
+      viewerRef.current = viewer;
+      (window as any).cesiumViewer = viewer;
+    } catch (err: any) {
+      setError(err?.message ?? String(err));
+      setIsLoaded(true);
+      return;
+    }
+
+    // --- Performance tuning (WWV patterns) ---
+
+    // Resolution scale: slightly under 1.0 saves GPU fill rate on integrated GPUs
+    viewer.resolutionScale = 0.85;
+
+    // Globe polygon detail: higher = fewer polygons = faster. Default is 2.
+    viewer.scene.globe.maximumScreenSpaceError = 2.5;
+
+    // Disable expensive FXAA post-process (we use MSAA instead)
+    if (viewer.scene.postProcessStages.fxaa) {
+      viewer.scene.postProcessStages.fxaa.enabled = false;
+    }
+
+    // --- Visual quality (Google Earth aesthetics) ---
+    viewer.scene.globe.enableLighting = true;
+    viewer.scene.globe.showWaterEffect = false;
+    viewer.scene.globe.depthTestAgainstTerrain = true; // WWV: proper occlusion
+    viewer.scene.backgroundColor = Cesium.Color.BLACK;
+    viewer.scene.skyAtmosphere.brightnessShift = 0.25;
+    viewer.scene.highDynamicRange = true;
+
+    // --- Camera controller improvements (from WWV) ---
+    const sscc = viewer.scene.screenSpaceCameraController;
+    sscc.tiltEventTypes = [
+      Cesium.CameraEventType.MIDDLE_DRAG,
+      Cesium.CameraEventType.RIGHT_DRAG,
+      Cesium.CameraEventType.PINCH,
+      { eventType: Cesium.CameraEventType.LEFT_DRAG, modifier: Cesium.KeyboardEventModifier.CTRL },
+    ];
+
+    // Load imagery asynchronously (never blocks viewer creation)
+    setupImagery(viewer).finally(() => {
+      if (viewerRef.current) {
+        setIsLoaded(true);
+        viewer.scene.requestRender();
+      }
+    });
+
+    // Initial camera: wide Earth view at 20,000 km
+    viewer.camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(0, 20, 20_000_000),
+    });
+
+    return () => {
+      if (viewerRef.current) {
+        viewerRef.current.destroy();
+        viewerRef.current = null;
+        (window as any).cesiumViewer = null;
+      }
+    };
+  }, [containerRef]);
+
+  return { viewer: viewerRef.current, isLoaded, error };
+}
