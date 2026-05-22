@@ -118,12 +118,14 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     ];
 
     // Load imagery asynchronously (never blocks viewer creation)
-    setupImagery(viewer).finally(() => {
-      if (viewerRef.current) {
-        setIsLoaded(true);
-        viewer.scene.requestRender();
-      }
-    });
+    setupImagery(viewer)
+      .catch((err) => console.warn('Imagery setup failed:', err))
+      .finally(() => {
+        if (viewerRef.current && !viewer.isDestroyed()) {
+          setIsLoaded(true);
+          viewer.scene.requestRender();
+        }
+      });
 
     // Initial camera: wide Earth view at 20,000 km
     viewer.camera.setView({
