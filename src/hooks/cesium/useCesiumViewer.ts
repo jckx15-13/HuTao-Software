@@ -100,13 +100,26 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
       viewer.scene.postProcessStages.fxaa.enabled = false;
     }
 
-    // --- Visual quality (Google Earth aesthetics) ---
-    viewer.scene.globe.enableLighting = true;
+    // --- Visual quality (Anime Sci-Fi Space Opera / WWT Aesthetics) ---
+    viewer.scene.globe.enableLighting = true; // Stark shadows on terminator
     viewer.scene.globe.showWaterEffect = false;
-    viewer.scene.globe.depthTestAgainstTerrain = true; // WWV: proper occlusion
-    viewer.scene.backgroundColor = Cesium.Color.BLACK;
-    viewer.scene.skyAtmosphere.brightnessShift = 0.25;
-    viewer.scene.highDynamicRange = true;
+    viewer.scene.globe.depthTestAgainstTerrain = true; // Proper occlusion
+    viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#020205'); // Space opera dark background
+    viewer.scene.highDynamicRange = true; // Premium lighting dynamic range
+
+    // Cool-toned luminous space atmosphere (Honkai: Star Rail inspired)
+    viewer.scene.skyAtmosphere.show = true;
+    viewer.scene.skyAtmosphere.brightnessShift = 0.15; // Enhanced brightness contrast
+    viewer.scene.skyAtmosphere.saturationShift = 0.45; // Luminous saturation
+    viewer.scene.skyAtmosphere.hueShift = -0.05; // Cool cyan/purple shift
+
+    // Configure globe atmospheric lighting
+    viewer.scene.globe.atmosphereBrightnessShift = 0.15;
+    viewer.scene.globe.atmosphereSaturationShift = 0.45;
+    viewer.scene.globe.atmosphereHueShift = -0.05;
+    viewer.scene.globe.lightingFadeOutDistance = 1e7;
+    viewer.scene.globe.lightingFadeInDistance = 2e7;
+
 
     // --- Camera controller improvements (from WWV) ---
     const sscc = viewer.scene.screenSpaceCameraController;

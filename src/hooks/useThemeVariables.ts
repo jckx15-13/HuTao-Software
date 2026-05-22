@@ -15,7 +15,7 @@ export function useThemeVariables(): AppliedTheme {
   const personalisation = useUIStore((state) => state.personalisation);
 
   const currentPalette = useMemo<ThemeVars>(() => {
-    const basePalette = palettes[activePalette] || palettes.holographic;
+    const basePalette = palettes[activePalette] || palettes.hsrOrbital;
     const palette = customWallpaper && dynamicTheme ? { ...basePalette, ...dynamicTheme } as ThemeVars : basePalette;
 
     // If user set an accent color override, apply it

@@ -17,7 +17,7 @@ export function LauncherPage() {
     clearDiagnostics();
     addDiagnostic({ source: 'BOOT', level: 'info', message: 'SILVER WOLF ENGINE INITIALISING...' });
     addDiagnostic({ source: 'STORE', level: 'success', message: 'State hydration complete.' });
-    addDiagnostic({ source: 'THEME', level: 'success', message: 'Holographic CSS custom properties registered.' });
+    addDiagnostic({ source: 'THEME', level: 'success', message: 'Visual profile themes and dynamic theme engine initialised.' });
     addDiagnostic({ source: '3D-MAP', level: 'info', message: 'Cesium map engine bound to canvas background.' });
     addDiagnostic({ source: 'BRIDGE', level: 'info', message: 'Pinging Assistant Bridge on port 8001...' });
 

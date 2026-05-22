@@ -99,6 +99,20 @@ export function PersonalisationSettings() {
               )}
             </div>
           </div>
+
+          {/* Theme Profile Dropdown (Beta) */}
+          <div className="space-y-2 col-span-1 md:col-span-2 mt-2">
+            <label className="text-[10px] font-mono uppercase text-white/40 block">Theme Profile Dropdown (Beta)</label>
+            <select
+              value={activePalette}
+              onChange={(e) => updateSettings({ activePalette: e.target.value as PaletteKey })}
+              className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-xs font-mono text-white/70 focus:outline-none focus:ring-1 focus:ring-primary/35 cursor-pointer"
+            >
+              <option value="hsrOrbital" className="bg-neutral-900">Honkai: Star Rail Orbital (hsrOrbital)</option>
+              <option value="cybernetic" className="bg-neutral-900">Cybernetic Hologram (cybernetic)</option>
+              <option value="solitaryCosmic" className="bg-neutral-900">Solitary Cosmic (solitaryCosmic)</option>
+            </select>
+          </div>
         </div>
 
         {/* Wallpaper Image Upload */}

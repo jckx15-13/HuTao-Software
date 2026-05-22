@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Check, Copy } from 'lucide-react';
+import { useUIStore } from '../store/uiStore';
 
 type Block =
   | { type: 'code'; language: string; value: string }
@@ -139,6 +140,11 @@ function parseMarkdown(input: string): Block[] {
 }
 
 function InlineText({ text }: { text: string }) {
+  const setBrowserUrl = useUIStore((s) => s.setBrowserUrl);
+  const setRightPanelTab = useUIStore((s) => s.setRightPanelTab);
+  const setRightPanelOpen = useUIStore((s) => s.setRightPanelOpen);
+  const addChangeLog = useUIStore((s) => s.addChangeLog);
+
   const nodes: ReactNode[] = [];
   const tokenRe = /(`[^`]+`|\[[^\]]+\]\((https?:\/\/[^)\s]+|mailto:[^)\s]+)\))/g;
   let lastIndex = 0;
@@ -163,9 +169,18 @@ function InlineText({ text }: { text: string }) {
         <a
           key={match.index}
           href={href}
+          onClick={(e) => {
+            if (href.startsWith('http://') || href.startsWith('https://')) {
+              e.preventDefault();
+              setBrowserUrl(href);
+              setRightPanelTab('browser');
+              setRightPanelOpen(true);
+              addChangeLog('BROWSER', `Opened reference URL: ${href}`, 'info');
+            }
+          }}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary underline decoration-primary/40 underline-offset-2 transition-colors hover:text-primary-hover"
+          className="text-primary underline decoration-primary/40 underline-offset-2 transition-colors hover:text-primary-hover cursor-pointer"
         >
           {label}
         </a>,
@@ -183,30 +198,51 @@ function InlineText({ text }: { text: string }) {
 
 function CodeBlock({ language, value }: { language: string; value: string; key?: any }) {
   const [copied, setCopied] = useState(false);
+  const setRightPanelTab = useUIStore((s) => s.setRightPanelTab);
+  const setRightPanelOpen = useUIStore((s) => s.setRightPanelOpen);
+  const addChangeLog = useUIStore((s) => s.addChangeLog);
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
+      addChangeLog('CODE_EDIT', `Copied ${language} snippet to clipboard / queued edit.`, 'primary');
+      setRightPanelTab('changes');
+      setRightPanelOpen(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard API is optional in local previews.
     }
   };
 
+  const handleInspect = () => {
+    addChangeLog('CODE_EDIT', `Inspecting generated ${language} changes.`, 'primary');
+    setRightPanelTab('changes');
+    setRightPanelOpen(true);
+  };
+
   return (
     <div className="my-4 overflow-hidden rounded-lg border border-panel-border/70 bg-base/70 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-md">
       <div className="flex items-center justify-between border-b border-panel-border/60 bg-panel/40 px-4 py-2">
         <span className="font-mono text-[10px] uppercase tracking-widest text-primary">{language}</span>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded bg-base/60 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-primary"
-          aria-label={copied ? 'Copied to clipboard' : 'Copy code'}
-        >
-          {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
-          {copied ? 'Copied' : 'Copy'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleInspect}
+            className="flex items-center gap-1.5 rounded bg-base/60 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-primary cursor-pointer"
+          >
+            Inspect
+          </button>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 rounded bg-base/60 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-primary cursor-pointer"
+            aria-label={copied ? 'Copied to clipboard' : 'Copy code'}
+          >
+            {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
       </div>
       <pre className="max-h-[400px] overflow-auto p-4 font-mono text-sm leading-relaxed text-text-main">
         <code>{value}</code>

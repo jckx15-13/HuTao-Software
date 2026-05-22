@@ -47,6 +47,14 @@ export interface DiagnosticEntry {
   source: string;
 }
 
+export interface ChangeLogEntry {
+  id: string;
+  timestamp: string;
+  category: string;
+  message: string;
+  level: 'info' | 'warning' | 'error' | 'success' | 'primary';
+}
+
 export type InteractionMode = 'chat' | 'earth';
 export type CurrentPage = 'launcher' | 'workspace' | 'settings';
 export type RightPanelTab = 'context' | 'browser' | 'changes';
@@ -129,6 +137,15 @@ export interface UIStore {
   // Location Selection
   activeLocation: LocationData | null;
   setActiveLocation: (loc: LocationData | null) => void;
+
+  // Browser URL
+  browserUrl: string;
+  setBrowserUrl: (url: string) => void;
+
+  // Change Logs
+  changeLogs: ChangeLogEntry[];
+  addChangeLog: (category: string, message: string, level?: ChangeLogEntry['level']) => void;
+  clearChangeLogs: () => void;
 
   // ISS Tracking & Stream
   issFeedOpen: boolean;
@@ -262,7 +279,7 @@ export const useUIStore = create<UIStore>()(
         setIsProcessing: (isProcessing) => set({ isProcessing }),
 
         // Theme / Appearance
-        activePalette: 'holographic' as PaletteKey,
+        activePalette: 'hsrOrbital' as PaletteKey,
         customWallpaper: null,
         dynamicTheme: null,
 
@@ -289,7 +306,52 @@ export const useUIStore = create<UIStore>()(
 
         // Location Selection
         activeLocation: null,
-        setActiveLocation: (activeLocation) => set({ activeLocation }),
+        setActiveLocation: (activeLocation) => {
+          set({ activeLocation });
+          if (activeLocation) {
+            set({ rightPanelTab: 'context', rightPanelOpen: true });
+          }
+        },
+
+        // Browser URL
+        browserUrl: 'https://nasa.gov',
+        setBrowserUrl: (browserUrl) => set({ browserUrl }),
+
+        // Change Logs
+        changeLogs: [
+          {
+            id: 'init-log-1',
+            timestamp: new Date(Date.now() - 300000).toLocaleTimeString(),
+            category: 'SYSTEM',
+            message: 'Cesium 3D render engine bound to main viewport.',
+            level: 'success',
+          },
+          {
+            id: 'init-log-2',
+            timestamp: new Date(Date.now() - 200000).toLocaleTimeString(),
+            category: 'WORK_SPACE',
+            message: 'UI layout transitioned to 3-panel space shell.',
+            level: 'primary',
+          },
+          {
+            id: 'init-log-3',
+            timestamp: new Date(Date.now() - 100000).toLocaleTimeString(),
+            category: 'ORBITAL_ARRAY',
+            message: 'ISS Satcom live telemetry active.',
+            level: 'info',
+          },
+        ],
+        addChangeLog: (category, message, level = 'info') => {
+          const newEntry: ChangeLogEntry = {
+            id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            timestamp: new Date().toLocaleTimeString(),
+            category: category.toUpperCase().replace(/\s+/g, '_'),
+            message,
+            level,
+          };
+          set((s) => ({ changeLogs: [newEntry, ...s.changeLogs].slice(0, 100) }));
+        },
+        clearChangeLogs: () => set({ changeLogs: [] }),
 
         // ISS Tracking & Stream
         issFeedOpen: false,
@@ -394,6 +456,8 @@ export const useUIStore = create<UIStore>()(
         interactionMode: s.interactionMode,
         leftPanelOpen: s.leftPanelOpen,
         rightPanelOpen: s.rightPanelOpen,
+        browserUrl: s.browserUrl,
+        changeLogs: s.changeLogs,
       }),
     },
   ),

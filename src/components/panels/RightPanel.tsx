@@ -16,7 +16,9 @@ export function RightPanel() {
   const setIssFeedOpen = useUIStore((s) => s.setIssFeedOpen);
   const issTelemetry = useUIStore((s) => s.issTelemetry);
 
-  const [browserUrl, setBrowserUrl] = useState('https://nasa.gov');
+  const browserUrl = useUIStore((s) => s.browserUrl);
+  const setBrowserUrl = useUIStore((s) => s.setBrowserUrl);
+  const changeLogs = useUIStore((s) => s.changeLogs);
 
   if (!rightPanelOpen) return null;
 
@@ -214,23 +216,29 @@ export function RightPanel() {
         {rightPanelTab === 'changes' && (
           <div className="space-y-3 font-mono">
             <span className="text-[9px] font-bold uppercase tracking-widest text-primary block mb-2">SYSTEM TELEMETRY LOG</span>
-            <div className="relative border-l border-white/10 pl-3.5 ml-1.5 space-y-4 text-[9px] py-1">
-              <div className="relative">
-                <div className="absolute -left-[19.5px] top-1 h-2 w-2 rounded-full bg-cyan-400 ring-2 ring-cyan-950" />
-                <div className="text-white/30">22:04:19 // ORBITAL ARRAY</div>
-                <div className="text-white/80 mt-0.5">ISS Satcom live stream active & tracking.</div>
+            {changeLogs.length > 0 ? (
+              <div className="relative border-l border-white/10 pl-3.5 ml-1.5 space-y-4 text-[9px] py-1 max-h-[500px] overflow-y-auto scroller">
+                {changeLogs.map((log) => {
+                  let badgeBg = 'bg-primary ring-primary-hover/20';
+                  if (log.level === 'success') badgeBg = 'bg-green-500 ring-green-950';
+                  else if (log.level === 'warning') badgeBg = 'bg-yellow-500 ring-yellow-950';
+                  else if (log.level === 'error') badgeBg = 'bg-red-500 ring-red-950';
+                  else if (log.level === 'info') badgeBg = 'bg-cyan-400 ring-cyan-950';
+
+                  return (
+                    <div key={log.id} className="relative">
+                      <div className={`absolute -left-[19.5px] top-1 h-2 w-2 rounded-full ${badgeBg}`} />
+                      <div className="text-white/30">
+                        {log.timestamp} // {log.category}
+                      </div>
+                      <div className="text-white/80 mt-0.5">{log.message}</div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="relative">
-                <div className="absolute -left-[19.5px] top-1 h-2 w-2 rounded-full bg-primary ring-2 ring-primary-hover/20" />
-                <div className="text-white/30">22:01:16 // WORKSPACE</div>
-                <div className="text-white/80 mt-0.5">UI layout transitioned to 3-panel space shell.</div>
-              </div>
-              <div className="relative">
-                <div className="absolute -left-[19.5px] top-1 h-2 w-2 rounded-full bg-green-500 ring-2 ring-green-950" />
-                <div className="text-white/30">22:00:53 // SYSTEM</div>
-                <div className="text-white/80 mt-0.5">Cesium 3D render engine bound to main viewport.</div>
-              </div>
-            </div>
+            ) : (
+              <div className="text-[9px] text-white/30 italic py-4">No events logged yet.</div>
+            )}
           </div>
         )}
       </div>

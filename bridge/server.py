@@ -17,7 +17,7 @@ MAX_MESSAGE_CHARS = 8_000
 MAX_SYNC_BYTES = 256_000
 ALLOWED_ROLES = {"user", "assistant", "ai", "system"}
 
-raw_origins = os.getenv("BRIDGE_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+raw_origins = os.getenv("BRIDGE_CORS_ORIGINS", "*")
 allowed_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
 app = FastAPI(title="Silver Wolf Bridge")
@@ -25,8 +25,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
-    allow_headers=["content-type", "authorization"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 chatbot_pipeline = None
