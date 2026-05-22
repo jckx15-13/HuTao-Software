@@ -60,11 +60,20 @@ function step(deltaMs: number) {
   }
 }
 
+const bufferPool: ArrayBuffer[] = [];
+
 function toFrameBuffer() {
   if (!state) return new ArrayBuffer(0);
 
   const count = state.radius.length;
-  const frame = new Float32Array(count * 4);
+  const byteLength = count * 4 * 4; // count * 4 floats * 4 bytes per float
+
+  let buffer = bufferPool.pop();
+  if (!buffer || buffer.byteLength !== byteLength) {
+    buffer = new ArrayBuffer(byteLength);
+  }
+
+  const frame = new Float32Array(buffer);
   for (let i = 0; i < count; i += 1) {
     const srcIdx = i * 2;
     const dstIdx = i * 4;
@@ -74,11 +83,16 @@ function toFrameBuffer() {
     frame[dstIdx + 3] = state.alpha[i];
   }
 
-  return frame.buffer;
+  return buffer;
 }
 
 workerScope.onmessage = (event: MessageEvent<ParticleWorkerMessage>) => {
   const message = event.data;
+
+  if (message.type === 'releaseBuffer') {
+    bufferPool.push(message.buffer);
+    return;
+  }
 
   if (message.type === 'init') {
     state = createState(message.width, message.height, message.count, message.speed);
@@ -97,6 +111,7 @@ workerScope.onmessage = (event: MessageEvent<ParticleWorkerMessage>) => {
 
   if (message.type === 'stop') {
     state = null;
+    bufferPool.length = 0; // Clear references to free memory
     return;
   }
 

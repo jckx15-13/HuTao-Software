@@ -181,7 +181,7 @@ function InlineText({ text }: { text: string }) {
   return <>{nodes}</>;
 }
 
-function CodeBlock({ language, value }: { language: string; value: string }) {
+function CodeBlock({ language, value }: { language: string; value: string; key?: any }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {

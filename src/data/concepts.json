@@ -30,5 +30,85 @@
     "mastery": 0,
     "lastReviewed": null,
     "tags": ["Cybersecurity", "Security"]
+  },
+  {
+    "id": "cyb-4",
+    "title": "Synthetic Telepathy",
+    "description": "Direct brain-to-brain data transfer via neural lace, bypassing verbal communication.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["Neural", "Communication"]
+  },
+  {
+    "id": "cyb-5",
+    "title": "Quantum Encryption Bio-Keys",
+    "description": "Using DNA sequences as dynamic seeds for quantum-resistant encryption protocols.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["Security", "Bio-tech"]
+  },
+  {
+    "id": "cyb-6",
+    "title": "Memetic Firewalling",
+    "description": "Techniques to prevent cognitive infiltration via malicious visual or auditory stimuli.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["Cybersecurity", "Cognitive"]
+  },
+  {
+    "id": "cyb-7",
+    "title": "Exocortex Modularization",
+    "description": "Offloading specific cognitive tasks to hot-swappable external hardware modules.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["Hardware", "Neural"]
+  },
+  {
+    "id": "cyb-8",
+    "title": "Biometric Cloaking",
+    "description": "Scrambling thermal and electrical signatures to bypass advanced sentinel detection.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["Stealth", "Bio-metrics"]
+  },
+  {
+    "id": "cyb-9",
+    "title": "Recursive Self-Repair Nano-swarms",
+    "description": "Microscopic robots that identify and fix structural failures in cybernetic systems.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["Nanotech", "Maintenance"]
+  },
+  {
+    "id": "cyb-10",
+    "title": "Neural Plasticity Overclocking",
+    "description": "Temporary boosting of learning speed by modulating neurotransmitter levels.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["Neural", "Enhancement"]
+  },
+  {
+    "id": "cyb-11",
+    "title": "Digital Soul Fragmenting",
+    "description": "Distributing consciousness across decentralized nodes to prevent hardware-bound death.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["AI", "Philosophy"]
+  },
+  {
+    "id": "cyb-12",
+    "title": "Haptic Feedback Ghosting",
+    "description": "Simulating physical touch in virtual environments with zero-latency response.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["Virtual Reality", "Haptics"]
+  },
+  {
+    "id": "cyb-13",
+    "title": "Atmospheric Data Siphoning",
+    "description": "Extracting encrypted information from environmental oscillations and radio noise.",
+    "mastery": 0,
+    "lastReviewed": null,
+    "tags": ["Espionage", "Data"]
   }
 ]

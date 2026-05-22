@@ -83,6 +83,13 @@ export function ParticleOverlay() {
           ctx.arc(frame[base], frame[base + 1], frame[base + 2], 0, Math.PI * 2);
           ctx.fill();
         }
+
+        // Return the ArrayBuffer back to the Web Worker for reuse (double-buffering)
+        if (worker && usingWorker) {
+          const buffer = frame.buffer;
+          frameRef.current = null; // Detach locally to prevent drawing detaching buffer
+          worker.postMessage({ type: 'releaseBuffer', buffer }, [buffer]);
+        }
       }
 
       rafId = window.requestAnimationFrame(drawFrame);

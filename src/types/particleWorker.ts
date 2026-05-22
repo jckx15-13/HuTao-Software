@@ -22,11 +22,17 @@ export interface ParticleWorkerStopMessage {
   type: 'stop';
 }
 
+export interface ParticleWorkerReleaseBufferMessage {
+  type: 'releaseBuffer';
+  buffer: ArrayBuffer;
+}
+
 export type ParticleWorkerMessage =
   | ParticleWorkerInitMessage
   | ParticleWorkerResizeMessage
   | ParticleWorkerTickMessage
-  | ParticleWorkerStopMessage;
+  | ParticleWorkerStopMessage
+  | ParticleWorkerReleaseBufferMessage;
 
 export interface ParticleWorkerFrameMessage {
   type: 'frame';
