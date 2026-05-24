@@ -1,6 +1,6 @@
 import { type ChangeEvent, useState } from 'react';
 import { ImageIcon, Loader2, Check, Sparkles, Layout, Type, Palette } from 'lucide-react';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 import { palettes, type PaletteKey } from '../../lib/themeEngine';
 import { extractThemeFromImage } from '../../lib/imageTheme';
 

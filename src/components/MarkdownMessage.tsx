@@ -146,7 +146,7 @@ function InlineText({ text }: { text: string }) {
   const addChangeLog = useUIStore((s) => s.addChangeLog);
 
   const nodes: ReactNode[] = [];
-  const tokenRe = /(`[^`]+`|\[[^\]]+\]\((https?:\/\/[^)\s]+|mailto:[^)\s]+)\))/g;
+  const tokenRe = /(`[^`]+`|\[[^\]]+\]\((https?:\/\/[^)\s]+|mailto:[^)\s]+|geo:[^)\s]+)\))/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -176,6 +176,18 @@ function InlineText({ text }: { text: string }) {
               setRightPanelTab('browser');
               setRightPanelOpen(true);
               addChangeLog('BROWSER', `Opened reference URL: ${href}`, 'info');
+            } else if (href.startsWith('geo:')) {
+              e.preventDefault();
+              const coords = href.replace('geo:', '').split(',');
+              if (coords.length >= 2) {
+                const lat = parseFloat(coords[0]);
+                const lon = parseFloat(coords[1]);
+                const alt = coords.length > 2 ? parseFloat(coords[2]) : 50000;
+                import('../core/data/DataBus').then(({ dataBus }) => {
+                  dataBus.emit('cameraGoTo', { lat, lon, alt });
+                });
+                addChangeLog('GLOBE_NAV', `Flying to ${label}`, 'success');
+              }
             }
           }}
           target="_blank"

@@ -25,7 +25,7 @@ import {
   Check,
 } from 'lucide-react';
 import * as Cesium from 'cesium';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 import { locations, type LocationData } from '../../data/locations';
 import { tours, type Tour, type TourStep } from '../../data/tours';
 import {

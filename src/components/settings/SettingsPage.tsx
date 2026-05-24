@@ -1,5 +1,5 @@
 import { X, Palette, Brain, Link2, Sparkles, Info } from 'lucide-react';
-import { useUIStore, type SettingsCategory } from '../../store/uiStore';
+import { useUIStore, type SettingsCategory } from '@/store/uiStore';
 import { PersonalisationSettings } from './PersonalisationSettings';
 import { AiSettings } from './AiSettings';
 import { NotionSettings } from './NotionSettings';

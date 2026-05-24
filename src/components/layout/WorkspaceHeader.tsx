@@ -1,5 +1,5 @@
 import { Cpu, Wifi, Battery, Menu, Bell, User } from 'lucide-react';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 
 export function WorkspaceHeader() {
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);

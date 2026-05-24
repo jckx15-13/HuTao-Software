@@ -1,5 +1,5 @@
 import React, { Suspense, useState, useEffect, useRef } from 'react';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 import { useIssTelemetry } from '../../hooks/useIssTelemetry';
 import {
   LANDMASS_POINTS_3D,

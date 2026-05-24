@@ -4,6 +4,7 @@
  * Supports Google Photorealistic 3D Tiles → OSM fallback.
  */
 import * as Cesium from 'cesium';
+import { loadConfig } from './config';
 
 /** Attempt to load Google Photorealistic 3D Tiles (requires API key). */
 async function setupGooglePhotorealistic3D(viewer: Cesium.Viewer, apiKey: string): Promise<boolean> {
@@ -29,7 +30,8 @@ function setupOpenStreetMap(viewer: Cesium.Viewer): void {
  * Resolves when imagery is ready. Never throws — always falls back gracefully.
  */
 export async function setupImagery(viewer: Cesium.Viewer): Promise<void> {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+  const config = await loadConfig();
+  const apiKey = config.GOOGLE_MAPS_API_KEY || (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined);
 
   if (apiKey) {
     const ok = await setupGooglePhotorealistic3D(viewer, apiKey);

@@ -1,4 +1,4 @@
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 import { ChevronRight, Globe, Terminal, Info, MapPin, Radio, Compass, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -19,8 +19,6 @@ export function RightPanel() {
   const browserUrl = useUIStore((s) => s.browserUrl);
   const setBrowserUrl = useUIStore((s) => s.setBrowserUrl);
   const changeLogs = useUIStore((s) => s.changeLogs);
-
-  if (!rightPanelOpen) return null;
 
   return (
     <aside className="glass-panel flex h-full w-[310px] flex-col border-l border-white/5 select-none" style={{ borderRadius: 0 }}>

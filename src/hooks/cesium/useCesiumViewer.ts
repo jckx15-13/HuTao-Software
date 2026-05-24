@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as Cesium from 'cesium';
 import { setupImagery } from '../../lib/imageryFactory';
+import { loadConfig } from '../../lib/config';
 
 /**
  * Cesium viewer hook with WWV-inspired performance optimizations.
@@ -40,7 +41,16 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     }
 
     let viewer: Cesium.Viewer;
-    try {
+    let active = true;
+
+    loadConfig().then((config) => {
+      if (!active) return;
+      
+      if (config.CESIUM_ION_ACCESS_TOKEN) {
+        Cesium.Ion.defaultAccessToken = config.CESIUM_ION_ACCESS_TOKEN;
+      }
+
+      try {
       // Firefox detection for MSAA workaround (from WWV)
       const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
 
@@ -70,7 +80,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
         maximumRenderTimeChange: 0.5,
 
         // WWV pattern: Request WebGL2 for better performance + built-in AA
-        contextOptions: { requestWebgl1: false, webgl: { antialias: true } },
+        contextOptions: { webgl: { antialias: true } },
 
         // MSAA: 1 sample on Firefox (buggy), 2x elsewhere for quality/perf balance
         msaaSamples: isFirefox ? 1 : 2,
@@ -144,8 +154,13 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     viewer.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(0, 20, 20_000_000),
     });
+    }).catch((err) => {
+      setError(err?.message ?? String(err));
+      setIsLoaded(true);
+    });
 
     return () => {
+      active = false;
       if (viewerRef.current) {
         viewerRef.current.destroy();
         viewerRef.current = null;

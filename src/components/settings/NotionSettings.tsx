@@ -1,5 +1,5 @@
 import { Link2, Shield, Database } from 'lucide-react';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 import { SettingsSection } from './SettingsSection';
 
 export function NotionSettings() {

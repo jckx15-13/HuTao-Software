@@ -9,7 +9,8 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss(), cesium()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(__dirname, 'src'),
+        '@worldwideview/wwv-plugin-sdk': path.resolve(__dirname, 'src/wwv-sdk/index.ts'),
       },
     },
     server: {
@@ -26,10 +27,10 @@ export default defineConfig(() => {
         output: {
           manualChunks(id) {
             if (!id.includes('node_modules')) return undefined;
-            if (id.includes('cesium')) return 'cesium'; // Isolate Cesium for caching
-            if (id.includes('react') || id.includes('react-dom')) return 'react';
-            if (id.includes('lucide-react')) return 'icons';
-            if (id.includes('zustand')) return 'state';
+            if (id.includes('/node_modules/cesium/')) return 'cesium'; // Isolate Cesium for caching
+            if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/')) return 'react';
+            if (id.includes('/node_modules/lucide-react/')) return 'icons';
+            if (id.includes('/node_modules/zustand/')) return 'state';
             return 'vendor';
           },
         },

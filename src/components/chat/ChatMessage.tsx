@@ -1,6 +1,6 @@
 import { User, Bot } from 'lucide-react';
 import { MarkdownMessage } from '../MarkdownMessage';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 
 interface ChatMessageProps {
   sender: 'user' | 'ai' | 'system' | 'assistant';

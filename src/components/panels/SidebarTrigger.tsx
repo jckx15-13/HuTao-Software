@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 
 export function SidebarTrigger() {
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);

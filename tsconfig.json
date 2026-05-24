@@ -17,10 +17,11 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@worldwideview/wwv-plugin-sdk": ["src/wwv-sdk/index.ts"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["node_modules", "google-earth-remix"]
+  "exclude": ["node_modules", "google-earth-remix", "_archive"]
 }

@@ -1,11 +1,10 @@
 import React, { Suspense } from 'react';
 import { MessageSquare, Globe2, Sparkles } from 'lucide-react';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 import { ChatPanel } from '../ChatPanel';
 import { ChatInputBar } from '../chat/ChatInputBar';
 import { useAIChat } from '../../hooks/useAIChat';
-
-const GoogleEarthRemix = React.lazy(() => import('../learning/GoogleEarthRemix'));
+import GoogleEarthRemix from '../learning/GoogleEarthRemix';
 
 export function CenterPanel() {
   const interactionMode = useUIStore((s) => s.interactionMode);
@@ -64,19 +63,8 @@ export function CenterPanel() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 w-full flex flex-col relative overflow-hidden">
-          <Suspense fallback={
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md z-30">
-              <div className="flex flex-col items-center gap-4">
-                <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-primary animate-pulse">
-                  Syncing Earth Interface...
-                </span>
-              </div>
-            </div>
-          }>
-            <GoogleEarthRemix />
-          </Suspense>
+        <div className="flex-1 w-full flex flex-col relative overflow-hidden pointer-events-none">
+          <GoogleEarthRemix />
         </div>
       )}
     </div>

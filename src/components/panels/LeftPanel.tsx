@@ -12,7 +12,7 @@ import {
   Flame,
   BookOpen,
 } from 'lucide-react';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 import { FileTreeSection, TreeItem } from './FileTreeSection';
 import { ChatSessionList } from './ChatSessionList';
 
@@ -23,8 +23,6 @@ export function LeftPanel() {
   const activeLocation = useUIStore((s) => s.activeLocation);
   
   const [searchQuery, setSearchQuery] = useState('');
-
-  if (!leftPanelOpen) return null;
 
   return (
     <aside className="glass-panel flex h-full w-[260px] flex-col border-r border-white/5 select-none" style={{ borderRadius: 0 }}>

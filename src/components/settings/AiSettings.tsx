@@ -1,4 +1,4 @@
-import { useUIStore, type AiModel } from '../../store/uiStore';
+import { useUIStore, type AiModel } from '@/store/uiStore';
 import { SettingsSection } from './SettingsSection';
 
 const ModelOptions: { label: string; value: AiModel }[] = [

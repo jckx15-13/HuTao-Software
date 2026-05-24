@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 import { Hexagon, Terminal, ChevronDown, ChevronUp, Cpu, Wifi, Battery, Database, ArrowRight } from 'lucide-react';
 
 export function LauncherPage() {

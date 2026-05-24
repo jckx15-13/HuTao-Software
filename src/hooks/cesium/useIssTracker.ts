@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as Cesium from 'cesium';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 
 /** Maximum trail positions — lower = less Cesium primitive overhead. */
 const MAX_TRAIL = 30;

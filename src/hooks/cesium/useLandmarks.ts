@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as Cesium from 'cesium';
 import { locations } from '../../data/locations';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 import { slerp, latLngToVector, bezierEase } from '../../lib/physics';
 
 /**

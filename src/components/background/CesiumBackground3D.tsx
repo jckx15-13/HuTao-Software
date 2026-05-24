@@ -3,6 +3,7 @@ import { useCesiumViewer } from '../../hooks/cesium/useCesiumViewer';
 import { useLandmarks } from '../../hooks/cesium/useLandmarks';
 import { useIssTracker } from '../../hooks/cesium/useIssTracker';
 import { useAutoRotation } from '../../hooks/cesium/useAutoRotation';
+import { useWWVGlobe } from '../../hooks/cesium/useWWVGlobe';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 interface CesiumBackground3DProps {
@@ -27,6 +28,7 @@ export default function CesiumBackground3D({ interactive, onError }: CesiumBackg
   useLandmarks(viewer);
   useIssTracker(viewer);
   useAutoRotation(viewer, interactive);
+  useWWVGlobe(viewer);
 
   return (
     <div className="absolute inset-0 h-full w-full bg-black animate-fade-in" style={{ zIndex: 0 }}>

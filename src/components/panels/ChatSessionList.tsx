@@ -1,5 +1,5 @@
 import { MessageSquare, Plus, Trash2, FolderGit } from 'lucide-react';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 
 export function ChatSessionList() {
   const chatSessions = useUIStore((s) => s.chatSessions);

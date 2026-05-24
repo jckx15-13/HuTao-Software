@@ -1,5 +1,5 @@
 import { Sparkles, Volume2 } from 'lucide-react';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '@/store/uiStore';
 import { SettingsSection } from './SettingsSection';
 
 export function FeedbackSettings() {
