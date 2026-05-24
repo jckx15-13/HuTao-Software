@@ -14,9 +14,11 @@ export function CenterPanel() {
   const { sendMessage } = useAIChat();
 
   return (
-    <div className="flex h-full flex-1 flex-col overflow-hidden relative">
+    <div className={`flex h-full flex-1 flex-col overflow-hidden relative ${
+      interactionMode === 'earth' ? 'pointer-events-none' : 'pointer-events-auto'
+    }`}>
       {/* Dynamic Segmented Mode Switcher (Pill Style) */}
-      <div className="absolute top-3 left-1/2 z-20 -translate-x-1/2">
+      <div className="absolute top-3 left-1/2 z-20 -translate-x-1/2 pointer-events-auto">
         <div className="glass-panel flex items-center p-1 rounded-full border border-white/5 shadow-lg">
           <button
             type="button"
@@ -63,7 +65,7 @@ export function CenterPanel() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 w-full flex flex-col relative overflow-hidden pointer-events-none">
+        <div className="flex-1 w-full flex flex-col relative overflow-hidden">
           <GoogleEarthRemix />
         </div>
       )}

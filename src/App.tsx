@@ -51,9 +51,11 @@ export default function App() {
         {currentPage === 'launcher' ? (
           <LauncherPage />
         ) : (
-          <div className="relative flex flex-col h-full w-full z-10">
+          <div className="relative flex flex-col h-full w-full z-10 pointer-events-none">
             {/* Header */}
-            <WorkspaceHeader />
+            <div className="pointer-events-auto">
+              <WorkspaceHeader />
+            </div>
 
             {/* Main 3-panel container */}
             <div className="flex-1 flex w-full min-h-0 relative overflow-hidden">
@@ -101,7 +103,9 @@ export default function App() {
             {/* Settings Overlay Portal */}
             {currentPage === 'settings' && (
               <Suspense fallback={null}>
-                <SettingsPage />
+                <div className="pointer-events-auto absolute inset-0">
+                  <SettingsPage />
+                </div>
               </Suspense>
             )}
           </div>

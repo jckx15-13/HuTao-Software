@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import * as Cesium from 'cesium';
 import { useUIStore } from '@/store/uiStore';
+import { useStore } from '../../core/state/store';
+import { pluginManager } from '../../core/plugins/PluginManager';
 import { locations, type LocationData } from '../../data/locations';
 import { tours, type Tour, type TourStep } from '../../data/tours';
 import {
@@ -57,12 +59,16 @@ export default function GoogleEarthRemix() {
   const [measureDistance, setMeasureDistance] = useState<number | null>(null);
   const [activePanorama, setActivePanorama] = useState<string | null>(null);
   const [hasCesium, setHasCesium] = useState(false);
-  const [activePanel, setActivePanel] = useState<'search' | 'voyager' | 'places' | 'layers' | 'measure' | null>('search');
+  const [activePanel, setActivePanel] = useState<'search' | 'voyager' | 'places' | 'layers' | 'measure' | 'plugins' | null>('search');
 
   // 2. Zustand Store integrations
   const activeLocation = useUIStore((s) => s.activeLocation);
   const setActiveLocation = useUIStore((s) => s.setActiveLocation);
   const setIssFeedOpen = useUIStore((s) => s.setIssFeedOpen);
+
+  const mapConfig = useStore((s) => s.mapConfig);
+  const updateMapConfig = useStore((s) => s.updateMapConfig);
+  const layers = useStore((s) => s.layers);
 
   // 3. Fallback Interactive Canvas Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -73,8 +79,7 @@ export default function GoogleEarthRemix() {
   const clickStartPosRef = useRef({ x: 0, y: 0 });
   const hoverLocationRef = useRef<LocationData | null>(null);
 
-
-  // Synchronize target coordinates with active location
+  // 4. Fallback Interactive Canvas Refs
   useEffect(() => {
     if (activeLocation) {
       targetRef.current = {
@@ -769,6 +774,15 @@ export default function GoogleEarthRemix() {
             <Ruler size={20} />
             <span>Measure</span>
           </button>
+          <button
+            type="button"
+            className={`earth-sidebar-btn ${activePanel === 'plugins' ? 'active' : ''}`}
+            onClick={() => setActivePanel(activePanel === 'plugins' ? null : 'plugins')}
+            title="Ingestion Plugins"
+          >
+            <FolderKanban size={20} />
+            <span>Plugins</span>
+          </button>
           
           <div className="earth-sidebar-spacer" />
           
@@ -800,6 +814,8 @@ export default function GoogleEarthRemix() {
               />
             </div>
           )}
+
+          {/* Direct Pass-Through: Clicks go straight to the background Cesium canvas */}
 
           {/* Floating Panels: Rendered absolute on top of the stage next to sidebar */}
 
@@ -898,10 +914,10 @@ export default function GoogleEarthRemix() {
           {activePanel === 'layers' && (
             <aside className="earth-panel earth-layers-panel" aria-label="Map Style Panel">
               <div className="earth-panel-header">
-                <span className="earth-panel-title">Map Style Layers</span>
+                <span className="earth-panel-title">Map Style & Graphics</span>
                 <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
               </div>
-              <div className="earth-layers-list">
+              <div className="earth-layers-list scroller p-3 space-y-4">
                 <div className="earth-layer-preset-grid">
                   <button 
                     type="button" 
@@ -921,7 +937,7 @@ export default function GoogleEarthRemix() {
                   </button>
                 </div>
                 
-                <div className="earth-layer-toggles">
+                <div className="earth-layer-toggles space-y-2">
                   <label className="earth-layer-checkbox-label">
                     <input 
                       type="checkbox" 
@@ -947,6 +963,151 @@ export default function GoogleEarthRemix() {
                     <span>Show Atmospheric Shadows</span>
                   </label>
                 </div>
+
+                <div className="border-t border-white/5 pt-3">
+                  <span className="text-[10px] font-bold tracking-wider text-primary uppercase block mb-2 font-mono">Graphics Quality</span>
+                  
+                  <div className="space-y-3 text-[10px] font-mono text-white/70">
+                    <label className="flex items-center justify-between cursor-pointer">
+                      <span>Show FPS Counter</span>
+                      <input 
+                        type="checkbox" 
+                        checked={mapConfig.showFps} 
+                        onChange={(e) => updateMapConfig({ showFps: e.target.checked })} 
+                        className="rounded border-white/10 bg-black/20 text-primary"
+                      />
+                    </label>
+                    
+                    <label className="flex items-center justify-between cursor-pointer">
+                      <span>Dynamic Shadows</span>
+                      <input 
+                        type="checkbox" 
+                        checked={mapConfig.shadowsEnabled} 
+                        onChange={(e) => updateMapConfig({ shadowsEnabled: e.target.checked })} 
+                        className="rounded border-white/10 bg-black/20 text-primary"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between cursor-pointer">
+                      <span>Dynamic Sun/Moon Lighting</span>
+                      <input 
+                        type="checkbox" 
+                        checked={mapConfig.enableLighting} 
+                        onChange={(e) => updateMapConfig({ enableLighting: e.target.checked })} 
+                        className="rounded border-white/10 bg-black/20 text-primary"
+                      />
+                    </label>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <span>Resolution Scale</span>
+                        <span>{mapConfig.resolutionScale.toFixed(2)}x</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0.5" 
+                        max="1.5" 
+                        step="0.1" 
+                        value={mapConfig.resolutionScale} 
+                        onChange={(e) => updateMapConfig({ resolutionScale: parseFloat(e.target.value) })}
+                        className="w-full accent-primary h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <span>Anti-Aliasing</span>
+                      <select 
+                        value={mapConfig.antiAliasing} 
+                        onChange={(e) => updateMapConfig({ antiAliasing: e.target.value as any })}
+                        className="bg-[#111217] border border-white/10 rounded px-1.5 py-0.5 text-[9px] text-white focus:outline-none"
+                      >
+                        <option value="none">None</option>
+                        <option value="fxaa">FXAA</option>
+                        <option value="msaa2x">MSAA 2x</option>
+                        <option value="msaa4x">MSAA 4x</option>
+                        <option value="msaa8x">MSAA 8x</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <span>Level of Detail (LOD)</span>
+                      <select 
+                        value={mapConfig.maxScreenSpaceError} 
+                        onChange={(e) => updateMapConfig({ maxScreenSpaceError: parseInt(e.target.value) })}
+                        className="bg-[#111217] border border-white/10 rounded px-1.5 py-0.5 text-[9px] text-white focus:outline-none"
+                      >
+                        <option value="16">High Detail (16)</option>
+                        <option value="32">Balanced (32)</option>
+                        <option value="64">High Performance (64)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          )}
+
+          {/* 6. Ingestion Plugins Panel */}
+          {activePanel === 'plugins' && (
+            <aside className="earth-panel earth-plugins-panel" aria-label="Plugins Panel">
+              <div className="earth-panel-header">
+                <span className="earth-panel-title">Ingestion Plugins</span>
+                <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
+              </div>
+              
+              <div className="earth-layers-list scroller p-3 space-y-3">
+                {pluginManager.getAllPlugins().map((managed) => {
+                  const pId = managed.plugin.id;
+                  const layerState = layers[pId] || { enabled: false, entityCount: 0, loading: false };
+                  const IconComponent = managed.plugin.icon;
+                  
+                  return (
+                    <div key={pId} className="glass-panel p-3 border border-white/5 space-y-2 rounded-lg bg-black/25">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-primary shrink-0">
+                            {IconComponent && <IconComponent size={16} />}
+                          </span>
+                          <div>
+                            <div className="text-[10px] font-bold tracking-wide text-white">{managed.plugin.name}</div>
+                            <div className="text-[8px] font-mono text-white/40">v{managed.plugin.version} · {managed.plugin.category}</div>
+                          </div>
+                        </div>
+                        
+                        <button
+                          type="button"
+                          onClick={() => pluginManager.togglePlugin(pId)}
+                          className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            layerState.enabled ? 'bg-primary' : 'bg-white/10'
+                          }`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                              layerState.enabled ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      
+                      <p className="text-[9px] text-white/50 leading-relaxed">{managed.plugin.description}</p>
+                      
+                      {layerState.enabled && (
+                        <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[8px] font-mono text-white/40">
+                          <div className="flex items-center gap-1">
+                            <span className={`h-1.5 w-1.5 rounded-full ${layerState.loading ? 'bg-amber-400 animate-pulse' : 'bg-green-500'}`} />
+                            <span>{layerState.loading ? 'Syncing...' : 'Connected'}</span>
+                          </div>
+                          <div>
+                            <span>{layerState.entityCount} Entities</span>
+                          </div>
+                          <div>
+                            <span>{managed.plugin.getPollingInterval() / 1000}s poll</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </aside>
           )}

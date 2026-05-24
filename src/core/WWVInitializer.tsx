@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { injectHostGlobals } from './plugins/hostGlobals';
 import { pluginManager } from './plugins/PluginManager';
+import { pluginRegistry } from './plugins/PluginRegistry';
+import { IssPlugin } from '../plugins/iss/IssPlugin';
+import { EarthquakesPlugin } from '../plugins/earthquakes/EarthquakesPlugin';
+import { DataBusSubscriber } from '../components/layout/DataBusSubscriber';
 
 export function WWVInitializer({ children }: { children: React.ReactNode }) {
   const [initialized, setInitialized] = useState(false);
@@ -11,6 +15,16 @@ export function WWVInitializer({ children }: { children: React.ReactNode }) {
       await injectHostGlobals();
       // 2. Initialize the plugin manager (DataBus pub/sub, IndexDB caches)
       await pluginManager.init();
+
+      // Register built-in plugins
+      const iss = new IssPlugin();
+      const earthquakes = new EarthquakesPlugin();
+      
+      await pluginManager.registerPlugin(iss);
+      pluginRegistry.register(iss);
+      
+      await pluginManager.registerPlugin(earthquakes);
+      pluginRegistry.register(earthquakes);
       
       // Setup complete
       setInitialized(true);
@@ -35,5 +49,10 @@ export function WWVInitializer({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <DataBusSubscriber />
+      {children}
+    </>
+  );
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as Cesium from 'cesium';
 import { locations } from '../../data/locations';
 import { useUIStore } from '@/store/uiStore';
+import { useStore } from '../../core/state/store';
 import { slerp, latLngToVector, bezierEase } from '../../lib/physics';
 
 /**
@@ -61,7 +62,10 @@ export function useLandmarks(viewer: Cesium.Viewer | null) {
         setIssFeedOpen(true);
       } else {
         const found = locations.find((l) => l.id === entityId);
-        if (found) setActiveLocation(found);
+        if (found) {
+          setActiveLocation(found);
+          useStore.getState().setSelectedEntity(null); // Clear plugin selection
+        }
       }
       viewer.scene.requestRender();
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);

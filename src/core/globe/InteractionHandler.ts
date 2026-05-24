@@ -8,6 +8,7 @@ import {
 import type { Viewer as CesiumViewer, Cartesian2 } from "cesium";
 import type { GeoEntity } from "@/core/plugins/PluginTypes";
 import { useStore } from "@/core/state/store";
+import { useUIStore } from "@/store/uiStore";
 import {
     findStackByEntityId, expandStack, collapseStack, getStacks
 } from "./StackManager";
@@ -71,6 +72,11 @@ export function setupInteractionHandlers(
                         expandedStackId = null;
                     }
                 }
+                
+                // Clear activeLocation in UI Store and open the context panel
+                useUIStore.getState().setActiveLocation(null);
+                useUIStore.getState().setRightPanelTab('context');
+                useUIStore.getState().setRightPanelOpen(true);
             } else {
                 // Clicked empty space -> clear selection and close any open stack
                 useStore.getState().setSelectedEntity(null);
