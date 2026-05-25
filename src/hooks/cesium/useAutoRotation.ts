@@ -10,8 +10,9 @@ export function useAutoRotation(viewer: Cesium.Viewer | null, interactive: boole
 
   // Toggle camera interaction controls
   useEffect(() => {
-    if (!viewer) return;
-    const sscc = viewer.scene.screenSpaceCameraController;
+    if (!viewer || (viewer as any).isDestroyed && (viewer as any).isDestroyed()) return;
+    const sscc = viewer.scene && viewer.scene.screenSpaceCameraController;
+    if (!sscc) return;
     sscc.enableRotate = interactive;
     sscc.enableTranslate = interactive;
     sscc.enableZoom = interactive;
@@ -29,6 +30,7 @@ export function useAutoRotation(viewer: Cesium.Viewer | null, interactive: boole
     // the user might trigger zoom from scroll in some edge cases)
     const onMoveStart = () => { userInteractingRef.current = true; };
     const onMoveEnd = () => { userInteractingRef.current = false; };
+    if (!(viewer && !(viewer as any).isDestroyed())) return;
     viewer.camera.moveStart.addEventListener(onMoveStart);
     viewer.camera.moveEnd.addEventListener(onMoveEnd);
 
@@ -45,9 +47,13 @@ export function useAutoRotation(viewer: Cesium.Viewer | null, interactive: boole
     });
 
     return () => {
-      removeListener();
-      viewer.camera.moveStart.removeEventListener(onMoveStart);
-      viewer.camera.moveEnd.removeEventListener(onMoveEnd);
+      try {
+        removeListener && removeListener();
+        if (viewer && !(viewer as any).isDestroyed()) {
+          viewer.camera.moveStart.removeEventListener(onMoveStart);
+          viewer.camera.moveEnd.removeEventListener(onMoveEnd);
+        }
+      } catch (cleanupErr) {}
     };
   }, [viewer, interactive]);
 }

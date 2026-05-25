@@ -19,7 +19,7 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
 
   // Create ISS entity + trail on mount
   useEffect(() => {
-    if (!viewer) return;
+    if (!viewer || (viewer as any).isDestroyed && (viewer as any).isDestroyed()) return;
 
     issEntityRef.current = viewer.entities.add({
       id: 'iss',
@@ -61,8 +61,12 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
     viewer.scene.requestRender();
 
     return () => {
-      if (issEntityRef.current) viewer.entities.remove(issEntityRef.current);
-      if (issPathEntityRef.current) viewer.entities.remove(issPathEntityRef.current);
+      try {
+        if (viewer && !(viewer as any).isDestroyed()) {
+          if (issEntityRef.current && viewer.entities) viewer.entities.remove(issEntityRef.current);
+          if (issPathEntityRef.current && viewer.entities) viewer.entities.remove(issPathEntityRef.current);
+        }
+      } catch (cleanupErr) {}
       issEntityRef.current = null;
       issPathEntityRef.current = null;
       positionsRef.current = [];

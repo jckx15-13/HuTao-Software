@@ -22,6 +22,8 @@ export default function App() {
   
   // Custom customWallpaper / theme background styles
   const customWallpaper = useUIStore((s) => s.customWallpaper);
+  // Scanline overlay preference (read once per render to avoid conditional hooks)
+  const scanlineOverlay = useUIStore((s) => s.scanlineOverlay);
 
   // Background style overlay
   const backgroundStyle = customWallpaper
@@ -56,7 +58,7 @@ export default function App() {
         )}
 
         {/* Optional Scanline overlay for cyberpunk feel (toggle in settings) */}
-        {interactionMode === 'chat' && useUIStore((s) => s.scanlineOverlay) && (
+        {interactionMode === 'chat' && scanlineOverlay && (
           <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[size:100%_4px] pointer-events-none z-10" />
         )}
 

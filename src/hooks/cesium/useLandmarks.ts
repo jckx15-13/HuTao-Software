@@ -19,7 +19,7 @@ export function useLandmarks(viewer: Cesium.Viewer | null) {
 
   // Mount all markers in a single batch
   useEffect(() => {
-    if (!viewer) return;
+    if (!viewer || (viewer as any).isDestroyed && (viewer as any).isDestroyed()) return;
 
     // Batch-create all location entities at once
     const entities = locations.map((loc) =>
@@ -71,8 +71,18 @@ export function useLandmarks(viewer: Cesium.Viewer | null) {
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
     return () => {
-      entities.forEach((e) => viewer.entities.remove(e));
-      handler.destroy();
+      try {
+        if (viewer && !(viewer as any).isDestroyed()) {
+          entities.forEach((e) => {
+            try {
+              if (viewer.entities) viewer.entities.remove(e);
+            } catch (e) {}
+          });
+          if (handler && typeof handler.destroy === 'function') handler.destroy();
+        }
+      } catch (cleanupErr) {
+        // swallow cleanup errors
+      }
     };
   }, [viewer, setActiveLocation, setIssFeedOpen]);
 
