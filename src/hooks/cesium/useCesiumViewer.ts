@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import * as Cesium from 'cesium';
 import { setupImagery } from '../../lib/imageryFactory';
 import { loadConfig } from '../../lib/config';
+import { useUIStore } from '../../store/uiStore';
 
 /**
  * Cesium viewer hook with WWV-inspired performance optimizations.
@@ -149,6 +150,37 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
       { eventType: Cesium.CameraEventType.LEFT_DRAG, modifier: Cesium.KeyboardEventModifier.CTRL },
     ];
 
+    // Camera sensitivity tuning (user-controlled via UI store)
+    try {
+      const sensitivity = typeof useUIStore?.getState === 'function' ? useUIStore.getState().cameraSensitivity ?? 1.0 : 1.0;
+      const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+      // Higher sensitivity => faster response, less inertia, stronger zoom
+      sscc.inertiaSpin = clamp(0.9 - (sensitivity - 1) * 0.12, 0.2, 0.95);
+      sscc.inertiaTranslate = clamp(0.9 - (sensitivity - 1) * 0.12, 0.2, 0.95);
+      sscc.inertiaZoom = clamp(0.8 - (sensitivity - 1) * 0.1, 0.15, 0.95);
+      sscc.zoomFactor = 5 * Math.max(0.25, sensitivity);
+      sscc.maximumMovementRatio = clamp(0.1 * (1 + (sensitivity - 1) * 0.5), 0.05, 0.5);
+    } catch (e) {
+      // Ignore if store is unavailable in some test contexts
+    }
+
+    // Ensure pointer interactions request a render when using requestRenderMode
+    const canvas = viewer.scene.canvas as HTMLCanvasElement;
+    const requestRender = () => {
+      try { viewer.scene.requestRender(); } catch (err) { /* ignore */ }
+    };
+    const pointerHandler = () => requestRender();
+    canvas.addEventListener('pointerdown', pointerHandler);
+    canvas.addEventListener('pointerup', pointerHandler);
+    canvas.addEventListener('pointermove', pointerHandler);
+    canvas.addEventListener('wheel', pointerHandler, { passive: true } as AddEventListenerOptions);
+    if ((viewer.camera as any)?.changed?.addEventListener) {
+      try {
+        (viewer.camera as any).changed.addEventListener(requestRender);
+      } catch (e) {}
+    }
+
     // Load imagery asynchronously (never blocks viewer creation)
     setupImagery(viewer)
       .catch((err) => console.warn('Imagery setup failed:', err))
@@ -170,6 +202,19 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
 
     return () => {
       active = false;
+      try {
+        // remove pointer listeners if canvas still exists
+        if (canvas) {
+          canvas.removeEventListener('pointerdown', pointerHandler);
+          canvas.removeEventListener('pointerup', pointerHandler);
+          canvas.removeEventListener('pointermove', pointerHandler);
+          canvas.removeEventListener('wheel', pointerHandler as EventListenerOrEventListenerObject);
+        }
+        if ((viewer as any)?.camera?.changed?.removeEventListener) {
+          try { (viewer as any).camera.changed.removeEventListener(requestRender); } catch (e) {}
+        }
+      } catch (e) {}
+
       if (viewerRef.current) {
         viewerRef.current.destroy();
         viewerRef.current = null;

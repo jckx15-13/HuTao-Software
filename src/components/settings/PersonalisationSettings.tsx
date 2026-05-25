@@ -26,6 +26,8 @@ export function PersonalisationSettings() {
   const updateSettings = useUIStore((s) => s.updateSettings);
   const scanlineOverlay = useUIStore((s) => s.scanlineOverlay);
   const setScanlineOverlay = useUIStore((s) => s.setScanlineOverlay);
+  const cameraSensitivity = useUIStore((s) => s.cameraSensitivity ?? 1.0);
+  const setCameraSensitivity = useUIStore((s) => s.setCameraSensitivity);
   
   const [uploadLoading, setUploadLoading] = useState(false);
 
@@ -392,6 +394,22 @@ export function PersonalisationSettings() {
               max={100}
               value={personalisation.animationIntensity * 100}
               onChange={(e) => updatePersonalisation({ animationIntensity: parseFloat(e.target.value) / 100 })}
+              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+            />
+          </div>
+
+          {/* Camera sensitivity slider */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[10px] font-mono">
+              <span className="uppercase text-white/40">Camera Sensitivity</span>
+              <span className="text-primary font-bold">{Math.round(cameraSensitivity * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min={50}
+              max={200}
+              value={cameraSensitivity * 100}
+              onChange={(e) => setCameraSensitivity(parseFloat(e.target.value) / 100)}
               className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
             />
           </div>

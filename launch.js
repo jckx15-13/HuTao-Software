@@ -114,9 +114,18 @@ async function main() {
             log('Engine', 'SUCCESS', `Frontend is online at ${url}`);
             log('Engine', 'INFO', `Launching default web browser to ${url}...`);
             try {
-              // On Windows, `start` opens the default browser; on Unix, try `xdg-open` then `open` as fallback
+              // On Windows, `start` is a cmd builtin — use cmd.exe to invoke it safely.
               if (process.platform === 'win32') {
-                execSync(`start ${url}`);
+                try {
+                  execSync(`cmd.exe /c start "" "${url.replace(/"/g, '\\"')}"`);
+                } catch (winErr) {
+                  // Fallback: try PowerShell Start-Process
+                  try {
+                    execSync(`powershell -NoProfile -Command Start-Process -FilePath "${url.replace(/"/g, '\\"')}"`);
+                  } catch (psErr) {
+                    log('Engine', 'ERROR', `Could not auto-start browser on Windows: ${psErr.message}`);
+                  }
+                }
               } else {
                 try {
                   execSync(`xdg-open "${url}"`);

@@ -144,6 +144,9 @@ export interface UIStore {
   setShowTerrain: (v: boolean) => void;
   showRoads: boolean;
   setShowRoads: (v: boolean) => void;
+  // Camera / control sensitivity
+  cameraSensitivity: number;
+  setCameraSensitivity: (v: number) => void;
 
   // Location Selection
   activeLocation: LocationData | null;
@@ -317,6 +320,9 @@ export const useUIStore = create<UIStore>()(
         // Scanline / CRT overlay (off by default)
         scanlineOverlay: false,
         setScanlineOverlay: (scanlineOverlay) => set({ scanlineOverlay }),
+        // Camera sensitivity (1.0 = default)
+        cameraSensitivity: 1.0,
+        setCameraSensitivity: (cameraSensitivity) => set({ cameraSensitivity }),
         showBorders: true,
         setShowBorders: (showBorders) => set({ showBorders }),
         showTerrain: true,
@@ -475,6 +481,7 @@ export const useUIStore = create<UIStore>()(
         launcherDismissed: s.launcherDismissed,
         interactionMode: s.interactionMode,
         scanlineOverlay: s.scanlineOverlay,
+        cameraSensitivity: s.cameraSensitivity,
         leftPanelOpen: s.leftPanelOpen,
         rightPanelOpen: s.rightPanelOpen,
         browserUrl: s.browserUrl,
