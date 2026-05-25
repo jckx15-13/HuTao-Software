@@ -27,6 +27,7 @@ export interface Personalisation {
   fontScale: number;
   accentColor: string;
   fontFamily: 'Outfit' | 'Inter' | 'system-ui';
+  panelTransitionStyle: 'slide' | 'swing-3d' | 'fade';
 }
 
 export interface ChatSession {
@@ -55,7 +56,7 @@ export interface ChangeLogEntry {
   level: 'info' | 'warning' | 'error' | 'success' | 'primary';
 }
 
-export type InteractionMode = 'chat' | 'earth';
+export type InteractionMode = 'chat' | 'orbital' | 'telescope';
 export type CurrentPage = 'launcher' | 'workspace' | 'settings';
 export type RightPanelTab = 'context' | 'browser' | 'changes';
 export type SettingsCategory = 'personalisation' | 'ai' | 'connections' | 'feedback' | 'about';
@@ -74,6 +75,7 @@ const defaultPersonalisation: Personalisation = {
   fontScale: 1.0,
   accentColor: '',
   fontFamily: 'Outfit',
+  panelTransitionStyle: 'slide',
 };
 
 function createGlobalChat(): ChatSession {
@@ -133,6 +135,15 @@ export interface UIStore {
   // Interaction Mode
   interactionMode: InteractionMode;
   setInteractionMode: (mode: InteractionMode) => void;
+  // Visual overlays
+  scanlineOverlay: boolean;
+  setScanlineOverlay: (v: boolean) => void;
+  showBorders: boolean;
+  setShowBorders: (v: boolean) => void;
+  showTerrain: boolean;
+  setShowTerrain: (v: boolean) => void;
+  showRoads: boolean;
+  setShowRoads: (v: boolean) => void;
 
   // Location Selection
   activeLocation: LocationData | null;
@@ -203,8 +214,8 @@ export interface UIStore {
   setShowSettings: (v: boolean) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (v: boolean) => void;
-  primaryView: 'chat' | 'earth';
-  setPrimaryView: (v: 'chat' | 'earth') => void;
+  primaryView: 'chat' | 'orbital' | 'telescope';
+  setPrimaryView: (v: 'chat' | 'orbital' | 'telescope') => void;
   rightPanelMode: 'monitor' | 'learning';
   setRightPanelMode: (v: 'monitor' | 'learning') => void;
   settingsDocked: boolean;
@@ -303,6 +314,15 @@ export const useUIStore = create<UIStore>()(
         // Interaction Mode
         interactionMode: 'chat',
         setInteractionMode: (interactionMode) => set({ interactionMode }),
+        // Scanline / CRT overlay (off by default)
+        scanlineOverlay: false,
+        setScanlineOverlay: (scanlineOverlay) => set({ scanlineOverlay }),
+        showBorders: true,
+        setShowBorders: (showBorders) => set({ showBorders }),
+        showTerrain: true,
+        setShowTerrain: (showTerrain) => set({ showTerrain }),
+        showRoads: false,
+        setShowRoads: (showRoads) => set({ showRoads }),
 
         // Location Selection
         activeLocation: null,
@@ -454,10 +474,14 @@ export const useUIStore = create<UIStore>()(
         personalisation: s.personalisation,
         launcherDismissed: s.launcherDismissed,
         interactionMode: s.interactionMode,
+        scanlineOverlay: s.scanlineOverlay,
         leftPanelOpen: s.leftPanelOpen,
         rightPanelOpen: s.rightPanelOpen,
         browserUrl: s.browserUrl,
         changeLogs: s.changeLogs,
+        showBorders: s.showBorders,
+        showTerrain: s.showTerrain,
+        showRoads: s.showRoads,
       }),
     },
   ),

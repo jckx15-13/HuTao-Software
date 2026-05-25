@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-05-25T11:02:23.916Z",
+  "errors": [
+    "Test execution exception: Navigating frame was detached"
+  ],
+  "consoleLogsCount": 2,
+  "status": "FAILED",
+  "failedChecks": [
+    "Test execution exception: Navigating frame was detached"
+  ]
+}

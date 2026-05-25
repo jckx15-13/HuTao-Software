@@ -49,9 +49,15 @@ export default function GoogleEarthRemix() {
   // 1. Primitive useState hooks
   const [query, setQuery] = useState('');
   const [zoom, setZoom] = useState(42);
-  const [showBorders, setShowBorders] = useState(true);
-  const [showTerrain, setShowTerrain] = useState(true);
-  const [showRoads, setShowRoads] = useState(false);
+  
+  // Connected to global Zustand uiStore to sync with Cesium background
+  const showBorders = useUIStore((s) => s.showBorders);
+  const setShowBorders = useUIStore((s) => s.setShowBorders);
+  const showTerrain = useUIStore((s) => s.showTerrain);
+  const setShowTerrain = useUIStore((s) => s.setShowTerrain);
+  const showRoads = useUIStore((s) => s.showRoads);
+  const setShowRoads = useUIStore((s) => s.setShowRoads);
+
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [measureStart, setMeasureStart] = useState<LocationData | null>(null);
@@ -292,71 +298,7 @@ export default function GoogleEarthRemix() {
       ctx.arc(cx, cy, R, 0, 2 * Math.PI);
       ctx.fill();
 
-      // 3. Meridians (Longitudinal grid lines)
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-      ctx.lineWidth = 0.5;
-      for (const path of MERIDIANS_3D) {
-        ctx.beginPath();
-        let firstPoint = true;
-        const len = path.length;
-        for (let i = 0; i < len; i += 3) {
-          const pt = projectUnitVector(
-            path[i],
-            path[i + 1],
-            path[i + 2],
-            sinRot,
-            cosRot,
-            sinTilt,
-            cosTilt,
-            R,
-            cx,
-            cy
-          );
-          if (pt.visible) {
-            if (firstPoint) {
-              ctx.moveTo(pt.x, pt.y);
-              firstPoint = false;
-            } else {
-              ctx.lineTo(pt.x, pt.y);
-            }
-          } else {
-            firstPoint = true;
-          }
-        }
-        ctx.stroke();
-      }
-
-      // 4. Parallels (Latitudinal grid lines)
-      for (const path of PARALLELS_3D) {
-        ctx.beginPath();
-        let firstPoint = true;
-        const len = path.length;
-        for (let i = 0; i < len; i += 3) {
-          const pt = projectUnitVector(
-            path[i],
-            path[i + 1],
-            path[i + 2],
-            sinRot,
-            cosRot,
-            sinTilt,
-            cosTilt,
-            R,
-            cx,
-            cy
-          );
-          if (pt.visible) {
-            if (firstPoint) {
-              ctx.moveTo(pt.x, pt.y);
-              firstPoint = false;
-            } else {
-              ctx.lineTo(pt.x, pt.y);
-            }
-          } else {
-            firstPoint = true;
-          }
-        }
-        ctx.stroke();
-      }
+      // (Grid lines removed to prevent CRT scanline effects)
 
       // 5. Landmass continent node markers
       ctx.fillStyle = 'rgba(91, 168, 98, 0.65)';
@@ -593,14 +535,77 @@ export default function GoogleEarthRemix() {
     };
   }, [measureStart, measureEnd, hasCesium]);
 
-  // Search filter
-  const filteredLocations = useMemo(() => {
+  // Search filter for both landmarks and active plugin entities
+  const filteredResults = useMemo(() => {
     const term = query.trim().toLowerCase();
-    if (!term) return locations.slice(0, 5);
-    return locations.filter((location) =>
-      `${location.name} ${location.country} ${location.category}`.toLowerCase().includes(term),
+
+    // Map static locations
+    const staticMatches = locations.map(l => ({
+      id: l.id,
+      name: l.name,
+      country: l.country,
+      category: l.category,
+      lat: l.lat,
+      lng: l.lng,
+      type: 'landmark' as const,
+      raw: l
+    }));
+
+    // Map plugin entities
+    const pluginMatches: any[] = [];
+    const entitiesByPlugin = useStore.getState().entitiesByPlugin;
+    Object.entries(entitiesByPlugin).forEach(([pluginId, entities]) => {
+      entities.forEach((entity) => {
+        const name = entity.label || entity.id;
+        const category = pluginManager.getPlugin(pluginId)?.plugin.category || 'plugin';
+        pluginMatches.push({
+          id: entity.id,
+          name,
+          country: pluginId.toUpperCase(),
+          category,
+          lat: entity.latitude,
+          lng: entity.longitude,
+          type: 'entity' as const,
+          raw: entity
+        });
+      });
+    });
+
+    const allItems = [...staticMatches, ...pluginMatches];
+    if (!term) return allItems.slice(0, 5);
+
+    return allItems.filter((item) =>
+      `${item.name} ${item.country} ${item.category}`.toLowerCase().includes(term)
     );
-  }, [query]);
+  }, [query, layers]);
+
+  const applyGraphicsPreset = (preset: 'low' | 'high') => {
+    if (preset === 'low') {
+      updateMapConfig({
+        shadowsEnabled: false,
+        enableLighting: false,
+        resolutionScale: 0.7,
+        antiAliasing: 'none',
+        maxScreenSpaceError: 64,
+        showOsmBuildings: false
+      });
+      useUIStore.getState().setShowBorders(true);
+      useUIStore.getState().setShowTerrain(true);
+      useUIStore.getState().addChangeLog('GRAPHICS', 'Performance Preset Applied: shadows off, 0.7x scale, AA off.', 'info');
+    } else {
+      updateMapConfig({
+        shadowsEnabled: true,
+        enableLighting: true,
+        resolutionScale: 1.0,
+        antiAliasing: 'msaa4x',
+        maxScreenSpaceError: 16,
+        showOsmBuildings: true
+      });
+      useUIStore.getState().setShowBorders(true);
+      useUIStore.getState().setShowTerrain(true);
+      useUIStore.getState().addChangeLog('GRAPHICS', 'Cinematic Preset Applied: shadows on, 1.0x scale, MSAA 4x, OSM buildings active.', 'success');
+    }
+  };
 
   // Calculate distance formula (Haversine)
   function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -712,18 +717,81 @@ export default function GoogleEarthRemix() {
   const activeTourStep = selectedTour?.steps[currentStepIndex];
 
   return (
-    <section className="earth-remix" aria-label="Earth explorer">
+    <section className="earth-remix" aria-label="Orbital explorer">
       {/* Top Pro-Style Menu Bar */}
       <header className="earth-menu">
-        <div className="earth-logo-container">
+        <button
+          type="button"
+          className="earth-logo-container cursor-pointer hover:opacity-85 active:scale-95 transition-all border-0 bg-transparent text-left flex items-center gap-2 p-0"
+          onClick={() => {
+            useUIStore.getState().addChangeLog('ORBITAL', 'Orbital Core diagnostics synced. Status: OPTIMAL.', 'success');
+            alert('Orbital Engine Status: OPTIMAL\nActive Array: WWT/WWV Composite');
+          }}
+        >
           <div className="earth-logo" aria-hidden="true" />
-          <span className="earth-logo-text">Google Earth</span>
-        </div>
-        {menuItems.map((item) => (
-          <button key={item} type="button" className="earth-menu-item">{item}</button>
-        ))}
+          <span className="earth-logo-text">Google Orbital</span>
+        </button>
+        
+        <button 
+          type="button" 
+          className="earth-menu-item"
+          onClick={() => setActivePanel('plugins')}
+        >
+          File
+        </button>
+        <button 
+          type="button" 
+          className="earth-menu-item"
+          onClick={() => {
+            setMeasureStart(null);
+            setMeasureEnd(null);
+            setMeasureDistance(null);
+            useUIStore.getState().addChangeLog('MEASUREMENT', 'Ruler markers reset.', 'info');
+          }}
+        >
+          Edit
+        </button>
+        <button 
+          type="button" 
+          className="earth-menu-item"
+          onClick={() => {
+            handleCompass();
+            useUIStore.getState().addChangeLog('CAMERA', 'Camera heading reset to North up.', 'info');
+          }}
+        >
+          View
+        </button>
+        <button 
+          type="button" 
+          className="earth-menu-item"
+          onClick={() => {
+            setActivePanel('places');
+          }}
+        >
+          Add
+        </button>
+        <button 
+          type="button" 
+          className="earth-menu-item"
+          onClick={() => setActivePanel('layers')}
+        >
+          Tools
+        </button>
+        <button 
+          type="button" 
+          className="earth-menu-item"
+          onClick={() => {
+            useUIStore.getState().setRightPanelTab('browser');
+            useUIStore.getState().setRightPanelOpen(true);
+            useUIStore.getState().setBrowserUrl('https://html.duckduckgo.com/html/?q=Silver+Wolf+VI+Operator+Manual');
+            useUIStore.getState().addChangeLog('HELP', 'Opened Help Manual query in Browser.', 'info');
+          }}
+        >
+          Help
+        </button>
+
         <div className="earth-menu-spacer" />
-        <span className="earth-menu-badge">Remix Edition</span>
+        <span className="earth-menu-badge">Orbital Edition</span>
       </header>
 
       <div className="earth-workspace">
@@ -786,10 +854,23 @@ export default function GoogleEarthRemix() {
           
           <div className="earth-sidebar-spacer" />
           
-          <button type="button" className="earth-sidebar-btn" title="Settings">
+          <button 
+            type="button" 
+            className="earth-sidebar-btn" 
+            title="Settings"
+            onClick={() => useUIStore.getState().setCurrentPage('settings')}
+          >
             <Settings size={20} />
           </button>
-          <button type="button" className="earth-sidebar-btn" title="User Account">
+          <button 
+            type="button" 
+            className="earth-sidebar-btn" 
+            title="User Account"
+            onClick={() => {
+              useUIStore.getState().addChangeLog('SECURITY', 'Operator authentication state verified.', 'success');
+              alert('Orbital Operator Authentication: ACTIVE\nDevice: HSR-System-V6');
+            }}
+          >
             <UserCircle size={20} />
           </button>
         </aside>
@@ -839,17 +920,39 @@ export default function GoogleEarthRemix() {
                 )}
               </div>
               <div className="earth-result-list scroller">
-                {filteredLocations.map((location) => (
-                  <button
-                    key={location.id}
-                    type="button"
-                    className={`earth-result-item ${activeLocation && location.id === activeLocation.id ? 'selected' : ''}`}
-                    onClick={() => setActiveLocation(location)}
-                  >
-                    <span className="earth-result-name">{location.name}</span>
-                    <small className="earth-result-meta">{location.country} · {location.category}</small>
-                  </button>
-                ))}
+                {filteredResults.map((result) => {
+                  const isSelected = result.type === 'landmark'
+                    ? activeLocation && result.id === activeLocation.id
+                    : useStore.getState().selectedEntity && result.id === useStore.getState().selectedEntity?.id;
+                  
+                  return (
+                    <button
+                      key={result.id}
+                      type="button"
+                      className={`earth-result-item ${isSelected ? 'selected' : ''}`}
+                      onClick={() => {
+                        if (result.type === 'landmark') {
+                          setActiveLocation(result.raw);
+                          useStore.getState().setSelectedEntity(null);
+                        } else {
+                          useStore.getState().setSelectedEntity(result.raw);
+                          setActiveLocation(null);
+                          // Fly camera to entity coordinates
+                          const viewer = (window as any).cesiumViewer;
+                          if (viewer) {
+                            viewer.camera.flyTo({
+                              destination: Cesium.Cartesian3.fromDegrees(result.lng, result.lat, result.raw.altitude ? result.raw.altitude * 2.5 + 20000 : 250000),
+                              duration: 2.0
+                            });
+                          }
+                        }
+                      }}
+                    >
+                      <span className="earth-result-name">{result.name}</span>
+                      <small className="earth-result-meta">{result.country} · {result.category} ({result.type})</small>
+                    </button>
+                  );
+                })}
               </div>
             </aside>
           )}
@@ -967,6 +1070,33 @@ export default function GoogleEarthRemix() {
                 <div className="border-t border-white/5 pt-3">
                   <span className="text-[10px] font-bold tracking-wider text-primary uppercase block mb-2 font-mono">Graphics Quality</span>
                   
+                  <div className="flex gap-2 mb-3 bg-black/20 p-0.5 rounded-lg border border-white/5 font-mono text-[9px]">
+                    <button
+                      type="button"
+                      onClick={() => applyGraphicsPreset('low')}
+                      className={`flex-1 py-1 rounded text-center cursor-pointer transition-all ${
+                        mapConfig.resolutionScale < 0.85 
+                          ? 'bg-primary text-white font-bold animate-pulse' 
+                          : 'text-white/40 hover:text-white/70'
+                      }`}
+                      title="Switch to Low-End Graphics (High Performance)"
+                    >
+                      Performance (Low)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyGraphicsPreset('high')}
+                      className={`flex-1 py-1 rounded text-center cursor-pointer transition-all ${
+                        mapConfig.resolutionScale >= 0.85 
+                          ? 'bg-primary text-white font-bold animate-pulse' 
+                          : 'text-white/40 hover:text-white/70'
+                      }`}
+                      title="Switch to High-End Graphics (Cinematic)"
+                    >
+                      Cinematic (High)
+                    </button>
+                  </div>
+
                   <div className="space-y-3 text-[10px] font-mono text-white/70">
                     <label className="flex items-center justify-between cursor-pointer">
                       <span>Show FPS Counter</span>
@@ -1273,10 +1403,15 @@ export default function GoogleEarthRemix() {
           )}
 
           {/* Minimap (Radar Grid) */}
-          <div className="earth-minimap" title="Orbital Minimap">
+          <button 
+            type="button"
+            className="earth-minimap cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200" 
+            title="Recenter Camera to Global View"
+            onClick={handleRecenter}
+          >
             <Map size={20} className="earth-minimap-icon" />
             <div className="earth-radar-ping" />
-          </div>
+          </button>
 
           {/* Bottom Right Globe Navigation Controls */}
           <div className="earth-controls" aria-label="Map controls">

@@ -86,11 +86,11 @@ export class EarthquakesPlugin implements WorldPlugin {
         else if (mag >= 2.5) color = "#fbbc05"; // moderate (>=2.5) Yellow
 
         return {
-            type: "point",
+            type: "hexagon",
             color,
             size,
             outlineColor: "#ffffff",
-            outlineWidth: 1,
+            outlineWidth: 1.5,
             labelText: mag >= 4.0 ? `M${mag}` : undefined,
             labelFont: "9px monospace",
         };

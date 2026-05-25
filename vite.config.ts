@@ -18,7 +18,15 @@ export default defineConfig(() => {
       // File watching can be disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: {
-        ignored: ['**/bridge/**', '**/launcher.log', '**/dist/**'],
+        ignored: [
+          '**/bridge/**',
+          '**/launcher.log',
+          '**/dist/**',
+          '**/scripts/**',
+          '**/development_logs/**',
+          '**/test_screenshots/**',
+          '**/automated_test_report.json'
+        ],
       },
     },
     build: {

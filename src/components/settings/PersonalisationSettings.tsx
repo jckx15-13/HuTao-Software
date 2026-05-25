@@ -5,10 +5,27 @@ import { palettes, type PaletteKey } from '../../lib/themeEngine';
 import { extractThemeFromImage } from '../../lib/imageTheme';
 
 export function PersonalisationSettings() {
-  const personalisation = useUIStore((s) => s.personalisation);
+  const personalisation = useUIStore((s) => s.personalisation) || {
+    accentColor: '',
+    panelOpacity: 0.75,
+    blurIntensity: 16,
+    cornerRadius: 12,
+    shadowIntensity: 0.5,
+    borderStyle: 'subtle',
+    uiDensity: 'comfortable',
+    chatBubbleStyle: 'glass',
+    iconStyle: 'outlined',
+    panelTransitionStyle: 'slide',
+    fontScale: 1.0,
+    fontFamily: 'Outfit',
+    animationIntensity: 0.7,
+    motionReduced: false,
+  };
   const updatePersonalisation = useUIStore((s) => s.updatePersonalisation);
   const activePalette = useUIStore((s) => s.activePalette);
   const updateSettings = useUIStore((s) => s.updateSettings);
+  const scanlineOverlay = useUIStore((s) => s.scanlineOverlay);
+  const setScanlineOverlay = useUIStore((s) => s.setScanlineOverlay);
   
   const [uploadLoading, setUploadLoading] = useState(false);
 
@@ -289,6 +306,29 @@ export function PersonalisationSettings() {
               ))}
             </div>
           </div>
+
+          {/* Panel Transition Style */}
+          <div className="space-y-2 col-span-1 md:col-span-2">
+            <label className="text-[10px] font-mono uppercase text-white/40 block">Panel Transition Animation</label>
+            <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 gap-1 text-[9px] font-mono">
+              {[
+                { key: 'slide', label: 'Slide Out' },
+                { key: 'swing-3d', label: 'Swing 3D' },
+                { key: 'fade', label: 'Fade Only' },
+              ].map((style) => (
+                <button
+                  key={style.key}
+                  type="button"
+                  onClick={() => updatePersonalisation({ panelTransitionStyle: style.key as any })}
+                  className={`flex-1 py-1 rounded transition-colors uppercase cursor-pointer ${
+                    personalisation.panelTransitionStyle === style.key ? 'bg-primary text-white font-bold' : 'text-white/40 hover:text-white/70'
+                  }`}
+                >
+                  {style.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -366,6 +406,20 @@ export function PersonalisationSettings() {
               type="checkbox"
               checked={personalisation.motionReduced}
               onChange={(e) => updatePersonalisation({ motionReduced: e.target.checked })}
+              className="h-4 w-4 accent-primary cursor-pointer"
+            />
+          </div>
+
+          {/* Scanline / CRT overlay toggle */}
+          <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5 border border-white/5">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-mono uppercase text-white/80 font-bold">Scanline Overlay</span>
+              <span className="text-[8px] text-white/30 font-mono mt-0.5">Enable CRT-style scanline overlay across the workspace</span>
+            </div>
+            <input
+              type="checkbox"
+              checked={scanlineOverlay}
+              onChange={(e) => setScanlineOverlay(e.target.checked)}
               className="h-4 w-4 accent-primary cursor-pointer"
             />
           </div>

@@ -39,6 +39,7 @@ class PluginManager {
     private loadedManifests: Map<string, PluginManifest> = new Map();
     private initialized = false;
     private configCacheMaxAge = 3600000;
+    private initializingPromise: Promise<void> | null = null;
 
     /**
      * Initializes the PluginManager and prepares the persistent cache layer.
@@ -49,28 +50,42 @@ class PluginManager {
      */
     async init(): Promise<void> {
         if (this.initialized) return;
-        await cacheLayer.init();
+        if (this.initializingPromise) return this.initializingPromise;
 
-        dataBus.on("dynamicPluginCreate", async ({ plugin, autoEnable }) => {
-            try {
-                await this.registerPlugin(plugin);
-                pluginRegistry.register(plugin);
-                if (autoEnable) {
-                    this.enablePlugin(plugin.id);
+        this.initializingPromise = (async () => {
+            await cacheLayer.init();
+
+            // Clear any existing listeners to prevent duplication
+            dataBus.off("dynamicPluginCreate");
+            dataBus.off("dynamicPluginRemove");
+
+            dataBus.on("dynamicPluginCreate", async ({ plugin, autoEnable }) => {
+                try {
+                    await this.registerPlugin(plugin);
+                    pluginRegistry.register(plugin);
+                    if (autoEnable) {
+                        this.enablePlugin(plugin.id);
+                    }
+                } catch (err) {
+                    console.error(`[PluginManager] Failed to create dynamic plugin ${plugin.id}:`, err);
+                    const toastStr = `Failed to load ${plugin.name}`;
+                    dataBus.emit("pluginError", { pluginId: plugin.id, message: toastStr });
                 }
-            } catch (err) {
-                console.error(`[PluginManager] Failed to create dynamic plugin ${plugin.id}:`, err);
-                const toastStr = `Failed to load ${plugin.name}`;
-                dataBus.emit("pluginError", { pluginId: plugin.id, message: toastStr });
-            }
-        });
+            });
 
-        dataBus.on("dynamicPluginRemove", ({ pluginId }) => {
-            this.unregisterPlugin(pluginId);
-            pluginRegistry.unregister(pluginId);
-        });
+            dataBus.on("dynamicPluginRemove", ({ pluginId }) => {
+                this.unregisterPlugin(pluginId);
+                pluginRegistry.unregister(pluginId);
+            });
 
-        this.initialized = true;
+            this.initialized = true;
+        })();
+
+        try {
+            await this.initializingPromise;
+        } finally {
+            this.initializingPromise = null;
+        }
     }
 
     /**

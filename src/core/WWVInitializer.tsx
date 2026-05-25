@@ -6,15 +6,22 @@ import { IssPlugin } from '../plugins/iss/IssPlugin';
 import { EarthquakesPlugin } from '../plugins/earthquakes/EarthquakesPlugin';
 import { DataBusSubscriber } from '../components/layout/DataBusSubscriber';
 
+let mountCount = 0;
+
 export function WWVInitializer({ children }: { children: React.ReactNode }) {
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
+    mountCount++;
+    let active = true;
+
     async function init() {
       // 1. Inject globals for plugins (React, SDK, Cesium, Zustand)
       await injectHostGlobals();
       // 2. Initialize the plugin manager (DataBus pub/sub, IndexDB caches)
       await pluginManager.init();
+
+      if (!active) return;
 
       // Register built-in plugins
       const iss = new IssPlugin();
@@ -26,13 +33,18 @@ export function WWVInitializer({ children }: { children: React.ReactNode }) {
       await pluginManager.registerPlugin(earthquakes);
       pluginRegistry.register(earthquakes);
       
+      if (!active) return;
       // Setup complete
       setInitialized(true);
     }
     init();
     
     return () => {
-      pluginManager.destroy();
+      active = false;
+      mountCount--;
+      if (mountCount === 0) {
+        pluginManager.destroy();
+      }
     };
   }, []);
 

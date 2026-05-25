@@ -70,8 +70,8 @@ async function main() {
   // 2. Start Assistant Bridge
   log('Bridge', 'INFO', 'Starting Assistant Bridge FastAPI server (python)...');
   const bridgeProcess = spawn('python', ['./bridge/server.py'], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-    shell: true
+    cwd: __dirname,
+    stdio: ['ignore', 'pipe', 'pipe']
   });
 
   bridgeProcess.stdout.on('data', (data) => {
@@ -92,30 +92,44 @@ async function main() {
 
   // 3. Start Vite Dev Server
   log('Vite', 'INFO', 'Starting Vite frontend dev server...');
-  const viteProcess = spawn('npm', ['run', 'dev'], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-    shell: true
+  // Launch Vite by invoking the local node binary on the vite JS entrypoint.
+  // This avoids shell wrappers (npm.cmd) and the DeprecationWarning on Windows.
+  const viteBin = path.join(__dirname, 'node_modules', 'vite', 'bin', 'vite.js');
+  const nodeExec = process.execPath || 'node';
+  const viteArgs = [viteBin, '--port', '3000', '--host', '127.0.0.1'];
+  const viteProcess = spawn(nodeExec, viteArgs, {
+    cwd: __dirname,
+    stdio: ['ignore', 'pipe', 'pipe']
   });
 
   viteProcess.stdout.on('data', (data) => {
     const text = data.toString().trim();
-    if (text) {
-      log('Vite', 'INFO', text);
-      if (text.includes('Local:')) {
-        // Open user's browser automatically
-        const match = text.match(/http:\/\/localhost:\d+/);
-        if (match) {
-          const url = match[0];
-          log('Engine', 'SUCCESS', `Frontend is online at ${url}`);
-          log('Engine', 'INFO', `Launching default web browser to ${url}...`);
-          try {
-            execSync(`start ${url}`);
-          } catch (e) {
-            log('Engine', 'ERROR', `Could not auto-start browser: ${e.message}`);
+      if (text) {
+        log('Vite', 'INFO', text);
+        if (text.includes('Local:') || text.includes('Local')) {
+          // Attempt to find an http(s) url in the output (covers 127.0.0.1 and localhost)
+          const match = text.match(/https?:\/\/[^\s)]+/i);
+          if (match) {
+            const url = match[0];
+            log('Engine', 'SUCCESS', `Frontend is online at ${url}`);
+            log('Engine', 'INFO', `Launching default web browser to ${url}...`);
+            try {
+              // On Windows, `start` opens the default browser; on Unix, try `xdg-open` then `open` as fallback
+              if (process.platform === 'win32') {
+                execSync(`start ${url}`);
+              } else {
+                try {
+                  execSync(`xdg-open "${url}"`);
+                } catch (e) {
+                  execSync(`open "${url}"`);
+                }
+              }
+            } catch (e) {
+              log('Engine', 'ERROR', `Could not auto-start browser: ${e.message}`);
+            }
           }
         }
       }
-    }
   });
 
   viteProcess.stderr.on('data', (data) => {

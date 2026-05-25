@@ -133,8 +133,17 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
 
     // --- Camera controller improvements (from WWV) ---
     const sscc = viewer.scene.screenSpaceCameraController;
-    sscc.tiltEventTypes = [
+    // Intuitive mapping: left-drag = rotate/orbit, right-drag = translate/pan, pinch = zoom/tilt
+    // Keep a ctrl+left modifier available for tilt when desired.
+    sscc.rotateEventTypes = [
+      Cesium.CameraEventType.LEFT_DRAG,
+      Cesium.CameraEventType.PINCH,
+    ];
+    sscc.translateEventTypes = [
+      Cesium.CameraEventType.RIGHT_DRAG,
       Cesium.CameraEventType.MIDDLE_DRAG,
+    ];
+    sscc.tiltEventTypes = [
       Cesium.CameraEventType.RIGHT_DRAG,
       Cesium.CameraEventType.PINCH,
       { eventType: Cesium.CameraEventType.LEFT_DRAG, modifier: Cesium.KeyboardEventModifier.CTRL },

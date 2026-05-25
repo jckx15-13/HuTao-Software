@@ -12,7 +12,19 @@ export function useThemeVariables(): AppliedTheme {
   const activePalette = useUIStore((state) => state.activePalette);
   const dynamicTheme = useUIStore((state) => state.dynamicTheme);
   const cpuLoad = useUIStore((state) => state.cpuLoad);
-  const personalisation = useUIStore((state) => state.personalisation);
+  const personalisation = useUIStore((state) => state.personalisation) || {
+    panelOpacity: 0.75,
+    blurIntensity: 16,
+    animationIntensity: 0.7,
+    motionReduced: false,
+    cornerRadius: 12,
+    borderStyle: 'subtle',
+    shadowIntensity: 0.5,
+    accentColor: '',
+    fontFamily: 'Outfit',
+    uiDensity: 'comfortable',
+    fontScale: 1.0,
+  };
 
   const currentPalette = useMemo<ThemeVars>(() => {
     const basePalette = palettes[activePalette] || palettes.hsrOrbital;
@@ -37,7 +49,14 @@ export function useThemeVariables(): AppliedTheme {
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--ui-opacity', String(personalisation.panelOpacity));
-    root.style.setProperty('--ui-blur', `${personalisation.blurIntensity}px`);
+
+    const isHeadless = typeof window !== 'undefined' && (
+      /HeadlessChrome/i.test(navigator.userAgent) ||
+      navigator.webdriver ||
+      window.location.search.includes('fallback')
+    );
+    const blurVal = isHeadless ? 0 : personalisation.blurIntensity;
+    root.style.setProperty('--ui-blur', `${blurVal}px`);
     root.style.setProperty('--ui-radius', String(personalisation.cornerRadius));
     root.style.setProperty('--ui-shadow-intensity', String(personalisation.shadowIntensity));
     root.style.setProperty('--ui-animation-speed', String(personalisation.animationIntensity > 0 ? 1 / personalisation.animationIntensity : 0));

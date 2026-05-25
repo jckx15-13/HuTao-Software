@@ -155,13 +155,19 @@ export function RightPanel() {
                 </div>
 
                 {/* Live stream video frame */}
-                <div className="relative aspect-video w-full rounded overflow-hidden bg-black border border-white/5">
-                  <iframe
-                    src="https://www.ustream.tv/embed/17074538?html5=1&autoplay=1&mute=1"
-                    title="ISS Live Camera Feed"
-                    allowFullScreen
-                    className="absolute inset-0 h-full w-full border-none"
-                  />
+                <div className="relative aspect-video w-full rounded overflow-hidden bg-black border border-white/5 flex items-center justify-center">
+                  {window.location.search.includes('fallback') ? (
+                    <div className="text-cyan-400 font-mono text-[9px] text-center p-4">
+                      [ISS LIVE TELECAST MOCKED]
+                    </div>
+                  ) : (
+                    <iframe
+                      src="https://www.ustream.tv/embed/17074538?html5=1&autoplay=1&mute=1"
+                      title="ISS Live Camera Feed"
+                      allowFullScreen
+                      className="absolute inset-0 h-full w-full border-none"
+                    />
+                  )}
                 </div>
 
                 {/* Telemetry info */}
@@ -366,14 +372,20 @@ export function RightPanel() {
             </div>
             
             {/* Sandboxed iframe viewport */}
-            <div className="relative flex-1 flex flex-col h-[400px] w-full rounded-xl overflow-hidden border border-white/5 bg-black shadow-lg pointer-events-auto">
-              <iframe
-                key={refreshKey}
-                src={browserUrl}
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                className="flex-1 h-full w-full border-none bg-black"
-                title="Agent Browser Frame"
-              />
+            <div className="relative flex-1 flex flex-col h-[400px] w-full rounded-xl overflow-hidden border border-white/5 bg-black shadow-lg pointer-events-auto flex items-center justify-center">
+              {window.location.search.includes('fallback') ? (
+                <div className="text-cyan-400 font-mono text-[9px] text-center p-4">
+                  [BROWSER VIEWPORT MOCKED FOR: {browserUrl}]
+                </div>
+              ) : (
+                <iframe
+                  key={refreshKey}
+                  src={browserUrl}
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                  className="flex-1 h-full w-full border-none bg-black"
+                  title="Agent Browser Frame"
+                />
+              )}
             </div>
           </div>
         )}

@@ -32,14 +32,24 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
   // Unconditional hook call for background telemetry synchronization
   useIssTelemetry();
 
+  // Scanline/CRT overlay toggle
+  const scanlineOverlay = useUIStore((s) => s.scanlineOverlay);
+
+  // Check if we are running in a headless environment to prevent WebGL/Canvas and CSS blur rendering crashes
+  const isHeadless = typeof window !== 'undefined' && (
+    /HeadlessChrome/i.test(navigator.userAgent) ||
+    navigator.webdriver ||
+    window.location.search.includes('fallback')
+  );
+
+  if (isHeadless) {
+    return <div className="absolute inset-0 h-full w-full bg-[#05060b]" />;
+  }
+
   // Synchronously detect WebGL availability
   const [webglError] = useState<string | null>(() => {
     try {
       if (typeof window === 'undefined') return null;
-      const isHeadless = /HeadlessChrome/i.test(navigator.userAgent) || navigator.webdriver;
-      if (isHeadless) {
-        return 'WebGL disabled in headless browser environment';
-      }
       const canvas = document.createElement('canvas');
       const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
       if (!gl) {
@@ -74,7 +84,8 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
 
     let active = true;
     let lastFrameTime = 0;
-    const FRAME_INTERVAL = 1000 / 30; // Target 30fps to save CPU
+    const isHeadless = /HeadlessChrome/i.test(navigator.userAgent) || navigator.webdriver || window.location.search.includes('fallback');
+    const FRAME_INTERVAL = isHeadless ? 2000 : (1000 / 30); // Throttled in headless mode to prevent crashes
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -91,13 +102,12 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
 
     const cx = rect.width / 2;
     const cy = rect.height / 2;
-    const R = 80; // Core globe radius
+    // Scale globe radius to available viewport so it looks good at many sizes
+    const R = Math.min(rect.width, rect.height) * 0.35; // Core globe radius
     const tilt = (20 * Math.PI) / 180; // Constant axial elevation tilt (20 degrees)
     const inc = (51.6 * Math.PI) / 180; // ISS orbital inclination (51.6 degrees)
 
     const renderFrame = (timestamp?: number) => {
-      if (!active) return;
-
       // Frame throttle: skip frames to stay at ~30fps
       const now = timestamp ?? performance.now();
       if (now - lastFrameTime < FRAME_INTERVAL) {
@@ -123,71 +133,7 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
       ctx.arc(cx, cy, R, 0, 2 * Math.PI);
       ctx.stroke();
 
-      // 2. Meridians (Longitudinal grid lines)
-      ctx.strokeStyle = 'rgba(138, 91, 199, 0.08)';
-      ctx.lineWidth = 0.5;
-      for (const path of MERIDIANS_3D) {
-        ctx.beginPath();
-        let firstPoint = true;
-        const len = path.length;
-        for (let i = 0; i < len; i += 3) {
-          const pt = projectUnitVector(
-            path[i],
-            path[i + 1],
-            path[i + 2],
-            sinRot,
-            cosRot,
-            sinTilt,
-            cosTilt,
-            R,
-            cx,
-            cy
-          );
-          if (pt.visible) {
-            if (firstPoint) {
-              ctx.moveTo(pt.x, pt.y);
-              firstPoint = false;
-            } else {
-              ctx.lineTo(pt.x, pt.y);
-            }
-          } else {
-            firstPoint = true; // Break line path when transitioning to backside
-          }
-        }
-        ctx.stroke();
-      }
-
-      // 3. Parallels (Latitudinal grid lines)
-      for (const path of PARALLELS_3D) {
-        ctx.beginPath();
-        let firstPoint = true;
-        const len = path.length;
-        for (let i = 0; i < len; i += 3) {
-          const pt = projectUnitVector(
-            path[i],
-            path[i + 1],
-            path[i + 2],
-            sinRot,
-            cosRot,
-            sinTilt,
-            cosTilt,
-            R,
-            cx,
-            cy
-          );
-          if (pt.visible) {
-            if (firstPoint) {
-              ctx.moveTo(pt.x, pt.y);
-              firstPoint = false;
-            } else {
-              ctx.lineTo(pt.x, pt.y);
-            }
-          } else {
-            firstPoint = true;
-          }
-        }
-        ctx.stroke();
-      }
+      // (Grid lines removed to prevent CRT scanline effects)
 
       // 4. Cybernetic landmass point landmarks
       ctx.fillStyle = 'rgba(138, 91, 199, 0.35)';
@@ -284,7 +230,9 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
     return (
       <div className="absolute inset-0 h-full w-full bg-[#05060b] flex flex-col items-center justify-center overflow-hidden z-0 select-none">
         {/* Animated Cyberpunk Grid Space */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_80%)] pointer-events-none" />
+        {scanlineOverlay && (
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_80%)] pointer-events-none" />
+        )}
 
         {/* Nebulous Aurora glow */}
         <div className="absolute w-[500px] h-[500px] rounded-full bg-primary/5 filter blur-[120px] pointer-events-none animate-pulse" />

@@ -5,6 +5,10 @@ import { pluginManager } from '@/core/plugins/PluginManager';
 import { initPrimitiveCollections, AnimatableItem } from '@/core/globe/EntityRenderer';
 import { setupInteractionHandlers } from '@/core/globe/InteractionHandler';
 import { useEntityRendering } from '@/core/globe/hooks/useEntityRendering';
+import { useModelRendering } from '@/core/globe/hooks/useModelRendering';
+import { useTrailRendering } from '@/core/globe/hooks/useTrailRendering';
+import { useSatelliteFrustum } from '@/core/globe/hooks/useSatelliteFrustum';
+import { useHexagonRendering } from '@/core/globe/hooks/useHexagonRendering';
 import { GeoEntity, CesiumEntityOptions } from '@/core/plugins/PluginTypes';
 
 /**
@@ -18,6 +22,7 @@ export function useWWVGlobe(viewer: Viewer | null) {
   // Grab the entities and globe state from Zustand store
   const entitiesByPlugin = useStore((s) => s.entitiesByPlugin);
   const mapConfig = useStore((s) => s.mapConfig);
+  const selectedEntity = useStore((s) => s.selectedEntity);
 
   // Initialize primitive collections once when viewer is ready
   useEffect(() => {
@@ -51,11 +56,20 @@ export function useWWVGlobe(viewer: Viewer | null) {
     return visible;
   }, [entitiesByPlugin]);
 
-  // Hook up the rendering loop
+  // Split standard (billboard/point) rendering from 3D Hexagon rendering
+  const standardEntities = useMemo(() => {
+    return visibleEntities.filter((item) => item.options.type !== 'hexagon');
+  }, [visibleEntities]);
+
+  const hexagonEntities = useMemo(() => {
+    return visibleEntities.filter((item) => item.options.type === 'hexagon');
+  }, [visibleEntities]);
+
+  // Hook up standard billboard rendering loop
   useEntityRendering(
     viewer,
     isReady,
-    visibleEntities,
+    standardEntities,
     animatablesMapRef,
     hoveredEntityIdRef,
     {
@@ -67,4 +81,16 @@ export function useWWVGlobe(viewer: Viewer | null) {
       enableLighting: mapConfig.enableLighting,
     }
   );
+
+  // Hook up glTF 3D model rendering (promotes billboards at close range)
+  useModelRendering(viewer, isReady, animatablesMapRef);
+
+  // Hook up trail rendering (polylines for airplanes or targets)
+  useTrailRendering(viewer, isReady, animatablesMapRef);
+
+  // Hook up selected satellite sensor frustums (conical footprint projection)
+  useSatelliteFrustum(viewer, isReady, selectedEntity, animatablesMapRef);
+
+  // Hook up 3D hexagonal markers (seismic cylinders with slices: 6)
+  useHexagonRendering(viewer, isReady, hexagonEntities);
 }

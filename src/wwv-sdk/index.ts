@@ -138,7 +138,7 @@ export interface LayerConfig {
 
 // ─── Cesium Entity Options ───────────────────────────────────
 export interface CesiumEntityOptions {
-    type: "billboard" | "point" | "polyline" | "polygon" | "label" | "model";
+    type: "billboard" | "point" | "polyline" | "polygon" | "label" | "model" | "hexagon";
     color?: string;
     size?: number;
     iconUrl?: string;

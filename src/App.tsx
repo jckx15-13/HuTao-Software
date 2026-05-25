@@ -18,6 +18,7 @@ export default function App() {
   const interactionMode = useUIStore((s) => s.interactionMode);
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
+  const panelTransitionStyle = useUIStore((s) => s.personalisation?.panelTransitionStyle ?? 'slide');
   
   // Custom customWallpaper / theme background styles
   const customWallpaper = useUIStore((s) => s.customWallpaper);
@@ -27,8 +28,8 @@ export default function App() {
     ? { backgroundImage: `url(${customWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : undefined;
 
-  const showLeft = leftPanelOpen;
-  const showRight = rightPanelOpen;
+  const showLeft = leftPanelOpen && interactionMode === 'chat';
+  const showRight = rightPanelOpen && interactionMode === 'chat';
 
   return (
     <ErrorBoundary>
@@ -36,16 +37,28 @@ export default function App() {
         className="app-shell relative h-screen w-screen overflow-hidden text-text-main font-sans flex flex-col bg-bg-deep" 
         style={{ ...appStyle, ...backgroundStyle }}
       >
-        {/* Background layer: Persistent Cesium Earth Map */}
+        {/* Background layer: Persistent Cesium Earth Map (hide under Telescope mode) */}
         {!customWallpaper && (
-          <>
-            <CesiumBackground interactive={interactionMode === 'earth'} />
-            <RenderEffectsOverlay />
-          </>
+          interactionMode === 'telescope' ? (
+            // Telescope mode: starfield background optimized for embedded WWT
+            <div className="absolute inset-0 h-full w-full bg-black" style={{ zIndex: 0, pointerEvents: 'none' }}>
+              <div className="absolute inset-0" style={{
+                background: `radial-gradient(circle at 10% 20%, rgba(255,255,255,0.12) 0 1px, transparent 2px), radial-gradient(circle at 80% 40%, rgba(255,255,255,0.08) 0 1px, transparent 2px), radial-gradient(circle at 50% 80%, rgba(255,255,255,0.1) 0 1px, transparent 2px)`,
+                backgroundSize: '200px 200px'
+              }} />
+            </div>
+          ) : (
+            <>
+              <CesiumBackground interactive={interactionMode === 'orbital'} />
+              <RenderEffectsOverlay />
+            </>
+          )
         )}
 
-        {/* Scanline overlay for cyberpunk feel */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[size:100%_4px] pointer-events-none z-10" />
+        {/* Optional Scanline overlay for cyberpunk feel (toggle in settings) */}
+        {interactionMode === 'chat' && useUIStore((s) => s.scanlineOverlay) && (
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[size:100%_4px] pointer-events-none z-10" />
+        )}
 
         {/* Foreground Layer: App Screens */}
         {currentPage === 'launcher' ? (
@@ -58,7 +71,7 @@ export default function App() {
             </div>
 
             {/* Main 3-panel container */}
-            <div className="flex-1 flex w-full min-h-0 relative overflow-hidden">
+            <div className="flex-1 flex w-full min-h-0 relative overflow-hidden" style={{ perspective: '1200px' }}>
               {/* Floating trigger when sidebar collapsed */}
               <div 
                 className="transition-all duration-500 ease-in-out shrink-0 flex items-center"
@@ -72,12 +85,18 @@ export default function App() {
 
               {/* Panel 1: Sidebar Left */}
               <div 
-                className="transition-all duration-500 ease-in-out overflow-hidden flex shrink-0"
+                className="overflow-hidden flex shrink-0"
                 style={{
                   width: showLeft ? '260px' : '0px',
                   opacity: showLeft ? 1 : 0,
-                  transform: showLeft ? 'translateX(0)' : 'translateX(-20px)',
-                  pointerEvents: showLeft ? 'auto' : 'none'
+                  pointerEvents: showLeft ? 'auto' : 'none',
+                  transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  transformOrigin: 'left center',
+                  transform: panelTransitionStyle === 'swing-3d'
+                    ? (showLeft ? 'rotateY(0deg)' : 'rotateY(-90deg)')
+                    : panelTransitionStyle === 'fade'
+                    ? 'none'
+                    : (showLeft ? 'translateX(0)' : 'translateX(-100%)')
                 }}
               >
                 <LeftPanel />
@@ -88,12 +107,18 @@ export default function App() {
 
               {/* Panel 3: Context Right */}
               <div 
-                className="transition-all duration-500 ease-in-out overflow-hidden flex shrink-0"
+                className="overflow-hidden flex shrink-0"
                 style={{
                   width: showRight ? '310px' : '0px',
                   opacity: showRight ? 1 : 0,
-                  transform: showRight ? 'translateX(0)' : 'translateX(20px)',
-                  pointerEvents: showRight ? 'auto' : 'none'
+                  pointerEvents: showRight ? 'auto' : 'none',
+                  transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  transformOrigin: 'right center',
+                  transform: panelTransitionStyle === 'swing-3d'
+                    ? (showRight ? 'rotateY(0deg)' : 'rotateY(90deg)')
+                    : panelTransitionStyle === 'fade'
+                    ? 'none'
+                    : (showRight ? 'translateX(0)' : 'translateX(100%)')
                 }}
               >
                 <RightPanel />

@@ -18,22 +18,27 @@ class CacheLayer {
 
     async init(): Promise<void> {
         if (typeof window === "undefined") return;
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, 1);
-            request.onupgradeneeded = () => {
-                const db = request.result;
-                if (!db.objectStoreNames.contains(this.storeName)) {
-                    db.createObjectStore(this.storeName);
-                }
-            };
-            request.onsuccess = () => {
-                this.db = request.result;
+        return new Promise((resolve) => {
+            try {
+                const request = indexedDB.open(this.dbName, 1);
+                request.onupgradeneeded = () => {
+                    const db = request.result;
+                    if (!db.objectStoreNames.contains(this.storeName)) {
+                        db.createObjectStore(this.storeName);
+                    }
+                };
+                request.onsuccess = () => {
+                    this.db = request.result;
+                    resolve();
+                };
+                request.onerror = () => {
+                    console.warn("[CacheLayer] IndexedDB unavailable, using memory only");
+                    resolve();
+                };
+            } catch (err) {
+                console.warn("[CacheLayer] IndexedDB open threw SecurityError, using memory only:", err);
                 resolve();
-            };
-            request.onerror = () => {
-                console.warn("[CacheLayer] IndexedDB unavailable, using memory only");
-                resolve();
-            };
+            }
         });
     }
 

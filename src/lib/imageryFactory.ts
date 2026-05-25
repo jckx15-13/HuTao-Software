@@ -20,8 +20,13 @@ async function setupGooglePhotorealistic3D(viewer: Cesium.Viewer, apiKey: string
 
 /** Load free OpenStreetMap tiles as a reliable fallback. */
 function setupOpenStreetMap(viewer: Cesium.Viewer): void {
-  viewer.imageryLayers.addImageryProvider(
-    new Cesium.OpenStreetMapImageryProvider({ url: 'https://a.tile.openstreetmap.org/' }),
+  viewer.imageryLayers.add(
+    new Cesium.ImageryLayer(
+      new Cesium.UrlTemplateImageryProvider({
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        subdomains: ['a', 'b', 'c']
+      })
+    )
   );
 }
 

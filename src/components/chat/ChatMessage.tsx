@@ -10,7 +10,7 @@ interface ChatMessageProps {
 
 export function ChatMessage({ sender, content }: ChatMessageProps) {
   const isUser = sender === 'user';
-  const { chatBubbleStyle, iconStyle } = useUIStore((s) => s.personalisation);
+  const { chatBubbleStyle = 'glass', iconStyle = 'outlined' } = useUIStore((s) => s.personalisation) || {};
 
   // Icon styling based on iconStyle and sender
   const iconBaseClass = `h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-lg transition-all ${

@@ -1,11 +1,12 @@
 import os
 import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 MODEL_NAME = os.getenv("HF_MODEL_NAME", "google/gemma-2-27b-it")
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
@@ -20,7 +21,12 @@ ALLOWED_ROLES = {"user", "assistant", "ai", "system"}
 raw_origins = os.getenv("BRIDGE_CORS_ORIGINS", "*")
 allowed_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
-app = FastAPI(title="Silver Wolf Bridge")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    threading.Thread(target=load_model_worker, daemon=True).start()
+    yield
+
+app = FastAPI(title="Silver Wolf Bridge", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -37,7 +43,8 @@ class SyncRequest(BaseModel):
     message: str
     role: str
 
-    @validator("message")
+    @field_validator("message")
+    @classmethod
     def validate_message(cls, value: str) -> str:
         value = value.strip()
         if not value:
@@ -46,7 +53,8 @@ class SyncRequest(BaseModel):
             raise ValueError(f"message exceeds {MAX_MESSAGE_CHARS} characters")
         return value
 
-    @validator("role")
+    @field_validator("role")
+    @classmethod
     def validate_role(cls, value: str) -> str:
         role = value.strip().lower()
         if role not in ALLOWED_ROLES:
@@ -58,7 +66,8 @@ class ChatRequest(BaseModel):
     message: str
     system_instruction: Optional[str] = ""
 
-    @validator("message")
+    @field_validator("message")
+    @classmethod
     def validate_message(cls, value: str) -> str:
         value = value.strip()
         if not value:
@@ -67,7 +76,8 @@ class ChatRequest(BaseModel):
             raise ValueError(f"message exceeds {MAX_MESSAGE_CHARS} characters")
         return value
 
-    @validator("system_instruction")
+    @field_validator("system_instruction")
+    @classmethod
     def validate_system_instruction(cls, value: Optional[str]) -> str:
         value = (value or "").strip()
         if len(value) > MAX_MESSAGE_CHARS:
@@ -119,9 +129,7 @@ def load_model_worker() -> None:
         print(f"Failed to load model: {exc}")
 
 
-@app.on_event("startup")
-async def startup_event() -> None:
-    threading.Thread(target=load_model_worker, daemon=True).start()
+# Model loading is initialized via the FastAPI lifespan context manager
 
 
 @app.get("/")

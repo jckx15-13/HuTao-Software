@@ -35,7 +35,7 @@ export class ManifestLoadError extends Error {
  * @throws Error if the module cannot be reached or no valid plugin interface is discovered.
  */
 async function loadBundlePlugin(entry: string): Promise<WorldPlugin> {
-    const module = await import(/* webpackIgnore: true */ entry);
+    const module = await import(/* @vite-ignore */ /* webpackIgnore: true */ entry);
 
     /**
      * Helper to safely instantiate a class and verify its compliance with WorldPlugin.

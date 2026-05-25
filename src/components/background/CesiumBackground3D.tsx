@@ -4,6 +4,10 @@ import { useLandmarks } from '../../hooks/cesium/useLandmarks';
 import { useIssTracker } from '../../hooks/cesium/useIssTracker';
 import { useAutoRotation } from '../../hooks/cesium/useAutoRotation';
 import { useWWVGlobe } from '../../hooks/cesium/useWWVGlobe';
+import { useImageryManager } from '../../core/globe/useImageryManager';
+import { useBorders } from '../../core/globe/useBorders';
+import { useCameraActions } from '../../core/globe/hooks/useCameraActions';
+import { useUIStore } from '@/store/uiStore';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 interface CesiumBackground3DProps {
@@ -13,6 +17,7 @@ interface CesiumBackground3DProps {
 
 export default function CesiumBackground3D({ interactive, onError }: CesiumBackground3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const showBorders = useUIStore((s) => s.showBorders);
   
   // Initialize Cesium Viewer
   const { viewer, isLoaded, error } = useCesiumViewer(containerRef);
@@ -29,6 +34,11 @@ export default function CesiumBackground3D({ interactive, onError }: CesiumBackg
   useIssTracker(viewer);
   useAutoRotation(viewer, interactive);
   useWWVGlobe(viewer);
+  
+  // Imagery and map data layers integration
+  useImageryManager(viewer, isLoaded);
+  useBorders(viewer, showBorders);
+  useCameraActions(viewer, isLoaded);
 
   return (
     <div className="absolute inset-0 h-full w-full bg-black animate-fade-in" style={{ zIndex: 0 }}>
