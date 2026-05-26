@@ -18,16 +18,16 @@ async function setupGooglePhotorealistic3D(viewer: Cesium.Viewer, apiKey: string
   }
 }
 
-/** Load free OpenStreetMap tiles as a reliable fallback. */
-function setupOpenStreetMap(viewer: Cesium.Viewer): void {
-  viewer.imageryLayers.add(
-    new Cesium.ImageryLayer(
-      new Cesium.UrlTemplateImageryProvider({
-        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        subdomains: ['a', 'b', 'c']
-      })
-    )
-  );
+/** Load high-resolution ArcGIS satellite imagery as a reliable fallback (like Google Earth). */
+async function setupArcGisSatellite(viewer: Cesium.Viewer): Promise<void> {
+  try {
+    const esriProvider = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
+      'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+    );
+    viewer.imageryLayers.addImageryProvider(esriProvider);
+  } catch (err) {
+    console.warn('[imageryFactory] ArcGIS fallback failed:', err);
+  }
 }
 
 /**
@@ -43,6 +43,6 @@ export async function setupImagery(viewer: Cesium.Viewer): Promise<void> {
     if (ok) return;
   }
 
-  // Fallback: Free OSM tiles
-  setupOpenStreetMap(viewer);
+  // Fallback: High-res satellite imagery
+  await setupArcGisSatellite(viewer);
 }
