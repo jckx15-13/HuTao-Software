@@ -193,9 +193,9 @@ const path = require('path');
     // Close settings
     console.log('Closing settings panel...');
     const closedSettings = await page.evaluate(() => {
-      const closeBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Back to Workspace'));
+      const closeBtn = document.querySelector('button[title="Exit Settings"]') || Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Back to Workspace'));
       if (closeBtn) {
-        closeBtn.click();
+        (closeBtn as any).click();
         return true;
       }
       return false;
