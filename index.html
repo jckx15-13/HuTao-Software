@@ -7,21 +7,21 @@
         if (isHeadless) {
           document.documentElement.classList.add('headless');
           document.documentElement.setAttribute('data-headless', 'true');
-        }
-        try {
-          const store = {};
-          const mockStorage = {
-            getItem: (key) => store[key] || null,
-            setItem: (key, value) => { store[key] = String(value); },
-            removeItem: (key) => { delete store[key]; },
-            clear: () => { for (let k in store) delete store[k]; },
-            key: (index) => Object.keys(store)[index] || null,
-            get length() { return Object.keys(store).length; }
-          };
-          Object.defineProperty(window, 'localStorage', { value: mockStorage, configurable: true, enumerable: true, writable: true });
-          Object.defineProperty(window, 'sessionStorage', { value: mockStorage, configurable: true, enumerable: true, writable: true });
-        } catch (e) {
-          console.warn("Storage mocking bypassed:", e);
+          try {
+            const store = {};
+            const mockStorage = {
+              getItem: (key) => store[key] || null,
+              setItem: (key, value) => { store[key] = String(value); },
+              removeItem: (key) => { delete store[key]; },
+              clear: () => { for (let k in store) delete store[k]; },
+              key: (index) => Object.keys(store)[index] || null,
+              get length() { return Object.keys(store).length; }
+            };
+            Object.defineProperty(window, 'localStorage', { value: mockStorage, configurable: true, enumerable: true, writable: true });
+            Object.defineProperty(window, 'sessionStorage', { value: mockStorage, configurable: true, enumerable: true, writable: true });
+          } catch (e) {
+            console.warn("Storage mocking bypassed:", e);
+          }
         }
       })();
     </script>

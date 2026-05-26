@@ -381,7 +381,7 @@ export function RightPanel() {
                 <iframe
                   key={refreshKey}
                   src={browserUrl}
-                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                  sandbox="allow-scripts allow-popups allow-forms"
                   className="flex-1 h-full w-full border-none bg-black"
                   title="Agent Browser Frame"
                 />

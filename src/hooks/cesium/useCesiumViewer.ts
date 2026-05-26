@@ -43,6 +43,9 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
 
     let viewer: Cesium.Viewer;
     let active = true;
+    let canvas: HTMLCanvasElement | null = null;
+    let pointerHandler: (() => void) | null = null;
+    let requestRender: (() => void) | null = null;
 
     loadConfig().then((config) => {
       if (!active) return;
@@ -166,11 +169,13 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     }
 
     // Ensure pointer interactions request a render when using requestRenderMode
-    const canvas = viewer.scene.canvas as HTMLCanvasElement;
-    const requestRender = () => {
+    canvas = viewer.scene.canvas as HTMLCanvasElement;
+    requestRender = () => {
       try { viewer.scene.requestRender(); } catch (err) { /* ignore */ }
     };
-    const pointerHandler = () => requestRender();
+    pointerHandler = () => {
+      if (requestRender) requestRender();
+    };
     canvas.addEventListener('pointerdown', pointerHandler);
     canvas.addEventListener('pointerup', pointerHandler);
     canvas.addEventListener('pointermove', pointerHandler);
@@ -204,13 +209,13 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
       active = false;
       try {
         // remove pointer listeners if canvas still exists
-        if (canvas) {
+        if (canvas && pointerHandler) {
           canvas.removeEventListener('pointerdown', pointerHandler);
           canvas.removeEventListener('pointerup', pointerHandler);
           canvas.removeEventListener('pointermove', pointerHandler);
           canvas.removeEventListener('wheel', pointerHandler as EventListenerOrEventListenerObject);
         }
-        if ((viewer as any)?.camera?.changed?.removeEventListener) {
+        if ((viewer as any)?.camera?.changed?.removeEventListener && requestRender) {
           try { (viewer as any).camera.changed.removeEventListener(requestRender); } catch (e) {}
         }
       } catch (e) {}

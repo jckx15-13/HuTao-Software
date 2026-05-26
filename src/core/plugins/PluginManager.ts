@@ -56,8 +56,8 @@ class PluginManager {
             await cacheLayer.init();
 
             // Clear any existing listeners to prevent duplication
-            dataBus.off("dynamicPluginCreate");
-            dataBus.off("dynamicPluginRemove");
+            dataBus.removeAllListeners("dynamicPluginCreate");
+            dataBus.removeAllListeners("dynamicPluginRemove");
 
             dataBus.on("dynamicPluginCreate", async ({ plugin, autoEnable }) => {
                 try {

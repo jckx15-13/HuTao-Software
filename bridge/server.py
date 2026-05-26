@@ -3,6 +3,8 @@ import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
+from asyncio import Lock
+import anyio
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,8 +19,9 @@ SYNC_FILE = BASE_DIR / "latest_sync.txt"
 MAX_MESSAGE_CHARS = 8_000
 MAX_SYNC_BYTES = 256_000
 ALLOWED_ROLES = {"user", "assistant", "ai", "system"}
+sync_lock = Lock()
 
-raw_origins = os.getenv("BRIDGE_CORS_ORIGINS", "*")
+raw_origins = os.getenv("BRIDGE_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
 allowed_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
 @asynccontextmanager
@@ -143,15 +146,28 @@ async def get_status():
     }
 
 
+def compact_and_write_sync(role: str, message: str) -> None:
+    compact_sync_file()
+    with SYNC_FILE.open("a", encoding="utf-8") as file:
+        file.write(f"[{role.upper()}]: {message}\n---\n")
+
+
+def generate_local_response(prompt: str) -> str:
+    response = chatbot_pipeline(prompt, max_new_tokens=500, do_sample=True, temperature=0.7)
+    generated_text = response[0]["generated_text"]
+    if generated_text.startswith(prompt):
+        generated_text = generated_text[len(prompt) :].strip()
+    return generated_text
+
+
 @app.post("/sync")
 async def sync(req: SyncRequest):
-    try:
-        compact_sync_file()
-        with SYNC_FILE.open("a", encoding="utf-8") as file:
-            file.write(f"[{req.role.upper()}]: {req.message}\n---\n")
-        return {"status": "synced"}
-    except OSError as exc:
-        raise HTTPException(status_code=500, detail="Unable to write sync file") from exc
+    async with sync_lock:
+        try:
+            await anyio.to_thread.run_sync(compact_and_write_sync, req.role, req.message)
+            return {"status": "synced"}
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail="Unable to write sync file") from exc
 
 
 @app.post("/chat")
@@ -161,10 +177,7 @@ async def chat(req: ChatRequest):
 
     try:
         prompt = f"{req.system_instruction}\n\nUser: {req.message}\nAssistant:" if req.system_instruction else req.message
-        response = chatbot_pipeline(prompt, max_new_tokens=500, do_sample=True, temperature=0.7)
-        generated_text = response[0]["generated_text"]
-        if generated_text.startswith(prompt):
-            generated_text = generated_text[len(prompt) :].strip()
+        generated_text = await anyio.to_thread.run_sync(generate_local_response, prompt)
         return {"response": generated_text}
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Local model failed to respond") from exc

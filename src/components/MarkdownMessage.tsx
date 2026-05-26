@@ -183,10 +183,14 @@ function InlineText({ text }: { text: string }) {
                 const lat = parseFloat(coords[0]);
                 const lon = parseFloat(coords[1]);
                 const alt = coords.length > 2 ? parseFloat(coords[2]) : 50000;
-                import('../core/data/DataBus').then(({ dataBus }) => {
-                  dataBus.emit('cameraGoTo', { lat, lon, alt });
-                });
-                addChangeLog('GLOBE_NAV', `Flying to ${label}`, 'success');
+                if (!isNaN(lat) && !isNaN(lon) && !isNaN(alt)) {
+                  import('../core/data/DataBus').then(({ dataBus }) => {
+                    dataBus.emit('cameraGoTo', { lat, lon, alt });
+                  });
+                  addChangeLog('GLOBE_NAV', `Flying to ${label}`, 'success');
+                } else {
+                  addChangeLog('GLOBE_NAV', `Invalid coordinates: ${href}`, 'error');
+                }
               }
             }
           }}

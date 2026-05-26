@@ -53,14 +53,15 @@ export const isDemo: boolean = edition === "demo";
 // ---------------------------------------------------------------------------
 
 /**
+ * @deprecated Evaluating secrets on the client side is insecure.
  * Server-side secret used as the admin password on the demo edition.
- * Set `WWV_DEMO_ADMIN_SECRET` in `.env` — never use `NEXT_PUBLIC_`.
- * When configured on demo, enables plugin management for the instance.
+ * Set `WWV_DEMO_ADMIN_SECRET` in server environment variables — never use `NEXT_PUBLIC_` or `VITE_` prefixes.
+ * Client bundle evaluation will always fallback to undefined to prevent secrets leakage.
  */
-const DEMO_ADMIN_SECRET: string | undefined = import.meta.env.WWV_DEMO_ADMIN_SECRET?.trim() || undefined;
+const DEMO_ADMIN_SECRET: string | undefined = undefined;
 
-/** True when demo edition has an admin secret configured. */
-export const isDemoAdminConfigured: boolean = isDemo && !!DEMO_ADMIN_SECRET;
+/** True when demo edition has an admin secret configured. Always false on client side for security. */
+export const isDemoAdminConfigured: boolean = false;
 
 // ---------------------------------------------------------------------------
 // Feature flags (derived from edition)
