@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Sparkles, Compass, Eye, Space, Info, RefreshCw, Star } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 
-interface TelescopePreset {
+export interface TelescopePreset {
   name: string;
   url: string;
   ra: string;
@@ -11,7 +11,7 @@ interface TelescopePreset {
   description: string;
 }
 
-const presets: TelescopePreset[] = [
+export const presets: TelescopePreset[] = [
   {
     name: 'Deep Sky Survey',
     url: 'https://worldwidetelescope.org/webclient/',
@@ -71,35 +71,25 @@ const presets: TelescopePreset[] = [
 ];
 
 export default function WorldWideTelescopeView() {
-  const [activePreset, setActivePreset] = useState<TelescopePreset>(presets[0]);
-  const [iframeUrl, setIframeUrl] = useState(presets[0].url);
+  const telescopeTarget = useUIStore((s) => s.telescopeTarget) || presets[0];
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleSelectPreset = (preset: TelescopePreset) => {
-    setActivePreset(preset);
-    setIframeUrl(preset.url);
-    useUIStore.getState().addChangeLog('TELESCOPE', `Telescope target pointed: ${preset.name}`, 'success');
-  };
-
-  const handleRefresh = () => {
-    setRefreshKey((k) => k + 1);
-    useUIStore.getState().addChangeLog('TELESCOPE', 'Telescope interface matrix refreshed.', 'info');
-  };
+  const iframeUrl = telescopeTarget.url;
 
   return (
-    <div className="relative w-full h-full flex flex-col md:flex-row overflow-hidden bg-black select-none pointer-events-auto">
+    <div className="relative w-full h-full flex overflow-hidden bg-black select-none pointer-events-auto">
       
       {/* 3D Celestial Sky/Planet Viewport */}
       <div className="relative flex-1 h-full bg-black flex items-center justify-center">
         {window.location.search.includes('fallback') ? (
           <div className="text-primary font-mono text-[10px] text-center p-8 border border-primary/20 bg-primary/10 rounded-lg max-w-md space-y-2">
             <div className="font-bold uppercase tracking-wider text-primary">Celestial Target Locked</div>
-            <div className="text-white/60">Target ID: {activePreset.name}</div>
+            <div className="text-white/60">Target ID: {telescopeTarget.name}</div>
             <div className="text-white/40 text-[8px] break-all">{iframeUrl}</div>
           </div>
         ) : (
           <iframe
-            key={`${activePreset.name}-${refreshKey}`}
+            key={`${telescopeTarget.name}-${refreshKey}`}
             src={iframeUrl}
             title="WorldWide Telescope Web Client"
             className="w-full h-full border-0"
@@ -111,83 +101,6 @@ export default function WorldWideTelescopeView() {
         {/* Luminous Vignette Mask for Space Opera feel */}
         <div className="absolute inset-0 pointer-events-none border border-primary/10 shadow-[inset_0_0_100px_rgba(var(--color-primary-rgb,138,91,199),0.06)]" />
       </div>
-
-      {/* Cybernetic Telemetry controls sidepanel */}
-      <aside className="w-full md:w-[260px] bg-[#06070a]/90 backdrop-blur-md border-t md:border-t-0 md:border-l border-white/5 p-4 flex flex-col font-mono text-[9px] gap-4 z-20 shrink-0">
-        
-        {/* Header Indicator */}
-        <div className="flex items-center justify-between pb-2.5 border-b border-white/5">
-          <div className="flex items-center gap-2 text-primary font-bold tracking-widest uppercase">
-            <Compass className="h-4 w-4 animate-spin-slow" />
-            <span>WWT STAR ARRAY</span>
-          </div>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="p-1 hover:bg-white/5 text-white/40 hover:text-white/80 rounded transition-colors"
-            title="Realign Celestial Array"
-          >
-            <RefreshCw size={11} />
-          </button>
-        </div>
-
-        {/* Telemetry Matrix Readout */}
-        <div className="glass-panel p-2.5 border border-primary/10 space-y-2 rounded-lg bg-primary/5">
-          <div className="text-[10px] font-bold text-white/80 uppercase">Target Coordinates</div>
-          <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-white/50 text-[8px]">
-            <div>
-              <span className="text-white/20 block uppercase">Right Ascension</span>
-              <span className="text-primary font-bold">{activePreset.ra}</span>
-            </div>
-            <div>
-              <span className="text-white/20 block uppercase">Declination</span>
-              <span className="text-primary font-bold">{activePreset.dec}</span>
-            </div>
-            <div className="col-span-2">
-              <span className="text-white/20 block uppercase">Field of View</span>
-              <span className="text-white/80 font-bold">{activePreset.fov}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Target Presets Grid */}
-        <div className="flex-1 flex flex-col min-h-0 gap-2">
-          <span className="text-[8px] font-bold uppercase tracking-wider text-white/40">Point Coordinates to Array</span>
-          <div className="flex-1 overflow-y-auto space-y-1 pr-1 scroller">
-            {presets.map((preset) => {
-              const isActive = activePreset.name === preset.name;
-              return (
-                <button
-                  key={preset.name}
-                  type="button"
-                  onClick={() => handleSelectPreset(preset)}
-                  className={`w-full text-left p-2 rounded border transition-all cursor-pointer flex items-center justify-between gap-1.5 ${
-                    isActive
-                      ? 'border-primary/30 bg-primary/10 text-primary font-bold'
-                      : 'border-white/5 bg-white/5 text-white/60 hover:border-white/10 hover:text-white/80'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Star className={`h-3 w-3 shrink-0 ${isActive ? 'fill-primary text-primary' : 'text-white/20'}`} />
-                    <span className="truncate uppercase text-[8px]">{preset.name}</span>
-                  </div>
-                  <span className="text-[7px] text-white/30 shrink-0 font-normal">{preset.fov}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Selected target synopsis */}
-        <div className="p-2.5 rounded-lg border border-white/5 bg-black/35 leading-relaxed text-white/40 text-[8px] uppercase">
-          <div className="font-bold text-white/70 mb-1 flex items-center gap-1">
-            <Info size={10} className="text-primary" />
-            <span>Synopsis</span>
-          </div>
-          {activePreset.description}
-        </div>
-        
-      </aside>
     </div>
   );
 }

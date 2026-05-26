@@ -58,14 +58,17 @@ export default function GoogleEarthRemix() {
   const showRoads = useUIStore((s) => s.showRoads);
   const setShowRoads = useUIStore((s) => s.setShowRoads);
 
-  const [selectedTour, setSelectedTour] = useState<Tour | null>(null);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [measureStart, setMeasureStart] = useState<LocationData | null>(null);
-  const [measureEnd, setMeasureEnd] = useState<LocationData | null>(null);
+  const selectedTour = useUIStore((s) => s.activeTour);
+  const setSelectedTour = useUIStore((s) => s.setActiveTour);
+  const currentStepIndex = useUIStore((s) => s.activeTourStepIndex);
+  const setCurrentStepIndex = useUIStore((s) => s.setActiveTourStepIndex);
+  const measureStart = useUIStore((s) => s.measureStart);
+  const setMeasureStart = useUIStore((s) => s.setMeasureStart);
+  const measureEnd = useUIStore((s) => s.measureEnd);
+  const setMeasureEnd = useUIStore((s) => s.setMeasureEnd);
   const [measureDistance, setMeasureDistance] = useState<number | null>(null);
   const [activePanorama, setActivePanorama] = useState<string | null>(null);
   const [hasCesium, setHasCesium] = useState(false);
-  const [activePanel, setActivePanel] = useState<'search' | 'voyager' | 'places' | 'layers' | 'measure' | 'plugins' | null>('search');
 
   // 2. Zustand Store integrations
   const activeLocation = useUIStore((s) => s.activeLocation);
@@ -109,6 +112,7 @@ export default function GoogleEarthRemix() {
     isDraggingRef.current = true;
     lastMousePosRef.current = { x: e.clientX, y: e.clientY };
     clickStartPosRef.current = { x: e.clientX, y: e.clientY };
+    e.currentTarget.style.cursor = 'grabbing';
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -134,6 +138,7 @@ export default function GoogleEarthRemix() {
       targetRef.current.lat = cameraRef.current.lat;
       
       lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+      canvas.style.cursor = 'grabbing';
     } else {
       // Hover coordinate checks
       const cx = rect.width / 2;
@@ -154,12 +159,13 @@ export default function GoogleEarthRemix() {
       }
       
       hoverLocationRef.current = foundHover;
-      canvas.style.cursor = foundHover ? 'pointer' : 'default';
+      canvas.style.cursor = foundHover ? 'pointer' : 'grab';
     }
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     isDraggingRef.current = false;
+    e.currentTarget.style.cursor = hoverLocationRef.current ? 'pointer' : 'grab';
     const dx = Math.abs(e.clientX - clickStartPosRef.current.x);
     const dy = Math.abs(e.clientY - clickStartPosRef.current.y);
     // If movement was minimal, handle as click
@@ -735,7 +741,10 @@ export default function GoogleEarthRemix() {
         <button 
           type="button" 
           className="earth-menu-item"
-          onClick={() => setActivePanel('plugins')}
+          onClick={() => {
+            useUIStore.getState().setLeftPanelOpen(true);
+            useUIStore.getState().addChangeLog('UI', 'Unified Spatial Sidebar opened. Navigate to Plugins section.', 'info');
+          }}
         >
           File
         </button>
@@ -765,7 +774,8 @@ export default function GoogleEarthRemix() {
           type="button" 
           className="earth-menu-item"
           onClick={() => {
-            setActivePanel('places');
+            useUIStore.getState().setLeftPanelOpen(true);
+            useUIStore.getState().addChangeLog('UI', 'Unified Spatial Sidebar opened. Navigate to Saved Places section.', 'info');
           }}
         >
           Add
@@ -773,7 +783,10 @@ export default function GoogleEarthRemix() {
         <button 
           type="button" 
           className="earth-menu-item"
-          onClick={() => setActivePanel('layers')}
+          onClick={() => {
+            useUIStore.getState().setLeftPanelOpen(true);
+            useUIStore.getState().addChangeLog('UI', 'Unified Spatial Sidebar opened. Navigate to Style & Graphics section.', 'info');
+          }}
         >
           Tools
         </button>
@@ -795,92 +808,12 @@ export default function GoogleEarthRemix() {
       </header>
 
       <div className="earth-workspace">
-        {/* Left Side Vertical Toolbar */}
-        <aside className="earth-sidebar" aria-label="Sidebar Toolbar">
-          <button
-            type="button"
-            className={`earth-sidebar-btn ${activePanel === 'search' ? 'active' : ''}`}
-            onClick={() => setActivePanel(activePanel === 'search' ? null : 'search')}
-            title="Search Locations"
-          >
-            <Search size={20} />
-            <span>Search</span>
-          </button>
-          <button
-            type="button"
-            className={`earth-sidebar-btn ${activePanel === 'voyager' ? 'active' : ''}`}
-            onClick={() => setActivePanel(activePanel === 'voyager' ? null : 'voyager')}
-            title="Voyager Guided Tours"
-          >
-            <Compass size={20} />
-            <span>Voyager</span>
-          </button>
-          <button
-            type="button"
-            className={`earth-sidebar-btn ${activePanel === 'places' ? 'active' : ''}`}
-            onClick={() => setActivePanel(activePanel === 'places' ? null : 'places')}
-            title="Saved Places"
-          >
-            <Pin size={20} />
-            <span>Places</span>
-          </button>
-          <button
-            type="button"
-            className={`earth-sidebar-btn ${activePanel === 'layers' ? 'active' : ''}`}
-            onClick={() => setActivePanel(activePanel === 'layers' ? null : 'layers')}
-            title="Map Style Layers"
-          >
-            <Layers size={20} />
-            <span>Style</span>
-          </button>
-          <button
-            type="button"
-            className={`earth-sidebar-btn ${activePanel === 'measure' ? 'active' : ''}`}
-            onClick={() => setActivePanel(activePanel === 'measure' ? null : 'measure')}
-            title="Measure Distance"
-          >
-            <Ruler size={20} />
-            <span>Measure</span>
-          </button>
-          <button
-            type="button"
-            className={`earth-sidebar-btn ${activePanel === 'plugins' ? 'active' : ''}`}
-            onClick={() => setActivePanel(activePanel === 'plugins' ? null : 'plugins')}
-            title="Ingestion Plugins"
-          >
-            <FolderKanban size={20} />
-            <span>Plugins</span>
-          </button>
-          
-          <div className="earth-sidebar-spacer" />
-          
-          <button 
-            type="button" 
-            className="earth-sidebar-btn" 
-            title="Settings"
-            onClick={() => useUIStore.getState().setCurrentPage('settings')}
-          >
-            <Settings size={20} />
-          </button>
-          <button 
-            type="button" 
-            className="earth-sidebar-btn" 
-            title="User Account"
-            onClick={() => {
-              useUIStore.getState().addChangeLog('SECURITY', 'Operator authentication state verified.', 'success');
-              alert('Orbital Operator Authentication: ACTIVE\nDevice: HSR-System-V6');
-            }}
-          >
-            <UserCircle size={20} />
-          </button>
-        </aside>
-
         {/* Core Stage */}
         <div className="earth-stage">
           
           {/* Fallback 2D Sphere Globe when Cesium has not loaded */}
           {!hasCesium && (
-            <div className="earth-globe-fallback">
+            <div className="earth-globe-fallback pointer-events-auto">
               <div className="earth-starfield" aria-hidden="true" />
               <canvas
                 ref={canvasRef}
@@ -891,430 +824,12 @@ export default function GoogleEarthRemix() {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
                 className="w-[min(65vw,680px)] aspect-square max-h-[75vh]"
-                style={{ display: 'block', touchAction: 'none' }}
+                style={{ display: 'block', touchAction: 'none', cursor: 'grab' }}
               />
             </div>
           )}
 
           {/* Direct Pass-Through: Clicks go straight to the background Cesium canvas */}
-
-          {/* Floating Panels: Rendered absolute on top of the stage next to sidebar */}
-
-          {/* 1. Search Results / Explore Panel */}
-          {activePanel === 'search' && (
-            <aside className="earth-panel earth-results-panel" aria-label="Search Panel">
-              <div className="earth-panel-header">
-                <span className="earth-panel-title">Search & Explore</span>
-                <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
-              </div>
-              <div className="earth-search-input-wrapper">
-                <Search size={16} />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search cities, monuments, peaks..."
-                  aria-label="Search locations"
-                />
-                {query && (
-                  <button type="button" onClick={() => setQuery('')} className="earth-search-clear">✕</button>
-                )}
-              </div>
-              <div className="earth-result-list scroller">
-                {filteredResults.map((result) => {
-                  const isSelected = result.type === 'landmark'
-                    ? activeLocation && result.id === activeLocation.id
-                    : useStore.getState().selectedEntity && result.id === useStore.getState().selectedEntity?.id;
-                  
-                  return (
-                    <button
-                      key={result.id}
-                      type="button"
-                      className={`earth-result-item ${isSelected ? 'selected' : ''}`}
-                      onClick={() => {
-                        if (result.type === 'landmark') {
-                          setActiveLocation(result.raw);
-                          useStore.getState().setSelectedEntity(null);
-                        } else {
-                          useStore.getState().setSelectedEntity(result.raw);
-                          setActiveLocation(null);
-                          // Fly camera to entity coordinates
-                          const viewer = (window as any).cesiumViewer;
-                          if (viewer) {
-                            viewer.camera.flyTo({
-                              destination: Cesium.Cartesian3.fromDegrees(result.lng, result.lat, result.raw.altitude ? result.raw.altitude * 2.5 + 20000 : 250000),
-                              duration: 2.0
-                            });
-                          }
-                        }
-                      }}
-                    >
-                      <span className="earth-result-name">{result.name}</span>
-                      <small className="earth-result-meta">{result.country} · {result.category} ({result.type})</small>
-                    </button>
-                  );
-                })}
-              </div>
-            </aside>
-          )}
-
-          {/* 2. Voyager Guided Tours Panel */}
-          {activePanel === 'voyager' && (
-            <aside className="earth-panel earth-voyager-panel" aria-label="Voyager Tours Panel">
-              <div className="earth-panel-header">
-                <span className="earth-panel-title">Voyager Stories</span>
-                <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
-              </div>
-              <div className="earth-tour-list scroller">
-                {tours.map((tour) => (
-                  <div key={tour.id} className="earth-tour-card">
-                    <img src={tour.image} alt={tour.title} className="earth-tour-card-img" />
-                    <div className="earth-tour-card-content">
-                      <h3>{tour.title}</h3>
-                      <p>{tour.description}</p>
-                      <button 
-                        type="button" 
-                        className="earth-tour-start-btn" 
-                        onClick={() => {
-                          handleStartTour(tour);
-                          setActivePanel(null); // Close sidebar panel to see guide
-                        }}
-                      >
-                        <Play size={12} style={{ fill: 'currentColor' }} /> Start Tour
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </aside>
-          )}
-
-          {/* 3. Places Location Database Explorer */}
-          {activePanel === 'places' && (
-            <aside className="earth-panel earth-places-panel" aria-label="Saved Places Panel">
-              <div className="earth-panel-header">
-                <span className="earth-panel-title">Landmark Database</span>
-                <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
-              </div>
-              <div className="earth-result-list scroller">
-                {locations.map((location) => (
-                  <button
-                    key={location.id}
-                    type="button"
-                    className={`earth-result-item ${activeLocation && location.id === activeLocation.id ? 'selected' : ''}`}
-                    onClick={() => setActiveLocation(location)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Pin size={12} className="text-red-500 shrink-0" />
-                      <span className="earth-result-name">{location.name}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </aside>
-          )}
-
-          {/* 4. Map Style & Layers Panel */}
-          {activePanel === 'layers' && (
-            <aside className="earth-panel earth-layers-panel" aria-label="Map Style Panel">
-              <div className="earth-panel-header">
-                <span className="earth-panel-title">Map Style & Graphics</span>
-                <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
-              </div>
-              <div className="earth-layers-list scroller p-3 space-y-4">
-                <div className="earth-layer-preset-grid">
-                  <button 
-                    type="button" 
-                    className={`earth-preset-card ${showBorders && showTerrain ? 'active' : ''}`}
-                    onClick={() => { setShowBorders(true); setShowTerrain(true); }}
-                  >
-                    <Map size={18} />
-                    <span>Exploration</span>
-                  </button>
-                  <button 
-                    type="button" 
-                    className={`earth-preset-card ${!showBorders && showTerrain ? 'active' : ''}`}
-                    onClick={() => { setShowBorders(false); setShowTerrain(true); }}
-                  >
-                    <Eye size={18} />
-                    <span>Clean Globe</span>
-                  </button>
-                </div>
-                
-                <div className="earth-layer-toggles space-y-2">
-                  <label className="earth-layer-checkbox-label">
-                    <input 
-                      type="checkbox" 
-                      checked={showBorders} 
-                      onChange={(e) => setShowBorders(e.target.checked)} 
-                    />
-                    <span>Borders and Landmarks Labels</span>
-                  </label>
-                  <label className="earth-layer-checkbox-label">
-                    <input 
-                      type="checkbox" 
-                      checked={showTerrain} 
-                      onChange={(e) => setShowTerrain(e.target.checked)} 
-                    />
-                    <span>Photoreal 3D Terrain Tiles</span>
-                  </label>
-                  <label className="earth-layer-checkbox-label">
-                    <input 
-                      type="checkbox" 
-                      checked={showRoads} 
-                      onChange={(e) => setShowRoads(e.target.checked)} 
-                    />
-                    <span>Show Atmospheric Shadows</span>
-                  </label>
-                </div>
-
-                <div className="border-t border-white/5 pt-3">
-                  <span className="text-[10px] font-bold tracking-wider text-primary uppercase block mb-2 font-mono">Graphics Quality</span>
-                  
-                  <div className="flex gap-2 mb-3 bg-black/20 p-0.5 rounded-lg border border-white/5 font-mono text-[9px]">
-                    <button
-                      type="button"
-                      onClick={() => applyGraphicsPreset('low')}
-                      className={`flex-1 py-1 rounded text-center cursor-pointer transition-all ${
-                        mapConfig.resolutionScale < 0.85 
-                          ? 'bg-primary text-white font-bold animate-pulse' 
-                          : 'text-white/40 hover:text-white/70'
-                      }`}
-                      title="Switch to Low-End Graphics (High Performance)"
-                    >
-                      Performance (Low)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyGraphicsPreset('high')}
-                      className={`flex-1 py-1 rounded text-center cursor-pointer transition-all ${
-                        mapConfig.resolutionScale >= 0.85 
-                          ? 'bg-primary text-white font-bold animate-pulse' 
-                          : 'text-white/40 hover:text-white/70'
-                      }`}
-                      title="Switch to High-End Graphics (Cinematic)"
-                    >
-                      Cinematic (High)
-                    </button>
-                  </div>
-
-                  <div className="space-y-3 text-[10px] font-mono text-white/70">
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <span>Show FPS Counter</span>
-                      <input 
-                        type="checkbox" 
-                        checked={mapConfig.showFps} 
-                        onChange={(e) => updateMapConfig({ showFps: e.target.checked })} 
-                        className="rounded border-white/10 bg-black/20 text-primary"
-                      />
-                    </label>
-                    
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <span>Dynamic Shadows</span>
-                      <input 
-                        type="checkbox" 
-                        checked={mapConfig.shadowsEnabled} 
-                        onChange={(e) => updateMapConfig({ shadowsEnabled: e.target.checked })} 
-                        className="rounded border-white/10 bg-black/20 text-primary"
-                      />
-                    </label>
-
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <span>Dynamic Sun/Moon Lighting</span>
-                      <input 
-                        type="checkbox" 
-                        checked={mapConfig.enableLighting} 
-                        onChange={(e) => updateMapConfig({ enableLighting: e.target.checked })} 
-                        className="rounded border-white/10 bg-black/20 text-primary"
-                      />
-                    </label>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span>Resolution Scale</span>
-                        <span>{mapConfig.resolutionScale.toFixed(2)}x</span>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="0.5" 
-                        max="1.5" 
-                        step="0.1" 
-                        value={mapConfig.resolutionScale} 
-                        onChange={(e) => updateMapConfig({ resolutionScale: parseFloat(e.target.value) })}
-                        className="w-full accent-primary h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2">
-                      <span>Anti-Aliasing</span>
-                      <select 
-                        value={mapConfig.antiAliasing} 
-                        onChange={(e) => updateMapConfig({ antiAliasing: e.target.value as any })}
-                        className="bg-[#111217] border border-white/10 rounded px-1.5 py-0.5 text-[9px] text-white focus:outline-none"
-                      >
-                        <option value="none">None</option>
-                        <option value="fxaa">FXAA</option>
-                        <option value="msaa2x">MSAA 2x</option>
-                        <option value="msaa4x">MSAA 4x</option>
-                        <option value="msaa8x">MSAA 8x</option>
-                      </select>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2">
-                      <span>Level of Detail (LOD)</span>
-                      <select 
-                        value={mapConfig.maxScreenSpaceError} 
-                        onChange={(e) => updateMapConfig({ maxScreenSpaceError: parseInt(e.target.value) })}
-                        className="bg-[#111217] border border-white/10 rounded px-1.5 py-0.5 text-[9px] text-white focus:outline-none"
-                      >
-                        <option value="16">High Detail (16)</option>
-                        <option value="32">Balanced (32)</option>
-                        <option value="64">High Performance (64)</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </aside>
-          )}
-
-          {/* 6. Ingestion Plugins Panel */}
-          {activePanel === 'plugins' && (
-            <aside className="earth-panel earth-plugins-panel" aria-label="Plugins Panel">
-              <div className="earth-panel-header">
-                <span className="earth-panel-title">Ingestion Plugins</span>
-                <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
-              </div>
-              
-              <div className="earth-layers-list scroller p-3 space-y-3">
-                {pluginManager.getAllPlugins().map((managed) => {
-                  const pId = managed.plugin.id;
-                  const layerState = layers[pId] || { enabled: false, entityCount: 0, loading: false };
-                  const IconComponent = managed.plugin.icon;
-                  
-                  return (
-                    <div key={pId} className="glass-panel p-3 border border-white/5 space-y-2 rounded-lg bg-black/25">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-primary shrink-0">
-                            {IconComponent && <IconComponent size={16} />}
-                          </span>
-                          <div>
-                            <div className="text-[10px] font-bold tracking-wide text-white">{managed.plugin.name}</div>
-                            <div className="text-[8px] font-mono text-white/40">v{managed.plugin.version} · {managed.plugin.category}</div>
-                          </div>
-                        </div>
-                        
-                        <button
-                          type="button"
-                          onClick={() => pluginManager.togglePlugin(pId)}
-                          className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            layerState.enabled ? 'bg-primary' : 'bg-white/10'
-                          }`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                              layerState.enabled ? 'translate-x-4' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </div>
-                      
-                      <p className="text-[9px] text-white/50 leading-relaxed">{managed.plugin.description}</p>
-                      
-                      {layerState.enabled && (
-                        <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[8px] font-mono text-white/40">
-                          <div className="flex items-center gap-1">
-                            <span className={`h-1.5 w-1.5 rounded-full ${layerState.loading ? 'bg-amber-400 animate-pulse' : 'bg-green-500'}`} />
-                            <span>{layerState.loading ? 'Syncing...' : 'Connected'}</span>
-                          </div>
-                          <div>
-                            <span>{layerState.entityCount} Entities</span>
-                          </div>
-                          <div>
-                            <span>{managed.plugin.getPollingInterval() / 1000}s poll</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </aside>
-          )}
-
-          {/* 5. Measurement Tool Panel */}
-          {activePanel === 'measure' && (
-            <aside className="earth-panel earth-measure-panel" aria-label="Measure Distance Panel">
-              <div className="earth-panel-header">
-                <span className="earth-panel-title">Distance Ruler</span>
-                <button type="button" className="earth-panel-close" onClick={() => setActivePanel(null)}><X size={16} /></button>
-              </div>
-              <div className="earth-measure-content">
-                <p className="earth-measure-instructions">
-                  Calculate distance by selecting a Start and End landmark.
-                </p>
-
-                <div className="earth-measure-selectors">
-                  <div className="earth-measure-node">
-                    <label>Start Location:</label>
-                    <select 
-                      value={measureStart?.id || ''} 
-                      onChange={(e) => {
-                        const loc = locations.find(l => l.id === e.target.value);
-                        setMeasureStart(loc || null);
-                      }}
-                      className="earth-measure-select"
-                    >
-                      <option value="">-- Select Point A --</option>
-                      {locations.map(l => (
-                        <option key={l.id} value={l.id}>{l.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="earth-measure-node">
-                    <label>End Location:</label>
-                    <select 
-                      value={measureEnd?.id || ''} 
-                      onChange={(e) => {
-                        const loc = locations.find(l => l.id === e.target.value);
-                        setMeasureEnd(loc || null);
-                      }}
-                      className="earth-measure-select"
-                    >
-                      <option value="">-- Select Point B --</option>
-                      {locations.map(l => (
-                        <option key={l.id} value={l.id}>{l.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {measureDistance !== null && (
-                  <div className="earth-measure-result">
-                    <div className="earth-result-val">
-                      {measureDistance.toFixed(2)} <span>km</span>
-                    </div>
-                    <div className="earth-result-val-miles">
-                      {(measureDistance * 0.621371).toFixed(2)} <span>miles</span>
-                    </div>
-                    <div className="earth-measure-reset-wrapper">
-                      <button 
-                        type="button" 
-                        className="earth-measure-reset-btn"
-                        onClick={() => {
-                          setMeasureStart(null);
-                          setMeasureEnd(null);
-                        }}
-                      >
-                        <RotateCcw size={12} /> Reset Ruler
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </aside>
-          )}
 
           {/* Active Voyager Tour Step Overlay */}
           {selectedTour && activeTourStep && (

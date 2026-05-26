@@ -1,19 +1,19 @@
-import { ChatPanel } from '../ChatPanel';
+import { CenterPanel } from '../panels/CenterPanel';
+import { LeftPanel } from '../panels/LeftPanel';
 import { SystemMonitor } from '../SystemMonitor';
 import { useUIStore } from '../../store/uiStore';
-import { SessionSidebar } from './SessionSidebar';
 
 export function DockedLayout() {
-  const { setShowSettings, clearMessages, settingsDocked, showSettings } = useUIStore();
+  const { setShowSettings, settingsDocked, showSettings } = useUIStore();
   const hideSystemMonitor = showSettings && settingsDocked;
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-transparent">
-      <SessionSidebar onNewSession={clearMessages} onOpenSettings={() => setShowSettings(true)} />
+      <LeftPanel />
 
       <main className="flex-1 flex flex-col relative z-10 bg-transparent">
         <div className="w-full h-full relative">
-          <ChatPanel />
+          <CenterPanel />
         </div>
       </main>
 

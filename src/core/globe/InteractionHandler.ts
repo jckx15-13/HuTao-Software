@@ -42,6 +42,33 @@ export function setupInteractionHandlers(
     /** Currently expanded stack id (only one at a time). */
     let expandedStackId: string | null = null;
 
+    let latestMousePos = { x: 0, y: 0 };
+
+    if (canvas && canvas.style) {
+        canvas.style.cursor = "grab";
+    }
+
+    // LEFT_DOWN → set cursor to grabbing
+    handler.setInputAction(
+        () => {
+            if (canvas && canvas.style) {
+                canvas.style.cursor = "grabbing";
+            }
+        },
+        ScreenSpaceEventType.LEFT_DOWN
+    );
+
+    // LEFT_UP → restore cursor to pointer or grab
+    handler.setInputAction(
+        () => {
+            if (canvas && canvas.style) {
+                const entity = findEntityAtPosition(viewer, latestMousePos);
+                canvas.style.cursor = entity ? "pointer" : "grab";
+            }
+        },
+        ScreenSpaceEventType.LEFT_UP
+    );
+
     // Click → select entity or expand stack
     handler.setInputAction(
         (event: { position: { x: number; y: number } }) => {
@@ -112,6 +139,7 @@ export function setupInteractionHandlers(
     handler.setInputAction(
         (event: { endPosition: { x: number; y: number } }) => {
             const pos = { x: event.endPosition.x, y: event.endPosition.y };
+            latestMousePos = pos;
 
             if (hoveredEntityIdRef.current) {
                 useStore.getState().setHoveredEntity(useStore.getState().hoveredEntity, pos);
@@ -138,7 +166,7 @@ export function setupInteractionHandlers(
 
                 if (prevId !== newId) {
                     hoveredEntityIdRef.current = newId;
-                    canvas.style.cursor = entity ? "pointer" : "default";
+                    canvas.style.cursor = entity ? "pointer" : "grab";
                     useStore.getState().setHoveredEntity(entity, entity ? pos : null);
                     // Trigger render to apply hover highlights immediately
                     viewer.scene.requestRender();
