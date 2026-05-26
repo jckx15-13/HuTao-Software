@@ -1,92 +1,12 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <script>
-      (function() {
-        const isHeadless = /HeadlessChrome/i.test(navigator.userAgent) || navigator.webdriver || window.location.search.includes('fallback');
-        if (isHeadless) {
-          document.documentElement.classList.add('headless');
-          document.documentElement.setAttribute('data-headless', 'true');
-          try {
-            const store = {};
-            const mockStorage = {
-              getItem: (key) => store[key] || null,
-              setItem: (key, value) => { store[key] = String(value); },
-              removeItem: (key) => { delete store[key]; },
-              clear: () => { for (let k in store) delete store[k]; },
-              key: (index) => Object.keys(store)[index] || null,
-              get length() { return Object.keys(store).length; }
-            };
-            Object.defineProperty(window, 'localStorage', { value: mockStorage, configurable: true, enumerable: true, writable: true });
-            Object.defineProperty(window, 'sessionStorage', { value: mockStorage, configurable: true, enumerable: true, writable: true });
-          } catch (e) {
-            console.warn("Storage mocking bypassed:", e);
-          }
-        }
-      })();
-    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Silver Wolf VI — A premium AI-native spatial workspace and orbital intelligence platform layered over a live planetary environment, styled with anime sci-fi aesthetics." />
-    <meta name="theme-color" content="#0a0b10" />
-    <meta name="color-scheme" content="dark" />
-    <meta property="og:title" content="Silver Wolf VI" />
-    <meta property="og:description" content="Premium AI-native spatial workspace and orbital planetary visualization system." />
-    <meta property="og:type" content="website" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Outfit:wght@300;400;700;900&display=swap" rel="stylesheet">
     <title>Silver Wolf VI</title>
-    <style>
-      /* Critical inline styles for instant loading feedback */
-      body { margin: 0; background: #0a0b10; overflow: hidden; }
-      /* Disable blurs and backdrops in headless environment to prevent screenshot crashes */
-      .headless,
-      .headless *,
-      .headless *::before,
-      .headless *::after,
-      [data-headless],
-      [data-headless] *,
-      [data-headless] *::before,
-      [data-headless] *::after {
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
-        filter: none !important;
-        transition: none !important;
-        animation: none !important;
-      }
-      #root-loader {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        width: 100vw;
-        background: #0a0b10;
-        gap: 12px;
-      }
-      #root-loader .dot {
-        width: 6px; height: 6px;
-        border-radius: 50%;
-        background: #8A5BC7;
-        animation: loader-pulse 1.2s ease-in-out infinite;
-      }
-      #root-loader .dot:nth-child(2) { animation-delay: 0.15s; }
-      #root-loader .dot:nth-child(3) { animation-delay: 0.3s; }
-      @keyframes loader-pulse {
-        0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
-        40% { opacity: 1; transform: scale(1.2); }
-      }
-    </style>
   </head>
   <body>
-    <div id="root">
-      <div id="root-loader" aria-label="Loading Silver Wolf VI">
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
-      </div>
-    </div>
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

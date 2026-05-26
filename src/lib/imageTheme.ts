@@ -66,7 +66,6 @@ export async function extractThemeFromImage(url: string): Promise<Partial<ThemeV
 function loadImage(url: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
-    image.crossOrigin = 'anonymous';
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error('Selected image could not be loaded.'));
     image.src = url;

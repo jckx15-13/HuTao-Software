@@ -1,31 +1,59 @@
-import { useRef, useEffect } from 'react';
+import { useEffect } from 'react';
+import { motion, useAnimation } from 'motion/react';
+import { ChatComposer } from './chat/ChatComposer';
+import { ChatFeed } from './chat/ChatFeed';
+import { ChatHeader } from './chat/ChatHeader';
+import { useAIChat } from '../hooks/useAIChat';
+import { useAudioFeedback } from '../hooks/useAudioFeedback';
+import { useChatPersistence } from '../hooks/useChatPersistence';
 import { useUIStore } from '../store/uiStore';
-import { ChatMessage } from './chat/ChatMessage';
 
 export function ChatPanel() {
-  // Directly pull messages from the active session via store
-  const messages = useUIStore((s) => s.messages);
-  const isProcessing = useUIStore((s) => s.isProcessing);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messages = useUIStore((state) => state.messages);
+  const isProcessing = useUIStore((state) => state.isProcessing);
+  const cpuLoad = useUIStore((state) => state.cpuLoad);
+  const clearMessages = useUIStore((state) => state.clearMessages);
+  const setMessages = useUIStore((state) => state.setMessages);
+  const terminalFontSize = useUIStore((state) => state.terminalFontSize);
+  const { sendMessage } = useAIChat();
+  const { playClick, playBlip } = useAudioFeedback();
+  const paneControls = useAnimation();
+  const isHighLoad = cpuLoad > 0.8;
 
-  // Auto scroll to bottom when new messages arrive
+  useChatPersistence(messages, setMessages);
+
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
+    const lastMessage = messages[messages.length - 1];
+
+    if (lastMessage && lastMessage.sender !== 'user') {
+      playBlip();
+    }
+  }, [messages, playBlip]);
+
+  const handleSend = async (text: string) => {
+    if (isProcessing) return;
+
+    playClick();
+
+    await paneControls.start({
+      y: isHighLoad ? 1 : 2,
+      transition: { type: 'spring', stiffness: 1000, damping: 10 },
+    });
+    paneControls.start({ y: 0, transition: { type: 'spring', stiffness: 400, damping: 25 } });
+
+    sendMessage(text);
+  };
 
   return (
-    <div className="flex h-full w-full flex-col bg-transparent font-sans">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth scroller">
-        {messages.map((m) => (
-          <ChatMessage key={m.id} sender={m.sender} content={m.content} />
-        ))}
-        {isProcessing && (
-          <div className="flex gap-4 animate-pulse px-4">
-            <div className="h-7 w-7 rounded-lg bg-white/10" />
-            <div className="h-10 w-24 rounded-2xl bg-white/5" />
-          </div>
-        )}
-      </div>
-    </div>
+    <motion.div className="flex h-full w-full flex-col overflow-hidden bg-transparent" animate={paneControls}>
+      <ChatHeader onClear={clearMessages} />
+      <ChatFeed
+        messages={messages}
+        isProcessing={isProcessing}
+        isHighLoad={isHighLoad}
+        fontSize={terminalFontSize}
+      />
+      <ChatComposer disabled={isProcessing} fontSize={terminalFontSize} onSubmit={handleSend} />
+    </motion.div>
   );
 }

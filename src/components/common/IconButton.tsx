@@ -1,4 +1,4 @@
-import React, { type ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 type IconButtonVariant = 'ghost' | 'primary' | 'danger';
@@ -8,8 +8,6 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   label: string;
   variant?: IconButtonVariant;
   showLabel?: boolean;
-  className?: string;
-  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 const variantClasses: Record<IconButtonVariant, string> = {

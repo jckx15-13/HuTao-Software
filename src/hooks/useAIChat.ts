@@ -1,27 +1,46 @@
 import { useCallback } from 'react';
 import { useUIStore } from '../store/uiStore';
+import { GoogleGenAI } from "@google/genai";
 import { createMessage } from '../lib/messages';
-import { aiChat, syncToBridge } from '../lib/ai';
+
+const apiKey = process.env.GEMINI_API_KEY;
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+
+function buildPrompt(systemInstructions: string, text: string) {
+  if (!systemInstructions.trim()) return text;
+
+  return `${systemInstructions.trim()}\n\nUser message:\n${text}`;
+}
 
 export function useAIChat() {
-  const addMessage = useUIStore((s) => s.addMessage);
-  const setIsProcessing = useUIStore((s) => s.setIsProcessing);
-  const aiModel = useUIStore((s) => s.aiModel);
-  const systemInstructions = useUIStore((s) => s.systemInstructions);
+  const addMessage = useUIStore((state) => state.addMessage);
+  const setIsProcessing = useUIStore((state) => state.setIsProcessing);
+  const aiModel = useUIStore((state) => state.aiModel);
+  const systemInstructions = useUIStore((state) => state.systemInstructions);
 
   const sendMessage = useCallback(async (text: string) => {
     addMessage(createMessage('user', text));
-    syncToBridge(text, 'user');
     setIsProcessing(true);
-
+    
     try {
-      const response = await aiChat(aiModel, text, [], systemInstructions);
-      if (response.error) throw new Error(response.error);
+      if (!ai) {
+        throw new Error('Missing GEMINI_API_KEY. Add it to .env.local before sending messages.');
+      }
 
-      addMessage(createMessage('ai', response.text));
-      syncToBridge(response.text, 'ai');
+      const response = await ai.models.generateContent({
+        model: aiModel,
+        contents: buildPrompt(systemInstructions, text),
+      });
+
+      addMessage(createMessage('ai', response.text || 'No response generated.'));
     } catch (error) {
-      addMessage(createMessage('system', `Error: ${error instanceof Error ? error.message : 'Unknown'}`));
+      console.error(error);
+      addMessage(
+        createMessage(
+          'system',
+          `Connection to the AI service failed. Processing state reset.\n\n\`\`\`\n${error}\n\`\`\``,
+        ),
+      );
     } finally {
       setIsProcessing(false);
     }

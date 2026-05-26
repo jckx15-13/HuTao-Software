@@ -15,13 +15,12 @@
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@worldwideview/wwv-plugin-sdk": ["src/wwv-sdk/index.ts"]
+      "@/*": [
+        "./*"
+      ]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  },
-  "exclude": ["node_modules", "google-earth-remix", "_archive"]
+  }
 }

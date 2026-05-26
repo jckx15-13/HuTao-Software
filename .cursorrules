@@ -1,0 +1,22 @@
+# AI Coding Assistant Rules for Silver Wolf VI
+
+## 1. Feature Preservation & Regression Prevention
+When implementing new architectural patterns (like replacing old UIs with new React components or integrating plugins), you MUST NOT blindly delete, overwrite, or "lose" micro-interactions and aesthetic features.
+- Specifically: **Do not lose custom UI features like custom cursor movements, animations, or styling.** 
+- Always audit the existing code you are replacing for unique behaviors (e.g., custom `mousemove` trackers, glowing effects, specific easing functions) and port them over to the new implementation.
+
+## 2. Aesthetics & Theming
+- The app uses a highly customized "Honkai Star Rail" space opera theme. The primary aesthetic color is Silver Wolf Purple/Magenta (`#8A5BC7`). 
+- Do not default to generic UI frameworks or plain colors. Maintain the glassmorphism panels, blurry backgrounds, and high-tech typography (`JetBrains Mono`, `Outfit`).
+- Always check `src/data/palettes.json` and `src/index.css` before hardcoding colors.
+
+## 3. Cesium & 3D Integration
+- The 3D globe relies on `CesiumJS`. You must strictly maintain the single-mounted persistent `viewer` architecture to prevent WebGL context loss and slow loading.
+- High-resolution textures (e.g., ArcGIS World Imagery) must be preserved in the fallback chain in `src/lib/imageryFactory.ts`.
+
+## 4. Modern UI Interactions (Cursor Movement)
+- The app utilizes a custom, modernized cursor movement approach (fluid trailing dot/glow effects). 
+- Ensure that any new overlay components or interactive elements correctly interact with the global custom cursor (e.g., triggering hover states or expanding the cursor footprint). Do not apply `cursor-default` randomly if it overrides the custom implementation.
+
+## 5. Working on the Right Panel / Timeline
+- When making modifications to `RightPanel.tsx` or related files, ensure the Context, Browser, and Changes tabs retain their state and fluid transitions.

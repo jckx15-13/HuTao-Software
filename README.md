@@ -1,41 +1,25 @@
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
+
 # Silver Wolf VI
 
-Silver Wolf VI is a local-first cyberpunk AI workspace with a React/Vite frontend, a Python bridge, globe and telescope views, plugin surfaces, and operational launch scripts.
+An adaptive cyberpunk chat interface with Gemini responses, local chat history, animated telemetry, wallpaper-based theme extraction, and configurable interface controls.
 
-## Quick Start
+View your app in AI Studio: https://ai.studio/apps/d14a70cc-0c1f-444d-86d9-625b54096fee
 
-1. Install dependencies with `npm install`.
-2. Start the local stack with `node launch.js` or `npm run dev`.
-3. Open the app at `http://127.0.0.1:3000`.
-4. Use the bridge only if you need the local Python-backed workflow.
+## Run Locally
 
-## What This Repo Is
+**Prerequisites:**  Node.js
 
-- `src/` contains the active frontend, state, hooks, components, and plugin surfaces.
-- `bridge/` contains the local Python bridge used by the launcher.
-- `scripts/` contains build, test, and maintenance helpers.
-- `docs/manual/` contains the deep operator and developer manual.
-- `development_logs/` and `_archive/` contain historical or supporting material.
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
 
-## What To Read Next
+## Project Notes
 
-- [Operator and developer manual](docs/manual/Operator-Manual.md)
-- `docs/progress.md` for a compact development log
-- `bridge/server.py` if you need to understand the local bridge process
-- `launch.js` if you need to inspect startup, port cleanup, or browser launch behavior
-
-## Known Current Issues
-
-- `npm run build` currently fails on `scripts/test_app.js:198` with `TS8016`.
-- `npm outdated --long` shows the dependency stack is behind current releases.
-- The repository still contains a mix of active code, archived code, and experimental surfaces.
-
-## User Guide
-
-- Start from the root README when you want orientation.
-- Use the manual when you want operational detail, repair playbooks, and architecture depth.
-- Treat the launcher as the fastest way to bring up the local stack on this machine.
-
-## Maintenance Note
-
-This file is intentionally short. The long-form documentation has been moved into `docs/manual/Operator-Manual.md`.
+- Architecture, critique, and design notes live in [DOCS.md](DOCS.md).
+- The main app code is split across `src/components`, `src/hooks`, `src/lib`, and `src/store`.
+- Build verification: `npm run lint` and `npm run build`.

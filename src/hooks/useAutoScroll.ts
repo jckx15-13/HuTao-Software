@@ -1,16 +1,12 @@
-import { useEffect, useRef, useMemo, type RefObject } from 'react';
+import { useEffect, type RefObject } from 'react';
 
 export function useAutoScroll(ref: RefObject<HTMLElement | null>, dependencies: unknown[]) {
-  // Memoize the dependency length to use as a stable trigger
-  const depLength = dependencies.length;
-
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
 
     node.scrollTop = node.scrollHeight;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ref, depLength, ...dependencies]);
+  }, dependencies);
 
   useEffect(() => {
     const node = ref.current;
