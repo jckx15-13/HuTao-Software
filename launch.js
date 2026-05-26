@@ -121,7 +121,7 @@ async function main() {
                 } catch (winErr) {
                   // Fallback: try PowerShell Start-Process
                   try {
-                    execSync(`powershell -NoProfile -Command Start-Process -FilePath "${url.replace(/"/g, '\\"')}"`);
+                    execSync(`powershell -NoProfile -Command "Start-Process '${url.replace(/'/g, "''")}'"`);
                   } catch (psErr) {
                     log('Engine', 'ERROR', `Could not auto-start browser on Windows: ${psErr.message}`);
                   }

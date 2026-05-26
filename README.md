@@ -2,6 +2,8 @@
 
 A lightweight cyberpunk AI assistant interface with a Google-Earth-style explorer, local bridge support, and local-first settings. The app is optimized for smaller production bundles and avoids persisting secrets in browser storage.
 
+`launch.js` is the local operator entrypoint. It clears the bridge/frontend ports, starts `bridge/server.py`, starts Vite on `127.0.0.1:3000`, writes `launcher.log`, and opens the app in the default browser. Use it for local development startup; production builds are static Vite output plus the optional bridge.
+
 ![Silver Wolf VI Preview](./public/favicon.svg)
 
 ## Features
@@ -40,6 +42,11 @@ A lightweight cyberpunk AI assistant interface with a Google-Earth-style explore
    npm run dev
    ```
 
+   Or start the full local stack:
+   ```bash
+   node launch.js
+   ```
+
 ## Architecture
 
 - **State Management**: Zustand handles the centralized `uiStore` for themes, messages, and settings.
@@ -47,6 +54,17 @@ A lightweight cyberpunk AI assistant interface with a Google-Earth-style explore
 - **Animations**: CSS transitions keep the interface responsive without shipping a separate animation runtime.
 - **Markdown**: A small safe renderer handles common chat formatting without evaluating raw HTML.
 - **Bridge Security**: `bridge/server.py` reads `HF_TOKEN`, `BRIDGE_HOST`, `BRIDGE_PORT`, and `BRIDGE_CORS_ORIGINS` from the environment. It defaults to localhost and mock mode when no token is present.
+
+## Self-Diagnostic Healing System Notes
+
+Useful seams for a separate diagnostic/healing service:
+
+- **Launcher health**: watch `launcher.log`, port `3000`, port `8001`, child process exits, and browser-open failures.
+- **Frontend health**: check Vite build/typecheck, root app render, local storage availability, worker startup, Cesium/globe initialization, and console errors.
+- **Bridge health**: call bridge status/chat endpoints, verify CORS origins, detect missing `HF_TOKEN`, and distinguish mock mode from provider failures.
+- **Data health**: validate plugin manifests, GeoJSON imports, `public/borders.geojson`, cache reads/writes, and fetch fallbacks.
+- **Recovery actions**: restart only the failed process, clear occupied ports, rebuild static assets, reset corrupt local cache keys, disable a bad plugin, and preserve logs before repair.
+- **Report shape**: emit `component`, `symptom`, `evidence`, `severity`, `attempted_fix`, `result`, and `next_manual_step`.
 
 ## Building for Production
 
