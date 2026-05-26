@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Optional
 from asyncio import Lock
 import anyio
+import urllib.request
+import urllib.parse
+import json
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -181,6 +184,29 @@ async def chat(req: ChatRequest):
         return {"response": generated_text}
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Local model failed to respond") from exc
+
+
+def fetch_url_sync(url: str) -> dict:
+    req = urllib.request.Request(
+        url,
+        headers={'User-Agent': 'Mozilla/5.0'}
+    )
+    with urllib.request.urlopen(req, timeout=10) as response:
+        raw_data = response.read()
+        text = raw_data.decode('utf-8', errors='replace')
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return {"response": text}
+
+
+@app.get("/api/camera/proxy")
+async def proxy_url(url: str):
+    try:
+        result = await anyio.to_thread.run_sync(fetch_url_sync, url)
+        return result
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Proxy error: {exc}")
 
 
 if __name__ == "__main__":

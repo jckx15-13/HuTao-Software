@@ -97,7 +97,13 @@ class PollingManager {
 
     pause(pluginId: string): void {
         const task = this.tasks.get(pluginId);
-        if (task) task.isPaused = true;
+        if (task) {
+            task.isPaused = true;
+            if (task.timerId && task.timerId !== ("ws-push-only" as any)) {
+                clearInterval(task.timerId);
+                task.timerId = null;
+            }
+        }
     }
 
     resume(pluginId: string): void {

@@ -114,17 +114,25 @@ async function main() {
             log('Engine', 'SUCCESS', `Frontend is online at ${url}`);
             log('Engine', 'INFO', `Launching default web browser to ${url}...`);
             try {
-              // On Windows, `start` is a cmd builtin — use cmd.exe to invoke it safely.
               if (process.platform === 'win32') {
-                try {
-                  execSync(`cmd.exe /c start "" "${url.replace(/"/g, '\\"')}"`);
-                } catch (winErr) {
-                  // Fallback: try PowerShell Start-Process
+                const commands = [
+                  `cmd.exe /c start "" "${url}"`,
+                  `cmd.exe /c start msedge "${url}"`,
+                  `cmd.exe /c start chrome "${url}"`,
+                  `explorer "${url}"`
+                ];
+                let success = false;
+                for (const cmd of commands) {
                   try {
-                    execSync(`powershell -NoProfile -Command "Start-Process '${url.replace(/'/g, "''")}'"`);
-                  } catch (psErr) {
-                    log('Engine', 'ERROR', `Could not auto-start browser on Windows: ${psErr.message}`);
+                    execSync(cmd, { stdio: 'ignore' });
+                    success = true;
+                    break;
+                  } catch (e) {
+                    // Try next
                   }
+                }
+                if (!success) {
+                  log('Engine', 'ERROR', `Could not auto-start browser on Windows. Please open ${url} manually.`);
                 }
               } else {
                 try {

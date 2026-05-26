@@ -11,7 +11,12 @@ const path = require('path');
   console.log('Launching browser...');
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage'
+    ]
   });
 
   const page = await browser.newPage();
@@ -195,7 +200,7 @@ const path = require('path');
     const closedSettings = await page.evaluate(() => {
       const closeBtn = document.querySelector('button[title="Exit Settings"]') || Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Back to Workspace'));
       if (closeBtn) {
-        (closeBtn as any).click();
+        closeBtn.click();
         return true;
       }
       return false;

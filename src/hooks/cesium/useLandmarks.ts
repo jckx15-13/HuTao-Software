@@ -27,9 +27,9 @@ export function useLandmarks(viewer: Cesium.Viewer | null) {
         id: loc.id,
         position: Cesium.Cartesian3.fromDegrees(loc.lng, loc.lat),
         point: {
-          pixelSize: 8,
-          color: Cesium.Color.fromCssColorString('#D4AF37'), // Orbital gold accent matching default HSR theme
-          outlineColor: Cesium.Color.WHITE,
+          pixelSize: 6,
+          color: Cesium.Color.fromCssColorString('#8A5BC7'), // Orbital purple accent matching default HSR theme
+          outlineColor: Cesium.Color.fromCssColorString('#ffffff'),
           outlineWidth: 1.5,
         },
         label: {

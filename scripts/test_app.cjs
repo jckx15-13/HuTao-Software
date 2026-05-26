@@ -11,7 +11,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 (async () => {
   // Save screenshots to the brain artifacts directory to avoid triggering Vite's watcher
-  const screenshotsDir = 'C:\\Users\\jaron\\.gemini\\antigravity\\brain\\ea725f73-0d40-45d0-aab4-6ea4fab817ee\\test_screenshots';
+  const screenshotsDir = 'C:\\Users\\jaron\\.gemini\\antigravity\\brain\\3044dd3b-6f4b-48ed-ae61-99e4f097932e\\test_screenshots';
   if (!fs.existsSync(screenshotsDir)) {
     fs.mkdirSync(screenshotsDir, { recursive: true });
   }
@@ -21,7 +21,9 @@ process.on('unhandledRejection', (reason, promise) => {
     headless: true,
     args: [
       '--no-sandbox',
-      '--disable-setuid-sandbox'
+      '--disable-setuid-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage'
     ]
   });
 
@@ -253,7 +255,7 @@ process.on('unhandledRejection', (reason, promise) => {
     console.log('Browser closed.');
 
     // Write final summary log to brain artifacts directory
-    const reportPath = 'C:\\Users\\jaron\\.gemini\\antigravity\\brain\\ea725f73-0d40-45d0-aab4-6ea4fab817ee\\automated_test_report.json';
+    const reportPath = 'C:\\Users\\jaron\\.gemini\\antigravity\\brain\\3044dd3b-6f4b-48ed-ae61-99e4f097932e\\automated_test_report.json';
     const reportData = {
       timestamp: new Date().toISOString(),
       errors,

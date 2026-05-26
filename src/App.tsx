@@ -39,22 +39,30 @@ export default function App() {
         className="app-shell relative h-screen w-screen overflow-hidden text-text-main font-sans flex flex-col bg-bg-deep" 
         style={{ ...appStyle, ...backgroundStyle }}
       >
-        {/* Background layer: Persistent Cesium Earth Map (hide under Telescope mode) */}
+        {/* Background layer: Persistent Cesium Earth Map (always mounted to preserve WebGL context) */}
         {!customWallpaper && (
-          interactionMode === 'telescope' ? (
-            // Telescope mode: starfield background optimized for embedded WWT
-            <div className="absolute inset-0 h-full w-full bg-black" style={{ zIndex: 0, pointerEvents: 'none' }}>
+          <>
+            <div 
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                interactionMode === 'telescope' ? 'opacity-0 pointer-events-none' : 'opacity-100'
+              }`}
+            >
+              <CesiumBackground interactive={interactionMode === 'orbital'} />
+              <RenderEffectsOverlay />
+            </div>
+            
+            {/* Telescope mode: starfield background optimized for embedded WWT */}
+            <div 
+              className={`absolute inset-0 h-full w-full bg-black transition-opacity duration-700 ease-in-out ${
+                interactionMode === 'telescope' ? 'opacity-100 z-0' : 'opacity-0 pointer-events-none -z-10'
+              }`}
+            >
               <div className="absolute inset-0" style={{
                 background: `radial-gradient(circle at 10% 20%, rgba(255,255,255,0.12) 0 1px, transparent 2px), radial-gradient(circle at 80% 40%, rgba(255,255,255,0.08) 0 1px, transparent 2px), radial-gradient(circle at 50% 80%, rgba(255,255,255,0.1) 0 1px, transparent 2px)`,
                 backgroundSize: '200px 200px'
               }} />
             </div>
-          ) : (
-            <>
-              <CesiumBackground interactive={interactionMode === 'orbital'} />
-              <RenderEffectsOverlay />
-            </>
-          )
+          </>
         )}
 
         {/* Optional Scanline overlay for cyberpunk feel (toggle in settings) */}

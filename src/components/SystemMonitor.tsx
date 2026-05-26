@@ -44,7 +44,12 @@ export function SystemMonitor() {
   useIdleTask(
     () => {
       const volatility = cpuLoad > 0.8 ? 0.1 : 0.02;
-      const currentMetrics = useUIStore.getState().systemMetrics;
+      const currentMetrics = useUIStore.getState().systemMetrics || {
+        ramUsage: 0.35,
+        networkLatency: 0.6,
+        storageUsage: 0.45,
+        batteryLevel: 0.9,
+      };
       updateSystemMetrics({
         ramUsage: clampMetric(currentMetrics.ramUsage + (Math.random() * volatility * 2 - volatility)),
         networkLatency: clampMetric(currentMetrics.networkLatency + (Math.random() * volatility * 2 - volatility)),

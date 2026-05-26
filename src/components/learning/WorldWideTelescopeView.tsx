@@ -92,8 +92,8 @@ export default function WorldWideTelescopeView() {
       {/* 3D Celestial Sky/Planet Viewport */}
       <div className="relative flex-1 h-full bg-black flex items-center justify-center">
         {window.location.search.includes('fallback') ? (
-          <div className="text-cyan-400 font-mono text-[10px] text-center p-8 border border-cyan-500/20 bg-cyan-950/10 rounded-lg max-w-md space-y-2">
-            <div className="font-bold uppercase tracking-wider text-cyan-300">Celestial Target Locked</div>
+          <div className="text-primary font-mono text-[10px] text-center p-8 border border-primary/20 bg-primary/10 rounded-lg max-w-md space-y-2">
+            <div className="font-bold uppercase tracking-wider text-primary">Celestial Target Locked</div>
             <div className="text-white/60">Target ID: {activePreset.name}</div>
             <div className="text-white/40 text-[8px] break-all">{iframeUrl}</div>
           </div>
@@ -109,7 +109,7 @@ export default function WorldWideTelescopeView() {
         )}
         
         {/* Luminous Vignette Mask for Space Opera feel */}
-        <div className="absolute inset-0 pointer-events-none border border-cyan-500/10 shadow-[inset_0_0_100px_rgba(0,255,247,0.06)]" />
+        <div className="absolute inset-0 pointer-events-none border border-primary/10 shadow-[inset_0_0_100px_rgba(var(--color-primary-rgb,138,91,199),0.06)]" />
       </div>
 
       {/* Cybernetic Telemetry controls sidepanel */}
@@ -117,7 +117,7 @@ export default function WorldWideTelescopeView() {
         
         {/* Header Indicator */}
         <div className="flex items-center justify-between pb-2.5 border-b border-white/5">
-          <div className="flex items-center gap-2 text-cyan-400 font-bold tracking-widest uppercase">
+          <div className="flex items-center gap-2 text-primary font-bold tracking-widest uppercase">
             <Compass className="h-4 w-4 animate-spin-slow" />
             <span>WWT STAR ARRAY</span>
           </div>
@@ -132,16 +132,16 @@ export default function WorldWideTelescopeView() {
         </div>
 
         {/* Telemetry Matrix Readout */}
-        <div className="glass-panel p-2.5 border border-cyan-500/10 space-y-2 rounded-lg bg-cyan-950/5">
+        <div className="glass-panel p-2.5 border border-primary/10 space-y-2 rounded-lg bg-primary/5">
           <div className="text-[10px] font-bold text-white/80 uppercase">Target Coordinates</div>
           <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-white/50 text-[8px]">
             <div>
               <span className="text-white/20 block uppercase">Right Ascension</span>
-              <span className="text-cyan-300 font-bold">{activePreset.ra}</span>
+              <span className="text-primary font-bold">{activePreset.ra}</span>
             </div>
             <div>
               <span className="text-white/20 block uppercase">Declination</span>
-              <span className="text-cyan-300 font-bold">{activePreset.dec}</span>
+              <span className="text-primary font-bold">{activePreset.dec}</span>
             </div>
             <div className="col-span-2">
               <span className="text-white/20 block uppercase">Field of View</span>
@@ -163,12 +163,12 @@ export default function WorldWideTelescopeView() {
                   onClick={() => handleSelectPreset(preset)}
                   className={`w-full text-left p-2 rounded border transition-all cursor-pointer flex items-center justify-between gap-1.5 ${
                     isActive
-                      ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300 font-bold'
+                      ? 'border-primary/30 bg-primary/10 text-primary font-bold'
                       : 'border-white/5 bg-white/5 text-white/60 hover:border-white/10 hover:text-white/80'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <Star className={`h-3 w-3 shrink-0 ${isActive ? 'fill-cyan-400 text-cyan-400' : 'text-white/20'}`} />
+                    <Star className={`h-3 w-3 shrink-0 ${isActive ? 'fill-primary text-primary' : 'text-white/20'}`} />
                     <span className="truncate uppercase text-[8px]">{preset.name}</span>
                   </div>
                   <span className="text-[7px] text-white/30 shrink-0 font-normal">{preset.fov}</span>
@@ -181,7 +181,7 @@ export default function WorldWideTelescopeView() {
         {/* Selected target synopsis */}
         <div className="p-2.5 rounded-lg border border-white/5 bg-black/35 leading-relaxed text-white/40 text-[8px] uppercase">
           <div className="font-bold text-white/70 mb-1 flex items-center gap-1">
-            <Info size={10} className="text-cyan-400" />
+            <Info size={10} className="text-primary" />
             <span>Synopsis</span>
           </div>
           {activePreset.description}
