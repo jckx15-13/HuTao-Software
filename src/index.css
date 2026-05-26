@@ -20,6 +20,16 @@
   
   --theme-text-main: #EAECEE;
   --theme-text-muted: #85929E;
+
+  /* UI personalisation — set by JS from store */
+  --ui-opacity: 0.75;
+  --ui-blur: 16px;
+  --ui-radius: 12px;
+  --ui-shadow-intensity: 0.5;
+  --ui-animation-speed: 1;
+  --ui-font-scale: 1;
+  --ui-density-row-height: 36px;
+  --ui-border-opacity: 0.08;
 }
 
 @theme {
@@ -77,8 +87,44 @@ body {
 }
 
 .panel-glass {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(15, 17, 26, var(--ui-opacity, 0.75));
+  backdrop-filter: blur(var(--ui-blur, 16px));
+  -webkit-backdrop-filter: blur(var(--ui-blur, 16px));
+  border-radius: calc(var(--ui-radius, 12px) * 1px);
+  border: 1px solid rgba(255, 255, 255, var(--ui-border-opacity, 0.08));
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, calc(var(--ui-shadow-intensity, 0.5) * 0.6)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.glass-panel {
+  background: rgba(15, 17, 26, var(--ui-opacity, 0.75)) !important;
+  backdrop-filter: blur(var(--ui-blur, 16px)) !important;
+  -webkit-backdrop-filter: blur(var(--ui-blur, 16px)) !important;
+  border-radius: calc(var(--ui-radius, 12px) * 1px);
+  border: 1px solid rgba(255, 255, 255, var(--ui-border-opacity, 0.08)) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, calc(var(--ui-shadow-intensity, 0.5) * 0.6)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.glass-panel-subtle {
+  background: rgba(15, 17, 26, calc(var(--ui-opacity, 0.75) * 0.5));
+  backdrop-filter: blur(calc(var(--ui-blur, 16px) * 0.5));
+  -webkit-backdrop-filter: blur(calc(var(--ui-blur, 16px) * 0.5));
+  border-radius: calc(var(--ui-radius, 12px) * 1px);
+  border: 1px solid rgba(255, 255, 255, calc(var(--ui-border-opacity, 0.08) * 0.5));
+}
+
+.glass-panel-strong {
+  background: rgba(15, 17, 26, calc(var(--ui-opacity, 0.75) * 1.2));
+  backdrop-filter: blur(calc(var(--ui-blur, 16px) * 1.5));
+  -webkit-backdrop-filter: blur(calc(var(--ui-blur, 16px) * 1.5));
+  border-radius: calc(var(--ui-radius, 12px) * 1px);
+  border: 1px solid rgba(255, 255, 255, var(--ui-border-opacity, 0.08));
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, calc(var(--ui-shadow-intensity, 0.5) * 0.8)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 @layer base {
@@ -99,10 +145,6 @@ body {
 }
 
 @layer utilities {
-  .glass-panel {
-    @apply bg-panel backdrop-blur-xl border border-panel-border shadow-[var(--shadow-2-5d)];
-  }
-
   /* High Load State Overrides */
   .state-high-load * {
     font-weight: 800 !important;

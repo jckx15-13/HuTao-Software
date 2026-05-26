@@ -88,8 +88,10 @@ export function RightPanel() {
     setHistoryIndex(nextHistory.length - 1);
   };
 
+  if (!rightPanelOpen) return null;
+
   return (
-    <aside className="glass-panel flex h-full w-[310px] flex-col border-l border-white/5 select-none" style={{ borderRadius: 0 }}>
+    <aside className="glass-panel flex h-full w-[310px] flex-col border-l border-white/5 select-none pointer-events-auto" style={{ borderRadius: 0 }}>
       {/* Header and Tab Switcher */}
       <div className="flex h-12 items-center justify-between px-3 border-b border-white/5 bg-black/10">
         <div className="flex items-center gap-1.5 font-mono text-[9px]">

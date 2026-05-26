@@ -103,7 +103,7 @@ export function CustomCursor() {
       {/* The main sharp dot cursor */}
       <div
         ref={cursorRef}
-        className={`pointer-events-none fixed top-0 left-0 z-[9999] h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary transition-all duration-300 ${
+        className={`pointer-events-none fixed top-0 left-0 z-[9999] h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary transition-[scale,opacity,background-color] duration-200 ${
           cursorType === 'pointer' ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
         } ${cursorType === 'grabbing' ? 'bg-primary-hover h-2.5 w-2.5' : ''}`}
         style={{ willChange: 'transform' }}
@@ -112,7 +112,7 @@ export function CustomCursor() {
       {/* The smooth trailing glowing follower */}
       <div
         ref={followerRef}
-        className={`pointer-events-none fixed top-0 left-0 z-[9998] rounded-full border-2 border-primary/50 transition-all duration-300 ease-out flex items-center justify-center ${
+        className={`pointer-events-none fixed top-0 left-0 z-[9998] rounded-full border-2 border-primary/50 transition-[width,height,background-color,border-color,box-shadow,opacity] duration-300 ease-out flex items-center justify-center ${
           cursorType === 'pointer' 
             ? 'h-12 w-12 bg-primary/20 backdrop-blur-[2px]' 
             : cursorType === 'grabbing'

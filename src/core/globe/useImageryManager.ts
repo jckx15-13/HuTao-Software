@@ -1,15 +1,17 @@
 /* eslint-disable react-hooks/immutability */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     Viewer as CesiumViewer,
     ImageryLayer,
     SceneMode,
     Cesium3DTileset,
     Cesium3DTileStyle,
-    createOsmBuildingsAsync
+    createOsmBuildingsAsync,
+    createGooglePhotorealistic3DTileset
 } from "cesium";
 import { useStore } from "@/core/state/store";
 import { createImageryProvider, createOsmProvider } from "./ImageryProviderFactory";
+import { loadConfig } from "../../lib/config";
 
 export function useImageryManager(viewerInstance: CesiumViewer | null, viewerReady: boolean) {
     const viewer = viewerInstance;
@@ -22,8 +24,8 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
     const activeLayerId = fallbackLayerId || baseLayerId;
 
     const currentImageryLayerRef = useRef<ImageryLayer | null>(null);
-    // const googleTilesetRef = useRef<Cesium3DTileset | null>(null);
     const osmBuildingsRef = useRef<Cesium3DTileset | null>(null);
+    const [google3DActive, setGoogle3DActive] = useState(false);
 
     // 1. Manage Scene Mode (2D / 3D / Columbus)
     useEffect(() => {
@@ -44,8 +46,10 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
     useEffect(() => {
         if (!viewer || !viewerReady || viewer.isDestroyed()) return;
 
+        let active = true;
+
         async function updateImagery() {
-            if (!viewer || !viewerReady || viewer.isDestroyed()) return;
+            if (!viewer || !viewerReady || viewer.isDestroyed() || !active) return;
 
             // Handle Google 3D Tiles specifically
             const isGoogle3D = activeLayerId === "google-3d";
@@ -64,41 +68,65 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
                 }
             }
 
-            if (foundTileset) {
-                foundTileset.show = isGoogle3D;
+            // Self-healing: if Google 3D Tiles is selected but no tileset exists yet,
+            // try to dynamically create it if we have an API key.
+            if (isGoogle3D && !foundTileset) {
+                const config = await loadConfig();
+                const apiKey = config.GOOGLE_MAPS_API_KEY || (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined);
+                if (apiKey && active && !viewer.isDestroyed()) {
+                    try {
+                        console.log("[useImageryManager] Dynamically initializing Google 3D Tileset...");
+                        const tileset = await createGooglePhotorealistic3DTileset({ key: apiKey });
+                        if (active && !viewer.isDestroyed()) {
+                            viewer.scene.primitives.add(tileset);
+                            foundTileset = tileset;
+                        }
+                    } catch (err) {
+                        console.warn("[useImageryManager] Failed to create Google 3D Tileset dynamically:", err);
+                    }
+                }
             }
 
-            // If we are in Google 3D mode, we usually hide the globe surface
-            // to avoid z-fighting or showing low-res imagery underneath
-            viewer.scene.globe.show = !isGoogle3D;
+            const hasGoogle3D = isGoogle3D && !!foundTileset;
+            if (foundTileset) {
+                foundTileset.show = hasGoogle3D;
+            }
+
+            // Update state so buildings and components know whether 3D mode is active
+            if (active) {
+                setGoogle3DActive(hasGoogle3D);
+            }
+
+            // Hide/Show standard globe surface to prevent z-fighting with Google 3D
+            viewer.scene.globe.show = !hasGoogle3D;
 
             // Manage standard imagery layer
-            if (isGoogle3D) {
-                // Remove current custom imagery if switching to Google 3D
+            if (hasGoogle3D) {
+                // Remove standard imagery if showing Google 3D tiles
                 if (currentImageryLayerRef.current) {
                     viewer.imageryLayers.remove(currentImageryLayerRef.current);
                     currentImageryLayerRef.current = null;
                 }
             } else {
-                // Instantiate and Add new imagery provider
+                // Load active layer, or fallback to ArcGIS satellite/OSM if Google 3D was selected but failed
+                const layerId = isGoogle3D ? "arcgis-world" : activeLayerId;
                 try {
-                    const provider = await createImageryProvider(activeLayerId);
+                    const provider = await createImageryProvider(layerId);
                     const newLayer = new ImageryLayer(provider);
 
                     if (currentImageryLayerRef.current) {
                         viewer.imageryLayers.remove(currentImageryLayerRef.current);
                     }
 
-                    // Add as base layer (bottom)
-                    if (viewer.isDestroyed()) return;
+                    if (viewer.isDestroyed() || !active) return;
                     viewer.imageryLayers.add(newLayer, 0);
                     currentImageryLayerRef.current = newLayer;
                 } catch (err) {
-                    console.error("[useImageryManager] Failed to load imagery:", activeLayerId, err);
+                    console.error("[useImageryManager] Failed to load base layer:", layerId, err);
                     try {
                         const osmProvider = createOsmProvider();
                         const osmLayer = new ImageryLayer(osmProvider);
-                        if (viewer.isDestroyed()) return;
+                        if (viewer.isDestroyed() || !active) return;
                         viewer.imageryLayers.add(osmLayer, 0);
                         currentImageryLayerRef.current = osmLayer;
                         console.warn("[useImageryManager] Loaded OSM as fallback imagery");
@@ -110,15 +138,18 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
         }
 
         updateImagery();
+
+        return () => {
+            active = false;
+        };
     }, [viewer, viewerReady, baseLayerId, fallbackLayerId]);
 
     // 3. Manage OSM 3D Buildings (only in 3D mode, not with Google Photorealistic tiles)
-    const isGoogle3D = activeLayerId === "google-3d";
     const is3DMode = sceneMode === 3;
     useEffect(() => {
         if (!viewer || !viewerReady || viewer.isDestroyed()) return;
 
-        const shouldShow = showOsmBuildings && !isGoogle3D && is3DMode;
+        const shouldShow = showOsmBuildings && !google3DActive && is3DMode;
 
         if (shouldShow && !osmBuildingsRef.current) {
             let cancelled = false;
@@ -146,9 +177,9 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
             }
             osmBuildingsRef.current = null;
         }
-    }, [viewer, viewerReady, isGoogle3D, is3DMode, showOsmBuildings]);
+    }, [viewer, viewerReady, google3DActive, is3DMode, showOsmBuildings]);
 
     return {
-        isGoogle3D
+        isGoogle3D: google3DActive
     };
 }

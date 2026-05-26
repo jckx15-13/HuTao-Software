@@ -22,17 +22,189 @@ import {
   Info,
   Play,
   Eye,
-  Map,
+  Plus,
+  Trash2,
+  FolderGit,
+  MessageSquare,
+  ChevronRight,
 } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '@/core/state/store';
-import { FileTreeSection, TreeItem } from './FileTreeSection';
-import { ChatSessionList } from './ChatSessionList';
 import { locations } from '@/data/locations';
 import { tours } from '@/data/tours';
 import { pluginManager } from '@/core/plugins/PluginManager';
 import { presets } from '@/components/learning/WorldWideTelescopeView';
 import * as Cesium from 'cesium';
+import { IMAGERY_LAYERS } from '@/core/globe/ImageryProviderFactory';
+
+// ============================================================================
+// CONSOLIDATED SUB-COMPONENTS
+// ============================================================================
+
+interface FileTreeSectionProps {
+  title: string;
+  icon: any;
+  defaultOpen?: boolean;
+  itemCount?: number;
+  children: React.ReactNode;
+}
+
+export function FileTreeSection({ title, icon: Icon, defaultOpen = false, itemCount, children }: FileTreeSectionProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="flex flex-col select-none">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex h-7 w-full items-center justify-between px-2 text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors text-[9px] font-mono uppercase tracking-widest font-bold"
+      >
+        <div className="flex items-center gap-1.5">
+          {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          <Icon className="h-3.5 w-3.5 text-primary" />
+          <span>{title}</span>
+        </div>
+        {itemCount !== undefined && itemCount > 0 && (
+          <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[8px] text-white/50">{itemCount}</span>
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="flex flex-col border-l border-white/5 ml-3.5 pl-1.5 mt-0.5 mb-1.5">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface TreeItemProps {
+  label: string;
+  icon?: any;
+  depth?: number;
+  selected?: boolean;
+  onClick?: () => void;
+  badge?: string | number;
+}
+
+export function TreeItem({ label, icon: Icon, depth = 0, selected = false, onClick, badge }: TreeItemProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex h-7 w-full items-center justify-between rounded px-2 text-[11px] font-mono text-white/60 hover:bg-white/5 hover:text-white/90 transition-all select-none cursor-pointer ${
+        selected ? 'bg-primary/15 text-primary border-l-2 border-primary font-bold' : ''
+      }`}
+      style={{ paddingLeft: `${depth * 8 + 8}px` }}
+    >
+      <div className="flex items-center gap-2 truncate">
+        {Icon && <Icon className={`h-3.5 w-3.5 shrink-0 ${selected ? 'text-primary' : 'text-white/30'}`} />}
+        <span className="truncate">{label}</span>
+      </div>
+      {badge !== undefined && (
+        <span className={`rounded px-1 text-[8px] ${selected ? 'bg-primary/20 text-primary' : 'bg-white/5 text-white/40'}`}>
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
+export function ChatSessionList() {
+  const chatSessions = useUIStore((s) => s.chatSessions);
+  const activeChatId = useUIStore((s) => s.activeChatId);
+  const addChatSession = useUIStore((s) => s.addChatSession);
+  const removeChatSession = useUIStore((s) => s.removeChatSession);
+  const setActiveChatId = useUIStore((s) => s.setActiveChatId);
+
+  const globalChats = chatSessions.filter((c) => c.type === 'global');
+  const projectChats = chatSessions.filter((c) => c.type === 'project');
+
+  const handleCreateProjectChat = () => {
+    const name = prompt('Enter project chat name:', 'New Project');
+    if (name) {
+      addChatSession(name, 'project', 'Workspace');
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3 font-mono">
+      <div className="flex flex-col gap-1">
+        {globalChats.map((chat) => {
+          const isActive = chat.id === activeChatId;
+          return (
+            <button
+              key={chat.id}
+              type="button"
+              onClick={() => setActiveChatId(chat.id)}
+              className={`group flex h-8 w-full items-center justify-between rounded px-2.5 text-[11px] text-white/70 hover:bg-white/5 hover:text-white/95 transition-all select-none cursor-pointer border-l-2 ${
+                isActive ? 'border-primary bg-primary/10 text-primary font-bold' : 'border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <MessageSquare className={`h-3.5 w-3.5 ${isActive ? 'text-primary' : 'text-white/30'}`} />
+                <span>{chat.name}</span>
+              </div>
+              <span className="rounded bg-primary/20 px-1 text-[8px] text-primary">GLOBAL</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between px-2 text-[9px] uppercase tracking-widest text-white/30 font-bold select-none">
+        <span>Project Workspaces</span>
+        <button
+          type="button"
+          onClick={handleCreateProjectChat}
+          className="rounded p-0.5 hover:bg-white/5 text-white/40 hover:text-white/80 transition-colors"
+          title="New Project Chat"
+        >
+          <Plus className="h-3 w-3" />
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {projectChats.length === 0 ? (
+          <div className="px-2.5 py-1 text-[10px] text-white/20 italic">No project workspaces.</div>
+        ) : (
+          projectChats.map((chat) => {
+            const isActive = chat.id === activeChatId;
+            return (
+              <div
+                key={chat.id}
+                className={`group flex h-8 w-full items-center justify-between rounded px-2.5 text-[11px] text-white/70 hover:bg-white/5 transition-all ${
+                  isActive ? 'bg-primary/10 text-primary font-bold' : ''
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setActiveChatId(chat.id)}
+                  className="flex flex-1 items-center gap-2 truncate text-left cursor-pointer"
+                >
+                  <FolderGit className={`h-3.5 w-3.5 ${isActive ? 'text-primary' : 'text-white/30'}`} />
+                  <span className="truncate">{chat.name}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm('Delete this workspace chat?')) {
+                      removeChatSession(chat.id);
+                    }
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-white/30 hover:text-red-400 transition-all"
+                  title="Delete workspace"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
 
 // Haversine distance formula to compute geodetic great circle distance
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -242,7 +414,7 @@ export function LeftPanel() {
   const isSpatialMode = interactionMode === 'orbital' || interactionMode === 'telescope';
 
   return (
-    <aside className="glass-panel flex h-full w-[260px] flex-col border-r border-white/5 select-none" style={{ borderRadius: 0 }}>
+    <aside className="glass-panel flex h-full w-[260px] flex-col border-r border-white/5 select-none pointer-events-auto" style={{ borderRadius: 0 }}>
       {/* Header section */}
       <div className="flex h-12 items-center justify-between px-4 border-b border-white/5 shrink-0 bg-black/20">
         <div className="flex items-center gap-2">
@@ -447,6 +619,21 @@ export function LeftPanel() {
                   >
                     HIGH (CINEMA)
                   </button>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-white/40 block text-[8px] uppercase">Imagery Source</label>
+                  <select
+                    value={mapConfig.baseLayerId}
+                    onChange={(e) => updateMapConfig({ baseLayerId: e.target.value })}
+                    className="w-full bg-[#111217] border border-white/5 rounded px-2 py-1 text-white text-[9px] focus:outline-none focus:border-primary cursor-pointer"
+                  >
+                    {IMAGERY_LAYERS.map((layer) => (
+                      <option key={layer.id} value={layer.id}>
+                        {layer.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-2">

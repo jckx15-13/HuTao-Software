@@ -811,6 +811,21 @@ export default function GoogleEarthRemix() {
         {/* Core Stage */}
         <div className="earth-stage">
           
+          {/* Spatial HUD Migration Notice */}
+          {!useUIStore.getState().leftPanelOpen && (
+            <div className="absolute top-4 left-4 z-50 glass-panel p-3 px-4 flex items-center gap-3 animate-fade-in">
+              <div className="flex items-center gap-2 text-white/80 text-xs font-mono">
+                <Compass className="w-4 h-4 text-primary animate-pulse" />
+                <span>Controls moved to Spatial HUD</span>
+              </div>
+              <button
+                onClick={() => useUIStore.getState().setLeftPanelOpen(true)}
+                className="bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer"
+              >
+                Open HUD
+              </button>
+            </div>
+          )}
           {/* Fallback 2D Sphere Globe when Cesium has not loaded */}
           {!hasCesium && (
             <div className="earth-globe-fallback pointer-events-auto">

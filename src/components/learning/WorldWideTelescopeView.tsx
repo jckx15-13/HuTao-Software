@@ -81,6 +81,33 @@ export default function WorldWideTelescopeView() {
       
       {/* 3D Celestial Sky/Planet Viewport */}
       <div className="relative flex-1 h-full bg-black flex items-center justify-center">
+        
+        {/* Spatial HUD Migration Notice & Local Tools */}
+        <div className="absolute top-4 left-4 z-50 flex items-center gap-2">
+          {!useUIStore.getState().leftPanelOpen && (
+            <div className="glass-panel p-3 px-4 flex items-center gap-3 animate-fade-in shadow-lg">
+              <div className="flex items-center gap-2 text-white/80 text-xs font-mono">
+                <Compass className="w-4 h-4 text-primary animate-pulse" />
+                <span>Controls moved to Spatial HUD</span>
+              </div>
+              <button
+                onClick={() => useUIStore.getState().setLeftPanelOpen(true)}
+                className="bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer"
+              >
+                Open HUD
+              </button>
+            </div>
+          )}
+          {/* Restored Local Refresh Affordance */}
+          <button
+            onClick={() => setRefreshKey(k => k + 1)}
+            className="glass-panel p-3 px-4 hover:bg-white/10 text-white/80 hover:text-white transition-colors rounded shadow-lg flex items-center gap-2 text-xs font-bold font-mono cursor-pointer"
+            title="Reload Frame"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Refresh</span>
+          </button>
+        </div>
         {window.location.search.includes('fallback') ? (
           <div className="text-primary font-mono text-[10px] text-center p-8 border border-primary/20 bg-primary/10 rounded-lg max-w-md space-y-2">
             <div className="font-bold uppercase tracking-wider text-primary">Celestial Target Locked</div>

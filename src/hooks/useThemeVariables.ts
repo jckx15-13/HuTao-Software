@@ -12,6 +12,7 @@ export function useThemeVariables(): AppliedTheme {
   const activePalette = useUIStore((state) => state.activePalette);
   const dynamicTheme = useUIStore((state) => state.dynamicTheme);
   const cpuLoad = useUIStore((state) => state.cpuLoad);
+  const personalisation = useUIStore((state) => state.personalisation);
 
   const currentPalette = useMemo<ThemeVars>(() => {
     const basePalette = palettes[activePalette] || palettes.holographic;
@@ -23,7 +24,30 @@ export function useThemeVariables(): AppliedTheme {
       document.documentElement.style.setProperty(key, value);
       document.body.style.setProperty(key, value);
     });
-  }, [currentPalette]);
+
+    // Apply personalisation tokens
+    const root = document.documentElement;
+    root.style.setProperty('--ui-opacity', personalisation.panelOpacity.toString());
+    root.style.setProperty('--ui-blur', `${personalisation.blurIntensity}px`);
+    root.style.setProperty('--ui-radius', personalisation.cornerRadius.toString());
+    root.style.setProperty('--ui-shadow-intensity', personalisation.shadowIntensity.toString());
+    root.style.setProperty('--ui-animation-speed', personalisation.animationIntensity.toString());
+    root.style.setProperty('--ui-font-scale', personalisation.fontScale.toString());
+    
+    // Convert UI density to row height
+    const densityMap = { compact: '32px', comfortable: '38px', spacious: '44px' };
+    root.style.setProperty('--ui-density-row-height', densityMap[personalisation.uiDensity] || '38px');
+    
+    // Border opacity scale
+    const borderOpacity = personalisation.borderStyle === 'solid' ? '0.25' : 
+                          personalisation.borderStyle === 'glow' ? '0.15' : 
+                          personalisation.borderStyle === 'none' ? '0' : '0.08';
+    root.style.setProperty('--ui-border-opacity', borderOpacity);
+
+    // Apply global border style class
+    document.body.classList.remove('border-style-subtle', 'border-style-glow', 'border-style-solid', 'border-style-none');
+    document.body.classList.add(`border-style-${personalisation.borderStyle}`);
+  }, [currentPalette, personalisation]);
 
   const appStyle = useMemo<CSSProperties>(() => {
     const themeStyle = currentPalette as CSSProperties;

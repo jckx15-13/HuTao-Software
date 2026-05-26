@@ -1,6 +1,7 @@
 import { X, Palette, Brain, Link2, Sparkles, Info } from 'lucide-react';
 import { useUIStore, type SettingsCategory } from '@/store/uiStore';
 import { PersonalisationSettings } from './PersonalisationSettings';
+import GlassOpacitySettings from './GlassOpacitySettings';
 import { AiSettings } from './AiSettings';
 import { NotionSettings } from './NotionSettings';
 import { FeedbackSettings } from './FeedbackSettings';
@@ -73,7 +74,10 @@ export function SettingsPage() {
 
           {/* Section Body */}
           <div className="flex-1 overflow-y-auto p-6 scroller">
-            {settingsCategory === 'personalisation' && <PersonalisationSettings />}
+            {settingsCategory === 'personalisation' && (<>
+                <PersonalisationSettings />
+                <GlassOpacitySettings />
+              </>)}
             {settingsCategory === 'ai' && <AiSettings />}
             {settingsCategory === 'connections' && <NotionSettings />}
             {settingsCategory === 'feedback' && <FeedbackSettings />}

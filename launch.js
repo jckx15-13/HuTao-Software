@@ -82,7 +82,12 @@ async function main() {
   bridgeProcess.stderr.on('data', (data) => {
     const text = data.toString().trim();
     if (text && !text.includes('DeprecationWarning')) {
-      log('Bridge Error', 'WARNING', text);
+      // Uvicorn logs INFO messages to stderr by default
+      if (text.includes('INFO:')) {
+        log('Bridge', 'INFO', text);
+      } else {
+        log('Bridge Error', 'WARNING', text);
+      }
     }
   });
 
@@ -96,7 +101,7 @@ async function main() {
   // This avoids shell wrappers (npm.cmd) and the DeprecationWarning on Windows.
   const viteBin = path.join(__dirname, 'node_modules', 'vite', 'bin', 'vite.js');
   const nodeExec = process.execPath || 'node';
-  const viteArgs = [viteBin, '--port', '3000', '--host', '127.0.0.1'];
+  const viteArgs = [viteBin, '--port', '3000', '--host', '127.0.0.1', '--open'];
   const viteProcess = spawn(nodeExec, viteArgs, {
     cwd: __dirname,
     stdio: ['ignore', 'pipe', 'pipe']
@@ -107,43 +112,9 @@ async function main() {
       if (text) {
         log('Vite', 'INFO', text);
         if (text.includes('Local:') || text.includes('Local')) {
-          // Attempt to find an http(s) url in the output (covers 127.0.0.1 and localhost)
           const match = text.match(/https?:\/\/[^\s)]+/i);
           if (match) {
-            const url = match[0];
-            log('Engine', 'SUCCESS', `Frontend is online at ${url}`);
-            log('Engine', 'INFO', `Launching default web browser to ${url}...`);
-            try {
-              if (process.platform === 'win32') {
-                const commands = [
-                  `cmd.exe /c start "" "${url}"`,
-                  `cmd.exe /c start msedge "${url}"`,
-                  `cmd.exe /c start chrome "${url}"`,
-                  `explorer "${url}"`
-                ];
-                let success = false;
-                for (const cmd of commands) {
-                  try {
-                    execSync(cmd, { stdio: 'ignore' });
-                    success = true;
-                    break;
-                  } catch (e) {
-                    // Try next
-                  }
-                }
-                if (!success) {
-                  log('Engine', 'ERROR', `Could not auto-start browser on Windows. Please open ${url} manually.`);
-                }
-              } else {
-                try {
-                  execSync(`xdg-open "${url}"`);
-                } catch (e) {
-                  execSync(`open "${url}"`);
-                }
-              }
-            } catch (e) {
-              log('Engine', 'ERROR', `Could not auto-start browser: ${e.message}`);
-            }
+            log('Engine', 'SUCCESS', `Frontend is online at ${match[0]}`);
           }
         }
       }

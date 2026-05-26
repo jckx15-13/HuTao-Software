@@ -228,7 +228,9 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
 
   if (hasError) {
     return (
-      <div className="absolute inset-0 h-full w-full bg-[#05060b] flex flex-col items-center justify-center overflow-hidden z-0 select-none">
+      <div className={`absolute inset-0 h-full w-full bg-[#05060b] flex flex-col items-center justify-center overflow-hidden z-0 select-none ${
+        interactive ? 'pointer-events-auto' : 'pointer-events-none'
+      }`}>
         {/* Animated Cyberpunk Grid Space */}
         {scanlineOverlay && (
           <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_80%)] pointer-events-none" />
@@ -264,20 +266,22 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
   }
 
   return (
-    <Suspense
-      fallback={
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md z-30">
-          <div className="flex flex-col items-center gap-4">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-primary animate-pulse">
-              Syncing Orbital Array...
-            </span>
+    <div className={`absolute inset-0 h-full w-full ${interactive ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ zIndex: 0 }}>
+      <Suspense
+        fallback={
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md z-30">
+            <div className="flex flex-col items-center gap-4">
+              <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-primary animate-pulse">
+                Syncing Orbital Array...
+              </span>
+            </div>
           </div>
-        </div>
-      }
-    >
-      <CesiumBackground3D interactive={interactive} onError={setCesiumError} />
-    </Suspense>
+        }
+      >
+        <CesiumBackground3D interactive={interactive} onError={setCesiumError} />
+      </Suspense>
+    </div>
   );
 }
 
