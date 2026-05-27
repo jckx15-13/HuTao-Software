@@ -8,6 +8,7 @@ type EventHandler<T> = (data: T) => void;
  */
 class DataBus {
     private listeners: Map<string, Set<EventHandler<unknown>>> = new Map();
+    public history: Array<{ event: string; timestamp: number; data: any }> = [];
 
     on<K extends keyof DataBusEvents>(
         event: K,
@@ -25,6 +26,12 @@ class DataBus {
     }
 
     emit<K extends keyof DataBusEvents>(event: K, data: DataBusEvents[K]): void {
+        // Record event in history log
+        this.history.unshift({ event, timestamp: Date.now(), data });
+        if (this.history.length > 50) {
+            this.history.pop();
+        }
+
         this.listeners.get(event)?.forEach((handler) => {
             try {
                 handler(data);

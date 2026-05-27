@@ -69,7 +69,7 @@ export interface TelescopePreset {
 export type InteractionMode = 'chat' | 'orbital' | 'telescope';
 export type CurrentPage = 'launcher' | 'workspace' | 'settings';
 export type RightPanelTab = 'context' | 'browser' | 'changes';
-export type SettingsCategory = 'personalisation' | 'ai' | 'connections' | 'feedback' | 'about';
+export type SettingsCategory = 'personalisation' | 'ai' | 'connections' | 'feedback' | 'developer' | 'about';
 
 const defaultPersonalisation: Personalisation = {
   panelOpacity: 0.75,
@@ -202,6 +202,24 @@ export interface UIStore {
     simulated?: boolean;
   } | null;
   setIssTelemetry: (t: any) => void;
+
+  // Satellite Ingestion & Tracker State
+  activeSatelliteId: string | null;
+  setActiveSatelliteId: (id: string | null) => void;
+  satelliteCategories: Record<string, boolean>;
+  toggleSatelliteCategory: (category: string) => void;
+  satelliteSettings: {
+    showTrails: boolean;
+    showAllTrails: boolean;
+  };
+  updateSatelliteSettings: (settings: Partial<UIStore['satelliteSettings']>) => void;
+
+  // Developer Diagnostics State
+  forceFallback: boolean;
+  setForceFallback: (v: boolean) => void;
+  engineUrlOverride: string;
+  setEngineUrlOverride: (v: string) => void;
+
 
   // Panel State
   leftPanelOpen: boolean;
@@ -440,6 +458,40 @@ export const useUIStore = create<UIStore>()(
         issTelemetry: null,
         setIssTelemetry: (issTelemetry) => set({ issTelemetry }),
 
+        // Satellite Ingestion & Tracker State
+        activeSatelliteId: null,
+        setActiveSatelliteId: (activeSatelliteId) => set({ activeSatelliteId }),
+        satelliteCategories: {
+          spaceStations: true,
+          brightest: true,
+          weather: true,
+          gps: true,
+          earthObs: true,
+          starlink: true,
+          military: true,
+          other: true,
+        },
+        toggleSatelliteCategory: (category) => set((s) => ({
+          satelliteCategories: {
+            ...s.satelliteCategories,
+            [category]: !s.satelliteCategories[category],
+          }
+        })),
+        satelliteSettings: {
+          showTrails: true,
+          showAllTrails: false,
+        },
+        updateSatelliteSettings: (settings) => set((s) => ({
+          satelliteSettings: { ...s.satelliteSettings, ...settings }
+        })),
+
+        // Developer Diagnostics State
+        forceFallback: false,
+        setForceFallback: (forceFallback) => set({ forceFallback }),
+        engineUrlOverride: '',
+        setEngineUrlOverride: (engineUrlOverride) => set({ engineUrlOverride }),
+
+
         // Panel State
         leftPanelOpen: true,
         setLeftPanelOpen: (leftPanelOpen) => set({ leftPanelOpen }),
@@ -545,6 +597,11 @@ export const useUIStore = create<UIStore>()(
         showBorders: s.showBorders,
         showTerrain: s.showTerrain,
         showRoads: s.showRoads,
+        activeSatelliteId: s.activeSatelliteId,
+        satelliteCategories: s.satelliteCategories,
+        satelliteSettings: s.satelliteSettings,
+        forceFallback: s.forceFallback,
+        engineUrlOverride: s.engineUrlOverride,
       }),
     },
   ),

@@ -51,11 +51,11 @@ export default function App() {
     >
       {/* Background layer: Persistent 3D Cesium Earth Map */}
       {!customWallpaper && (
-        <CesiumBackground interactive={interactionMode === 'orbital'} />
+        <CesiumBackground interactive={interactionMode === 'orbital' || interactionMode === 'telescope'} />
       )}
 
       {/* Translucent overlay filter for non-orbital modes */}
-      {interactionMode !== 'orbital' && (
+      {interactionMode !== 'orbital' && interactionMode !== 'telescope' && (
         <div className="absolute inset-0 bg-[#06070a]/75 backdrop-blur-[2px] pointer-events-none z-0" />
       )}
 

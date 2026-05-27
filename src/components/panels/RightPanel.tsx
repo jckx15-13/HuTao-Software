@@ -2,7 +2,7 @@ import { useUIStore } from '@/store/uiStore';
 import { useStore } from '../../core/state/store';
 import { pluginManager } from '../../core/plugins/PluginManager';
 import { ChevronRight, Globe, Terminal, Info, MapPin, Radio, Compass, X, ArrowLeft, RotateCw, ExternalLink as ExtLink } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 export function RightPanel() {
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
@@ -22,6 +22,9 @@ export function RightPanel() {
   const browserUrl = useUIStore((s) => s.browserUrl);
   const setBrowserUrl = useUIStore((s) => s.setBrowserUrl);
   const changeLogs = useUIStore((s) => s.changeLogs);
+
+  const activeSatelliteId = useUIStore((s) => s.activeSatelliteId);
+  const setActiveSatelliteId = useUIStore((s) => s.setActiveSatelliteId);
 
   // Core Zustand state
   const selectedEntity = useStore((s) => s.selectedEntity);
@@ -201,7 +204,9 @@ export function RightPanel() {
             )}
 
             {/* Landmark Details */}
-            {activeLocation ? (
+            {activeSatelliteId ? (
+              <SatelliteTelemetryCard satId={activeSatelliteId} />
+            ) : activeLocation ? (
               <div className="space-y-3">
                 <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-white/5 shadow-md">
                   <img src={activeLocation.image} alt={activeLocation.name} className="h-full w-full object-cover" />
@@ -423,5 +428,144 @@ export function RightPanel() {
         )}
       </div>
     </aside>
+  );
+}
+
+import { SATELLITES } from '@/data/satellites';
+import { propagateCircularOrbit, calculateOrbitalSpeed, calculateOrbitalPeriod } from '../../lib/simulation';
+import { useRef } from 'react';
+
+function SatelliteTelemetryCard({ satId }: { satId: string }) {
+  const issTelemetry = useUIStore((s) => s.issTelemetry);
+  const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
+  const startTimeRef = useRef(Date.now());
+
+  const satConfig = useMemo(() => {
+    return SATELLITES.find(s => s.id === satId);
+  }, [satId]);
+
+  useEffect(() => {
+    if (satId === 'iss') return;
+
+    const updateLoop = () => {
+      if (!satConfig) return;
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      const currentCoords = propagateCircularOrbit(
+        elapsed, 
+        satConfig.altitudeM, 
+        satConfig.inclinationRad, 
+        satConfig.omega0, 
+        satConfig.argLat0
+      );
+      setCoords(currentCoords);
+      frameId = requestAnimationFrame(updateLoop);
+    };
+
+    let frameId = requestAnimationFrame(updateLoop);
+    return () => cancelAnimationFrame(frameId);
+  }, [satId, satConfig]);
+
+  if (satId === 'iss') {
+    const lat = issTelemetry?.latitude ?? 0;
+    const lng = issTelemetry?.longitude ?? 0;
+    const alt = issTelemetry?.altitude ?? 420;
+    const vel = issTelemetry?.velocity ?? 27600; // km/h
+    const period = calculateOrbitalPeriod(alt * 1000) / 60; // mins
+
+    return (
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <h3 className="font-bold text-sm tracking-wide text-primary uppercase">🛰️ ISS (SPACE STATION)</h3>
+          <span className="text-[7.5px] text-white/30 font-mono uppercase tracking-widest block">Live Satcom Feed Active</span>
+        </div>
+
+        <div className="border-t border-white/5 pt-3 space-y-2 font-mono text-[9px]">
+          <div className="flex items-center justify-between text-white/50">
+            <span className="uppercase">Latitude</span>
+            <span className="text-cyan-400 font-bold">{lat.toFixed(5)}°</span>
+          </div>
+          <div className="flex items-center justify-between text-white/50">
+            <span className="uppercase">Longitude</span>
+            <span className="text-cyan-400 font-bold">{lng.toFixed(5)}°</span>
+          </div>
+          <div className="flex items-center justify-between text-white/50">
+            <span className="uppercase">Orbit Altitude</span>
+            <span className="text-white font-bold">{alt.toFixed(1)} km</span>
+          </div>
+          <div className="flex items-center justify-between text-white/50">
+            <span className="uppercase">Orbital Velocity</span>
+            <span className="text-white font-bold">{vel.toFixed(1)} km/h</span>
+          </div>
+          <div className="flex items-center justify-between text-white/50">
+            <span className="uppercase">Orbit Period</span>
+            <span className="text-white font-bold">{period.toFixed(1)} mins</span>
+          </div>
+          <div className="flex items-center justify-between text-white/50">
+            <span className="uppercase">Inclination</span>
+            <span className="text-white font-bold">51.64°</span>
+          </div>
+        </div>
+
+        <div className="p-3 rounded bg-white/5 border border-white/5 text-[8px] uppercase leading-relaxed text-white/40 font-mono">
+          Habitable artificial satellite in Low Earth Orbit serving as a microgravity and space environment research laboratory.
+        </div>
+      </div>
+    );
+  }
+
+  if (!satConfig) return null;
+
+  const altitudeKm = satConfig.altitudeM / 1000;
+  const speedKms = calculateOrbitalSpeed(satConfig.altitudeM) / 1000; // km/s
+  const speedKmh = speedKms * 3600; // km/h
+  const periodMins = calculateOrbitalPeriod(satConfig.altitudeM) / 60; // mins
+  const inclinationDeg = (satConfig.inclinationRad * 180) / Math.PI;
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-sm tracking-wide text-white uppercase">{satConfig.name}</h3>
+          <span 
+            className="h-2 w-2 rounded-full animate-pulse" 
+            style={{ backgroundColor: satConfig.color }} 
+          />
+        </div>
+        <span className="text-[7.5px] text-white/30 font-mono uppercase tracking-widest block">
+          Telemetry Group: {satConfig.category.toUpperCase()}
+        </span>
+      </div>
+
+      <div className="border-t border-white/5 pt-3 space-y-2 font-mono text-[9px]">
+        <div className="flex items-center justify-between text-white/50">
+          <span className="uppercase">Latitude</span>
+          <span className="text-cyan-400 font-bold">{coords.lat.toFixed(5)}°</span>
+        </div>
+        <div className="flex items-center justify-between text-white/50">
+          <span className="uppercase">Longitude</span>
+          <span className="text-cyan-400 font-bold">{coords.lng.toFixed(5)}°</span>
+        </div>
+        <div className="flex items-center justify-between text-white/50">
+          <span className="uppercase">Orbit Altitude</span>
+          <span className="text-white font-bold">{altitudeKm.toFixed(1)} km</span>
+        </div>
+        <div className="flex items-center justify-between text-white/50">
+          <span className="uppercase">Orbital Velocity</span>
+          <span className="text-white font-bold">{speedKmh.toFixed(1)} km/h ({speedKms.toFixed(2)} km/s)</span>
+        </div>
+        <div className="flex items-center justify-between text-white/50">
+          <span className="uppercase">Orbit Period</span>
+          <span className="text-white font-bold">{periodMins.toFixed(1)} mins</span>
+        </div>
+        <div className="flex items-center justify-between text-white/50">
+          <span className="uppercase">Inclination</span>
+          <span className="text-white font-bold">{inclinationDeg.toFixed(2)}°</span>
+        </div>
+      </div>
+
+      <div className="p-3 rounded bg-white/5 border border-white/5 text-[8px] uppercase leading-relaxed text-white/40 font-mono">
+        {satConfig.description}
+      </div>
+    </div>
   );
 }

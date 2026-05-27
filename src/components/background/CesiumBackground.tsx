@@ -8,6 +8,9 @@ import {
   projectUnitVector,
   projectLatLng,
 } from '../../lib/globeProjection';
+import { SATELLITES } from '../../data/satellites';
+import { propagateCircularOrbit } from '../../lib/simulation';
+
 
 const CesiumBackground3D = React.lazy(() => import('./CesiumBackground3D'));
 
@@ -62,10 +65,13 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
   });
 
   const [cesiumError, setCesiumError] = useState<string | null>(null);
-  const hasError = !!webglError || !!cesiumError;
+  const forceFallback = useUIStore((s) => s.forceFallback);
+  const hasError = !!webglError || !!cesiumError || forceFallback;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const telemetryRef = useRef<any>(null);
+  const startTimeRef = useRef(Date.now());
+
 
   // Subscribe to ISS telemetry store updates in a ref to bypass React rendering cycles
   useEffect(() => {
@@ -158,63 +164,119 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
         }
       }
 
-      // 5. Projected Satellite & Orbit Track
-      const telemetry = telemetryRef.current;
-      if (telemetry) {
-        const p = projectLatLng(telemetry.latitude, telemetry.longitude, rotation, tilt, R, cx, cy);
+      // 5. Projected Satellites & Orbit Tracks
+      const showTrails = useUIStore.getState().satelliteSettings?.showTrails !== false;
+      const showAllTrails = useUIStore.getState().satelliteSettings?.showAllTrails === true;
+      const satelliteCategories = useUIStore.getState().satelliteCategories;
+      const activeSatelliteId = useUIStore.getState().activeSatelliteId;
 
-        // Draw dotted orbit path projection
-        ctx.strokeStyle = 'rgba(34, 211, 238, 0.15)';
-        ctx.lineWidth = 0.8;
-        ctx.setLineDash([2, 3]);
-        ctx.beginPath();
-        let firstOrbitPoint = true;
-        for (let u = 0; u <= 2 * Math.PI; u += 0.05) {
-          const lat = (Math.asin(Math.sin(inc) * Math.sin(u)) * 180) / Math.PI;
-          const lng = (Math.atan2(Math.cos(inc) * Math.sin(u), Math.cos(u)) * 180) / Math.PI;
-          const opt = projectLatLng(lat, lng, rotation, tilt, R, cx, cy);
-          if (opt.visible) {
-            if (firstOrbitPoint) {
-              ctx.moveTo(opt.x, opt.y);
-              firstOrbitPoint = false;
-            } else {
-              ctx.lineTo(opt.x, opt.y);
-            }
-          } else {
-            firstOrbitPoint = true;
-          }
+      const sidsToDraw: Array<{
+        id: string;
+        name: string;
+        altitudeM: number;
+        inclinationRad: number;
+        omega0: number;
+        argLat0: number;
+        color: string;
+        isIss: boolean;
+      }> = [];
+
+      // Add ISS if spaceStations is visible
+      if (satelliteCategories['spaceStations'] !== false) {
+        sidsToDraw.push({
+          id: 'iss',
+          name: '🛰️ ISS',
+          altitudeM: 420_000,
+          inclinationRad: (51.64 * Math.PI) / 180,
+          omega0: 0.0,
+          argLat0: 0.0,
+          color: '#00FFF7',
+          isIss: true
+        });
+      }
+
+      // Add other SATELLITES if their category is visible
+      SATELLITES.forEach(sat => {
+        if (satelliteCategories[sat.category] !== false) {
+          sidsToDraw.push({
+            id: sat.id,
+            name: sat.name,
+            altitudeM: sat.altitudeM,
+            inclinationRad: sat.inclinationRad,
+            omega0: sat.omega0,
+            argLat0: sat.argLat0,
+            color: sat.color,
+            isIss: false
+          });
         }
-        ctx.stroke();
-        ctx.setLineDash([]); // Reset line dash
+      });
 
-        // Draw satellite tracking target nodes
-        const pulse = (Math.sin(Date.now() / 250) + 1) / 2; // Pulse value (0 to 1)
-        ctx.fillStyle = p.visible ? 'rgba(34, 211, 238, 0.85)' : 'rgba(115, 115, 115, 0.4)';
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+
+      sidsToDraw.forEach(sat => {
+        const isSelected = activeSatelliteId === sat.id;
+        const shouldHaveTrail = showAllTrails || (isSelected && showTrails);
+
+        let lat = 0;
+        let lng = 0;
+        if (sat.isIss && telemetryRef.current) {
+          lat = telemetryRef.current.latitude;
+          lng = telemetryRef.current.longitude;
+        } else {
+          const coords = propagateCircularOrbit(elapsed, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+          lat = coords.lat;
+          lng = coords.lng;
+        }
+
+        const p = projectLatLng(lat, lng, rotation, tilt, R, cx, cy);
+
+        // Draw trail if needed
+        if (shouldHaveTrail) {
+          ctx.strokeStyle = sat.color + '26'; // 15% opacity
+          ctx.lineWidth = isSelected ? 1.5 : 0.8;
+          ctx.setLineDash([2, 3]);
+          ctx.beginPath();
+          let firstOrbitPoint = true;
+          for (let u = 0; u <= 2 * Math.PI; u += 0.08) {
+            const orbitCoords = propagateCircularOrbit(elapsed - u * 500, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+            const opt = projectLatLng(orbitCoords.lat, orbitCoords.lng, rotation, tilt, R, cx, cy);
+            if (opt.visible) {
+              if (firstOrbitPoint) {
+                ctx.moveTo(opt.x, opt.y);
+                firstOrbitPoint = false;
+              } else {
+                ctx.lineTo(opt.x, opt.y);
+              }
+            } else {
+              firstOrbitPoint = true;
+            }
+          }
+          ctx.stroke();
+          ctx.setLineDash([]); // Reset line dash
+        }
+
+        // Draw point marker
+        const pulse = (Math.sin(Date.now() / 250) + 1) / 2;
+        ctx.fillStyle = p.visible ? sat.color : 'rgba(115, 115, 115, 0.4)';
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.visible ? 3 : 2, 0, 2 * Math.PI);
+        ctx.arc(p.x, p.y, isSelected ? 3.5 : 2, 0, 2 * Math.PI);
         ctx.fill();
 
-        if (p.visible) {
-          // Inner core target indicator
-          ctx.strokeStyle = 'rgba(34, 211, 238, 0.5)';
+        if (p.visible && isSelected) {
+          ctx.strokeStyle = sat.color + '80'; // 50% opacity
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 5 + pulse * 3, 0, 2 * Math.PI);
+          ctx.arc(p.x, p.y, 6 + pulse * 3, 0, 2 * Math.PI);
           ctx.stroke();
 
-          // Satellite tooltip text labels
+          // Label
           ctx.font = '8px monospace';
-          ctx.fillStyle = '#22d3ee';
+          ctx.fillStyle = sat.color;
           ctx.textAlign = 'center';
-          ctx.fillText('🛰️ ISS', p.x, p.y + 14);
-        } else {
-          // Far-side satellite indication
-          ctx.font = '7px monospace';
-          ctx.fillStyle = '#737373';
-          ctx.textAlign = 'center';
-          ctx.fillText('🛰️ ISS (FAR)', p.x, p.y + 12);
+          ctx.fillText(sat.name.replace(/🛰️\s*|🇨🇳\s*/, ''), p.x, p.y + 14);
         }
-      }
+      });
+
 
       requestAnimationFrame(renderFrame);
     };

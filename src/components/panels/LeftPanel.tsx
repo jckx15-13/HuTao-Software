@@ -27,6 +27,7 @@ import {
   FolderGit,
   MessageSquare,
   ChevronRight,
+  Radio,
 } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '@/core/state/store';
@@ -36,6 +37,7 @@ import { pluginManager } from '@/core/plugins/PluginManager';
 import { presets } from '@/components/learning/WorldWideTelescopeView';
 import * as Cesium from 'cesium';
 import { IMAGERY_LAYERS } from '@/core/globe/ImageryProviderFactory';
+import { SATELLITES } from '@/data/satellites';
 
 // ============================================================================
 // CONSOLIDATED SUB-COMPONENTS
@@ -290,6 +292,7 @@ export function LeftPanel() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [orbitalSearchQuery, setOrbitalSearchQuery] = useState('');
+  const [satelliteSearchQuery, setSatelliteSearchQuery] = useState('');
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     search: true,
@@ -297,6 +300,7 @@ export function LeftPanel() {
     voyager: false,
     style: false,
     measure: false,
+    satellites: false,
     plugins: false,
     presets: true,
     telemetry: true,
@@ -305,6 +309,51 @@ export function LeftPanel() {
 
   const toggleSection = (key: string) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const activeSatelliteId = useUIStore((s) => s.activeSatelliteId);
+  const setActiveSatelliteId = useUIStore((s) => s.setActiveSatelliteId);
+  const satelliteCategories = useUIStore((s) => s.satelliteCategories);
+  const toggleSatelliteCategory = useUIStore((s) => s.toggleSatelliteCategory);
+  const satelliteSettings = useUIStore((s) => s.satelliteSettings);
+  const updateSatelliteSettings = useUIStore((s) => s.updateSatelliteSettings);
+
+  const SATELLITE_CATEGORIES_METADATA = {
+    spaceStations: { label: 'Stations', color: '#00FFF7' },
+    brightest: { label: 'Brightest', color: '#F0ABFC' },
+    weather: { label: 'Weather', color: '#A78BFA' },
+    gps: { label: 'GPS', color: '#22C55E' },
+    earthObs: { label: 'Earth Obs', color: '#F97316' },
+    starlink: { label: 'Starlink', color: '#FFFFFF' },
+    military: { label: 'Military', color: '#3B82F6' },
+    other: { label: 'Other', color: '#94A3B8' },
+  };
+
+  const filteredSatellites = useMemo(() => {
+    return SATELLITES.filter((sat) => {
+      const matchesSearch = sat.name.toLowerCase().includes(satelliteSearchQuery.toLowerCase()) || 
+                            sat.category.toLowerCase().includes(satelliteSearchQuery.toLowerCase());
+      const isCategoryVisible = satelliteCategories[sat.category] !== false;
+      return matchesSearch && isCategoryVisible;
+    });
+  }, [satelliteSearchQuery, satelliteCategories]);
+
+  const handleSelectSatellite = (id: string, altitudeM: number) => {
+    setActiveSatelliteId(id);
+    useUIStore.getState().addChangeLog('TRACKER', `Locked satellite: ${id.toUpperCase()}`, 'success');
+    
+    const viewer = (window as any).cesiumViewer;
+    if (viewer) {
+      const ent = viewer.entities.getById(id);
+      if (ent) {
+        viewer.trackedEntity = ent;
+      } else {
+        viewer.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(0, 0, altitudeM * 2.5 + 200000),
+          duration: 2.0
+        });
+      }
+    }
   };
 
   // Distance computation
@@ -732,6 +781,119 @@ export function LeftPanel() {
                     <span className="text-xs text-primary font-bold">{measureDistance.toFixed(2)} km</span>
                   </div>
                 )}
+              </div>
+            </CollapsibleSection>
+
+            {/* 5.5. Satellite Tracker */}
+            <CollapsibleSection
+              title="Satellite Tracker"
+              icon={Radio}
+              isOpen={expanded.satellites}
+              onToggle={() => toggleSection('satellites')}
+            >
+              <div className="space-y-3 font-mono text-[9px] text-white/70">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-3 w-3 text-white/30" />
+                  <input
+                    type="text"
+                    value={satelliteSearchQuery}
+                    onChange={(e) => setSatelliteSearchQuery(e.target.value)}
+                    placeholder="Search satellites..."
+                    className="w-full rounded bg-[#0a0b10] border border-white/5 py-1.5 pl-7 pr-2 text-[9px] text-white focus:outline-none focus:border-primary/50 font-mono"
+                  />
+                </div>
+
+                {/* Category Toggles (Grid) */}
+                <div className="space-y-1">
+                  <label className="text-white/40 block text-[7px] uppercase tracking-wider">Categories</label>
+                  <div className="grid grid-cols-2 gap-1 text-[8px]">
+                    {Object.entries(SATELLITE_CATEGORIES_METADATA).map(([key, meta]) => {
+                      const isToggled = satelliteCategories[key] !== false;
+                      const count = key === 'spaceStations' 
+                        ? SATELLITES.filter(s => s.category === key).length + (satelliteCategories['spaceStations'] !== false ? 1 : 0)
+                        : SATELLITES.filter(s => s.category === key).length;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => toggleSatelliteCategory(key)}
+                          className={`flex items-center justify-between px-1.5 py-1 rounded border transition-colors cursor-pointer text-left ${
+                            isToggled 
+                              ? 'bg-white/5 text-white border-white/10' 
+                              : 'bg-transparent text-white/30 border-white/5 hover:border-white/10'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1 truncate">
+                            <span 
+                              className="h-1.5 w-1.5 rounded-full shrink-0 animate-pulse" 
+                              style={{ backgroundColor: isToggled ? meta.color : 'rgba(255,255,255,0.1)' }} 
+                            />
+                            <span className="truncate max-w-[65px] uppercase font-bold text-[7px]">{meta.label}</span>
+                          </div>
+                          <span className="text-[7px] text-white/30 font-bold shrink-0">({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Controls (Trails) */}
+                <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-white/5 text-[8px] font-bold">
+                  <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={satelliteSettings?.showTrails !== false}
+                      onChange={(e) => updateSatelliteSettings({ showTrails: e.target.checked })}
+                      className="accent-primary cursor-pointer"
+                    />
+                    <span>Selected Trail</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={satelliteSettings?.showAllTrails === true}
+                      onChange={(e) => updateSatelliteSettings({ showAllTrails: e.target.checked })}
+                      className="accent-primary cursor-pointer"
+                    />
+                    <span>All Trails</span>
+                  </label>
+                </div>
+
+                {/* Satellite List */}
+                <div className="space-y-0.5 max-h-[145px] overflow-y-auto scroller border-t border-white/5 pt-1.5">
+                  {/* ISS Item */}
+                  {satelliteCategories['spaceStations'] !== false && 'iss'.includes(satelliteSearchQuery.toLowerCase()) && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectSatellite('iss', 420000)}
+                      className={`w-full text-left p-1 rounded transition-all cursor-pointer flex items-center justify-between border border-transparent ${
+                        activeSatelliteId === 'iss' ? 'bg-primary/20 text-primary font-bold border-primary/20' : 'hover:bg-white/5 text-white/60'
+                      }`}
+                    >
+                      <span className="truncate uppercase font-bold text-[8px]">🛰️ ISS (LIVE FEED)</span>
+                      <span className="text-[7px] text-white/30 shrink-0">420KM</span>
+                    </button>
+                  )}
+
+                  {/* Curated list */}
+                  {filteredSatellites.map((sat) => {
+                    const isSelected = activeSatelliteId === sat.id;
+                    return (
+                      <button
+                        key={sat.id}
+                        type="button"
+                        onClick={() => handleSelectSatellite(sat.id, sat.altitudeM)}
+                        className={`w-full text-left p-1 rounded transition-all cursor-pointer flex items-center justify-between border border-transparent ${
+                          isSelected ? 'bg-primary/20 text-primary font-bold border-primary/20' : 'hover:bg-white/5 text-white/60'
+                        }`}
+                      >
+                        <span className="truncate uppercase font-bold text-[8px]">{sat.name}</span>
+                        <span className="text-[7px] text-white/30 shrink-0">{Math.round(sat.altitudeM / 1000)}KM</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </CollapsibleSection>
 

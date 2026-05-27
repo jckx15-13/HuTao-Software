@@ -74,6 +74,8 @@ export default function GoogleEarthRemix() {
   const activeLocation = useUIStore((s) => s.activeLocation);
   const setActiveLocation = useUIStore((s) => s.setActiveLocation);
   const setIssFeedOpen = useUIStore((s) => s.setIssFeedOpen);
+  const forceFallback = useUIStore((s) => s.forceFallback);
+
 
   const mapConfig = useStore((s) => s.mapConfig);
   const updateMapConfig = useStore((s) => s.updateMapConfig);
@@ -453,15 +455,21 @@ export default function GoogleEarthRemix() {
 
   useEffect(() => {
     const checkCesium = () => {
+      if (forceFallback) {
+        setHasCesium(false);
+        return;
+      }
       const viewer = (window as any).cesiumViewer;
       if (viewer) {
         setHasCesium(true);
+      } else {
+        setHasCesium(false);
       }
     };
     checkCesium();
     const interval = setInterval(checkCesium, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [forceFallback]);
 
 
   // Sync Borders and Labels visibility to Cesium

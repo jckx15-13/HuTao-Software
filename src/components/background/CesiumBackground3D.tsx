@@ -5,6 +5,7 @@ import { useIssTracker } from '../../hooks/cesium/useIssTracker';
 import { useAutoRotation } from '../../hooks/cesium/useAutoRotation';
 import { useWWVGlobe } from '../../hooks/cesium/useWWVGlobe';
 import { useConstellations } from '../../hooks/cesium/useConstellations';
+import { useTelescopePresets } from '../../hooks/cesium/useTelescopePresets';
 import { useImageryManager } from '../../core/globe/useImageryManager';
 import { useBorders } from '../../core/globe/useBorders';
 import { useCameraActions } from '../../core/globe/hooks/useCameraActions';
@@ -36,6 +37,7 @@ export default function CesiumBackground3D({ interactive, onError }: CesiumBackg
   useAutoRotation(viewer, interactive);
   useWWVGlobe(viewer);
   useConstellations(viewer);
+  useTelescopePresets(viewer);
   
   // Imagery and map data layers integration
   useImageryManager(viewer, isLoaded);

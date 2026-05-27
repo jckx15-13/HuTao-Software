@@ -1,10 +1,12 @@
-import { X, Palette, Brain, Link2, Sparkles, Info } from 'lucide-react';
+import { X, Palette, Brain, Link2, Sparkles, Info, Code } from 'lucide-react';
 import { useUIStore, type SettingsCategory } from '@/store/uiStore';
 import { PersonalisationSettings } from './PersonalisationSettings';
 import GlassOpacitySettings from './GlassOpacitySettings';
 import { AiSettings } from './AiSettings';
 import { NotionSettings } from './NotionSettings';
 import { FeedbackSettings } from './FeedbackSettings';
+import { DeveloperSettings } from './DeveloperSettings';
+
 
 export function SettingsPage() {
   const settingsCategory = useUIStore((s) => s.settingsCategory);
@@ -16,7 +18,9 @@ export function SettingsPage() {
     { key: 'ai', label: 'AI Configuration', icon: Brain },
     { key: 'connections', label: 'Notion Sync', icon: Link2 },
     { key: 'feedback', label: 'Tactile Feedback', icon: Sparkles },
+    { key: 'developer' as SettingsCategory, label: 'Developer Panel', icon: Code },
     { key: 'about', label: 'System Codex', icon: Info },
+
   ];
 
   return (
@@ -81,7 +85,9 @@ export function SettingsPage() {
             {settingsCategory === 'ai' && <AiSettings />}
             {settingsCategory === 'connections' && <NotionSettings />}
             {settingsCategory === 'feedback' && <FeedbackSettings />}
+            {settingsCategory === 'developer' && <DeveloperSettings />}
             {settingsCategory === 'about' && <AboutSection />}
+
           </div>
         </main>
       </div>

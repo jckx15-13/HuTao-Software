@@ -1,6 +1,8 @@
 // src/core/data/resolveEngineUrl.ts
 import { pluginManager } from "@/core/plugins/PluginManager";
 import { localEngineHasPlugin } from "./engineManifest";
+import { useUIStore } from "@/store/uiStore";
+
 
 const CLOUD_ENGINE_URL = "wss://dataenginev2.worldwideview.dev/stream";
 
@@ -34,6 +36,12 @@ function getLocalWsUrl() {
  * 5. Fallback: wss://dataengine.worldwideview.dev/stream (cloud)
  */
 export function resolveEngineUrl(pluginId: string): string {
+  // Check custom override from Developer Settings
+  const overrideUrl = useUIStore.getState().engineUrlOverride;
+  if (overrideUrl) {
+    return toWsStreamUrl(overrideUrl);
+  }
+
   // 1. Local engine (split-routing) - PRIORITY #1
   if (localEngineHasPlugin(pluginId)) {
     return getLocalWsUrl();
