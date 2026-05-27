@@ -20,7 +20,7 @@ function SidebarTrigger() {
     <button
       type="button"
       onClick={() => setLeftPanelOpen(true)}
-      className={`absolute top-1/2 left-0 -translate-y-1/2 z-20 flex h-14 w-5 items-center justify-center rounded-r-lg bg-black/40 hover:bg-black/60 border-y border-r border-white/10 hover:border-white/20 text-white/40 hover:text-white/80 cursor-pointer group shadow-lg transition-all duration-500 ease-in-out pointer-events-auto ${
+      className={`absolute top-1/2 left-0 -translate-y-1/2 z-20 flex h-14 w-5 items-center justify-center rounded-r-lg bg-black/40 hover:bg-black/60 border-y border-r border-white/10 hover:border-white/20 text-white/40 hover:text-white/80 cursor-pointer group shadow-lg transition-all duration-300 ease-out pointer-events-auto ${
         isOrbital ? 'opacity-0 pointer-events-none -translate-x-full' : 'opacity-100 translate-x-0'
       }`}
       title="Expand Sidebar"
@@ -82,7 +82,7 @@ export function CenterPanel() {
       <div className="flex-1 w-full relative overflow-hidden">
         {/* Chat View Container */}
         <div 
-          className={`absolute inset-0 flex flex-col pt-12 transition-all duration-500 ease-in-out ${
+          className={`absolute inset-0 flex flex-col pt-12 transition-all duration-300 ease-out ${
             interactionMode === 'chat' 
               ? 'translate-x-0 opacity-100 pointer-events-auto z-10' 
               : '-translate-x-full opacity-0 pointer-events-none z-0'
@@ -109,7 +109,7 @@ export function CenterPanel() {
 
         {/* Orbital View (Google Earth Remix) Container */}
         <div 
-          className={`absolute inset-0 flex flex-col transition-all duration-500 ease-in-out ${
+          className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out ${
             interactionMode === 'orbital' 
               ? 'translate-x-0 opacity-100 pointer-events-none z-10' 
               : 'translate-x-full opacity-0 pointer-events-none z-0'
@@ -120,7 +120,7 @@ export function CenterPanel() {
 
         {/* Telescope View (WorldWide Telescope) Container */}
         <div 
-          className={`absolute inset-0 flex flex-col transition-all duration-500 ease-in-out ${
+          className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out ${
             interactionMode === 'telescope' 
               ? 'translate-x-0 opacity-100 pointer-events-auto z-10' 
               : 'translate-x-full opacity-0 pointer-events-none z-0'

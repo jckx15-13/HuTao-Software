@@ -93,7 +93,7 @@ async function tieredFallback(ionAssetId: number, googleLyrs: string) {
 }
 
 export async function createImageryProvider(layerId: string) {
-    const bingKey = import.meta.env.NEXT_PUBLIC_BING_MAPS_KEY;
+    const bingKey = import.meta.env.VITE_BING_MAPS_KEY;
 
     switch (layerId) {
         case "bing-aerial":

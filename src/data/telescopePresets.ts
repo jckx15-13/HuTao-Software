@@ -1,0 +1,95 @@
+import type { TelescopePreset as UITelescopePreset } from '@/store/uiStore';
+
+export interface TelescopePreset extends UITelescopePreset {
+  id: string;
+  raHours: number;
+  decDegrees: number;
+  color: string;
+}
+
+export const TELESCOPE_PRESETS: TelescopePreset[] = [
+  {
+    id: 'deep-sky-survey',
+    name: 'Deep Sky Survey',
+    url: 'https://worldwidetelescope.org/webclient/',
+    ra: '00h 00m 00s',
+    dec: '00° 00\' 00"',
+    fov: '60.00°',
+    description: 'Panoramic multi-wavelength view of the celestial sphere.',
+    raHours: 0,
+    decDegrees: 0,
+    color: '#88d2ff',
+  },
+  {
+    id: 'andromeda',
+    name: 'Andromeda Galaxy (M31)',
+    url: 'https://worldwidetelescope.org/webclient/?ra=0.712&dec=41.27&fov=3.0',
+    ra: '00h 42m 44s',
+    dec: '+41° 16\' 09"',
+    fov: '3.00°',
+    description: 'Our nearest major galactic neighbor, located 2.5 million light-years away.',
+    raHours: 0.712,
+    decDegrees: 41.27,
+    color: '#FF00AA',
+  },
+  {
+    id: 'orion',
+    name: 'Orion Nebula (M42)',
+    url: 'https://worldwidetelescope.org/webclient/?ra=5.58&dec=-5.38&fov=2.0',
+    ra: '05h 35m 17s',
+    dec: '-05° 23\' 28"',
+    fov: '2.00°',
+    description: 'A massive star-forming nursery located in the Orion Constellation.',
+    raHours: 5.58,
+    decDegrees: -5.38,
+    color: '#FF5500',
+  },
+  {
+    id: 'pillars-of-creation',
+    name: 'Pillars of Creation (M16)',
+    url: 'https://worldwidetelescope.org/webclient/?ra=18.314&dec=-13.82&fov=0.5',
+    ra: '18h 18m 48s',
+    dec: '-13° 49\' 12"',
+    fov: '0.50°',
+    description: 'Eagle Nebula interstellar gas clouds imaged by Hubble/JWST.',
+    raHours: 18.314,
+    decDegrees: -13.82,
+    color: '#00FFCC',
+  },
+  {
+    id: 'crab-nebula',
+    name: 'Crab Nebula (M1)',
+    url: 'https://worldwidetelescope.org/webclient/?ra=5.575&dec=22.01&fov=0.3',
+    ra: '05h 34m 32s',
+    dec: '+22° 00\' 52"',
+    fov: '0.30°',
+    description: 'Supernova remnant from the stellar explosion recorded in 1054 AD.',
+    raHours: 5.575,
+    decDegrees: 22.01,
+    color: '#FFAA00',
+  },
+  {
+    id: 'mars',
+    name: 'Planet Mars',
+    url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Mars',
+    ra: '00h 00m 00s',
+    dec: '00° 00\' 00"',
+    fov: '60.00°',
+    description: 'Orthographic geological surface mapping of the Red Planet.',
+    raHours: 9.3,
+    decDegrees: 15.6,
+    color: '#FF3333',
+  },
+  {
+    id: 'jupiter',
+    name: 'Planet Jupiter',
+    url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Jupiter',
+    ra: '00h 00m 00s',
+    dec: '00° 00\' 00"',
+    fov: '60.00°',
+    description: 'Gas giant atmospheric bands and Jovian satellite orbit tracks.',
+    raHours: 13.8,
+    decDegrees: -8.4,
+    color: '#EAA67B',
+  },
+];

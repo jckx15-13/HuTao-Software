@@ -219,6 +219,8 @@ export interface UIStore {
   setForceFallback: (v: boolean) => void;
   engineUrlOverride: string;
   setEngineUrlOverride: (v: string) => void;
+  imageryProvider: string;
+  setImageryProvider: (v: string) => void;
 
 
   // Panel State
@@ -490,6 +492,8 @@ export const useUIStore = create<UIStore>()(
         setForceFallback: (forceFallback) => set({ forceFallback }),
         engineUrlOverride: '',
         setEngineUrlOverride: (engineUrlOverride) => set({ engineUrlOverride }),
+        imageryProvider: 'cesium',
+        setImageryProvider: (imageryProvider) => set({ imageryProvider }),
 
 
         // Panel State
@@ -602,6 +606,7 @@ export const useUIStore = create<UIStore>()(
         satelliteSettings: s.satelliteSettings,
         forceFallback: s.forceFallback,
         engineUrlOverride: s.engineUrlOverride,
+        imageryProvider: s.imageryProvider,
       }),
     },
   ),

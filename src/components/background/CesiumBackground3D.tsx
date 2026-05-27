@@ -10,6 +10,7 @@ import { useImageryManager } from '../../core/globe/useImageryManager';
 import { useBorders } from '../../core/globe/useBorders';
 import { useCameraActions } from '../../core/globe/hooks/useCameraActions';
 import { useUIStore } from '@/store/uiStore';
+import { useStore } from '@/core/state/store';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 interface CesiumBackground3DProps {
@@ -20,7 +21,15 @@ interface CesiumBackground3DProps {
 export default function CesiumBackground3D({ interactive, onError }: CesiumBackground3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const showBorders = useUIStore((s) => s.showBorders);
+  const imageryProvider = useUIStore((s) => s.imageryProvider);
+  const updateMapConfig = useStore((s) => s.updateMapConfig);
   
+  // Sync uiStore.imageryProvider → configSlice.mapConfig.baseLayerId
+  useEffect(() => {
+    if (imageryProvider) {
+      updateMapConfig({ baseLayerId: imageryProvider });
+    }
+  }, [imageryProvider, updateMapConfig]);
   // Initialize Cesium Viewer
   const { viewer, isLoaded, error } = useCesiumViewer(containerRef);
 

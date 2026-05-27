@@ -1,63 +1,13 @@
 import { useEffect } from 'react';
 import * as Cesium from 'cesium';
 import { useUIStore } from '@/store/uiStore';
-
-interface TelescopePresetConfig {
-  name: string;
-  raHours: number;  // Right Ascension in decimal hours (0-24)
-  decDegrees: number; // Declination in decimal degrees (-90 to +90)
-  color: string;
-  description: string;
-}
-
-const PRESETS_COORDS: TelescopePresetConfig[] = [
-  {
-    name: '🌌 ANDROMEDA GALAXY (M31)',
-    raHours: 0.712,
-    decDegrees: 41.27,
-    color: '#FF00AA',
-    description: 'Our nearest major galactic neighbor, located 2.5 million light-years away.',
-  },
-  {
-    name: '🌌 ORION NEBULA (M42)',
-    raHours: 5.58,
-    decDegrees: -5.38,
-    color: '#FF5500',
-    description: 'A massive star-forming nursery located in the Orion Constellation.',
-  },
-  {
-    name: '🌌 PILLARS OF CREATION (M16)',
-    raHours: 18.314,
-    decDegrees: -13.82,
-    color: '#00FFCC',
-    description: 'Eagle Nebula interstellar gas clouds imaged by Hubble/JWST.',
-  },
-  {
-    name: '🌌 CRAB NEBULA (M1)',
-    raHours: 5.575,
-    decDegrees: 22.01,
-    color: '#FFAA00',
-    description: 'Supernova remnant from the stellar explosion recorded in 1054 AD.',
-  },
-  {
-    name: '🪐 PLANET MARS',
-    raHours: 9.3,
-    decDegrees: 15.6,
-    color: '#FF3333',
-    description: 'Orthographic geological surface mapping of the Red Planet.',
-  },
-  {
-    name: '🪐 PLANET JUPITER',
-    raHours: 13.8,
-    decDegrees: -8.4,
-    color: '#EAA67B',
-    description: 'Gas giant atmospheric bands and Jovian satellite orbit tracks.',
-  },
-];
+import { useStore } from '@/core/state/store';
+import { TELESCOPE_PRESETS } from '@/data/telescopePresets';
 
 export function useTelescopePresets(viewer: Cesium.Viewer | null) {
   const interactionMode = useUIStore((s) => s.interactionMode);
   const telescopeTarget = useUIStore((s) => s.telescopeTarget);
+  const hoveredEntityId = useStore((s) => s.hoveredEntity?.id ?? null);
 
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;
@@ -70,7 +20,7 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
       // Outer sphere radius (114,000 km)
       const celestialRadius = 114378137;
 
-      PRESETS_COORDS.forEach((preset) => {
+      TELESCOPE_PRESETS.forEach((preset) => {
         // Translate RA/Dec to radians
         const raRad = (preset.raHours * 15.0 * Math.PI) / 180.0;
         const decRad = (preset.decDegrees * Math.PI) / 180.0;
@@ -81,19 +31,18 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
         const z = celestialRadius * Math.sin(decRad);
         const position = new Cesium.Cartesian3(x, y, z);
 
-        const isSelected = telescopeTarget && preset.name.toUpperCase().includes(telescopeTarget.name.toUpperCase().replace('PLANET ', ''));
+        const isSelected = telescopeTarget?.name === preset.name;
 
         // Add celestial target entity
         const targetEntity = viewer.entities.add({
-          id: `telescope-preset-${preset.name}`,
+          id: `telescope-preset-${preset.id}`,
           name: preset.name,
           position: position,
           point: {
-            pixelSize: isSelected ? 12 : 8,
+            pixelSize: isSelected ? 10 : 6,
             color: Cesium.Color.fromCssColorString(preset.color),
-            outlineColor: Cesium.Color.WHITE,
-            outlineWidth: 2.0,
-            disableDepthTestDistance: Number.POSITIVE_INFINITY, // Ensure foreground visibility
+            outlineColor: Cesium.Color.WHITE.withAlpha(0.9),
+            outlineWidth: 1.5,
           },
           label: {
             text: preset.name,
@@ -107,7 +56,7 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
             showBackground: true,
             backgroundColor: Cesium.Color.fromCssColorString('rgba(10, 11, 16, 0.85)'),
             backgroundPadding: new Cesium.Cartesian2(8, 4),
-            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            show: false,
           },
         });
         entities.push(targetEntity);
@@ -120,7 +69,6 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
               image: createRingSvg(preset.color),
               width: 32,
               height: 32,
-              disableDepthTestDistance: Number.POSITIVE_INFINITY,
             },
           });
           entities.push(ringEntity);
@@ -140,6 +88,19 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
     };
   }, [viewer, interactionMode, telescopeTarget]);
 
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed()) return;
+    if (!(interactionMode === 'orbital' || interactionMode === 'telescope')) return;
+
+    TELESCOPE_PRESETS.forEach((preset) => {
+      const entity = viewer.entities.getById(`telescope-preset-${preset.id}`);
+      if (entity && entity.label) {
+        entity.label.show = new Cesium.ConstantProperty(hoveredEntityId === `telescope-preset-${preset.id}`);
+      }
+    });
+    viewer.scene.requestRender();
+  }, [viewer, interactionMode, hoveredEntityId]);
+
   // Handle Camera flights & Earth globe show/hide state transitions
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;
@@ -150,11 +111,7 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
       viewer.scene.skyAtmosphere.show = false;
 
       // Find targeted preset
-      const currentTarget = telescopeTarget || { name: 'Deep Sky Survey' };
-      const presetNameClean = currentTarget.name.toUpperCase().replace('PLANET ', '');
-      const preset = PRESETS_COORDS.find(p => 
-        presetNameClean.includes(p.name.toUpperCase().replace('🌌 ', '').replace('🪐 ', ''))
-      );
+      const preset = TELESCOPE_PRESETS.find((p) => p.name === telescopeTarget?.name) || TELESCOPE_PRESETS[0];
 
       if (preset) {
         const raRad = (preset.raHours * 15.0 * Math.PI) / 180.0;

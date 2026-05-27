@@ -34,7 +34,7 @@ import { useStore } from '@/core/state/store';
 import { locations } from '@/data/locations';
 import { tours } from '@/data/tours';
 import { pluginManager } from '@/core/plugins/PluginManager';
-import { presets } from '@/components/learning/WorldWideTelescopeView';
+import { TELESCOPE_PRESETS as presets } from '@/data/telescopePresets';
 import * as Cesium from 'cesium';
 import { IMAGERY_LAYERS } from '@/core/globe/ImageryProviderFactory';
 import { SATELLITES } from '@/data/satellites';

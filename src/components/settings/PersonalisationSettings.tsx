@@ -1,8 +1,10 @@
 import { type ChangeEvent, useState } from 'react';
-import { ImageIcon, Loader2, Check, Sparkles, Layout, Type, Palette } from 'lucide-react';
+import { ImageIcon, Loader2, Check, Sparkles, Layout, Type, Palette, Globe, Satellite, Map, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
+import { useStore } from '@/core/state/store';
 import { palettes, type PaletteKey } from '../../lib/themeEngine';
 import { extractThemeFromImage } from '../../lib/imageTheme';
+import { IMAGERY_LAYERS } from '../../core/globe/ImageryProviderFactory';
 
 export function PersonalisationSettings() {
   const personalisation = useUIStore((s) => s.personalisation) || {
@@ -443,6 +445,188 @@ export function PersonalisationSettings() {
           </div>
         </div>
       </div>
+
+      {/* SECTION: IMAGERY PROVIDER SELECTOR */}
+      <ImageryProviderSelector />
+
+      {/* SECTION: SATELLITE TRACKER SETTINGS */}
+      <SatelliteTrackerSettings />
     </div>
   );
 }
+
+/* ──────────────────────────────────────────────────────────────
+   Imagery Provider Selector — card grid for globe imagery layers
+   ──────────────────────────────────────────────────────────── */
+function ImageryProviderSelector() {
+  const imageryProvider = useUIStore((s) => s.imageryProvider);
+  const setImageryProvider = useUIStore((s) => s.setImageryProvider);
+  const updateMapConfig = useStore((s) => s.updateMapConfig);
+
+  const handleSelect = (layerId: string) => {
+    setImageryProvider(layerId);
+    // Bridge to the configSlice store so useImageryManager picks it up
+    updateMapConfig({ baseLayerId: layerId });
+  };
+
+  // Icons per layer type
+  const layerIcons: Record<string, string> = {
+    'google-3d': '🌐',
+    'bing-aerial': '🛰️',
+    'bing-labels': '🏷️',
+    'bing-road': '🛣️',
+    'osm': '🗺️',
+    'arcgis-world': '🌍',
+    'blue-marble': '🌏',
+  };
+
+  return (
+    <div className="glass-panel p-4 border border-white/5 space-y-4 rounded-xl">
+      <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+        <Globe className="h-4 w-4" />
+        <span>Globe Imagery Provider</span>
+      </h3>
+      <p className="text-[9px] font-mono text-white/30 uppercase">
+        Select the base imagery layer for the 3D globe rendering engine.
+      </p>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        {IMAGERY_LAYERS.map((layer) => {
+          const isSelected = (imageryProvider || 'osm') === layer.id;
+          return (
+            <button
+              key={layer.id}
+              type="button"
+              onClick={() => handleSelect(layer.id)}
+              className={`flex flex-col items-start gap-1 p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                isSelected
+                  ? 'border-primary bg-primary/15 shadow-[0_0_12px_rgba(var(--color-primary-rgb,138,91,199),0.15)]'
+                  : 'border-white/5 bg-white/5 hover:border-white/10 hover:bg-white/8'
+              }`}
+            >
+              <div className="flex items-center gap-2 w-full">
+                <span className="text-sm">{layerIcons[layer.id] || '🗺️'}</span>
+                <span className={`text-[9px] font-mono font-bold uppercase tracking-wider ${
+                  isSelected ? 'text-primary' : 'text-white/60'
+                }`}>
+                  {layer.name}
+                </span>
+                {isSelected && <Check size={12} className="text-primary ml-auto shrink-0" />}
+              </div>
+              <span className="text-[7px] font-mono text-white/30 uppercase leading-tight">
+                {layer.description}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Satellite Tracker Settings — category toggles & trail config
+   ──────────────────────────────────────────────────────────── */
+function SatelliteTrackerSettings() {
+  const satelliteCategories = useUIStore((s) => s.satelliteCategories);
+  const toggleSatelliteCategory = useUIStore((s) => s.toggleSatelliteCategory);
+  const satelliteSettings = useUIStore((s) => s.satelliteSettings);
+  const updateSatelliteSettings = useUIStore((s) => s.updateSatelliteSettings);
+
+  const categories = [
+    { key: 'spaceStations', label: 'Space Stations', icon: '🏠', color: '#00FFF7' },
+    { key: 'brightest', label: 'Brightest', icon: '✨', color: '#F0ABFC' },
+    { key: 'weather', label: 'Weather', icon: '🌤️', color: '#A78BFA' },
+    { key: 'gps', label: 'GPS / GNSS', icon: '📡', color: '#22C55E' },
+    { key: 'earthObs', label: 'Earth Observation', icon: '🌍', color: '#F97316' },
+    { key: 'starlink', label: 'Starlink', icon: '📶', color: '#FFFFFF' },
+    { key: 'military', label: 'Military', icon: '🛡️', color: '#3B82F6' },
+    { key: 'other', label: 'Other', icon: '🛰️', color: '#94A3B8' },
+  ];
+
+  return (
+    <div className="glass-panel p-4 border border-white/5 space-y-4 rounded-xl">
+      <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+        <Satellite className="h-4 w-4" />
+        <span>Satellite Tracker Categories</span>
+      </h3>
+      <p className="text-[9px] font-mono text-white/30 uppercase">
+        Toggle visibility of satellite categories on the orbital display.
+      </p>
+
+      {/* Category grid */}
+      <div className="grid grid-cols-2 gap-2">
+        {categories.map(({ key, label, icon, color }) => {
+          const isActive = satelliteCategories[key] !== false;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggleSatelliteCategory(key)}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                isActive
+                  ? 'border-white/10 bg-white/8'
+                  : 'border-white/5 bg-white/3 opacity-50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs">{icon}</span>
+                <span className={`text-[9px] font-mono font-bold uppercase tracking-wider ${
+                  isActive ? 'text-white/80' : 'text-white/30'
+                }`}>
+                  {label}
+                </span>
+              </div>
+              <div
+                className="h-2.5 w-2.5 rounded-full shrink-0"
+                style={{
+                  backgroundColor: isActive ? color : 'transparent',
+                  border: `1.5px solid ${isActive ? color : 'rgba(255,255,255,0.15)'}`,
+                  boxShadow: isActive ? `0 0 6px ${color}60` : 'none',
+                }}
+              />
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Trail settings */}
+      <div className="border-t border-white/5 pt-3 space-y-2">
+        <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5 border border-white/5">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-mono uppercase text-white/80 font-bold">Show Selected Trail</span>
+            <span className="text-[8px] text-white/30 font-mono mt-0.5">Display orbital path trail for the selected satellite</span>
+          </div>
+          <div
+            onClick={() => updateSatelliteSettings({ showTrails: !satelliteSettings.showTrails })}
+            className="cursor-pointer"
+          >
+            {satelliteSettings.showTrails ? (
+              <ToggleRight className="h-5 w-5 text-primary" />
+            ) : (
+              <ToggleLeft className="h-5 w-5 text-white/20" />
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5 border border-white/5">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-mono uppercase text-white/80 font-bold">Show All Trails</span>
+            <span className="text-[8px] text-white/30 font-mono mt-0.5">Display trails for all visible satellites simultaneously</span>
+          </div>
+          <div
+            onClick={() => updateSatelliteSettings({ showAllTrails: !satelliteSettings.showAllTrails })}
+            className="cursor-pointer"
+          >
+            {satelliteSettings.showAllTrails ? (
+              <ToggleRight className="h-5 w-5 text-primary" />
+            ) : (
+              <ToggleLeft className="h-5 w-5 text-white/20" />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+

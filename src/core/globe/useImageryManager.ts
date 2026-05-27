@@ -20,9 +20,7 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
     const sceneMode = useStore((s) => s.mapConfig.sceneMode);
     const showOsmBuildings = useStore((s) => s.mapConfig.showOsmBuildings);
 
-    // Resolve runtime truth:
-    const activeLayerId = fallbackLayerId || baseLayerId;
-
+    const selectedLayerId = baseLayerId || 'osm';
     const currentImageryLayerRef = useRef<ImageryLayer | null>(null);
     const osmBuildingsRef = useRef<Cesium3DTileset | null>(null);
     const [google3DActive, setGoogle3DActive] = useState(false);
@@ -52,7 +50,7 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
             if (!viewer || !viewerReady || viewer.isDestroyed() || !active) return;
 
             // Handle Google 3D Tiles specifically
-            const isGoogle3D = activeLayerId === "google-3d";
+            const isGoogle3D = selectedLayerId === "google-3d";
 
             // Toggle Google 3D Tileset visibility if it exists
             // Or find it in primitives
@@ -108,32 +106,43 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
                     currentImageryLayerRef.current = null;
                 }
             } else {
-                // Load active layer, or fallback to ArcGIS satellite/OSM if Google 3D was selected but failed
-                const layerId = isGoogle3D ? "arcgis-world" : activeLayerId;
-                try {
-                    const provider = await createImageryProvider(layerId);
-                    const newLayer = new ImageryLayer(provider);
+                // Load the selected imagery layer, then optionally fall back.
+                const initialLayerId = isGoogle3D ? "arcgis-world" : selectedLayerId;
+                let provider;
 
-                    if (currentImageryLayerRef.current) {
-                        viewer.imageryLayers.remove(currentImageryLayerRef.current);
+                try {
+                    provider = await createImageryProvider(initialLayerId);
+                } catch (primaryErr) {
+                    console.warn(`[useImageryManager] Failed to load imagery layer ${initialLayerId}, trying fallback if available`, primaryErr);
+
+                    if (fallbackLayerId && fallbackLayerId !== initialLayerId) {
+                        try {
+                            provider = await createImageryProvider(fallbackLayerId);
+                            console.warn(`[useImageryManager] Falling back to imagery layer ${fallbackLayerId}`);
+                        } catch (fallbackErr) {
+                            console.warn(`[useImageryManager] Fallback imagery ${fallbackLayerId} also failed`, fallbackErr);
+                        }
                     }
 
-                    if (viewer.isDestroyed() || !active) return;
-                    viewer.imageryLayers.add(newLayer, 0);
-                    currentImageryLayerRef.current = newLayer;
-                } catch (err) {
-                    console.error("[useImageryManager] Failed to load base layer:", layerId, err);
-                    try {
-                        const osmProvider = createOsmProvider();
-                        const osmLayer = new ImageryLayer(osmProvider);
-                        if (viewer.isDestroyed() || !active) return;
-                        viewer.imageryLayers.add(osmLayer, 0);
-                        currentImageryLayerRef.current = osmLayer;
-                        console.warn("[useImageryManager] Loaded OSM as fallback imagery");
-                    } catch (fallbackErr) {
-                        console.error("[useImageryManager] OSM fallback also failed:", fallbackErr);
+                    if (!provider) {
+                        provider = createOsmProvider();
+                        console.warn('[useImageryManager] Using OSM fallback imagery');
                     }
                 }
+
+                if (!provider) {
+                    return;
+                }
+
+                const newLayer = new ImageryLayer(provider);
+
+                if (currentImageryLayerRef.current) {
+                    viewer.imageryLayers.remove(currentImageryLayerRef.current);
+                }
+
+                if (viewer.isDestroyed() || !active) return;
+                viewer.imageryLayers.add(newLayer, 0);
+                currentImageryLayerRef.current = newLayer;
             }
         }
 

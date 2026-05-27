@@ -117,6 +117,10 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     // --- Visual quality (Anime Sci-Fi Space Opera / WWT Aesthetics) ---
     viewer.scene.globe.enableLighting = true; // Stark shadows on terminator
     viewer.scene.globe.showWaterEffect = false;
+    viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#08101d');
+    if ((viewer.scene.globe as any).showGroundAtmosphere !== undefined) {
+      (viewer.scene.globe as any).showGroundAtmosphere = true;
+    }
     viewer.scene.globe.depthTestAgainstTerrain = true; // Proper occlusion
     viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#020205'); // Space opera dark background
     viewer.scene.highDynamicRange = true; // Premium lighting dynamic range
