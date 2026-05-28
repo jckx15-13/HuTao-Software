@@ -54,8 +54,6 @@ export default function App() {
       {!customWallpaper && (
         <CesiumBackground interactive={interactionMode === 'orbital' || interactionMode === 'telescope'} />
       )}
-      {/* Always mount CustomCursor for testing and debugging (temporary) */}
-      {!isHighLoad && <CustomCursor />}
 
       {/* Translucent overlay filter for non-orbital modes */}
       {interactionMode !== 'orbital' && interactionMode !== 'telescope' && (
@@ -72,6 +70,7 @@ export default function App() {
       ) : (
         <>
           {!isHighLoad && <ParticleOverlay />}
+          {!isHighLoad && <CustomCursor />}
           {scanlineOverlay && <div className="hologram-overlay" />}
           
           <TopAppBar />
