@@ -7,6 +7,7 @@ import { ParticleOverlay } from './components/ParticleOverlay';
 import { CesiumBackground } from './components/background/CesiumBackground';
 import { LauncherPage } from './components/launcher/LauncherPage';
 import { SettingsPage } from './components/settings/SettingsPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { CustomCursor } from './components/layout/CustomCursor';
 import { useThemeVariables } from './hooks/useThemeVariables';
 import { useUIStore } from './store/uiStore';
@@ -53,6 +54,8 @@ export default function App() {
       {!customWallpaper && (
         <CesiumBackground interactive={interactionMode === 'orbital' || interactionMode === 'telescope'} />
       )}
+      {/* Always mount CustomCursor for testing and debugging (temporary) */}
+      {!isHighLoad && <CustomCursor />}
 
       {/* Translucent overlay filter for non-orbital modes */}
       {interactionMode !== 'orbital' && interactionMode !== 'telescope' && (
@@ -69,7 +72,6 @@ export default function App() {
       ) : (
         <>
           {!isHighLoad && <ParticleOverlay />}
-          {!isHighLoad && <CustomCursor />}
           {scanlineOverlay && <div className="hologram-overlay" />}
           
           <TopAppBar />
@@ -81,7 +83,9 @@ export default function App() {
           <AnimatePresence>
             {currentPage === 'settings' && (
               <Suspense fallback={null}>
-                <SettingsPage />
+                <ErrorBoundary>
+                  <SettingsPage />
+                </ErrorBoundary>
               </Suspense>
             )}
           </AnimatePresence>
