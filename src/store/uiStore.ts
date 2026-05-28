@@ -387,8 +387,7 @@ export const useUIStore = create<UIStore>()(
         setTerminalFontSize: (terminalFontSize) => set({ terminalFontSize }),
 
         // Navigation
-        // Default to workspace during automated testing / dev to surface UI (temporary)
-        currentPage: 'workspace',
+        currentPage: 'launcher',
         setCurrentPage: (currentPage) => set({ currentPage }),
 
         // Interaction Mode
