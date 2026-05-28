@@ -138,11 +138,16 @@ export function setupInteractionHandlers(
     // Hover → show tooltip card only
     handler.setInputAction(
         (event: { endPosition: { x: number; y: number } }) => {
-            const pos = { x: event.endPosition.x, y: event.endPosition.y };
-            latestMousePos = pos;
+            // Canvas-local coordinates used for Cesium picking
+            const canvasPos = { x: event.endPosition.x, y: event.endPosition.y };
+            latestMousePos = canvasPos;
+
+            // Convert canvas-local coords to viewport/client coords for UI placement
+            const rect = canvas.getBoundingClientRect();
+            const screenPos = { x: Math.round(rect.left + canvasPos.x), y: Math.round(rect.top + canvasPos.y) };
 
             if (hoveredEntityIdRef.current) {
-                useStore.getState().setHoveredEntity(useStore.getState().hoveredEntity, pos);
+                useStore.getState().setHoveredEntity(useStore.getState().hoveredEntity, screenPos);
             }
 
             if (!viewer || viewer.isDestroyed()) return;
@@ -159,7 +164,8 @@ export function setupInteractionHandlers(
                 if (currentRequestId !== latestHoverRequestId) return;
                 if (!viewer || viewer.isDestroyed() || isDragging) return;
 
-                const entity = findEntityAtPosition(viewer, pos);
+                // Use canvas-local coords for picking
+                const entity = findEntityAtPosition(viewer, canvasPos);
 
                 const prevId = hoveredEntityIdRef.current;
                 const newId = entity ? entity.id : null;
@@ -167,7 +173,7 @@ export function setupInteractionHandlers(
                 if (prevId !== newId) {
                     hoveredEntityIdRef.current = newId;
                     canvas.style.cursor = entity ? "pointer" : "grab";
-                    useStore.getState().setHoveredEntity(entity, entity ? pos : null);
+                    useStore.getState().setHoveredEntity(entity, entity ? screenPos : null);
                     // Trigger render to apply hover highlights immediately
                     viewer.scene.requestRender();
                 }
