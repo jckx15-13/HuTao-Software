@@ -133,6 +133,10 @@ export interface UIStore {
   // Personalisation
   personalisation: Personalisation;
   updatePersonalisation: (p: Partial<Personalisation>) => void;
+  /** Selected custom cursor design identifier */
+  cursorDesign: string;
+  /** Set the active cursor design */
+  setCursorDesign: (id: string) => void;
 
   // AI Config
   aiModel: AiModel;
@@ -211,6 +215,9 @@ export interface UIStore {
   satelliteSettings: {
     showTrails: boolean;
     showAllTrails: boolean;
+    occludeByGlobe: boolean;
+    trailLength: number;
+    iconSize: number;
   };
   updateSatelliteSettings: (settings: Partial<UIStore['satelliteSettings']>) => void;
 
@@ -349,7 +356,7 @@ export const useUIStore = create<UIStore>()(
           })),
 
         // Theme / Appearance
-        activePalette: 'hsrOrbital' as PaletteKey,
+        activePalette: 'holographic' as PaletteKey,
         setActivePalette: (activePalette) => set({ activePalette }),
         customWallpaper: null,
         setCustomWallpaper: (customWallpaper) => set({ customWallpaper }),
@@ -360,6 +367,10 @@ export const useUIStore = create<UIStore>()(
         personalisation: { ...defaultPersonalisation },
         updatePersonalisation: (p) =>
           set((s) => ({ personalisation: { ...s.personalisation, ...p } })),
+
+        // Custom cursor design
+        cursorDesign: 'reticle-v1',
+        setCursorDesign: (cursorDesign) => set({ cursorDesign }),
 
         // AI Config
         aiModel: 'gemini-2.5-flash',
@@ -376,7 +387,8 @@ export const useUIStore = create<UIStore>()(
         setTerminalFontSize: (terminalFontSize) => set({ terminalFontSize }),
 
         // Navigation
-        currentPage: 'launcher',
+        // Default to workspace during automated testing / dev to surface UI (temporary)
+        currentPage: 'workspace',
         setCurrentPage: (currentPage) => set({ currentPage }),
 
         // Interaction Mode
@@ -482,6 +494,9 @@ export const useUIStore = create<UIStore>()(
         satelliteSettings: {
           showTrails: true,
           showAllTrails: false,
+          occludeByGlobe: true,
+          trailLength: 40,
+          iconSize: 32,
         },
         updateSatelliteSettings: (settings) => set((s) => ({
           satelliteSettings: { ...s.satelliteSettings, ...settings }
@@ -607,6 +622,7 @@ export const useUIStore = create<UIStore>()(
         forceFallback: s.forceFallback,
         engineUrlOverride: s.engineUrlOverride,
         imageryProvider: s.imageryProvider,
+        cursorDesign: s.cursorDesign,
       }),
     },
   ),
