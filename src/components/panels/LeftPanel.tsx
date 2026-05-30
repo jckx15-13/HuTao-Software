@@ -279,6 +279,7 @@ export function LeftPanel() {
 
   const telescopeTarget = useUIStore((s) => s.telescopeTarget) || presets[0];
   const setTelescopeTarget = useUIStore((s) => s.setTelescopeTarget);
+  const setInteractionMode = useUIStore((s) => s.setInteractionMode);
 
   const activeTour = useUIStore((s) => s.activeTour);
   const setActiveTour = useUIStore((s) => s.setActiveTour);
@@ -962,6 +963,7 @@ export function LeftPanel() {
                           type="button"
                           onClick={() => {
                             setTelescopeTarget(preset);
+                            setInteractionMode('telescope');
                             useUIStore.getState().addChangeLog('TELESCOPE', `Telescope target pointed: ${preset.name}`, 'success');
                           }}
                           className={`w-full text-left p-1.5 rounded transition-all cursor-pointer flex items-center justify-between gap-1.5 border border-transparent ${

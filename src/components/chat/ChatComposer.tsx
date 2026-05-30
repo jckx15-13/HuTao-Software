@@ -35,8 +35,8 @@ export function ChatComposer({ disabled, fontSize, onSubmit }: ChatComposerProps
               submit();
             }
           }}
-          className="flex-1 resize-none bg-transparent px-1 font-sans leading-relaxed text-text-main outline-none placeholder:text-text-muted/60"
-          style={{ fontSize }}
+          className="flex-1 resize-none bg-transparent px-1 font-sans leading-relaxed text-text-main outline-none placeholder:text-text-muted/60 caret-primary/80"
+          style={{ fontSize, cursor: 'text' }}
         />
         <div className="mt-1 flex items-center justify-between">
           <div className="flex items-center gap-2 px-1 font-mono text-[10px] uppercase tracking-widest text-primary/70">

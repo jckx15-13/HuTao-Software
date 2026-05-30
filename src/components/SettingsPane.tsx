@@ -122,11 +122,13 @@ export function SettingsPane() {
   const setAiModel = useUIStore((state) => state.setAiModel);
   const systemInstructions = useUIStore((state) => state.systemInstructions);
   const setSystemInstructions = useUIStore((state) => state.setSystemInstructions);
+  const satelliteSettings = useUIStore((state) => state.satelliteSettings);
+  const updateSatelliteSettings = useUIStore((state) => state.updateSatelliteSettings);
   const [isExtracting, setIsExtracting] = useState(false);
 
   const clearWallpaper = () => {
-    if (customWallpaper?.startsWith('blob:')) {
-      URL.revokeObjectURL(customWallpaper);
+    if (typeof customWallpaper === 'string' && customWallpaper.startsWith('blob:')) {
+      try { URL.revokeObjectURL(customWallpaper); } catch (e) {}
     }
 
     setCustomWallpaper(null);
@@ -134,11 +136,12 @@ export function SettingsPane() {
   };
 
   const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
 
-    if (customWallpaper?.startsWith('blob:')) {
-      URL.revokeObjectURL(customWallpaper);
+    if (typeof customWallpaper === 'string' && customWallpaper.startsWith('blob:')) {
+      try { URL.revokeObjectURL(customWallpaper); } catch (e) {}
     }
 
     setIsExtracting(true);
@@ -151,7 +154,7 @@ export function SettingsPane() {
       console.error('Theme extraction failed', error);
     } finally {
       setIsExtracting(false);
-      event.target.value = '';
+      try { input.value = ''; } catch (e) {}
     }
   };
 
@@ -220,6 +223,39 @@ export function SettingsPane() {
               checked={audioFeedback}
               onChange={setAudioFeedback}
             />
+            <ToggleSetting
+              icon={Globe}
+              title="Occlude orbital objects"
+              description="Hide satellites and orbital assets when behind the Earth's disc"
+              checked={satelliteSettings?.occludeByGlobe ?? true}
+              onChange={(v) => updateSatelliteSettings({ occludeByGlobe: v })}
+            />
+            <SettingCard icon={Sparkles} title="Satellite trails" description="Customize orbital trail rendering">
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="5"
+                  max="120"
+                  value={satelliteSettings?.trailLength ?? 40}
+                  onChange={(event) => updateSatelliteSettings({ trailLength: Number(event.target.value) })}
+                  className="w-36 accent-[var(--theme-primary)]"
+                />
+                <span className="w-8 text-right font-mono text-xs text-primary">{satelliteSettings?.trailLength ?? 40}</span>
+              </div>
+            </SettingCard>
+            <SettingCard icon={Globe} title="Satellite icon size" description="Size of rendered satellite icons">
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="12"
+                  max="64"
+                  value={satelliteSettings?.iconSize ?? 32}
+                  onChange={(event) => updateSatelliteSettings({ iconSize: Number(event.target.value) })}
+                  className="w-36 accent-[var(--theme-primary)]"
+                />
+                <span className="w-8 text-right font-mono text-xs text-primary">{satelliteSettings?.iconSize ?? 32}</span>
+              </div>
+            </SettingCard>
             <SettingCard icon={Type} title="Chat text size" description="Adjust message and input scale">
               <div className="flex items-center gap-3">
                 <input

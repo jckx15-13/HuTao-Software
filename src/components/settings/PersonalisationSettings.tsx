@@ -5,6 +5,7 @@ import { useStore } from '@/core/state/store';
 import { palettes, type PaletteKey } from '../../lib/themeEngine';
 import { extractThemeFromImage } from '../../lib/imageTheme';
 import { IMAGERY_LAYERS } from '../../core/globe/ImageryProviderFactory';
+import CURSOR_DESIGNS from '@/components/layout/cursorDesigns';
 
 export function PersonalisationSettings() {
   const personalisation = useUIStore((s) => s.personalisation) || {
@@ -447,6 +448,7 @@ export function PersonalisationSettings() {
       </div>
 
       {/* SECTION: IMAGERY PROVIDER SELECTOR */}
+      <CursorDesignSelector />
       <ImageryProviderSelector />
 
       {/* SECTION: SATELLITE TRACKER SETTINGS */}
@@ -458,6 +460,40 @@ export function PersonalisationSettings() {
 /* ──────────────────────────────────────────────────────────────
    Imagery Provider Selector — card grid for globe imagery layers
    ──────────────────────────────────────────────────────────── */
+function CursorDesignSelector() {
+  const cursorDesign = useUIStore((s) => s.cursorDesign);
+  const setCursorDesign = useUIStore((s) => s.setCursorDesign);
+
+  return (
+    <div className="glass-panel p-4 border border-white/5 space-y-3 rounded-xl">
+      <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+        <Map className="h-4 w-4" />
+        <span>Cursor & Pointer</span>
+      </h3>
+      <p className="text-[9px] font-mono text-white/30 uppercase">Choose a pointer design optimized for responsiveness.</p>
+
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-2">
+        {CURSOR_DESIGNS.map((d) => {
+          const isSelected = cursorDesign === d.id;
+          return (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => setCursorDesign(d.id)}
+              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all cursor-pointer text-[9px] text-white/70 ${
+                isSelected ? 'border-primary bg-primary/12 shadow-[0_0_10px_rgba(138,91,199,0.08)]' : 'border-white/5 bg-white/5 hover:border-white/10 hover:bg-white/8'
+              }`}
+            >
+              <div className="w-12 h-12 flex items-center justify-center">{d.preview}</div>
+              <span className={`truncate w-full text-[9px] font-mono uppercase ${isSelected ? 'text-primary font-bold' : 'text-white/60'}`}>{d.name}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ImageryProviderSelector() {
   const imageryProvider = useUIStore((s) => s.imageryProvider);
   const setImageryProvider = useUIStore((s) => s.setImageryProvider);

@@ -4,8 +4,6 @@ import { useUIStore } from '@/store/uiStore';
 import { propagateCircularOrbit } from '../../lib/simulation';
 import { SATELLITES, SatelliteConfig } from '../../data/satellites';
 
-/** Maximum trail positions — lower = less Cesium primitive overhead. */
-const MAX_TRAIL = 40;
 /** Only rebuild polyline geometry every N frames. */
 const TRAIL_UPDATE_INTERVAL = 3;
 
@@ -32,20 +30,58 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
     const paths = pathsRef.current;
     const history = historyRef.current;
 
-    // A helper to create a satellite entity
+    // A helper to create a satellite entity (uses an on-the-fly emoji icon billboard)
     const addSatelliteEntity = (sat: SatelliteConfig | { id: string; name: string; altitudeM: number; color: string }) => {
       if (entities.has(sat.id)) return;
+
+      // utility: create a small canvas-based icon from the emoji in the name
+      const createIconDataUrl = (symbol: string, color: string, size = satelliteSettings?.iconSize ?? 32) => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return undefined;
+          // background circle
+          ctx.clearRect(0, 0, size, size);
+          ctx.beginPath();
+          ctx.fillStyle = color || '#ffffff';
+          ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+          ctx.fill();
+          // emoji/text
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#000000';
+          const fontSize = Math.floor(size * 0.6);
+          ctx.font = `${fontSize}px serif`;
+          ctx.fillText(symbol, size / 2, size / 2 + 1);
+          return canvas.toDataURL();
+        } catch (e) {
+          return undefined;
+        }
+      };
+
+      // extract a leading emoji/symbol if present
+      const rawName = (sat as any).name || '';
+      const symbol = String(rawName).split(' ')[0] || '🛰️';
+      const iconUrl = createIconDataUrl(symbol, (sat as any).color || '#00FFF7');
+
+      const occlude = satelliteSettings?.occludeByGlobe !== false;
 
       const entity = viewer.entities.add({
         id: sat.id,
         position: Cesium.Cartesian3.fromDegrees(0, 0, sat.altitudeM),
-        point: {
-          pixelSize: sat.id === 'iss' ? 12 : 9,
-          color: Cesium.Color.fromCssColorString(sat.color),
-          outlineColor: Cesium.Color.WHITE,
-          outlineWidth: 1.5,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY, // Ensure visible through globe when near horizon
-        },
+        billboard: iconUrl
+          ? {
+              image: iconUrl,
+              width: satelliteSettings?.iconSize ?? 32,
+              height: satelliteSettings?.iconSize ?? 32,
+              verticalOrigin: Cesium.VerticalOrigin.CENTER,
+              horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+              heightReference: Cesium.HeightReference.NONE,
+              ...(occlude ? {} : { disableDepthTestDistance: Number.POSITIVE_INFINITY }),
+            }
+          : undefined,
         label: {
           text: sat.name,
           font: 'bold 7.5pt JetBrains Mono, monospace',
@@ -58,7 +94,7 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
           showBackground: true,
           backgroundColor: Cesium.Color.fromCssColorString('rgba(10, 11, 16, 0.85)'),
           backgroundPadding: new Cesium.Cartesian2(8, 4),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          ...(occlude ? {} : { disableDepthTestDistance: Number.POSITIVE_INFINITY }),
         },
       });
 
@@ -114,7 +150,7 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
 
       if (shouldHaveTrail) {
         if (!paths.has(id)) {
-          const satConfig = SATELLITES.find((s) => s.id === id) || { color: '#00FFF7' };
+            const satConfig = SATELLITES.find((s) => s.id === id) || { color: '#00FFF7' };
           const colorHex = id === 'iss' ? '#00FFF7' : satConfig.color;
           const path = viewer.entities.add({
             id: `${id}-path`,
@@ -279,7 +315,8 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
 
         const issHistory = history.get('iss') || [];
         issHistory.push(issPos);
-        if (issHistory.length > MAX_TRAIL) issHistory.shift();
+        const maxTrail = useUIStore.getState().satelliteSettings?.trailLength ?? 40;
+        if (issHistory.length > maxTrail) issHistory.shift();
 
         const issPath = paths.get('iss');
         if (updateCountRef.current % TRAIL_UPDATE_INTERVAL === 0 && issPath?.polyline) {
@@ -301,7 +338,8 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
 
         const satHistory = history.get(sat.id) || [];
         satHistory.push(pos);
-        if (satHistory.length > MAX_TRAIL) satHistory.shift();
+        const maxTrail = useUIStore.getState().satelliteSettings?.trailLength ?? 40;
+        if (satHistory.length > maxTrail) satHistory.shift();
 
         const path = paths.get(sat.id);
         if (updateCountRef.current % TRAIL_UPDATE_INTERVAL === 0 && path?.polyline) {

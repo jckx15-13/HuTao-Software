@@ -40,6 +40,24 @@ export function CustomCursor() {
     document.body.style.cursor = 'none';
     document.documentElement.style.cursor = 'none';
 
+    // Show cursor on text inputs
+    const showCursorOnInputs = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target?.matches('input[type="text"], textarea, input:not([type])')) {
+        document.body.style.cursor = 'text';
+      }
+    };
+
+    const hideCursorOnBlur = () => {
+      const active = document.activeElement as HTMLElement;
+      if (!active?.matches('input[type="text"], textarea, input:not([type])')) {
+        document.body.style.cursor = 'none';
+      }
+    };
+
+    document.addEventListener('focusin', showCursorOnInputs);
+    document.addEventListener('focusout', hideCursorOnBlur);
+
     const getStoreHovered = () => useStore.getState().hoveredScreenPosition;
 
     const isInteractiveEl = (el: HTMLElement | null) => {
@@ -228,6 +246,8 @@ export function CustomCursor() {
       window.removeEventListener('pointerdown', onPointerDown as any);
       window.removeEventListener('pointerup', onPointerUp as any);
       document.removeEventListener('visibilitychange', onVisibility);
+      document.removeEventListener('focusin', showCursorOnInputs);
+      document.removeEventListener('focusout', hideCursorOnBlur);
       cancelAnimationFrame(raf);
     };
   }, [motionReduced, cursorDesign]);
