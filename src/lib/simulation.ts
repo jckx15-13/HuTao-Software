@@ -96,3 +96,44 @@ export function propagateCircularOrbit(
     lng: lngDeg,
   };
 }
+
+/**
+ * Non-allocating variant of propagateCircularOrbit that writes lat/lng (degrees)
+ * into the provided `out` buffer at `offset` indices. This is useful on hot
+ * animation paths to avoid allocating small objects per frame.
+ */
+export function propagateCircularOrbitInto(
+  out: Float32Array | number[],
+  offset: number,
+  elapsedSeconds: number,
+  altitudeMeters: number = ISS_ALTITUDE_M,
+  inclinationRad: number = ISS_INCLINATION_RAD,
+  omega0: number = 0.0,
+  argLat0: number = 0.0
+): void {
+  const r = EARTH_RADIUS_M + altitudeMeters;
+  const n = Math.sqrt(EARTH_GRAVITY_MU / Math.pow(r, 3));
+  const j2PrecessionRate =
+    -1.5 * J2_PERTURBATION * Math.pow(EARTH_RADIUS_M / r, 2) * n * Math.cos(inclinationRad);
+  const argLat = argLat0 + n * elapsedSeconds;
+  const omegaEcf = omega0 + (j2PrecessionRate - EARTH_ROTATION_SPEED_RAD_S) * elapsedSeconds;
+
+  const xPlane = r * Math.cos(argLat);
+  const yPlane = r * Math.sin(argLat);
+  const xInc = xPlane;
+  const yInc = yPlane * Math.cos(inclinationRad);
+  const zInc = yPlane * Math.sin(inclinationRad);
+  const xEcf = xInc * Math.cos(omegaEcf) - yInc * Math.sin(omegaEcf);
+  const yEcf = xInc * Math.sin(omegaEcf) + yInc * Math.cos(omegaEcf);
+  const zEcf = zInc;
+
+  const rXy = Math.sqrt(xEcf * xEcf + yEcf * yEcf);
+  const lngRad = Math.atan2(yEcf, xEcf);
+  const latRad = Math.atan2(zEcf, rXy);
+  let lngDeg = (lngRad * 180) / Math.PI;
+  const latDeg = (latRad * 180) / Math.PI;
+  while (lngDeg > 180) lngDeg -= 360;
+  while (lngDeg < -180) lngDeg += 360;
+  out[offset] = latDeg;
+  out[offset + 1] = lngDeg;
+}

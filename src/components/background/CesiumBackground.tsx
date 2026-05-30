@@ -10,7 +10,7 @@ import {
   projectLatLng,
 } from '../../lib/globeProjection';
 import { SATELLITES } from '../../data/satellites';
-import { propagateCircularOrbit } from '../../lib/simulation';
+import { propagateCircularOrbit, propagateCircularOrbitInto } from '../../lib/simulation';
 
 
 const CesiumBackground3D = React.lazy(() => import('./CesiumBackground3D'));
@@ -115,6 +115,7 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
     const inc = (51.6 * Math.PI) / 180; // ISS orbital inclination (51.6 degrees)
 
     const pointOut = new Float32Array(3); // reuse buffer to avoid allocations
+    const orbitOut = new Float32Array(2); // lat, lng reuse buffer
     let rafId: number | null = null;
 
     const renderFrame = (timestamp?: number) => {
@@ -233,9 +234,9 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
           lat = telemetryRef.current.latitude;
           lng = telemetryRef.current.longitude;
         } else {
-          const coords = propagateCircularOrbit(elapsed, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
-          lat = coords.lat;
-          lng = coords.lng;
+          propagateCircularOrbitInto(orbitOut, 0, elapsed, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+          lat = orbitOut[0];
+          lng = orbitOut[1];
         }
 
         const p = projectLatLng(lat, lng, rotation, tilt, R, cx, cy);
@@ -249,8 +250,8 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
           let firstOrbitPoint = true;
           // Reduce trail sampling resolution slightly to cut per-frame CPU cost
           for (let u = 0; u <= 2 * Math.PI; u += 0.12) {
-            const orbitCoords = propagateCircularOrbit(elapsed - u * 500, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
-            const opt = projectLatLng(orbitCoords.lat, orbitCoords.lng, rotation, tilt, R, cx, cy);
+            propagateCircularOrbitInto(orbitOut, 0, elapsed - u * 500, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+            const opt = projectLatLng(orbitOut[0], orbitOut[1], rotation, tilt, R, cx, cy);
             if (opt.visible) {
               if (firstOrbitPoint) {
                 ctx.moveTo(opt.x, opt.y);
