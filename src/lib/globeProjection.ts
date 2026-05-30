@@ -143,6 +143,42 @@ export function projectUnitVector(
 }
 
 /**
+ * Non-allocating variant of `projectUnitVector` that writes results into
+ * a provided Float32Array (or number[]). This avoids creating objects on
+ * hot animation paths and reduces GC pressure.
+ *
+ * out[offset]   = x
+ * out[offset+1] = y
+ * out[offset+2] = z
+ */
+export function projectUnitVectorInto(
+  out: Float32Array | number[],
+  offset: number,
+  vx: number,
+  vy: number,
+  vz: number,
+  sinRot: number,
+  cosRot: number,
+  sinTilt: number,
+  cosTilt: number,
+  radius: number,
+  cx: number,
+  cy: number
+): void {
+  const x3d = vx * cosRot - vy * sinRot;
+  const y3d = vz;
+  const z3d = vy * cosRot + vx * sinRot;
+
+  const x = x3d;
+  const y = y3d * cosTilt - z3d * sinTilt;
+  const z = y3d * sinTilt + z3d * cosTilt;
+
+  out[offset] = cx + x * radius;
+  out[offset + 1] = cy - y * radius;
+  out[offset + 2] = z;
+}
+
+/**
  * Fallback projection utility that converts raw lat/lng on-the-fly.
  * Useful for dynamic targets like satellites, landmarks, or the cursor.
  */

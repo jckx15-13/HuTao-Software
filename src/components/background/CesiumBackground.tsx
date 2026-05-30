@@ -6,6 +6,7 @@ import {
   MERIDIANS_3D,
   PARALLELS_3D,
   projectUnitVector,
+  projectUnitVectorInto,
   projectLatLng,
 } from '../../lib/globeProjection';
 import { SATELLITES } from '../../data/satellites';
@@ -113,11 +114,15 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
     const tilt = (20 * Math.PI) / 180; // Constant axial elevation tilt (20 degrees)
     const inc = (51.6 * Math.PI) / 180; // ISS orbital inclination (51.6 degrees)
 
+    const pointOut = new Float32Array(3); // reuse buffer to avoid allocations
+    let rafId: number | null = null;
+
     const renderFrame = (timestamp?: number) => {
+      if (!active) return;
       // Frame throttle: skip frames to stay at ~30fps
       const now = timestamp ?? performance.now();
       if (now - lastFrameTime < FRAME_INTERVAL) {
-        requestAnimationFrame(renderFrame);
+        rafId = requestAnimationFrame(renderFrame);
         return;
       }
       lastFrameTime = now;
@@ -141,11 +146,13 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
 
       // (Grid lines removed to prevent CRT scanline effects)
 
-      // 4. Cybernetic landmass point landmarks
+      // 4. Cybernetic landmass point landmarks (non-allocating projection)
       ctx.fillStyle = 'rgba(138, 91, 199, 0.35)';
       const pointsLen = LANDMASS_POINTS_3D.length;
       for (let i = 0; i < pointsLen; i += 3) {
-        const p = projectUnitVector(
+        projectUnitVectorInto(
+          pointOut,
+          0,
           LANDMASS_POINTS_3D[i],
           LANDMASS_POINTS_3D[i + 1],
           LANDMASS_POINTS_3D[i + 2],
@@ -157,9 +164,12 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
           cx,
           cy
         );
-        if (p.visible) {
+        const px = pointOut[0];
+        const py = pointOut[1];
+        const pz = pointOut[2];
+        if (pz >= 0) {
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 1.2, 0, 2 * Math.PI);
+          ctx.arc(px, py, 1.2, 0, 2 * Math.PI);
           ctx.fill();
         }
       }
@@ -237,7 +247,8 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
           ctx.setLineDash([2, 3]);
           ctx.beginPath();
           let firstOrbitPoint = true;
-          for (let u = 0; u <= 2 * Math.PI; u += 0.08) {
+          // Reduce trail sampling resolution slightly to cut per-frame CPU cost
+          for (let u = 0; u <= 2 * Math.PI; u += 0.12) {
             const orbitCoords = propagateCircularOrbit(elapsed - u * 500, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
             const opt = projectLatLng(orbitCoords.lat, orbitCoords.lng, rotation, tilt, R, cx, cy);
             if (opt.visible) {
@@ -278,13 +289,14 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
       });
 
 
-      requestAnimationFrame(renderFrame);
+      rafId = requestAnimationFrame(renderFrame);
     };
 
-    requestAnimationFrame(renderFrame);
+    rafId = requestAnimationFrame(renderFrame);
 
     return () => {
       active = false;
+      if (rafId != null) cancelAnimationFrame(rafId);
     };
   }, [hasError]);
 
