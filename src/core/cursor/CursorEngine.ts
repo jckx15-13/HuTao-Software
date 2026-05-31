@@ -187,11 +187,9 @@ export class CursorEngine implements CursorEngineLifecycle {
       top: "0",
       width: "42px",
       height: "42px",
-      marginLeft: "-21px",
-      marginTop: "-21px",
       pointerEvents: "none",
       willChange: "transform, opacity, filter",
-      transform: `translate3d(${this.reticleVisual.x}px, ${this.reticleVisual.y}px, 0)`,
+      transform: `translate3d(${this.reticleVisual.x - 21}px, ${this.reticleVisual.y - 21}px, 0)`,
       opacity: "0",
       transition: "opacity 90ms linear, filter 120ms linear",
     });
@@ -318,6 +316,8 @@ export class CursorEngine implements CursorEngineLifecycle {
     this.lastPointer = { ...this.pointerActual };
     this.pointerActual.x = x;
     this.pointerActual.y = y;
+    this.reticleVisual.x = x;
+    this.reticleVisual.y = y;
     this.lastMoveTs = performance.now();
     this.pointerInsideViewport = x >= 0 && y >= 0 && x <= window.innerWidth && y <= window.innerHeight;
     this.modality = pointerType === "pen" ? "pen" : pointerType === "touch" ? "touch" : "mouse";
@@ -388,23 +388,10 @@ export class CursorEngine implements CursorEngineLifecycle {
       : 0;
     this.lockStrength += (targetLockStrength - this.lockStrength) * (1 - Math.exp(-18 * dt));
 
-    const visualTarget = targetPoint
-      ? {
-          x: this.pointerActual.x + (targetPoint.x - this.pointerActual.x) * this.lockStrength,
-          y: this.pointerActual.y + (targetPoint.y - this.pointerActual.y) * this.lockStrength,
-        }
-      : this.pointerActual;
-
-    const drift = Math.hypot(this.reticleVisual.x - this.pointerActual.x, this.reticleVisual.y - this.pointerActual.y);
-    if (drift > MAX_DRIFT_PX || intent.wantsNativeCursor || !policy.smoothingEnabled) {
-      this.reticleVisual.x = visualTarget.x;
-      this.reticleVisual.y = visualTarget.y;
-    } else {
-      const k = profile.snapSpeed * policy.smoothingStrength;
-      const decay = Math.exp(-k * dt);
-      this.reticleVisual.x = visualTarget.x + (this.reticleVisual.x - visualTarget.x) * decay;
-      this.reticleVisual.y = visualTarget.y + (this.reticleVisual.y - visualTarget.y) * decay;
-    }
+    // The custom reticle must remain centered on the real pointer position.
+    // Lock assist can still influence visual emphasis, but it must not push the pointer skin off the cursor.
+    this.reticleVisual.x = this.pointerActual.x;
+    this.reticleVisual.y = this.pointerActual.y;
 
     this.velocity.x = (this.pointerActual.x - this.lastPointer.x) / Math.max(dtMs, 1);
     this.velocity.y = (this.pointerActual.y - this.lastPointer.y) / Math.max(dtMs, 1);
@@ -466,7 +453,9 @@ export class CursorEngine implements CursorEngineLifecycle {
       const scale = 1 + speed * 0.05 - frame.recoil * frame.policy.recoilStrength * 0.08 + frame.lockStrength * 0.08;
       const rotation = Math.atan2(frame.velocity.y, frame.velocity.x) || 0;
       this.reticle.style.opacity = hidden ? "0" : frame.mode === "idle" ? "0.82" : "1";
-      this.reticle.style.transform = `translate3d(${frame.reticleVisual.x}px, ${frame.reticleVisual.y}px, 0) rotate(${rotation * 0.08}rad) scale(${scale})`;
+      const centeredX = frame.reticleVisual.x - 21;
+      const centeredY = frame.reticleVisual.y - 21;
+      this.reticle.style.transform = `translate3d(${centeredX}px, ${centeredY}px, 0) rotate(${rotation * 0.08}rad) scale(${scale})`;
       this.reticle.style.filter = `drop-shadow(0 0 ${8 + frame.lockStrength * 18}px ${cssColorWithAlpha(accent, 0.34 + frame.lockStrength * 0.24)})`;
       this.reticle.style.color = accent;
       const ring = this.reticle.querySelector("[data-cursor-ring]");
