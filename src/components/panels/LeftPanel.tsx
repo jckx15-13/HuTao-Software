@@ -45,7 +45,7 @@ import { SATELLITES } from '@/data/satellites';
 
 interface FileTreeSectionProps {
   title: string;
-  icon: any;
+  icon: React.ComponentType<any>;
   defaultOpen?: boolean;
   itemCount?: number;
   children: React.ReactNode;
@@ -82,7 +82,7 @@ export function FileTreeSection({ title, icon: Icon, defaultOpen = false, itemCo
 
 interface TreeItemProps {
   label: string;
-  icon?: any;
+  icon?: React.ComponentType<any>;
   depth?: number;
   selected?: boolean;
   onClick?: () => void;
@@ -225,7 +225,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 interface CollapsibleSectionProps {
   title: string;
-  icon: any;
+  icon: React.ComponentType<any>;
   isOpen: boolean;
   onToggle: () => void;
   children: React.ReactNode;
@@ -343,7 +343,7 @@ export function LeftPanel() {
     setActiveSatelliteId(id);
     useUIStore.getState().addChangeLog('TRACKER', `Locked satellite: ${id.toUpperCase()}`, 'success');
     
-    const viewer = (window as any).cesiumViewer;
+    const viewer = (window as { cesiumViewer?: any }).cesiumViewer;
     if (viewer) {
       const ent = viewer.entities.getById(id);
       if (ent) {
@@ -382,7 +382,7 @@ export function LeftPanel() {
     }));
 
     // Map plugin entities
-    const pluginMatches: any[] = [];
+    const pluginMatches: { id: string, name: string, country: string, category: string, lat: number, lng: number, type: 'entity', raw: any }[] = [];
     const entitiesByPlugin = useStore.getState().entitiesByPlugin;
     if (entitiesByPlugin) {
       Object.entries(entitiesByPlugin).forEach(([pluginId, entities]) => {
@@ -439,8 +439,8 @@ export function LeftPanel() {
     }
   };
 
-  const flyToTourStep = (step: any) => {
-    const viewer = (window as any).cesiumViewer;
+  const flyToTourStep = (step: { lng: number, lat: number }) => {
+    const viewer = (window as { cesiumViewer?: any }).cesiumViewer;
     if (viewer) {
       viewer.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(step.lng, step.lat, 250000), // Fly close (250km)
@@ -452,7 +452,7 @@ export function LeftPanel() {
     }
   };
 
-  const handleStartTour = (tour: any) => {
+  const handleStartTour = (tour: import('../../data/tours').Tour) => {
     setActiveTour(tour);
     setActiveTourStepIndex(0);
     flyToTourStep(tour.steps[0]);
@@ -570,7 +570,7 @@ export function LeftPanel() {
                         } else {
                           useStore.getState().setSelectedEntity(result.raw);
                           setActiveLocation(null);
-                          const viewer = (window as any).cesiumViewer;
+                          const viewer = (window as { cesiumViewer?: any }).cesiumViewer;
                           if (viewer) {
                             viewer.camera.flyTo({
                               destination: Cesium.Cartesian3.fromDegrees(result.lng, result.lat, result.raw.altitude ? result.raw.altitude * 2.5 + 20000 : 250000),

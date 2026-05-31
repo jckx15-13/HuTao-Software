@@ -262,6 +262,8 @@ export interface WorldPlugin {
     // Data
     fetch(timeRange: TimeRange): Promise<GeoEntity[]>;
     getPollingInterval(): number;
+    /** Optional method to establish a reactive stream (e.g. WebSocket, SSE). Returns an unsubscribe function. */
+    stream?(context: PluginContext): () => void;
 
     // Rendering
     getLayerConfig(): LayerConfig;

@@ -4,14 +4,14 @@
 
 ---
 
-## 🔥 Current High Priority (Run 06 Focus)
+## 🔥 Current High Priority (Run 07 Focus)
 
-- [ ] **Type Safety Phase 2 (UI components)**
-  - Category: `Tech Debt` | Tier: <span style="background:#FFF0D6;color:#A35000;padding:0.2em 0.4em;border-radius:0.3em;">🟠 High</span>
-  - Why: Fixed core hooks/stores; remaining 20+ occurrences in UI components need fixing.
-- [ ] **Plugin API Modernization (Reactive Streams)**
-  - Category: `Architecture` | Tier: <span style="background:#FFFBDB;color:#8A6D00;padding:0.2em 0.4em;border-radius:0.3em;">🟡 Medium</span>
-  - Why: Legacy polling is inefficient; move to a reactive or subscription model.
+- [ ] **Visual Diagnostic Panel**
+  - Category: `DX` | Tier: <span style="background:#FFFBDB;color:#8A6D00;padding:0.2em 0.4em;border-radius:0.3em;">🟡 Medium</span>
+  - Why: Needed to inspect raw plugin telemetry (like TLE strings) easily within the UI.
+- [ ] **Theme Variable Naming Cleanup**
+  - Category: `Tech Debt` | Tier: <span style="background:#E8F7E6;color:#2D6A2D;padding:0.2em 0.4em;border-radius:0.3em;">🟢 Low</span>
+  - Why: Standardize `--theme-` prefixing across all JS and CSS files.
 
 ---
 
@@ -20,17 +20,25 @@
 ### 🔴 Critical (0)
 *No critical issues detected.*
 
-### 🟠 High (1)
-- [ ] **Type Safety Overhaul**
+### 🟠 High (0)
+*No high priority issues detected.*
 
-### 🟡 Medium (2)
+### 🟡 Medium (1)
 - [ ] **Visual Diagnostic Panel**
-- [ ] **Plugin API Modernization**
+
+### 🟢 Low (2)
+- [ ] **Theme Variable Naming Cleanup**
+- [ ] **Plugin API Modernization (Phase 2)**
+
+### ⚪ Trivial (1)
+- [ ] **Uncommitted local edits detection**
 
 ---
 
 ## ✅ Completed Tasks
 
+- [x] ~~**Type Safety Phase 2**~~ (Resolved remaining UI `any` types in LeftPanel and others)
+- [x] ~~**Plugin API Modernization (Reactive Streams)**~~ (Added `streamUnsubscribe` to `PluginManager`)
 - [x] ~~**3D Telemetry Realism Pass**~~ (Live Earthquake/Weather 3D entities)
 - [x] ~~**Imagery Switcher UI Implementation**~~
 - [x] ~~**Redundant Config Fetching**~~

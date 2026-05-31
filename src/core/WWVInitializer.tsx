@@ -5,6 +5,8 @@ import { pluginRegistry } from './plugins/PluginRegistry';
 import { IssPlugin } from '../plugins/iss/IssPlugin';
 import { EarthquakesPlugin } from '../plugins/earthquakes/EarthquakesPlugin';
 import { WeatherPlugin } from '../plugins/weather/WeatherPlugin';
+import { SatellitesPlugin } from '../plugins/satellites/SatellitesPlugin';
+import { EntityDensityPlugin } from '../plugins/hexagons/EntityDensityPlugin';
 import { DataBusSubscriber } from '../components/layout/DataBusSubscriber';
 import { TimelineSync } from './globe/TimelineSync';
 import { satelliteService } from '../services/satelliteService';
@@ -31,6 +33,8 @@ export function WWVInitializer({ children }: { children: React.ReactNode }) {
       const iss = new IssPlugin();
       const earthquakes = new EarthquakesPlugin();
       const weather = new WeatherPlugin();
+      const satellites = new SatellitesPlugin();
+      const entityDensity = new EntityDensityPlugin();
       
       await pluginManager.registerPlugin(iss);
       pluginRegistry.register(iss);
@@ -40,6 +44,19 @@ export function WWVInitializer({ children }: { children: React.ReactNode }) {
 
       await pluginManager.registerPlugin(weather);
       pluginRegistry.register(weather);
+      
+      await pluginManager.registerPlugin(satellites);
+      pluginRegistry.register(satellites);
+      
+      await pluginManager.registerPlugin(entityDensity);
+      pluginRegistry.register(entityDensity);
+      
+      // Enable them by default
+      pluginManager.enablePlugin(iss.id);
+      pluginManager.enablePlugin(earthquakes.id);
+      pluginManager.enablePlugin(weather.id);
+      pluginManager.enablePlugin(satellites.id);
+      pluginManager.enablePlugin(entityDensity.id);
       
       // 3. Start Background Ingestion Services
       satelliteService.start();

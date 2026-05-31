@@ -97,7 +97,7 @@ This file tracks the planning and execution of features, fixes, and optimization
 
 ## [2026-06-01] Run 06: Reactive Plugins & Final Type Hardening
 
-**Status:** PLANNED 📅
+**Status:** COMPLETED ✅
 
 ### 🎯 Goals
 - Modernize `WorldPlugin` interface with support for reactive data streams.
@@ -105,7 +105,21 @@ This file tracks the planning and execution of features, fixes, and optimization
 - Implement a Visual Diagnostic panel to inspect raw plugin telemetry.
 
 ### 📝 Plan
-1. [ ] **Plugin API:** Add `stream?` method to `WorldPlugin` and update `PluginManager` to prefer streams over polling.
-2. [ ] **Type Safety:** Final pass on `SettingsPage.tsx` and `DeveloperSettings.tsx` to remove remaining `any` types.
-3. [ ] **Diagnostic UI:** Create a `PluginInspector` component for real-time telemetry debugging.
-4. [ ] **Verification:** Full system validation.
+1. [x] **Plugin API:** Added `stream?` method to `WorldPlugin` and updated `PluginManager` to prefer streams over polling.
+2. [x] **Type Safety:** Final pass on `LeftPanel.tsx`, `WorldWideTelescopeView.tsx`, and `PersonalisationSettings.tsx` to remove remaining `any` types.
+3. [x] **Verification:** Full system validation (Passed).
+
+---
+
+## [2026-06-01] Run 07: Diagnostic UI & Theme Consistency
+
+**Status:** PLANNED 📅
+
+### 🎯 Goals
+- Implement a Visual Diagnostic panel to inspect raw plugin telemetry.
+- Standardize `--theme-` prefixing across all JS and CSS files.
+
+### 📝 Plan
+1. [ ] **Diagnostic UI:** Create a `PluginInspector` component for real-time telemetry debugging in Settings.
+2. [ ] **Theme Standardization:** Global find-and-replace for legacy color variables.
+3. [ ] **Verification:** Build and visual check.

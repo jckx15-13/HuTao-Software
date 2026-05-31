@@ -26,6 +26,7 @@ interface ManagedPlugin {
     enabled: boolean;
     entities: GeoEntity[];
     context: PluginContext;
+    streamUnsubscribe?: () => void;
 }
 
 /**
@@ -255,7 +256,14 @@ class PluginManager {
             dataBus.emit("dataUpdated", { pluginId, entities: cached });
         }
 
-        pollingManager.start(pluginId);
+        if (managed.plugin.stream) {
+            console.debug(`[PluginManager] Starting reactive stream for ${pluginId}`);
+            managed.streamUnsubscribe = managed.plugin.stream(managed.context);
+        } else {
+            console.debug(`[PluginManager] Starting polling for ${pluginId}`);
+            pollingManager.start(pluginId);
+        }
+
         console.debug(`[PluginManager] Emitting layerToggled true for ${pluginId}. Total setup took ${(performance.now() - start).toFixed(2)}ms`);
         dataBus.emit("layerToggled", { pluginId, enabled: true });
     }
@@ -276,7 +284,16 @@ class PluginManager {
         }
         managed.enabled = false;
         managed.entities = [];
-        pollingManager.stop(pluginId);
+        
+        if (managed.streamUnsubscribe) {
+            console.debug(`[PluginManager] Stopping reactive stream for ${pluginId}`);
+            managed.streamUnsubscribe();
+            managed.streamUnsubscribe = undefined;
+        } else {
+            console.debug(`[PluginManager] Stopping polling for ${pluginId}`);
+            pollingManager.stop(pluginId);
+        }
+
         console.debug(`[PluginManager] Emitting layerToggled false for ${pluginId}`);
         dataBus.emit("layerToggled", { pluginId, enabled: false });
         dataBus.emit("dataUpdated", { pluginId, entities: [] });
