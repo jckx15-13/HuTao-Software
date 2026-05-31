@@ -17,73 +17,88 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
     const entities: Cesium.Entity[] = [];
 
     if (active) {
-      // Outer sphere radius (114,000 km)
-      const celestialRadius = 114378137;
+      try {
+        // Outer sphere radius (114,000 km)
+        const celestialRadius = 114378137;
 
-      TELESCOPE_PRESETS.forEach((preset) => {
-        // Translate RA/Dec to radians
-        const raRad = (preset.raHours * 15.0 * Math.PI) / 180.0;
-        const decRad = (preset.decDegrees * Math.PI) / 180.0;
+        TELESCOPE_PRESETS.forEach((preset) => {
+          if (!viewer || viewer.isDestroyed()) return;
 
-        // Spherical to J2000 Cartesian coordinate projection
-        const x = celestialRadius * Math.cos(decRad) * Math.cos(raRad);
-        const y = celestialRadius * Math.cos(decRad) * Math.sin(raRad);
-        const z = celestialRadius * Math.sin(decRad);
-        const position = new Cesium.Cartesian3(x, y, z);
+          try {
+            // Translate RA/Dec to radians
+            const raRad = (preset.raHours * 15.0 * Math.PI) / 180.0;
+            const decRad = (preset.decDegrees * Math.PI) / 180.0;
 
-        const isSelected = telescopeTarget?.name === preset.name;
+            // Spherical to J2000 Cartesian coordinate projection
+            const x = celestialRadius * Math.cos(decRad) * Math.cos(raRad);
+            const y = celestialRadius * Math.cos(decRad) * Math.sin(raRad);
+            const z = celestialRadius * Math.sin(decRad);
+            const position = new Cesium.Cartesian3(x, y, z);
 
-        // Add celestial target entity
-        const targetEntity = viewer.entities.add({
-          id: `telescope-preset-${preset.id}`,
-          name: preset.name,
-          position: position,
-          point: {
-            pixelSize: isSelected ? 10 : 6,
-            color: Cesium.Color.fromCssColorString(preset.color),
-            outlineColor: Cesium.Color.WHITE.withAlpha(0.9),
-            outlineWidth: 1.5,
-          },
-          label: {
-            text: preset.name,
-            font: isSelected ? 'bold 8.5pt JetBrains Mono, monospace' : '7.5pt JetBrains Mono, monospace',
-            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-            fillColor: Cesium.Color.fromCssColorString(preset.color),
-            outlineColor: Cesium.Color.BLACK,
-            outlineWidth: 2.0,
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            pixelOffset: new Cesium.Cartesian2(0, -12),
-            showBackground: true,
-            backgroundColor: Cesium.Color.fromCssColorString('rgba(10, 11, 16, 0.85)'),
-            backgroundPadding: new Cesium.Cartesian2(8, 4),
-            show: false,
-          },
+            const isSelected = telescopeTarget?.name === preset.name;
+
+            // Add celestial target entity
+            const targetEntity = viewer.entities.add({
+              id: `telescope-preset-${preset.id}`,
+              name: preset.name,
+              position: position,
+              point: {
+                pixelSize: isSelected ? 10 : 6,
+                color: Cesium.Color.fromCssColorString(preset.color),
+                outlineColor: Cesium.Color.WHITE.withAlpha(0.9),
+                outlineWidth: 1.5,
+              },
+              label: {
+                text: preset.name,
+                font: isSelected ? 'bold 8.5pt JetBrains Mono, monospace' : '7.5pt JetBrains Mono, monospace',
+                style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                fillColor: Cesium.Color.fromCssColorString(preset.color),
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 2.0,
+                verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                pixelOffset: new Cesium.Cartesian2(0, -12),
+                showBackground: true,
+                backgroundColor: Cesium.Color.fromCssColorString('rgba(10, 11, 16, 0.85)'),
+                backgroundPadding: new Cesium.Cartesian2(8, 4),
+                show: false,
+              },
+            });
+            entities.push(targetEntity);
+
+            // Highlight ring overlay for selected target
+            if (isSelected) {
+              const ringEntity = viewer.entities.add({
+                position: position,
+                billboard: {
+                  image: createRingSvg(preset.color),
+                  width: 32,
+                  height: 32,
+                },
+              });
+              entities.push(ringEntity);
+            }
+          } catch (presetErr) {
+            console.warn(`[useTelescopePresets] Failed to create entity for ${preset.name}:`, presetErr);
+          }
         });
-        entities.push(targetEntity);
 
-        // Highlight ring overlay for selected target
-        if (isSelected) {
-          const ringEntity = viewer.entities.add({
-            position: position,
-            billboard: {
-              image: createRingSvg(preset.color),
-              width: 32,
-              height: 32,
-            },
-          });
-          entities.push(ringEntity);
-        }
-      });
-
-      viewer.scene.requestRender();
+        viewer.scene.requestRender();
+      } catch (err) {
+        console.warn('[useTelescopePresets] Error creating celestial entities:', err);
+        useUIStore.getState().addChangeLog('TELESCOPE', `Failed to render celestial targets: ${(err as Error).message}`, 'error');
+      }
     }
 
     return () => {
       if (viewer && !viewer.isDestroyed()) {
-        entities.forEach((e) => {
-          viewer.entities.remove(e);
-        });
-        viewer.scene.requestRender();
+        try {
+          entities.forEach((e) => {
+            viewer.entities.remove(e);
+          });
+          viewer.scene.requestRender();
+        } catch (err) {
+          console.warn('[useTelescopePresets] Error cleaning up entities:', err);
+        }
       }
     };
   }, [viewer, interactionMode, telescopeTarget]);
@@ -92,79 +107,98 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
     if (!viewer || viewer.isDestroyed()) return;
     if (!(interactionMode === 'orbital' || interactionMode === 'telescope')) return;
 
-    TELESCOPE_PRESETS.forEach((preset) => {
-      const entity = viewer.entities.getById(`telescope-preset-${preset.id}`);
-      if (entity && entity.label) {
-        entity.label.show = new Cesium.ConstantProperty(hoveredEntityId === `telescope-preset-${preset.id}`);
-      }
-    });
-    viewer.scene.requestRender();
+    try {
+      TELESCOPE_PRESETS.forEach((preset) => {
+        const entity = viewer.entities.getById(`telescope-preset-${preset.id}`);
+        if (entity && entity.label) {
+          entity.label.show = new Cesium.ConstantProperty(hoveredEntityId === `telescope-preset-${preset.id}`);
+        }
+      });
+      viewer.scene.requestRender();
+    } catch (err) {
+      console.warn('[useTelescopePresets] Error updating hover labels:', err);
+    }
   }, [viewer, interactionMode, hoveredEntityId]);
 
   // Handle Camera flights & Earth globe show/hide state transitions
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;
 
-    if (interactionMode === 'telescope') {
-      // Enable globe translucency to see through the Earth
-      viewer.scene.globe.show = true;
-      viewer.scene.globe.translucency.enabled = true;
-      viewer.scene.globe.translucency.frontFaceAlpha = 0.25;
-      viewer.scene.globe.translucency.backFaceAlpha = 0.15;
-      viewer.scene.skyAtmosphere.show = false;
+    try {
+      if (interactionMode === 'telescope') {
+        // Enable globe translucency to see through the Earth
+        viewer.scene.globe.show = true;
+        if (viewer.scene.globe.translucency) {
+          viewer.scene.globe.translucency.enabled = true;
+          viewer.scene.globe.translucency.frontFaceAlpha = 0.25;
+          viewer.scene.globe.translucency.backFaceAlpha = 0.15;
+        }
+        viewer.scene.skyAtmosphere.show = false;
 
-      // Find targeted preset
-      const preset = TELESCOPE_PRESETS.find((p) => p.name === telescopeTarget?.name) || TELESCOPE_PRESETS[0];
+        // Find targeted preset
+        const preset = TELESCOPE_PRESETS.find((p) => p.name === telescopeTarget?.name) || TELESCOPE_PRESETS[0];
 
-      if (preset) {
-        const raRad = (preset.raHours * 15.0 * Math.PI) / 180.0;
-        const decRad = (preset.decDegrees * Math.PI) / 180.0;
-        const celestialRadius = 114378137;
-        const x = celestialRadius * Math.cos(decRad) * Math.cos(raRad);
-        const y = celestialRadius * Math.cos(decRad) * Math.sin(raRad);
-        const z = celestialRadius * Math.sin(decRad);
-        const targetPos = new Cesium.Cartesian3(x, y, z);
-        
-        const direction = Cesium.Cartesian3.normalize(targetPos, new Cesium.Cartesian3());
+        if (preset) {
+          const raRad = (preset.raHours * 15.0 * Math.PI) / 180.0;
+          const decRad = (preset.decDegrees * Math.PI) / 180.0;
+          const celestialRadius = 114378137;
+          const x = celestialRadius * Math.cos(decRad) * Math.cos(raRad);
+          const y = celestialRadius * Math.cos(decRad) * Math.sin(raRad);
+          const z = celestialRadius * Math.sin(decRad);
+          const targetPos = new Cesium.Cartesian3(x, y, z);
+          
+          const direction = Cesium.Cartesian3.normalize(targetPos, new Cesium.Cartesian3());
 
-        // Release any active tracking to allow manual flight
-        viewer.trackedEntity = undefined;
+          // Release any active tracking to allow manual flight
+          viewer.trackedEntity = undefined;
 
-        // Position camera exactly at Earth's center pointing outward
-        viewer.camera.flyTo({
-          destination: new Cesium.Cartesian3(0, 0, 1),
-          orientation: {
-            direction: direction,
-            up: new Cesium.Cartesian3(0, 0, 1), // Align North
-          },
-          duration: 2.0,
-          easingFunction: Cesium.EasingFunction.QUINTIC_IN_OUT,
-        });
+          // Position camera exactly at Earth's center pointing outward
+          viewer.camera.flyTo({
+            destination: new Cesium.Cartesian3(0, 0, 1),
+            orientation: {
+              direction: direction,
+              up: new Cesium.Cartesian3(0, 0, 1), // Align North
+            },
+            duration: 2.0,
+            easingFunction: Cesium.EasingFunction.QUINTIC_IN_OUT,
+          });
+        } else {
+          // Reset to default deep sky orientation looking North
+          viewer.trackedEntity = undefined;
+          viewer.camera.flyTo({
+            destination: new Cesium.Cartesian3(0, 0, 1),
+            orientation: {
+              direction: new Cesium.Cartesian3(0, 1, 0),
+              up: new Cesium.Cartesian3(0, 0, 1),
+            },
+            duration: 2.0,
+            easingFunction: Cesium.EasingFunction.QUINTIC_IN_OUT,
+          });
+        }
       } else {
-        // Reset to default deep sky orientation looking North
-        viewer.trackedEntity = undefined;
-        viewer.camera.flyTo({
-          destination: new Cesium.Cartesian3(0, 0, 1),
-          orientation: {
-            direction: new Cesium.Cartesian3(0, 1, 0),
-            up: new Cesium.Cartesian3(0, 0, 1),
-          },
-          duration: 2.0,
-          easingFunction: Cesium.EasingFunction.QUINTIC_IN_OUT,
-        });
+        // Restore standard Earth globe and atmosphere layers
+        viewer.scene.globe.show = true;
+        if (viewer.scene.globe.translucency) {
+          viewer.scene.globe.translucency.enabled = false;
+        }
+        viewer.scene.skyAtmosphere.show = true;
       }
-    } else {
-      // Restore standard Earth globe and atmosphere layers
-      viewer.scene.globe.show = true;
-      viewer.scene.globe.translucency.enabled = false;
-      viewer.scene.skyAtmosphere.show = true;
+    } catch (err) {
+      console.warn('[useTelescopePresets] Error during mode transition:', err);
+      useUIStore.getState().addChangeLog('TELESCOPE', `Mode transition error: ${(err as Error).message}`, 'error');
     }
 
     return () => {
       if (viewer && !viewer.isDestroyed()) {
-        viewer.scene.globe.show = true;
-        viewer.scene.globe.translucency.enabled = false;
-        viewer.scene.skyAtmosphere.show = true;
+        try {
+          viewer.scene.globe.show = true;
+          if (viewer.scene.globe.translucency) {
+            viewer.scene.globe.translucency.enabled = false;
+          }
+          viewer.scene.skyAtmosphere.show = true;
+        } catch (err) {
+          console.warn('[useTelescopePresets] Error restoring globe state:', err);
+        }
       }
     };
   }, [viewer, interactionMode, telescopeTarget]);

@@ -1,110 +1,94 @@
-# Project Management - Implementation Plans Log
+# 📝 Silver Wolf VI Implementation Logs
 
-This file acts as a historical log of all implementation plans drafted and executed during the development of Silver Wolf VI. This provides project tracking, versioned design history, and audit compliance.
-
----
-
-## [Plan V1.0] Telescope Onion Blend, Developer Diagnostics, and Satellite Features (2026-05-27)
-
-### Status: Approved & In Progress
-
-### Goal Description
-We will merge telescope view with the background orbital celestial presets, restore the settings page opacity/translucency controls, fix imagery loading, introduce a developer diagnostics view with event logging and fallback controls, and import comprehensive satellite tracking and 3D hexagon feeds based on WorldWideView logic.
-
-### User Review Required
-
-> [!IMPORTANT]
-> - **Telescope Onion Design & UI Integration:** The Cesium background remains active in telescope mode. We will combine Telescope View with Orbit View, drawing UI inspiration from WorldWideView to prevent clutter. The high-resolution WWT iframe will render cohesively with the orbital background.
-> - **Satellite Tracking & 3D Hexagons:** We will copy and translate logic from the WorldWideView project to import *all* satellites, displaying their spatial position tracking. We will also implement 3D visualization feeds via 3D hexagons.
-> - **Settings Page Restoration:** The Settings page will be restored to its initial glory from project history, featuring more customization (translucency slider) and extensive developer tools.
-> - **Imagery Providers:** We will fix the graphics imagery source not loading by adding an Imagery Provider selector supporting Bing, Google, OpenStreetMap, and Cesium Ion.
-> - **References & Cross-Checking:** During execution, the agent must navigate to the live demo at `https://demo.worldwideview.dev/` using the browser devtools MCP server to inspect the running UI, retrieve codebase references, and cross-check the satellite/hexagon tracking interface against the local implementation. We will also cross-check with the local `worldwideview` workspace (`c:\Users\jaron\OneDrive - Ministry of Education (M365 T&L)\Documents\worldwideview`).
-
-### Proposed Changes
+This file tracks the planning and execution of features, fixes, and optimizations. Every major run must have a plan written here **before** implementation begins.
 
 ---
 
-#### 1. State Management & Core Data Routing
+## [2026-06-01] Run 01: Audit, Refactoring & Infrastructure Setup
 
-##### [MODIFY] [uiStore.ts](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20(M365%20T&L)/Documents/silver-wolf-vi/src/store/uiStore.ts)
-- Add `forceFallback: boolean` state variable (default: `false`).
-- Add `engineUrlOverride: string` state variable (default: `""`).
-- Add `imageryProvider: string` state variable (default: `'cesium'`).
-- Add `setForceFallback`, `setEngineUrlOverride`, and `setImageryProvider` actions.
-- Include them in Zustand persisted state list.
+**Status:** COMPLETED ✅
 
-##### [MODIFY] [resolveEngineUrl.ts](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20(M365%20T&L)/Documents/silver-wolf-vi/src/core/data/resolveEngineUrl.ts)
-- Read `engineUrlOverride` from `useUIStore.getState()`.
-- If set, normalize it via `toWsStreamUrl` and return it to route REST and WS requests.
+### 🎯 Goals
+- Refactor existing prioritization doc into a dynamic `PROJECT_TODO.md`.
+- Establish this `implementation_plans_log.md` for disciplined tracking.
+- Perform a deep audit to find new technical debt and architectural issues.
 
----
-
-#### 2. Telescope View and Globe Blending (WorldWideView UI)
-
-##### [MODIFY] [App.tsx](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20(M365%20T&L)/Documents/silver-wolf-vi/src/App.tsx)
-- Pass `interactive={interactionMode === 'orbital' || interactionMode === 'telescope'}` to `<CesiumBackground />`.
-- Update the dark backdrop-blur overlay condition so Cesium celestial projections are fully visible.
-- Re-enable custom cursor component and navigation.
-
-##### [MODIFY] [WorldWideTelescopeView.tsx](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20(M365%20T&L)/Documents/silver-wolf-vi/src/components/learning/WorldWideTelescopeView.tsx)
-- Use a less cluttered UI approach inspired by WorldWideView.
-- Change the outer page wrapper to `bg-transparent select-none pointer-events-none`.
-- Remove full-screen viewport black backgrounds.
-- Render the high-resolution WWT iframe inside a draggable, floating, glassmorphic Picture-in-Picture window overlay.
+### 📝 Plan
+1. [x] Rename `docs/error-classification-and-prioritization.md` to `docs/PROJECT_TODO.md`.
+2. [x] Create this log file.
+3. [x] Search for "TODO", "FIXME", and "HACK" in the codebase.
+4. [x] Analyze `src/store/uiStore.ts` for state bloat.
+5. [x] Check for missing error handling in async fetch calls.
+6. [x] Investigate `worldwideview` integration.
+7. [x] Update `docs/PROJECT_TODO.md` with new findings (Extended Audit: 43+ `any` usages, memory leak risks in `DataBusSubscriber`).
 
 ---
 
-#### 3. Satellites, Hexagons & Fallback Rendering
+## [2026-06-01] Run 02: Store Refactoring, Plugin Robustness & Memory Audit
 
-##### [NEW] `src/core/satellites/` and `src/core/hexagons/`
-- Import all satellite propagation logic and TLE fetching code from `worldwideview`.
-- Implement spatial satellite position tracking.
-- Add components for rendering 3D hexagon visualization feeds based on spatial data.
+**Status:** COMPLETED ✅
 
-##### [MODIFY] [CesiumBackground.tsx](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20(M365%20T&L)/Documents/silver-wolf-vi/src/components/background/CesiumBackground.tsx)
-- Integrate the new Imagery Provider selector (Bing, Google, OpenStreetMap, Cesium Ion).
-- Pull `forceFallback` from UI store.
-- Include `forceFallback` in `hasError` conditions.
-- Implement rendering of all imported satellites and their orbital paths on both the Cesium globe and the 2D vector fallback globe.
-- Render 3D hexagon data layers.
+### 🎯 Goals
+- Reduce `uiStore.ts` complexity by moving satellite/telemetry logic to services.
+- Harden `EarthquakesPlugin` with exponential backoff retries.
+- Fix memory leak risks in `DataBusSubscriber.tsx`.
+- Standardize theme variable tokens.
 
----
-
-#### 4. Settings Page Restoration & Developer Diagnostics Panel
-
-##### [MODIFY] [DataBus.ts](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20(M365%20T&L)/Documents/silver-wolf-vi/src/core/data/DataBus.ts)
-- Define a public in-memory array `history` containing the last 50 events.
-
-##### [MODIFY] `src/components/settings/SettingsPage.tsx`
-- Restore the Settings page based on Git history.
-- Integrate the translucency settings (slider controlling `personalisation.panelOpacity`).
-- Re-apply `.glass-panel` utilities to side panels for a premium translucent UI.
-- Ensure the CRT scanline toggle and imagery provider selector are included.
-
-##### [NEW] [DeveloperSettings.tsx](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20(M365%20T&L)/Documents/silver-wolf-vi/src/components/settings/DeveloperSettings.tsx)
-- Build the Dev Settings view containing:
-  - Checkbox toggle for `forceFallback`.
-  - Input field for `engineUrlOverride`.
-  - Plugin registry table listing all registered plugins.
-  - Live DataBus Event Log table.
-  - State copy-to-clipboard button.
+### 📝 Plan
+1. [x] **Service Migration:** Refactor `fetchSatelliteTle` and satellite management logic out of `uiStore.ts` and into `src/services/satelliteService.ts`.
+2. [x] **Memory Leak Fix:** Add unmount guards to `setTimeout` calls in `DataBusSubscriber.tsx`.
+3. [x] **Plugin Resilience:** Update `EarthquakesPlugin.ts` with a retry wrapper for its fetch call.
+4. [x] **Token Standardization:** Clean up `themeEngine.ts` and `useThemeVariables.ts` for consistent token application.
+5. [x] **Type Safety Pass:** Fixed major `any` usages in `uiStore.ts` and `useCesiumViewer.ts`.
+6. [x] **Verification:** Run `npm run build` and `npm run lint`. (Passed)
 
 ---
 
-### Verification Plan
+## [2026-06-01] Run 03: Live Weather & Satellite Drift Correction
 
-#### Automated Tests
-- Run `tsc --noEmit` to verify complete compile-time TypeScript type safety.
-- Verify production build completes successfully via `npm run build`.
+**Status:** COMPLETED ✅
 
-#### Manual Verification Checklist (Inclusive Testing)
-> [!TIP]
-> We will rigorously click every element to see what is working and what is not.
+### 🎯 Goals
+- Implement real-world weather telemetry using OpenWeather API.
+- Refine SGP4 propagation with epoch validation to prevent orbital drift.
+- Enhance UI for imagery switcher with thumbnail previews.
 
-- [ ] **Inclusive UI Testing:** Click every button, tab, and slider in the Settings page and main UI. Verify hover states, selection states, and transitions work flawlessly.
-- [ ] **Telescope & Orbit Blend:** Switch between Orbital and Telescope modes. Verify WWT PiP overlay exists, stars are visible, and UI is uncluttered.
-- [ ] **Satellite Tracking:** Zoom in/out of the globe. Ensure spatial satellite positions (multiple satellites) are updating continuously along their orbits.
-- [ ] **3D Hexagons:** Verify hexagon visualization layer renders correctly over the globe.
-- [ ] **Settings Restoration:** Adjust the translucency slider and toggle CRT scanlines. Verify real-time application to `.glass-panel` elements. Check that the developer tab exists and logs events.
-- [ ] **Imagery Providers:** Switch between Bing, Google, OSM, and Cesium Ion. Verify the globe imagery updates without reloading.
-- [ ] **Custom Cursor:** Verify the custom cursor is responsive and visible across all states.
+### 📝 Plan
+1. [x] **Weather Integration:** Created `WeatherService.ts` to fetch real-world data from OpenWeather.
+2. [x] **Drift Correction:** Implemented timestamp validation in `SatelliteService.ts` to trigger refreshes if data is >24h old.
+3. [x] **UX Polish:** Added thumbnail metadata and Google Satellite/Street layers to `ImageryProviderFactory.ts`.
+4. [x] **Verification:** Run full build and test suite. (Passed)
+
+---
+
+## [2026-06-01] Run 04: Imagery UI & Config Consolidation
+
+**Status:** COMPLETED ✅
+
+### 🎯 Goals
+- Build a visual grid for the Imagery Switcher in Settings.
+- Consolidate `loadConfig` into a shared React Context to prevent redundant fetching.
+- Continue Type Safety Phase 2 (UI components).
+
+### 📝 Plan
+1. [x] **Imagery Switcher UI:** Created `ImageryProviderSelector` with a grid of thumbnail-enhanced cards.
+2. [x] **Config Provider:** Implemented `ConfigProvider` and refactored `useCesiumViewer` to use the central context.
+3. [x] **Type Safety Pass:** Removed `any` usage in `MarkdownMessage.tsx`.
+4. [x] **Verification:** Build and lint passed.
+
+---
+
+## [2026-06-01] Run 05: 3D Realism & UI Architecture
+
+**Status:** PLANNED 📅
+
+### 🎯 Goals
+- Integrate live earthquake/weather entities onto the 3D globe.
+- Address remaining type safety debt in shared UI components.
+- Modernize plugin API to replace legacy polling intervals.
+
+### 📝 Plan
+1. [ ] **3D Realism Pass:** Update `EarthquakesPlugin` to emit high-fidelity 3D cylinders with magnitude-based scaling.
+2. [ ] **Plugin API:** Refactor `WorldPlugin` interface to support reactive stream-based updates.
+3. [ ] **Type Safety:** Fix `any` usages in `ChatPanel.tsx` and `SystemMonitor.tsx`.
+4. [ ] **Verification:** Production build.

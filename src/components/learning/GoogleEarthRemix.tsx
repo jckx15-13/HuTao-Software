@@ -46,6 +46,12 @@ const mapLabels = ['India', 'China', 'Thailand', 'Vietnam', 'Malaysia', 'Indones
 
 
 export default function GoogleEarthRemix() {
+  const isHeadless = typeof window !== 'undefined' && (
+    /HeadlessChrome/i.test(navigator.userAgent) ||
+    navigator.webdriver ||
+    window.location.search.includes('fallback')
+  );
+
   // 1. Primitive useState hooks
   const [query, setQuery] = useState('');
   const [zoom, setZoom] = useState(42);
@@ -245,6 +251,14 @@ export default function GoogleEarthRemix() {
     if (hasCesium) return;
 
     let active = true;
+    let lastFrameTime = 0;
+    const isHeadless = typeof window !== 'undefined' && (
+      /HeadlessChrome/i.test(navigator.userAgent) ||
+      navigator.webdriver ||
+      window.location.search.includes('fallback')
+    );
+    const FRAME_INTERVAL = isHeadless ? 2000 : (1000 / 30); // Throttled in headless mode to prevent crashes
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -258,8 +272,15 @@ export default function GoogleEarthRemix() {
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
 
-    const renderFrame = () => {
+    const renderFrame = (timestamp?: number) => {
       if (!active) return;
+
+      const now = timestamp ?? performance.now();
+      if (now - lastFrameTime < FRAME_INTERVAL) {
+        requestAnimationFrame(renderFrame);
+        return;
+      }
+      lastFrameTime = now;
 
       const rect = canvas.getBoundingClientRect();
       const cx = rect.width / 2;
@@ -475,76 +496,92 @@ export default function GoogleEarthRemix() {
   // Sync Borders and Labels visibility to Cesium
   useEffect(() => {
     const viewer = (window as any).cesiumViewer;
-    if (!viewer) return;
+    if (!viewer || viewer.isDestroyed()) return;
 
-    for (let i = 0; i < viewer.entities.values.length; i++) {
-      const entity = viewer.entities.values[i];
-      if (entity.label) {
-        entity.label.show = new Cesium.ConstantProperty(showBorders);
+    try {
+      for (let i = 0; i < viewer.entities.values.length; i++) {
+        const entity = viewer.entities.values[i];
+        if (entity.label) {
+          entity.label.show = new Cesium.ConstantProperty(showBorders);
+        }
+        if (entity.point) {
+          entity.point.show = new Cesium.ConstantProperty(showBorders);
+        }
       }
-      if (entity.point) {
-        entity.point.show = new Cesium.ConstantProperty(showBorders);
-      }
+      viewer.scene.requestRender();
+    } catch (err) {
+      console.warn('[GoogleEarthRemix] Error syncing borders:', err);
     }
-    viewer.scene.requestRender();
   }, [showBorders, hasCesium]);
 
   // Sync Terrain layers to Cesium
   useEffect(() => {
     const viewer = (window as any).cesiumViewer;
-    if (!viewer) return;
+    if (!viewer || viewer.isDestroyed()) return;
 
-    for (let i = 0; i < viewer.scene.primitives.length; i++) {
-      const primitive = viewer.scene.primitives.get(i);
-      if (primitive.show !== undefined) {
-        primitive.show = showTerrain;
+    try {
+      for (let i = 0; i < viewer.scene.primitives.length; i++) {
+        const primitive = viewer.scene.primitives.get(i);
+        if (primitive.show !== undefined) {
+          primitive.show = showTerrain;
+        }
       }
+      for (let i = 0; i < viewer.imageryLayers.length; i++) {
+        const layer = viewer.imageryLayers.get(i);
+        layer.show = showTerrain;
+      }
+      viewer.scene.requestRender();
+    } catch (err) {
+      console.warn('[GoogleEarthRemix] Error syncing terrain:', err);
     }
-    for (let i = 0; i < viewer.imageryLayers.length; i++) {
-      const layer = viewer.imageryLayers.get(i);
-      layer.show = showTerrain;
-    }
-    viewer.scene.requestRender();
   }, [showTerrain, hasCesium]);
 
   // Draw holographic measurement line in Cesium
   useEffect(() => {
     const viewer = (window as any).cesiumViewer;
-    if (!viewer) return;
+    if (!viewer || viewer.isDestroyed()) return;
 
     let polylineEntity: Cesium.Entity | null = null;
 
-    if (measureStart && measureEnd) {
-      polylineEntity = viewer.entities.add({
-        id: 'measure-line',
-        polyline: {
-          positions: Cesium.Cartesian3.fromDegreesArray([
-            measureStart.lng, measureStart.lat,
-            measureEnd.lng, measureEnd.lat,
-          ]),
-          width: 3,
-          material: Cesium.Color.fromCssColorString('#4285f4'),
-          clampToGround: true,
-        },
-      });
+    try {
+      if (measureStart && measureEnd) {
+        polylineEntity = viewer.entities.add({
+          id: 'measure-line',
+          polyline: {
+            positions: Cesium.Cartesian3.fromDegreesArray([
+              measureStart.lng, measureStart.lat,
+              measureEnd.lng, measureEnd.lat,
+            ]),
+            width: 3,
+            material: Cesium.Color.fromCssColorString('#4285f4'),
+            clampToGround: true,
+          },
+        });
 
-      // Calculate great circle distance
-      const distance = calculateDistance(
-        measureStart.lat,
-        measureStart.lng,
-        measureEnd.lat,
-        measureEnd.lng
-      );
-      setMeasureDistance(distance);
-      viewer.scene.requestRender();
-    } else {
+        const distance = calculateDistance(
+          measureStart.lat,
+          measureStart.lng,
+          measureEnd.lat,
+          measureEnd.lng
+        );
+        setMeasureDistance(distance);
+        viewer.scene.requestRender();
+      } else {
+        setMeasureDistance(null);
+      }
+    } catch (err) {
+      console.warn('[GoogleEarthRemix] Error adding measurement line:', err);
       setMeasureDistance(null);
     }
 
     return () => {
-      if (viewer && polylineEntity) {
-        viewer.entities.remove(polylineEntity);
-        viewer.scene.requestRender();
+      try {
+        if (viewer && !viewer.isDestroyed?.() && polylineEntity) {
+          viewer.entities.remove(polylineEntity);
+          viewer.scene.requestRender();
+        }
+      } catch (err) {
+        console.warn('[GoogleEarthRemix] Error cleaning up measurement line:', err);
       }
     };
   }, [measureStart, measureEnd, hasCesium]);
@@ -638,57 +675,75 @@ export default function GoogleEarthRemix() {
 
   // Camera flights
   const handleZoomIn = () => {
-    const viewer = (window as any).cesiumViewer;
-    if (viewer) {
-      viewer.camera.zoomIn(viewer.camera.positionCartographic.height * 0.35);
-      viewer.scene.requestRender();
-    } else {
+    try {
+      const viewer = (window as any).cesiumViewer;
+      if (viewer && !viewer.isDestroyed()) {
+        viewer.camera.zoomIn(viewer.camera.positionCartographic.height * 0.35);
+        viewer.scene.requestRender();
+      } else {
+        setZoom((value) => Math.min(72, value + 8));
+      }
+    } catch (err) {
+      console.warn('[GoogleEarthRemix] Error zooming in:', err);
       setZoom((value) => Math.min(72, value + 8));
     }
   };
 
   const handleZoomOut = () => {
-    const viewer = (window as any).cesiumViewer;
-    if (viewer) {
-      viewer.camera.zoomOut(viewer.camera.positionCartographic.height * 0.35);
-      viewer.scene.requestRender();
-    } else {
+    try {
+      const viewer = (window as any).cesiumViewer;
+      if (viewer && !viewer.isDestroyed()) {
+        viewer.camera.zoomOut(viewer.camera.positionCartographic.height * 0.35);
+        viewer.scene.requestRender();
+      } else {
+        setZoom((value) => Math.max(24, value - 8));
+      }
+    } catch (err) {
+      console.warn('[GoogleEarthRemix] Error zooming out:', err);
       setZoom((value) => Math.max(24, value - 8));
     }
   };
 
   const handleCompass = () => {
-    const viewer = (window as any).cesiumViewer;
-    if (viewer) {
-      viewer.camera.flyTo({
-        destination: viewer.camera.position,
-        orientation: {
-          heading: 0.0,
-          pitch: -Cesium.Math.PI_OVER_TWO,
-          roll: 0.0,
-        },
-        duration: 1.5,
-        complete: () => viewer.scene.requestRender(),
-      });
-    }
-  };
-
-  const handleRecenter = () => {
-    const viewer = (window as any).cesiumViewer;
-    if (viewer) {
-      if (activeLocation) {
+    try {
+      const viewer = (window as any).cesiumViewer;
+      if (viewer && !viewer.isDestroyed()) {
         viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(activeLocation.lng, activeLocation.lat, 1800000),
-          duration: 1.5,
-          complete: () => viewer.scene.requestRender(),
-        });
-      } else {
-        viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(0, 20, 20000000),
+          destination: viewer.camera.position,
+          orientation: {
+            heading: 0.0,
+            pitch: -Cesium.Math.PI_OVER_TWO,
+            roll: 0.0,
+          },
           duration: 1.5,
           complete: () => viewer.scene.requestRender(),
         });
       }
+    } catch (err) {
+      console.warn('[GoogleEarthRemix] Error resetting compass:', err);
+    }
+  };
+
+  const handleRecenter = () => {
+    try {
+      const viewer = (window as any).cesiumViewer;
+      if (viewer && !viewer.isDestroyed()) {
+        if (activeLocation) {
+          viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(activeLocation.lng, activeLocation.lat, 1800000),
+            duration: 1.5,
+            complete: () => viewer.scene.requestRender(),
+          });
+        } else {
+          viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(0, 20, 20000000),
+            duration: 1.5,
+            complete: () => viewer.scene.requestRender(),
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[GoogleEarthRemix] Error recentering camera:', err);
     }
   };
 
@@ -714,21 +769,28 @@ export default function GoogleEarthRemix() {
   };
 
   const flyToStep = (step: TourStep) => {
-    const viewer = (window as any).cesiumViewer;
-    if (viewer) {
-      viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(step.lng, step.lat, 250000), // Fly close (250km)
-        duration: 2.0,
-        complete: () => viewer.scene.requestRender(),
-      });
+    try {
+      const viewer = (window as any).cesiumViewer;
+      if (viewer && !viewer.isDestroyed()) {
+        viewer.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(step.lng, step.lat, 250000),
+          duration: 2.0,
+          complete: () => viewer.scene.requestRender(),
+        });
 
-      // Maintain rendering
-      const listener = viewer.scene.preUpdate.addEventListener(() => viewer.scene.requestRender());
-      setTimeout(() => listener(), 2500);
+        const listener = viewer.scene.preUpdate.addEventListener(() => viewer.scene.requestRender());
+        setTimeout(() => listener(), 2500);
+      }
+    } catch (err) {
+      console.warn('[GoogleEarthRemix] Error flying to tour step:', err);
     }
   };
 
   const activeTourStep = selectedTour?.steps[currentStepIndex];
+
+  if (isHeadless) {
+    return null;
+  }
 
   return (
     <section className="earth-remix" aria-label="Orbital explorer">

@@ -27,11 +27,22 @@ export class EarthquakesPlugin implements WorldPlugin {
     }
 
     async fetch(_timeRange: TimeRange): Promise<GeoEntity[]> {
-        try {
-            const res = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson");
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+        const fetchWithRetry = async (retries = 3, backoff = 1000): Promise<any> => {
+            try {
+                const res = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson");
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return await res.json();
+            } catch (err) {
+                if (retries > 0) {
+                    await new Promise(resolve => setTimeout(resolve, backoff));
+                    return fetchWithRetry(retries - 1, backoff * 2);
+                }
+                throw err;
+            }
+        };
 
+        try {
+            const data = await fetchWithRetry();
             const features = Array.isArray(data?.features) ? data.features : [];
             return features.map((feat: any) => {
                 const coords = feat.geometry.coordinates;

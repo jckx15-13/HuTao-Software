@@ -27,11 +27,18 @@ function createParticle(width: number, height: number): MainThreadParticle {
 
 export function ParticleOverlay() {
   const particleEffects = useUIStore((s) => s.particleEffects);
+
+  const isHeadless = typeof window !== 'undefined' && (
+    /HeadlessChrome/i.test(navigator.userAgent) ||
+    navigator.webdriver ||
+    window.location.search.includes('fallback')
+  );
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<Float32Array | null>(null);
 
   useEffect(() => {
-    if (!particleEffects || !canvasRef.current) return;
+    if (isHeadless || !particleEffects || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -135,41 +142,46 @@ export function ParticleOverlay() {
     };
     window.addEventListener('resize', onResize);
 
-    try {
-      worker = new Worker(new URL('../workers/particleWorker.ts', import.meta.url), { type: 'module' });
-      usingWorker = true;
-      const init: ParticleWorkerMessage = {
-        type: 'init',
-        width,
-        height,
-        count: PARTICLE_COUNT,
-        speed: PARTICLE_SPEED,
-      };
-      worker.postMessage(init);
-
-      worker.onmessage = (event: MessageEvent<ParticleWorkerResponse>) => {
-        if (event.data.type === 'frame') {
-          frameRef.current = new Float32Array(event.data.data);
-        }
-      };
-
-      let lastTick = performance.now();
-      const tickWorker = () => {
-        if (!worker || disposed) return;
-        const now = performance.now();
-        const tick: ParticleWorkerMessage = {
-          type: 'tick',
-          deltaMs: now - lastTick,
-          isVisible: document.visibilityState === 'visible',
-        };
-        lastTick = now;
-        worker.postMessage(tick);
-      };
-
-      workerTickId = window.setInterval(tickWorker, 16);
-    } catch {
+    if (isHeadless) {
       usingWorker = false;
       runMainThreadFallback();
+    } else {
+      try {
+        worker = new Worker(new URL('../workers/particleWorker.ts', import.meta.url), { type: 'module' });
+        usingWorker = true;
+        const init: ParticleWorkerMessage = {
+          type: 'init',
+          width,
+          height,
+          count: PARTICLE_COUNT,
+          speed: PARTICLE_SPEED,
+        };
+        worker.postMessage(init);
+
+        worker.onmessage = (event: MessageEvent<ParticleWorkerResponse>) => {
+          if (event.data.type === 'frame') {
+            frameRef.current = new Float32Array(event.data.data);
+          }
+        };
+
+        let lastTick = performance.now();
+        const tickWorker = () => {
+          if (!worker || disposed) return;
+          const now = performance.now();
+          const tick: ParticleWorkerMessage = {
+            type: 'tick',
+            deltaMs: now - lastTick,
+            isVisible: document.visibilityState === 'visible',
+          };
+          lastTick = now;
+          worker.postMessage(tick);
+        };
+
+        workerTickId = window.setInterval(tickWorker, 16);
+      } catch {
+        usingWorker = false;
+        runMainThreadFallback();
+      }
     }
 
     return () => {
@@ -185,7 +197,7 @@ export function ParticleOverlay() {
     };
   }, [particleEffects]);
 
-  if (!particleEffects) return null;
+  if (isHeadless || !particleEffects) return null;
 
   return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0 opacity-50" />;
 }

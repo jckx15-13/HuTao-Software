@@ -3,15 +3,11 @@ import { useUIStore } from '@/store/uiStore';
 import { useIssTelemetry } from '../../hooks/useIssTelemetry';
 import {
   LANDMASS_POINTS_3D,
-  MERIDIANS_3D,
-  PARALLELS_3D,
-  projectUnitVector,
   projectUnitVectorInto,
   projectLatLng,
 } from '../../lib/globeProjection';
 import { SATELLITES } from '../../data/satellites';
 import { propagateCircularOrbit, propagateCircularOrbitInto } from '../../lib/simulation';
-
 
 const CesiumBackground3D = React.lazy(() => import('./CesiumBackground3D'));
 
@@ -36,9 +32,6 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
   // Unconditional hook call for background telemetry synchronization
   useIssTelemetry();
 
-  // Scanline/CRT overlay toggle
-  const scanlineOverlay = useUIStore((s) => s.scanlineOverlay);
-
   // Check if we are running in a headless environment to prevent WebGL/Canvas and CSS blur rendering crashes
   const isHeadless = typeof window !== 'undefined' && (
     /HeadlessChrome/i.test(navigator.userAgent) ||
@@ -49,6 +42,17 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
   if (isHeadless) {
     return <div className="absolute inset-0 h-full w-full bg-[#05060b]" />;
   }
+
+  return <CesiumBackgroundReal interactive={interactive} />;
+}
+
+interface CesiumBackgroundRealProps {
+  interactive: boolean;
+}
+
+function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
+  // Scanline/CRT overlay toggle
+  const scanlineOverlay = useUIStore((s) => s.scanlineOverlay);
 
   // Synchronously detect WebGL availability
   const [webglError] = useState<string | null>(() => {
@@ -72,7 +76,6 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const telemetryRef = useRef<any>(null);
   const startTimeRef = useRef(Date.now());
-
 
   // Subscribe to ISS telemetry store updates in a ref to bypass React rendering cycles
   useEffect(() => {
@@ -112,7 +115,6 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
     // Scale globe radius to available viewport so it looks good at many sizes
     const R = Math.min(rect.width, rect.height) * 0.35; // Core globe radius
     const tilt = (20 * Math.PI) / 180; // Constant axial elevation tilt (20 degrees)
-    const inc = (51.6 * Math.PI) / 180; // ISS orbital inclination (51.6 degrees)
 
     const pointOut = new Float32Array(3); // reuse buffer to avoid allocations
     const orbitOut = new Float32Array(2); // lat, lng reuse buffer
@@ -144,8 +146,6 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
       ctx.beginPath();
       ctx.arc(cx, cy, R, 0, 2 * Math.PI);
       ctx.stroke();
-
-      // (Grid lines removed to prevent CRT scanline effects)
 
       // 4. Cybernetic landmass point landmarks (non-allocating projection)
       ctx.fillStyle = 'rgba(138, 91, 199, 0.35)';
@@ -248,7 +248,6 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
           ctx.setLineDash([2, 3]);
           ctx.beginPath();
           let firstOrbitPoint = true;
-          // Reduce trail sampling resolution slightly to cut per-frame CPU cost
           for (let u = 0; u <= 2 * Math.PI; u += 0.12) {
             propagateCircularOrbitInto(orbitOut, 0, elapsed - u * 500, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
             const opt = projectLatLng(orbitOut[0], orbitOut[1], rotation, tilt, R, cx, cy);
@@ -289,7 +288,6 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
         }
       });
 
-
       rafId = requestAnimationFrame(renderFrame);
     };
 
@@ -318,7 +316,7 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
         <div className="relative flex flex-col items-center gap-8 z-10">
           <div className="relative w-64 h-64 flex items-center justify-center border border-primary/10 rounded-full bg-[#08090f]/60 backdrop-blur-md shadow-[0_0_60px_rgba(138,91,199,0.06),inset_0_0_20px_rgba(138,91,199,0.03)]">
             
-            {/* Canvas-based high performance spinning vector globe */}
+            {/* Canvas-based spinning vector globe */}
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ display: 'block' }} />
 
             {/* Inner Earth glowing aura backdrop */}
@@ -359,4 +357,3 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
     </div>
   );
 }
-

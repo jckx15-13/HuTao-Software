@@ -940,7 +940,7 @@ export function LeftPanel() {
 
 
             {/* --- COSMIC TELESCOPE HUB --- */}
-            {interactionMode === 'telescope' && (
+            {(interactionMode === 'orbital' || interactionMode === 'telescope') && (
               <div className="mt-4 flex flex-col">
                 <div className="p-2.5 border-t border-b border-white/5 bg-primary/5 text-[9px] font-mono uppercase tracking-[0.2em] font-bold text-primary flex items-center gap-1.5">
                   <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />

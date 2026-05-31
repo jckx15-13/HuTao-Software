@@ -527,17 +527,6 @@ function ImageryProviderSelector() {
     updateMapConfig({ baseLayerId: layerId });
   };
 
-  // Icons per layer type
-  const layerIcons: Record<string, string> = {
-    'google-3d': '🌐',
-    'bing-aerial': '🛰️',
-    'bing-labels': '🏷️',
-    'bing-road': '🛣️',
-    'osm': '🗺️',
-    'arcgis-world': '🌍',
-    'blue-marble': '🌏',
-  };
-
   return (
     <div className="glass-panel p-4 border border-white/5 space-y-4 rounded-xl">
       <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
@@ -548,32 +537,57 @@ function ImageryProviderSelector() {
         Select the base imagery layer for the 3D globe rendering engine.
       </p>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         {IMAGERY_LAYERS.map((layer) => {
-          const isSelected = (imageryProvider || 'osm') === layer.id;
+          const isSelected = (imageryProvider || 'cesium') === layer.id;
           return (
             <button
               key={layer.id}
               type="button"
               onClick={() => handleSelect(layer.id)}
-              className={`flex flex-col items-start gap-1 p-3 rounded-lg border text-left transition-all cursor-pointer ${
+              className={`group relative flex flex-col overflow-hidden rounded-lg border transition-all duration-300 ${
                 isSelected
-                  ? 'border-primary bg-primary/15 shadow-[0_0_12px_rgba(var(--color-primary-rgb,138,91,199),0.15)]'
-                  : 'border-white/5 bg-white/5 hover:border-white/10 hover:bg-white/8'
+                  ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--color-primary-rgb,138,91,199),0.2)] scale-[1.02]'
+                  : 'border-white/5 bg-white/5 hover:border-white/20 hover:bg-white/10'
               }`}
             >
-              <div className="flex items-center gap-2 w-full">
-                <span className="text-sm">{layerIcons[layer.id] || '🗺️'}</span>
-                <span className={`text-[9px] font-mono font-bold uppercase tracking-wider ${
-                  isSelected ? 'text-primary' : 'text-white/60'
+              {/* Thumbnail Container */}
+              <div className="relative h-20 w-full overflow-hidden bg-black/40">
+                {layer.thumbnail ? (
+                  <img 
+                    src={layer.thumbnail} 
+                    alt={layer.name}
+                    className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-110 ${
+                      isSelected ? 'opacity-100' : 'opacity-60 grayscale-[40%]'
+                    }`}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-white/10">
+                    <Map size={24} />
+                  </div>
+                )}
+                
+                {/* Selection Overlay */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-primary/20 backdrop-blur-[1px] flex items-center justify-center">
+                    <div className="bg-primary rounded-full p-1 shadow-lg">
+                      <Check size={14} className="text-white" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Label Area */}
+              <div className="p-2.5 space-y-0.5">
+                <div className={`text-[10px] font-mono font-bold uppercase tracking-wider truncate ${
+                  isSelected ? 'text-primary' : 'text-white/70 group-hover:text-white'
                 }`}>
                   {layer.name}
-                </span>
-                {isSelected && <Check size={12} className="text-primary ml-auto shrink-0" />}
+                </div>
+                <div className="text-[8px] font-mono text-white/30 uppercase leading-tight line-clamp-1">
+                  {layer.description}
+                </div>
               </div>
-              <span className="text-[7px] font-mono text-white/30 uppercase leading-tight">
-                {layer.description}
-              </span>
             </button>
           );
         })}

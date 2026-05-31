@@ -1,4 +1,4 @@
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect, useCallback } from 'react';
 import { MessageSquare, Globe2, Sparkles, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { ChatPanel } from '../ChatPanel';
@@ -6,6 +6,8 @@ import { ChatInputBar } from '../chat/ChatInputBar';
 import { useAIChat } from '../../hooks/useAIChat';
 import GoogleEarthRemix from '../learning/GoogleEarthRemix';
 import WorldWideTelescopeView from '../learning/WorldWideTelescopeView';
+import { ErrorBoundary } from '../ErrorBoundary';
+
 
 function SidebarTrigger() {
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
@@ -37,12 +39,38 @@ export function CenterPanel() {
   
   const { sendMessage } = useAIChat();
 
+  // Track WWT error state for change log reporting
+  const handleTelescopeError = useCallback((error: Error) => {
+    console.warn('[CenterPanel] Telescope view error caught by boundary:', error.message);
+    useUIStore.getState().addChangeLog(
+      'TELESCOPE',
+      `View error caught: ${error.message}`,
+      'warning'
+    );
+  }, []);
+
+  // Keyboard shortcut: Escape exits telescope mode back to orbital
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && interactionMode === 'telescope') {
+        setInteractionMode('orbital');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [interactionMode, setInteractionMode]);
+
+  const isSpaceMode = interactionMode === 'orbital' || interactionMode === 'telescope';
+
   return (
-    <div className={`flex h-full flex-1 flex-col overflow-hidden relative ${
-      interactionMode === 'orbital' ? 'pointer-events-none' : 'pointer-events-auto'
-    }`}>
+    // Root container: ALWAYS pointer-events-none to let Cesium globe receive drags underneath.
+    // Each interactive child explicitly opts-in with pointer-events-auto.
+    <div className="flex h-full flex-1 flex-col overflow-hidden relative pointer-events-none">
+      
+      {/* Sidebar trigger — always interactive */}
       <SidebarTrigger />
-      {/* Dynamic Segmented Mode Switcher (Pill Style) */}
+
+      {/* Dynamic Segmented Mode Switcher (Pill Style) — always interactive */}
       <div className="absolute top-1.5 left-1/2 z-30 -translate-x-1/2 pointer-events-auto">
         <div className="glass-panel flex items-center p-1 rounded-full border border-white/5 shadow-lg">
           <button
@@ -103,33 +131,47 @@ export function CenterPanel() {
             </div>
 
             {/* Input bar */}
-            <ChatInputBar onSend={sendMessage} disabled={isProcessing} />
+            <div className="pointer-events-auto">
+              <ChatInputBar onSend={sendMessage} disabled={isProcessing} />
+            </div>
           </div>
         </div>
 
-        {/* Orbital View (Google Earth Remix) Container */}
+        {/* Combined Space & Telescope Viewport Container */}
         <div 
-          className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out ${
-            interactionMode === 'orbital' 
-              ? 'translate-x-0 opacity-100 pointer-events-none z-10' 
+          className={`absolute inset-0 transition-all duration-300 ease-out ${
+            isSpaceMode
+              ? 'translate-x-0 opacity-100 z-10' 
               : 'translate-x-full opacity-0 pointer-events-none z-0'
           }`}
         >
-          {interactionMode === 'orbital' && <GoogleEarthRemix />}
-        </div>
-
-        {/* Telescope View (WorldWide Telescope) Container */}
-        <div 
-          className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out ${
-            interactionMode === 'telescope' 
-              ? 'translate-x-0 opacity-100 pointer-events-auto z-10' 
-              : 'translate-x-full opacity-0 pointer-events-none z-0'
-          }`}
-        >
-          {interactionMode === 'telescope' && <WorldWideTelescopeView />}
+          {/* GoogleEarthRemix overlay — pointer-events-none so globe underneath gets drags */}
+          {isSpaceMode && (
+            <div className={`absolute inset-0 pointer-events-none transition-all duration-700 ease-in-out ${
+              interactionMode === 'telescope' ? 'opacity-30' : 'opacity-100'
+            }`}>
+              <GoogleEarthRemix />
+            </div>
+          )}
+          
+          {/* WorldWide Telescope overlay — wrapped in inline ErrorBoundary for graceful degradation */}
+          {isSpaceMode && (
+            <div className={`absolute inset-0 pointer-events-none transition-all duration-700 ease-in-out ${
+              interactionMode === 'telescope' 
+                ? 'opacity-100 scale-100' 
+                : 'opacity-90 scale-[0.98] translate-x-2'
+            }`}>
+              <ErrorBoundary
+                variant="inline"
+                fallbackMessage="Telescope View Encountered an Error"
+                onError={handleTelescopeError}
+              >
+                <WorldWideTelescopeView />
+              </ErrorBoundary>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-

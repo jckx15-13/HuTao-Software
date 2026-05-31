@@ -5,6 +5,11 @@ import { useUIStore } from '@/store/uiStore';
 import { useStore } from '../../core/state/store';
 import { slerp, latLngToVector, bezierEase } from '../../lib/physics';
 
+// Scratch objects to avoid per-frame allocations during flight
+const scratchCartesian1 = new Cesium.Cartesian3();
+const scratchCartesian2 = new Cesium.Cartesian3();
+const scratchCartesian3 = new Cesium.Cartesian3();
+
 /**
  * Landmarks hook — Optimized with:
  * - Batch entity creation (all markers in one operation)
@@ -130,19 +135,26 @@ export function useLandmarks(viewer: Cesium.Viewer | null) {
       const currentHeight = startHeight + (targetHeight - startHeight) * easedT;
       const r = earthRadius + currentHeight;
       
-      // Compute new cartesian position
-      const newPos = new Cesium.Cartesian3(currentV.x * r, currentV.y * r, currentV.z * r);
+      // Compute new cartesian position into scratch object
+      const newPos = scratchCartesian1;
+      newPos.x = currentV.x * r;
+      newPos.y = currentV.y * r;
+      newPos.z = currentV.z * r;
       
-      // Compute nadir orientation (looking straight down)
+      // Compute nadir orientation (looking straight down) using scratch results
       const direction = Cesium.Cartesian3.normalize(
-        Cesium.Cartesian3.negate(newPos, new Cesium.Cartesian3()),
-        new Cesium.Cartesian3()
+        Cesium.Cartesian3.negate(newPos, scratchCartesian2),
+        scratchCartesian2
       );
       
       // Use UNIT_Z as up, but adjust if close to poles to avoid gimbal lock
-      const up = Math.abs(currentV.z) > 0.99 
-        ? Cesium.Cartesian3.normalize(new Cesium.Cartesian3(currentV.x, -currentV.y, 0), new Cesium.Cartesian3())
-        : Cesium.Cartesian3.UNIT_Z;
+      let up = Cesium.Cartesian3.UNIT_Z;
+      if (Math.abs(currentV.z) > 0.99) {
+        scratchCartesian3.x = currentV.x;
+        scratchCartesian3.y = -currentV.y;
+        scratchCartesian3.z = 0;
+        up = Cesium.Cartesian3.normalize(scratchCartesian3, scratchCartesian3);
+      }
 
       viewer.camera.setView({
         destination: newPos,

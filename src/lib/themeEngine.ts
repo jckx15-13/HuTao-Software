@@ -111,27 +111,17 @@ function hslToHex(h: number, s: number, l: number) {
 const GOLDEN_RATIO = 0.618033988749895;
 
 export function generateMathAccents(baseHex: string): Record<AccentThemeToken, string> {
-  const fallback = {
-    '--theme-accent-triad-1': baseHex,
-    '--theme-accent-triad-2': baseHex,
-    '--theme-accent-comp': baseHex,
-    '--theme-accent-phi-1': baseHex,
-    '--theme-accent-phi-2': baseHex,
-  };
-
-  if (!/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(baseHex)) {
-    return fallback;
-  }
-
   const { h, s, l } = hexToHsl(baseHex);
 
-  return {
+  const accents: Record<AccentThemeToken, string> = {
     '--theme-accent-triad-1': hslToHex(h + 120, s, l),
     '--theme-accent-triad-2': hslToHex(h + 240, s, l),
     '--theme-accent-comp': hslToHex(h + 180, s, l),
     '--theme-accent-phi-1': hslToHex(h + GOLDEN_RATIO * 360, s, Math.min(l + 10, 90)),
     '--theme-accent-phi-2': hslToHex(h + GOLDEN_RATIO * 2 * 360, s, Math.max(l - 10, 10)),
   };
+
+  return accents;
 }
 
 const basePalettes = {

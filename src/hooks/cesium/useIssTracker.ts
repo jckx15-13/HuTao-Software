@@ -1,11 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import * as Cesium from 'cesium';
 import { useUIStore } from '@/store/uiStore';
-import { propagateCircularOrbit } from '../../lib/simulation';
+import { propagateCircularOrbit, propagateSatelliteTle } from '../../lib/simulation';
 import { SATELLITES, SatelliteConfig } from '../../data/satellites';
 
 /** Only rebuild polyline geometry every N frames. */
 const TRAIL_UPDATE_INTERVAL = 3;
+
+// Shared scratch objects to avoid per-frame allocations in 60fps loops
+const scratchPos = new Cesium.Cartesian3();
+const scratchPos2 = new Cesium.Cartesian3();
+const scratchMatrix3 = new Cesium.Matrix3();
+const scratchMatrix4 = new Cesium.Matrix4();
+const scratchQuaternion = new Cesium.Quaternion();
+const scratchJulianDate = new Cesium.JulianDate();
 
 export function useIssTracker(viewer: Cesium.Viewer | null) {
   const issTelemetry = useUIStore((s) => s.issTelemetry);
@@ -70,7 +78,8 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
 
       const entity = viewer.entities.add({
         id: sat.id,
-        position: Cesium.Cartesian3.fromDegrees(0, 0, sat.altitudeM),
+        // Initial position will be updated by the physics loop
+        position: new Cesium.ConstantPositionProperty(Cesium.Cartesian3.ZERO) as any,
         billboard: iconUrl
           ? {
               image: iconUrl,
@@ -87,8 +96,8 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
           font: 'bold 7.5pt JetBrains Mono, monospace',
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           outlineWidth: 2,
-          verticalOrigin: Cesium.VerticalOrigin.TOP,
-          pixelOffset: new Cesium.Cartesian2(0, 12),
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, -12),
           fillColor: Cesium.Color.fromCssColorString(sat.color),
           outlineColor: Cesium.Color.BLACK,
           showBackground: true,
@@ -150,12 +159,12 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
 
       if (shouldHaveTrail) {
         if (!paths.has(id)) {
-            const satConfig = SATELLITES.find((s) => s.id === id) || { color: '#00FFF7' };
+          const satConfig = SATELLITES.find((s) => s.id === id) || { color: '#00FFF7' };
           const colorHex = id === 'iss' ? '#00FFF7' : satConfig.color;
           const path = viewer.entities.add({
             id: `${id}-path`,
             polyline: {
-              positions: [],
+              positions: new Cesium.ConstantProperty([]),
               width: isSelected ? 2.5 : 1.5,
               material: new Cesium.PolylineGlowMaterialProperty({
                 glowPower: isSelected ? 0.25 : 0.15,
@@ -168,7 +177,13 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
           // Adjust width/glow dynamically for selected vs unselected trails
           const path = paths.get(id);
           if (path?.polyline) {
-            path.polyline.width = new Cesium.ConstantProperty(isSelected ? 2.5 : 1.5) as any;
+            // Update constant property value instead of creating new ones
+            const widthProp = path.polyline.width as Cesium.ConstantProperty;
+            if (widthProp && typeof widthProp.setValue === 'function') {
+                widthProp.setValue(isSelected ? 2.5 : 1.5);
+            } else {
+                path.polyline.width = new Cesium.ConstantProperty(isSelected ? 2.5 : 1.5) as any;
+            }
           }
         }
       } else {
@@ -213,26 +228,27 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
 
     const frustumEntity = viewer.entities.add({
       id: `satellite-frustum-${activeSatelliteId}`,
-      position: new Cesium.CallbackPositionProperty(() => {
+      position: new Cesium.CallbackPositionProperty((time, result) => {
         const ent = entities.get(activeSatelliteId);
         if (!ent) return Cesium.Cartesian3.ZERO;
-        const basePos = ent.position ? ent.position.getValue(Cesium.JulianDate.now()) : null;
+        const basePos = ent.position ? ent.position.getValue(time, scratchPos) as Cesium.Cartesian3 : null;
         if (!basePos) return Cesium.Cartesian3.ZERO;
 
         // Shift halfway down towards Earth center so cylinder fits between satellite and surface
         const mag = Cesium.Cartesian3.magnitude(basePos);
         if (mag === 0) return basePos;
         const scale = (mag - alt / 2) / mag;
-        return Cesium.Cartesian3.multiplyByScalar(basePos, scale, new Cesium.Cartesian3());
+        return Cesium.Cartesian3.multiplyByScalar(basePos, scale, result || new Cesium.Cartesian3());
       }, false),
-      orientation: new Cesium.CallbackProperty(() => {
+      orientation: new Cesium.CallbackProperty((time, result) => {
         const ent = entities.get(activeSatelliteId);
         if (!ent) return Cesium.Quaternion.IDENTITY;
-        const basePos = ent.position ? ent.position.getValue(Cesium.JulianDate.now()) : null;
+        const basePos = ent.position ? ent.position.getValue(time, scratchPos) as Cesium.Cartesian3 : null;
         if (!basePos) return Cesium.Quaternion.IDENTITY;
 
-        const enuMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(basePos);
-        return Cesium.Quaternion.fromRotationMatrix(Cesium.Matrix4.getMatrix3(enuMatrix, new Cesium.Matrix3()));
+        const enuMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(basePos, Cesium.Ellipsoid.WGS84, scratchMatrix4);
+        const rotationMatrix = Cesium.Matrix4.getMatrix3(enuMatrix, scratchMatrix3);
+        return Cesium.Quaternion.fromRotationMatrix(rotationMatrix, result || new Cesium.Quaternion());
       }, false),
       cylinder: {
         length: alt,
@@ -293,34 +309,51 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
       const entities = entitiesRef.current;
       const paths = pathsRef.current;
       const history = historyRef.current;
+      const satelliteData = useUIStore.getState().satelliteData;
 
       const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      const now = new Date();
 
       // 1. Update ISS simulated physics if no telemetry, or telemetry is active
       if (entities.has('iss')) {
         let issPos;
+        const issData = satelliteData['iss'];
+
         if (issTelemetry) {
           const { latitude: lat, longitude: lng, altitude } = issTelemetry;
-          issPos = Cesium.Cartesian3.fromDegrees(lng, lat, altitude * 1000);
+          issPos = Cesium.Cartesian3.fromDegrees(lng, lat, altitude * 1000, Cesium.Ellipsoid.WGS84, scratchPos);
+        } else if (issData?.tle) {
+          // Use high-fidelity TLE propagation if available
+          const coords = propagateSatelliteTle(issData.tle, now);
+          if (coords) {
+            issPos = Cesium.Cartesian3.fromDegrees(coords.lng, coords.lat, coords.altitude, Cesium.Ellipsoid.WGS84, scratchPos);
+          } else {
+            const coordsFallback = propagateCircularOrbit(elapsed, 420_000, (51.64 * Math.PI) / 180, 0.0, 0.0);
+            issPos = Cesium.Cartesian3.fromDegrees(coordsFallback.lng, coordsFallback.lat, 420_000, Cesium.Ellipsoid.WGS84, scratchPos);
+          }
         } else {
-          // Fallback to circular orbit propagation for ISS if telemetry is offline
+          // Fallback to circular orbit propagation for ISS if telemetry and TLE are offline
           const coords = propagateCircularOrbit(elapsed, 420_000, (51.64 * Math.PI) / 180, 0.0, 0.0);
-          issPos = Cesium.Cartesian3.fromDegrees(coords.lng, coords.lat, 420_000);
+          issPos = Cesium.Cartesian3.fromDegrees(coords.lng, coords.lat, 420_000, Cesium.Ellipsoid.WGS84, scratchPos);
         }
 
         const issEntity = entities.get('iss');
-        if (issEntity) {
-          issEntity.position = new Cesium.ConstantPositionProperty(issPos) as any;
+        if (issEntity && issEntity.position) {
+          (issEntity.position as Cesium.ConstantPositionProperty).setValue(issPos);
         }
 
         const issHistory = history.get('iss') || [];
-        issHistory.push(issPos);
+        // Important: clone the position since scratchPos will be overwritten
+        issHistory.push(Cesium.Cartesian3.clone(issPos));
         const maxTrail = useUIStore.getState().satelliteSettings?.trailLength ?? 40;
         if (issHistory.length > maxTrail) issHistory.shift();
 
         const issPath = paths.get('iss');
         if (updateCountRef.current % TRAIL_UPDATE_INTERVAL === 0 && issPath?.polyline) {
-          issPath.polyline.positions = new Cesium.ConstantProperty([...issHistory]) as any;
+          const positionsProp = issPath.polyline.positions as Cesium.ConstantProperty;
+          if (positionsProp && typeof positionsProp.setValue === 'function') {
+            positionsProp.setValue(issHistory);
+          }
         }
       }
 
@@ -328,22 +361,39 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
       for (const sat of SATELLITES) {
         if (!entities.has(sat.id)) continue;
 
-        const coords = propagateCircularOrbit(elapsed, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
-        const pos = Cesium.Cartesian3.fromDegrees(coords.lng, coords.lat, sat.altitudeM);
+        const satData = satelliteData[sat.id];
+        let pos;
+
+        if (satData?.tle) {
+          // Use high-fidelity TLE propagation
+          const coords = propagateSatelliteTle(satData.tle, now);
+          if (coords) {
+            pos = Cesium.Cartesian3.fromDegrees(coords.lng, coords.lat, coords.altitude, Cesium.Ellipsoid.WGS84, scratchPos2);
+          } else {
+            const coordsFallback = propagateCircularOrbit(elapsed, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+            pos = Cesium.Cartesian3.fromDegrees(coordsFallback.lng, coordsFallback.lat, sat.altitudeM, Cesium.Ellipsoid.WGS84, scratchPos2);
+          }
+        } else {
+          const coords = propagateCircularOrbit(elapsed, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+          pos = Cesium.Cartesian3.fromDegrees(coords.lng, coords.lat, sat.altitudeM, Cesium.Ellipsoid.WGS84, scratchPos2);
+        }
 
         const entity = entities.get(sat.id);
-        if (entity) {
-          entity.position = new Cesium.ConstantPositionProperty(pos) as any;
+        if (entity && entity.position) {
+          (entity.position as Cesium.ConstantPositionProperty).setValue(pos);
         }
 
         const satHistory = history.get(sat.id) || [];
-        satHistory.push(pos);
+        satHistory.push(Cesium.Cartesian3.clone(pos));
         const maxTrail = useUIStore.getState().satelliteSettings?.trailLength ?? 40;
         if (satHistory.length > maxTrail) satHistory.shift();
 
         const path = paths.get(sat.id);
         if (updateCountRef.current % TRAIL_UPDATE_INTERVAL === 0 && path?.polyline) {
-          path.polyline.positions = new Cesium.ConstantProperty([...satHistory]) as any;
+            const positionsProp = path.polyline.positions as Cesium.ConstantProperty;
+            if (positionsProp && typeof positionsProp.setValue === 'function') {
+              positionsProp.setValue(satHistory);
+            }
         }
       }
 

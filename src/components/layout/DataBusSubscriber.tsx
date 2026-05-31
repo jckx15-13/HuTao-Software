@@ -25,8 +25,11 @@ export function DataBusSubscriber() {
     }, [cacheMaxAge]);
 
     useEffect(() => {
+        let active = true;
+
         const unsubReg = dataBus.on("pluginRegistered", ({ pluginId, defaultInterval }) => {
             setTimeout(() => {
+                if (!active) return;
                 useStore.getState().initLayer(pluginId, false);
                 const currentIntervals = useStore.getState().dataConfig.pollingIntervals;
                 if (!currentIntervals[pluginId]) {
@@ -38,6 +41,7 @@ export function DataBusSubscriber() {
         const unsubData = dataBus.on("dataUpdated", ({ pluginId, entities }) => {
             // Defer state updates by one tick to prevent React render loop issues
             setTimeout(() => {
+                if (!active) return;
                 setEntities(pluginId, entities);
                 setEntityCount(pluginId, entities.length);
             }, 0);
@@ -51,12 +55,14 @@ export function DataBusSubscriber() {
                 wsClient.unsubscribe(pluginId, engineUrl);
             }
             setTimeout(() => {
+                if (!active) return;
                 useStore.getState().setLayerEnabled(pluginId, enabled);
             }, 0);
         });
 
         const unsubUnreg = dataBus.on("pluginUnregistered", ({ pluginId }) => {
             setTimeout(() => {
+                if (!active) return;
                 clearEntities(pluginId);
                 removeLayer(pluginId);
             }, 0);
@@ -64,11 +70,13 @@ export function DataBusSubscriber() {
 
         const unsubLoading = dataBus.on("layerLoadingChanged", ({ pluginId, loading }) => {
             setTimeout(() => {
+                if (!active) return;
                 setLayerLoading(pluginId, loading);
             }, 0);
         });
 
         return () => {
+            active = false;
             unsubReg();
             unsubUnreg();
             unsubData();

@@ -32,9 +32,14 @@ export function CustomCursor({ appHighLoad = false }: CustomCursorProps) {
       personalisation.motionReduced,
     ]
   );
+  const isHeadless = typeof window !== 'undefined' && (
+    /HeadlessChrome/i.test(navigator.userAgent) ||
+    navigator.webdriver ||
+    window.location.search.includes('fallback')
+  );
 
   useEffect(() => {
-    if (!mountRef.current) return;
+    if (isHeadless || !mountRef.current) return;
     const engine = new CursorEngine(config);
     engineRef.current = engine;
     engine.init();
@@ -46,6 +51,7 @@ export function CustomCursor({ appHighLoad = false }: CustomCursorProps) {
   }, []);
 
   useEffect(() => {
+    if (isHeadless) return;
     engineRef.current?.updateConfig(config);
   }, [config]);
 

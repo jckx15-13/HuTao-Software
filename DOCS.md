@@ -73,3 +73,48 @@ Design concerns to keep watching:
 - `npm run build` passes.
 - `npm audit --omit=dev` reports 0 vulnerabilities.
 - Production chunks are split by React, Gemini AI, Markdown, Motion, and app code.
+
+---
+
+# 🍼 The Toddler's Guide to Silver Wolf VI (How the Toys Connect & Support Each Other!)
+
+Hello, tiny friend! We added comments inside each code file telling you exactly what each line is doing. But how do the files talk to each other? Let's trace the secret pathways that connect all our toys so they work as a team!
+
+---
+
+## 🔗 Connection 1: How Settings Change the Paint Colors (Store ➔ Hook ➔ HTML)
+
+Imagine you have a **Brain Store** ([uiStore.ts](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/store/uiStore.ts)) that remembers your favorite paint color. But the store is just a memory—it doesn't have hands to paint the screen!
+
+1. You click a new theme in the settings screen.
+2. The **Brain Store** updates its note (e.g. `activePalette` changes).
+3. The **Color Hook** ([useThemeVariables.ts](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/hooks/useThemeVariables.ts)) is watching that note. As soon as it changes, the hook grabs the hex codes (like `#ff00ff`) from the **Color Palette Book** (`themeEngine.ts`).
+4. The hook reaches out to the raw web browser and writes those colors directly onto the browser's skin (`document.documentElement.style.setProperty`).
+5. Every single button and text box on the page reads these properties to paint themselves neon, holographic, or matrix green!
+
+---
+
+## 🔗 Connection 2: How a Message Triggers Motion and Sound (Composer ➔ Panel ➔ Sound & Animation)
+
+When you press the Send button, it starts a chain reaction across three different files to make the app feel alive:
+
+1. **The Writer** (`ChatComposer.tsx`) captures your typed keys and triggers a submission callback.
+2. **The Panel** ([ChatPanel.tsx](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/components/ChatPanel.tsx)) catches this callback and does two things immediately:
+   - It wiggles its container by triggering spring physical motion coordinates.
+   - It calls the **Sound Blaster Hook** ([useAudioFeedback.ts](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/hooks/useAudioFeedback.ts)) to synthesize an arcade keypress sound.
+3. Concurrently, **The Talker** ([useAIChat.ts](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/hooks/useAIChat.ts)) sends your message out to the Gemini AI server on the internet.
+4. When the answer lands, **The Panel** detects the new text bubble and instructs the **Sound Blaster Hook** to play a "blip!" notifying you that the robot finished thinking.
+
+---
+
+## 🔗 Connection 3: How the App Cools Down if the Computer gets Sweaty (Load Factor Throttling)
+
+If your computer gets hot or has too many tasks running, we have a safety system that coordinates a cool-down across the entire workspace:
+
+1. The simulated CPU metric goes above 80% (`isHighLoad` is true).
+2. The **Main Box** ([App.tsx](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/App.tsx)) turns off the floaty firefly dots (`ParticleOverlay`) and standardizes your custom cursor pointer back to default.
+3. The **Chat Panel** ([ChatPanel.tsx](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/components/ChatPanel.tsx)) dampens its spring recoil motion.
+4. The **Workspace Organizer** ([DockedLayout.tsx](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/components/layout/DockedLayout.tsx)) hides the complex System Monitor gauge, replacing it with a simple passive block.
+5. Once load factor drops, all layout pieces smoothly restore their animations and canvas dots together!
+
+

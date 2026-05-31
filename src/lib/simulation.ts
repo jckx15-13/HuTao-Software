@@ -1,3 +1,5 @@
+import * as satellite from 'satellite.js';
+
 /**
  * Simulation Library
  * Pure functional calculations for orbital mechanics and physics tracking.
@@ -136,4 +138,32 @@ export function propagateCircularOrbitInto(
   while (lngDeg < -180) lngDeg += 360;
   out[offset] = latDeg;
   out[offset + 1] = lngDeg;
+}
+
+/**
+ * High-fidelity propagation using SGP4/SDP4 (via satellite.js)
+ */
+export function propagateSatelliteTle(
+  tleLines: string[],
+  date: Date = new Date()
+): { lat: number; lng: number; altitude: number } | null {
+  try {
+    const satrec = satellite.twoline2satrec(tleLines[1], tleLines[2]);
+    const positionAndVelocity = satellite.propagate(satrec, date);
+    const positionEci = positionAndVelocity.position;
+
+    if (typeof positionEci === 'boolean' || !positionEci) return null;
+
+    const gmst = satellite.gstime(date);
+    const positionGd = satellite.eciToGeodetic(positionEci as satellite.EciVec3<number>, gmst);
+
+    return {
+      lat: satellite.degreesLat(positionGd.latitude),
+      lng: satellite.degreesLong(positionGd.longitude),
+      altitude: positionGd.height * 1000, // convert km to meters
+    };
+  } catch (err) {
+    console.warn('[propagateSatelliteTle] Failed:', err);
+    return null;
+  }
 }

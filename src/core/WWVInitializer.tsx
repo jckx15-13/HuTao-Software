@@ -5,6 +5,9 @@ import { pluginRegistry } from './plugins/PluginRegistry';
 import { IssPlugin } from '../plugins/iss/IssPlugin';
 import { EarthquakesPlugin } from '../plugins/earthquakes/EarthquakesPlugin';
 import { DataBusSubscriber } from '../components/layout/DataBusSubscriber';
+import { TimelineSync } from './globe/TimelineSync';
+import { satelliteService } from '../services/satelliteService';
+import { weatherService } from '../services/weatherService';
 
 let mountCount = 0;
 
@@ -33,6 +36,10 @@ export function WWVInitializer({ children }: { children: React.ReactNode }) {
       await pluginManager.registerPlugin(earthquakes);
       pluginRegistry.register(earthquakes);
       
+      // 3. Start Background Ingestion Services
+      satelliteService.start();
+      weatherService.start();
+      
       if (!active) return;
       // Setup complete
       setInitialized(true);
@@ -44,6 +51,8 @@ export function WWVInitializer({ children }: { children: React.ReactNode }) {
       mountCount--;
       if (mountCount === 0) {
         pluginManager.destroy();
+        satelliteService.stop();
+        weatherService.stop();
       }
     };
   }, []);
@@ -64,6 +73,7 @@ export function WWVInitializer({ children }: { children: React.ReactNode }) {
   return (
     <>
       <DataBusSubscriber />
+      <TimelineSync />
       {children}
     </>
   );

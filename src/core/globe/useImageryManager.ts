@@ -24,6 +24,7 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
     const currentImageryLayerRef = useRef<ImageryLayer | null>(null);
     const initialCleanupDoneRef = useRef(false);
     const osmBuildingsRef = useRef<Cesium3DTileset | null>(null);
+    const googleTilesetRef = useRef<Cesium3DTileset | null>(null);
     const [google3DActive, setGoogle3DActive] = useState(false);
 
     // 1. Manage Scene Mode (2D / 3D / Columbus)
@@ -84,6 +85,10 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
                         if (active && !viewer.isDestroyed()) {
                             viewer.scene.primitives.add(tileset);
                             foundTileset = tileset;
+                        } else {
+                            if (typeof tileset.destroy === 'function') {
+                                tileset.destroy();
+                            }
                         }
                     } catch (err) {
                         console.warn("[useImageryManager] Failed to create Google 3D Tileset dynamically:", err);
@@ -156,6 +161,16 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
 
         return () => {
             active = false;
+            if (viewer && !viewer.isDestroyed()) {
+                if (currentImageryLayerRef.current) {
+                    viewer.imageryLayers.remove(currentImageryLayerRef.current);
+                    currentImageryLayerRef.current = null;
+                }
+                if (googleTilesetRef.current && viewer.scene.primitives.contains(googleTilesetRef.current)) {
+                    viewer.scene.primitives.remove(googleTilesetRef.current);
+                    googleTilesetRef.current = null;
+                }
+            }
         };
     }, [viewer, viewerReady, baseLayerId, fallbackLayerId]);
 

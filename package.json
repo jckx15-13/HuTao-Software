@@ -10,7 +10,8 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "lint": "node ./node_modules/typescript/bin/tsc --noEmit",
     "test": "node scripts/test_cursor_engine.cjs",
-    "test:cursor": "node scripts/test_cursor_engine.cjs"
+    "test:cursor": "node scripts/test_cursor_engine.cjs",
+    "test:robust": "node scripts/test_robust_verification.cjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -23,6 +24,7 @@
     "react-markdown": "^10.1.0",
     "react-textarea-autosize": "^8.5.9",
     "remark-gfm": "^4.0.1",
+    "satellite.js": "^5.0.0",
     "zustand": "^5.0.13"
   },
   "devDependencies": {

@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as Cesium from 'cesium';
 import { setupImagery } from '../../lib/imageryFactory';
-import { loadConfig } from '../../lib/config';
+import { useConfig } from '../../context/ConfigContext';
 import { useUIStore } from '../../store/uiStore';
+
+const isLowEndHardware = () => {
+  if (typeof navigator === 'undefined') return false;
+  const deviceMemory = (navigator as any).deviceMemory ?? 8;
+  const cores = navigator.hardwareConcurrency ?? 4;
+  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  return deviceMemory <= 4 || cores <= 4 || mobile;
+};
 
 /**
  * Cesium viewer hook with WWV-inspired performance optimizations.
@@ -19,16 +27,21 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
   const viewerRef = useRef<Cesium.Viewer | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { config, isLoading: configLoading } = useConfig();
 
   // Stable error setter for child components
   const onError = useCallback((msg: string) => setError(msg), []);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || configLoading || !config) return;
 
     // Pre-flight: WebGL availability check
     try {
-      if (/HeadlessChrome/i.test(navigator.userAgent) || navigator.webdriver) {
+      if (
+        /HeadlessChrome/i.test(navigator.userAgent) ||
+        navigator.webdriver ||
+        (typeof window !== 'undefined' && window.location.search.includes('fallback'))
+      ) {
         throw new Error('WebGL disabled in headless browser environment');
       }
       const canvas = document.createElement('canvas');
@@ -43,18 +56,16 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
 
     let viewer: Cesium.Viewer;
     let active = true;
+    const lowEndDevice = isLowEndHardware();
     let canvas: HTMLCanvasElement | null = null;
     let pointerHandler: (() => void) | null = null;
     let requestRender: (() => void) | null = null;
 
-    loadConfig().then((config) => {
-      if (!active) return;
-      
-      if (config.CESIUM_ION_ACCESS_TOKEN) {
-        Cesium.Ion.defaultAccessToken = config.CESIUM_ION_ACCESS_TOKEN;
-      }
+    if (config.CESIUM_ION_ACCESS_TOKEN) {
+      Cesium.Ion.defaultAccessToken = config.CESIUM_ION_ACCESS_TOKEN;
+    }
 
-      try {
+    try {
       // Firefox detection for MSAA workaround (from WWV)
       const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
 
@@ -87,7 +98,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
         contextOptions: { webgl: { antialias: true } },
 
         // MSAA: 1 sample on Firefox (buggy), 2x elsewhere for quality/perf balance
-        msaaSamples: isFirefox ? 1 : 2,
+        msaaSamples: isFirefox || lowEndDevice ? 1 : 2,
 
         // Hide Cesium credits in a detached element
         creditContainer: document.createElement('div'),
@@ -96,6 +107,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
       viewerRef.current = viewer;
       (window as any).cesiumViewer = viewer;
     } catch (err: any) {
+      if (!active) return;
       setError(err?.message ?? String(err));
       setIsLoaded(true);
       return;
@@ -103,11 +115,11 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
 
     // --- Performance tuning (WWV patterns) ---
 
-    // Resolution scale: slightly under 1.0 saves GPU fill rate on integrated GPUs
-    viewer.resolutionScale = 0.85;
+    // Resolution scale: lower quality on low-end devices to reduce GPU load
+    viewer.resolutionScale = lowEndDevice ? 0.65 : 0.85;
 
-    // Globe polygon detail: higher = fewer polygons = faster. Default is 2.
-    viewer.scene.globe.maximumScreenSpaceError = 2.5;
+    // Globe polygon detail: coarser on low-end devices
+    viewer.scene.globe.maximumScreenSpaceError = lowEndDevice ? 4.5 : 2.5;
 
     // Disable expensive FXAA post-process (we use MSAA instead)
     if (viewer.scene.postProcessStages.fxaa) {
@@ -115,21 +127,23 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     }
 
     // --- Visual quality (Anime Sci-Fi Space Opera / WWT Aesthetics) ---
-    viewer.scene.globe.enableLighting = true; // Stark shadows on terminator
+    viewer.scene.globe.enableLighting = !lowEndDevice; // Disable expensive globe lighting on weaker hardware
     viewer.scene.globe.showWaterEffect = false;
     viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#08101d');
     if ((viewer.scene.globe as any).showGroundAtmosphere !== undefined) {
-      (viewer.scene.globe as any).showGroundAtmosphere = true;
+      (viewer.scene.globe as any).showGroundAtmosphere = !lowEndDevice;
     }
     viewer.scene.globe.depthTestAgainstTerrain = true; // Proper occlusion
     viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#020205'); // Space opera dark background
-    viewer.scene.highDynamicRange = true; // Premium lighting dynamic range
+    viewer.scene.highDynamicRange = !lowEndDevice; // Disable HDR on low-end devices
 
-    // Cool-toned luminous space atmosphere (Honkai: Star Rail inspired)
-    viewer.scene.skyAtmosphere.show = true;
-    viewer.scene.skyAtmosphere.brightnessShift = 0.15; // Enhanced brightness contrast
-    viewer.scene.skyAtmosphere.saturationShift = 0.45; // Luminous saturation
-    viewer.scene.skyAtmosphere.hueShift = -0.05; // Cool cyan/purple shift
+    // Cool-toned luminous space atmosphere
+    viewer.scene.skyAtmosphere.show = !lowEndDevice;
+    if (!lowEndDevice) {
+      viewer.scene.skyAtmosphere.brightnessShift = 0.15; // Enhanced brightness contrast
+      viewer.scene.skyAtmosphere.saturationShift = 0.45; // Luminous saturation
+      viewer.scene.skyAtmosphere.hueShift = -0.05; // Cool cyan/purple shift
+    }
 
     // Configure globe atmospheric lighting
     viewer.scene.globe.atmosphereBrightnessShift = 0.15;
@@ -184,9 +198,10 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     canvas.addEventListener('pointerup', pointerHandler);
     canvas.addEventListener('pointermove', pointerHandler);
     canvas.addEventListener('wheel', pointerHandler, { passive: true } as AddEventListenerOptions);
-    if ((viewer.camera as any)?.changed?.addEventListener) {
+    const camera = viewer.camera as Cesium.Camera & { changed: Cesium.Event };
+    if (camera.changed?.addEventListener) {
       try {
-        (viewer.camera as any).changed.addEventListener(requestRender);
+        camera.changed.addEventListener(requestRender);
       } catch (e) {}
     }
 
@@ -194,7 +209,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     setupImagery(viewer)
       .catch((err) => console.warn('Imagery setup failed:', err))
       .finally(() => {
-        if (viewerRef.current && !viewer.isDestroyed()) {
+        if (active && viewerRef.current && !viewer.isDestroyed()) {
           setIsLoaded(true);
           viewer.scene.requestRender();
         }
@@ -203,10 +218,6 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     // Initial camera: wide Earth view at 20,000 km
     viewer.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(0, 20, 20_000_000),
-    });
-    }).catch((err) => {
-      setError(err?.message ?? String(err));
-      setIsLoaded(true);
     });
 
     return () => {
@@ -219,8 +230,9 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
           canvas.removeEventListener('pointermove', pointerHandler);
           canvas.removeEventListener('wheel', pointerHandler as EventListenerOrEventListenerObject);
         }
-        if ((viewer as any)?.camera?.changed?.removeEventListener && requestRender) {
-          try { (viewer as any).camera.changed.removeEventListener(requestRender); } catch (e) {}
+        const camera = viewer?.camera as Cesium.Camera & { changed: Cesium.Event };
+        if (camera?.changed?.removeEventListener && requestRender) {
+          try { camera.changed.removeEventListener(requestRender); } catch (e) {}
         }
       } catch (e) {}
 

@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useUIStore } from '../store/uiStore';
-import { Activity, Brain, ShieldCheck, Zap, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { Activity, Brain, ShieldCheck, Zap, AlertTriangle, Satellite, type LucideIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useIdleTask } from '../hooks/useIdleTask';
 
@@ -104,6 +104,7 @@ export function SystemMonitor() {
       <div className="space-y-6">
         <TelemetryRow label="Storage Usage" value={systemMetrics.storageUsage} icon={Activity} color="var(--theme-accent-triad-2)" />
         <TelemetryRow label="Battery Level" value={systemMetrics.batteryLevel} icon={Zap} color="var(--theme-accent-phi-2)" />
+        <SatcomTelemetry />
         <TelemetryRow label="System Shield" value={1.0} icon={ShieldCheck} color="var(--theme-accent-comp)" isStatic />
       </div>
       
@@ -111,6 +112,24 @@ export function SystemMonitor() {
       <div className="mt-auto pt-6 flex flex-col gap-1 text-[8px] text-text-muted/50 border-t border-primary/20 relative z-10">
         <span className="tracking-[0.3em]">STATE: LOCAL SESSION</span>
         <span className="tracking-[0.3em]">UPDATED: {lastUpdated.toLocaleTimeString()}</span>
+      </div>
+    </div>
+  );
+}
+
+function SatcomTelemetry() {
+  const satelliteData = useUIStore((s) => s.satelliteData);
+  const activeTracks = Object.keys(satelliteData).length;
+  
+  return (
+    <div className="flex items-center justify-between group">
+      <div className="flex items-center gap-2">
+        <Satellite className="w-4 h-4 text-text-muted group-hover:text-white transition-colors" />
+        <span className="text-[10px] tracking-widest text-text-muted group-hover:text-white transition-colors uppercase">Satcom Uplink</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-mono text-primary font-bold">{activeTracks}</span>
+        <span className="text-[8px] text-text-muted uppercase tracking-tighter">Active Tracks</span>
       </div>
     </div>
   );

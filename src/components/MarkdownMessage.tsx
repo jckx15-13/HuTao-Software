@@ -15,7 +15,7 @@ export function MarkdownMessage({ content }: { content: string }) {
           
           if (isInline) {
             return (
-              <code className="bg-black/20 px-1.5 py-0.5 rounded text-sm font-mono text-primary-text" {...(rest as any)}>
+              <code className="bg-black/20 px-1.5 py-0.5 rounded text-sm font-mono text-primary-text" {...rest}>
                 {children}
               </code>
             );

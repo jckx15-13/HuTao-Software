@@ -4,6 +4,7 @@ import { createInitialMessages, createResetMessages, type Message } from '../lib
 import type { PaletteKey, ThemeVars } from '../lib/themeEngine';
 import { type LocationData } from '../data/locations';
 import { type Tour } from '../data/tours';
+import { type WeatherData } from '../services/weatherService';
 
 export type AiModel = 'gemini-3-flash' | 'gemini-3-pro' | 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-2.0-flash' | 'local-assistant' | 'gemini-3.1-pro-preview' | 'gemini-1.5-pro' | 'gemini-1.5-flash';
 
@@ -64,6 +65,12 @@ export interface TelescopePreset {
   dec: string;
   fov: string;
   description: string;
+  lookAt?: string;
+}
+
+export interface SatelliteData {
+  tle: string[]; // TLE lines
+  timestamp: number;
 }
 
 export type InteractionMode = 'chat' | 'orbital' | 'telescope';
@@ -205,7 +212,14 @@ export interface UIStore {
     timestamp: number;
     simulated?: boolean;
   } | null;
-  setIssTelemetry: (t: any) => void;
+  setIssTelemetry: (t: {
+    latitude: number;
+    longitude: number;
+    altitude: number;
+    velocity: number;
+    timestamp: number;
+    simulated?: boolean;
+  } | null) => void;
 
   // Satellite Ingestion & Tracker State
   activeSatelliteId: string | null;
@@ -220,6 +234,10 @@ export interface UIStore {
     iconSize: number;
   };
   updateSatelliteSettings: (settings: Partial<UIStore['satelliteSettings']>) => void;
+  satelliteData: Record<string, SatelliteData>;
+  setSatelliteData: (id: string, data: SatelliteData) => void;
+  weatherData: WeatherData | null;
+  setWeatherData: (data: WeatherData | null) => void;
 
   // Developer Diagnostics State
   forceFallback: boolean;
@@ -500,6 +518,12 @@ export const useUIStore = create<UIStore>()(
         updateSatelliteSettings: (settings) => set((s) => ({
           satelliteSettings: { ...s.satelliteSettings, ...settings }
         })),
+        satelliteData: {},
+        setSatelliteData: (id, data) => set((s) => ({
+          satelliteData: { ...s.satelliteData, [id]: data }
+        })),
+        weatherData: null,
+        setWeatherData: (weatherData) => set({ weatherData }),
 
         // Developer Diagnostics State
         forceFallback: false,
@@ -618,6 +642,7 @@ export const useUIStore = create<UIStore>()(
         activeSatelliteId: s.activeSatelliteId,
         satelliteCategories: s.satelliteCategories,
         satelliteSettings: s.satelliteSettings,
+        satelliteData: s.satelliteData,
         forceFallback: s.forceFallback,
         engineUrlOverride: s.engineUrlOverride,
         imageryProvider: s.imageryProvider,

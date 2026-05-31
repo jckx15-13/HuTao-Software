@@ -53,6 +53,8 @@ export function useBorders(
     useEffect(() => {
         if (!viewer || viewer.isDestroyed()) return;
 
+        let cancelled = false;
+
         // If data is already built, instantly toggle visibility without rebuilding
         if (bordersDataRef.current) {
             bordersDataRef.current.primitives.forEach((p) => p.show = enabled);
@@ -60,7 +62,7 @@ export function useBorders(
             for (let i = 0; i < labels.length; ++i) {
                 labels.get(i).show = enabled;
             }
-            return;
+            return () => { cancelled = true; };
         }
 
         // Only kick off a build if it's enabled and a build isn't already running
@@ -74,13 +76,35 @@ export function useBorders(
             viewer!.scene.primitives.add(labels);
             const primitivesList: Primitive[] = [];
 
+            const cleanupPartial = () => {
+                if (viewer && !viewer.isDestroyed()) {
+                    if (viewer.scene.primitives.contains(labels)) {
+                        viewer.scene.primitives.remove(labels);
+                    }
+                    if (typeof (labels as any).destroy === 'function') {
+                        (labels as any).destroy();
+                    }
+                    primitivesList.forEach((p) => {
+                        if (viewer.scene.primitives.contains(p)) {
+                            viewer.scene.primitives.remove(p);
+                        }
+                        if (typeof (p as any).destroy === 'function') {
+                            (p as any).destroy();
+                        }
+                    });
+                }
+            };
+
             try {
                 console.time("[useBorders] 1. GeoJSON parse");
                 const dataSource = new GeoJsonDataSource("borders_temp");
                 await dataSource.load("/borders.geojson");
                 console.timeEnd("[useBorders] 1. GeoJSON parse");
 
-                if (viewer!.isDestroyed()) return;
+                if (viewer!.isDestroyed() || cancelled) {
+                    cleanupPartial();
+                    return;
+                }
 
                 console.time("[useBorders] 2. Build Batched Geometry Instances");
                 const entities = dataSource.entities.values;
@@ -93,7 +117,10 @@ export function useBorders(
                     // This is 30-40x faster than fixed-interval chunking while still preventing the UI from freezing.
                     if (performance.now() - lastYield > 8) {
                         await new Promise((resolve) => setTimeout(resolve, 0));
-                        if (viewer!.isDestroyed()) return;
+                        if (viewer!.isDestroyed() || cancelled) {
+                            cleanupPartial();
+                            return;
+                        }
                         lastYield = performance.now();
                     }
 
@@ -188,7 +215,10 @@ sumLon = 0;
 
                     // Reduced 50ms yield loop down to 5ms: just long enough for WebWorkers to claim execution cycles.
                     await new Promise((resolve) => setTimeout(resolve, 5));
-                    if (viewer!.isDestroyed()) return;
+                    if (viewer!.isDestroyed() || cancelled) {
+                        cleanupPartial();
+                        return;
+                    }
                 }
 
                 console.timeEnd("[useBorders] 3. Compile Master Primitives");
@@ -203,14 +233,14 @@ sumLon = 0;
                 }
             } catch (err) {
                 console.warn("[useBorders] Failed to compile low-level 3D borders", err);
-                primitivesList.forEach((p) => {
-                    if (viewer!.scene.primitives.contains(p)) viewer!.scene.primitives.remove(p);
-                });
-                if (viewer!.scene.primitives.contains(labels)) viewer!.scene.primitives.remove(labels);
+                cleanupPartial();
             } finally {
                 isBuildingRef.current = false;
             }
         }
+        return () => {
+            cancelled = true;
+        };
     }, [viewer, enabled]);
 
     // Cleanup on unmount
@@ -220,9 +250,15 @@ sumLon = 0;
                     if (viewer.scene.primitives.contains(p)) {
                         viewer.scene.primitives.remove(p);
                     }
+                    if (typeof (p as any).destroy === 'function') {
+                        (p as any).destroy();
+                    }
                 });
                 if (viewer.scene.primitives.contains(bordersDataRef.current.labels)) {
                     viewer.scene.primitives.remove(bordersDataRef.current.labels);
+                }
+                if (typeof (bordersDataRef.current.labels as any).destroy === 'function') {
+                    (bordersDataRef.current.labels as any).destroy();
                 }
                 bordersDataRef.current = null;
             }
