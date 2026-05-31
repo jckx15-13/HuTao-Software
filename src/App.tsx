@@ -70,7 +70,7 @@ export default function App() {
       ) : (
         <>
           {!isHighLoad && <ParticleOverlay />}
-          {!isHighLoad && <CustomCursor />}
+          {!isHighLoad && <CustomCursor appHighLoad={isHighLoad} />}
           {scanlineOverlay && <div className="hologram-overlay" />}
           
           <TopAppBar />

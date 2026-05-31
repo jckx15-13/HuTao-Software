@@ -140,8 +140,12 @@ export class CursorEngine implements CursorEngineLifecycle {
   }
 
   updateConfig(config: Partial<CursorEngineConfig>): void {
+    const designChanged = config.cursorDesign !== undefined && config.cursorDesign !== this.config.cursorDesign;
     this.config = { ...this.config, ...config };
     this.setDocumentCursor();
+    if (designChanged && this.reticle) {
+      this.updateReticleSvg();
+    }
   }
 
   publishTarget(target: Omit<Partial<CursorTarget>, "createdAt" | "hoverDwellMs"> & Pick<CursorTarget, "id" | "kind" | "source">): void {
@@ -191,14 +195,7 @@ export class CursorEngine implements CursorEngineLifecycle {
       opacity: "0",
       transition: "opacity 90ms linear, filter 120ms linear",
     });
-    this.reticle.innerHTML = `
-      <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle data-cursor-ring cx="21" cy="21" r="11.5" stroke="rgba(125,227,201,.82)" stroke-width="1.1"/>
-        <circle cx="21" cy="21" r="2.25" fill="rgba(255,255,255,.96)"/>
-        <path d="M21 5.5V11.5M21 30.5V36.5M5.5 21H11.5M30.5 21H36.5" stroke="rgba(255,255,255,.9)" stroke-width="1.35" stroke-linecap="round"/>
-        <path data-cursor-lock d="M12.5 12.5L16.5 12.5M25.5 12.5L29.5 12.5M12.5 29.5L16.5 29.5M25.5 29.5L29.5 29.5" stroke="rgba(166,123,234,.72)" stroke-width="1.1" stroke-linecap="round"/>
-      </svg>
-    `;
+    this.updateReticleSvg();
 
     this.debug = document.createElement("div");
     Object.assign(this.debug.style, {
@@ -339,7 +336,7 @@ export class CursorEngine implements CursorEngineLifecycle {
       kind: "ui",
       source: "ui",
       rect,
-      priority: 100,
+      priority: 125,
       confidence: 0.95,
       expiresAt: performance.now() + 120,
     });
@@ -546,5 +543,110 @@ export class CursorEngine implements CursorEngineLifecycle {
   private restoreDocumentCursor(): void {
     document.documentElement.style.cursor = "";
     document.body.style.cursor = "";
+  }
+
+  private updateReticleSvg(): void {
+    if (!this.reticle) return;
+    const design = this.config.cursorDesign || "reticle-v1";
+    let svgContent = "";
+
+    switch (design) {
+      case "dot-trail":
+        svgContent = `
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="21" cy="21" r="4.5" fill="currentColor"/>
+            <circle cx="13" cy="21" r="2.5" fill="currentColor" opacity="0.35"/>
+            <circle cx="29" cy="21" r="2.5" fill="currentColor" opacity="0.35"/>
+          </svg>
+        `;
+        break;
+      case "comet-tail":
+        svgContent = `
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="comet-grad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="currentColor" stop-opacity="1"/>
+                <stop offset="100%" stop-color="currentColor" stop-opacity="0.1"/>
+              </linearGradient>
+            </defs>
+            <path d="M10 21h20" stroke="url(#comet-grad)" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="32" cy="21" r="3.5" fill="#fff"/>
+          </svg>
+        `;
+        break;
+      case "crosshair":
+        svgContent = `
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 6v30M6 21h30" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="21" cy="21" r="2.5" fill="#fff"/>
+          </svg>
+        `;
+        break;
+      case "ring-pulse":
+        svgContent = `
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle data-cursor-ring cx="21" cy="21" r="10" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="21" cy="21" r="3.5" fill="currentColor"/>
+          </svg>
+        `;
+        break;
+      case "orbit":
+        svgContent = `
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="21" cy="21" r="7" stroke="currentColor" stroke-width="1" fill="none"/>
+            <circle cx="26" cy="16" r="2.2" fill="#FFD27A" />
+            <circle cx="16" cy="26" r="2.2" fill="#9EE7FF" />
+            <circle cx="21" cy="21" r="2.5" fill="#fff"/>
+          </svg>
+        `;
+        break;
+      case "pixel":
+        svgContent = `
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="15" y="15" width="12" height="12" fill="#fff" />
+            <rect x="17" y="17" width="8" height="8" fill="currentColor" />
+          </svg>
+        `;
+        break;
+      case "radar":
+        svgContent = `
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="21" cy="21" r="12" stroke="currentColor" stroke-width="1.2" fill="none" />
+            <path d="M21 21 L30 15" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+            <circle cx="21" cy="21" r="2.5" fill="#fff"/>
+          </svg>
+        `;
+        break;
+      case "arrow":
+        svgContent = `
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 8 L30 20 L20 23 L16 30 L12 8" fill="currentColor" stroke="#fff" stroke-width="1" />
+          </svg>
+        `;
+        break;
+      case "vortex":
+        svgContent = `
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="21" cy="21" r="10" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2" />
+            <circle cx="18" cy="16" r="1.5" fill="currentColor" />
+            <circle cx="24" cy="26" r="1.5" fill="#C7A6FF" />
+            <circle cx="21" cy="21" r="2.5" fill="#fff"/>
+          </svg>
+        `;
+        break;
+      case "reticle-v1":
+      default:
+        svgContent = `
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle data-cursor-ring cx="21" cy="21" r="11.5" stroke="rgba(125,227,201,.82)" stroke-width="1.1"/>
+            <circle cx="21" cy="21" r="2.25" fill="rgba(255,255,255,.96)"/>
+            <path d="M21 5.5V11.5M21 30.5V36.5M5.5 21H11.5M30.5 21H36.5" stroke="rgba(255,255,255,.9)" stroke-width="1.35" stroke-linecap="round"/>
+            <path data-cursor-lock d="M12.5 12.5L16.5 12.5M25.5 12.5L29.5 12.5M12.5 29.5L16.5 29.5M25.5 29.5L29.5 29.5" stroke="rgba(166,123,234,.72)" stroke-width="1.1" stroke-linecap="round"/>
+          </svg>
+        `;
+        break;
+    }
+
+    this.reticle.innerHTML = svgContent;
   }
 }

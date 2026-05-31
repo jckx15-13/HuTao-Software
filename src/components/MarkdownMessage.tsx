@@ -9,13 +9,13 @@ export function MarkdownMessage({ content }: { content: string }) {
       remarkPlugins={[remarkGfm]}
       components={{
         code(props) {
-          const { children, className, node, ...rest } = props;
+          const { children, className, node, ref, ...rest } = props;
           const match = /language-(\w+)/.exec(className || '');
           const isInline = !match && !className?.includes('language-');
           
           if (isInline) {
             return (
-              <code className="bg-black/20 px-1.5 py-0.5 rounded text-sm font-mono text-primary-text" {...rest}>
+              <code className="bg-black/20 px-1.5 py-0.5 rounded text-sm font-mono text-primary-text" {...(rest as any)}>
                 {children}
               </code>
             );

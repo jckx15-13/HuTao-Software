@@ -31,16 +31,22 @@ function log(source, level, message) {
 function clearPort(port) {
   try {
     log('Engine', 'INFO', `Checking port ${port}...`);
-    const output = execSync(`netstat -ano | findstr :${port}`, { encoding: 'utf8' });
+    const output = execSync('netstat -ano -p tcp', { encoding: 'utf8' });
     const lines = output.split('\n');
     const pids = new Set();
     
     for (const line of lines) {
       const parts = line.trim().split(/\s+/);
       if (parts.length >= 5) {
-        const pid = parts[parts.length - 1];
-        if (parseInt(pid) > 0) {
-          pids.add(pid);
+        const proto = parts[0];
+        const localAddress = parts[1];
+        const state = parts[3];
+        const pid = parts[4];
+        
+        if (proto === 'TCP' && state === 'LISTENING' && localAddress.endsWith(`:${port}`)) {
+          if (parseInt(pid) > 0) {
+            pids.add(pid);
+          }
         }
       }
     }
@@ -55,7 +61,7 @@ function clearPort(port) {
       }
     }
   } catch (err) {
-    // netstat returns exit code 1 if no match found, which is expected if the port is free
+    // Ignore errors
   }
 }
 

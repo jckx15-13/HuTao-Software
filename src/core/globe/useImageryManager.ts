@@ -22,6 +22,7 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
 
     const selectedLayerId = baseLayerId || 'osm';
     const currentImageryLayerRef = useRef<ImageryLayer | null>(null);
+    const initialCleanupDoneRef = useRef(false);
     const osmBuildingsRef = useRef<Cesium3DTileset | null>(null);
     const [google3DActive, setGoogle3DActive] = useState(false);
 
@@ -48,6 +49,11 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
 
         async function updateImagery() {
             if (!viewer || !viewerReady || viewer.isDestroyed() || !active) return;
+
+            if (!initialCleanupDoneRef.current) {
+                viewer.imageryLayers.removeAll();
+                initialCleanupDoneRef.current = true;
+            }
 
             // Handle Google 3D Tiles specifically
             const isGoogle3D = selectedLayerId === "google-3d";

@@ -1,7 +1,7 @@
 import type { CursorTarget, CursorTargetSource, CursorVector } from "./types";
 
 const KIND_PRIORITY: Record<CursorTarget["kind"], number> = {
-  ui: 100,
+  ui: 125,
   cesiumEntity: 76,
   mapObject: 42,
   background: 0,
@@ -34,7 +34,7 @@ function scoreTarget(target: CursorTarget): number {
   const distanceScore = Math.max(0, 60 - Math.min(60, target.distance));
   const dwellScore = Math.min(18, target.hoverDwellMs / 35);
   const confidenceScore = Math.max(0, Math.min(1, target.confidence)) * 40;
-  const explicitScore = target.explicitLock ? 35 : 0;
+  const explicitScore = target.explicitLock ? 20 : 0;
   return priority + distanceScore + dwellScore + confidenceScore + explicitScore;
 }
 

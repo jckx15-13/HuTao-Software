@@ -9,6 +9,7 @@ import type { Viewer as CesiumViewer, Cartesian2 } from "cesium";
 import type { GeoEntity } from "@/core/plugins/PluginTypes";
 import { useStore } from "@/core/state/store";
 import { useUIStore } from "@/store/uiStore";
+import { clearCursorSourceTargets, publishCursorTarget } from "@/core/cursor";
 import {
     findStackByEntityId, expandStack, collapseStack, getStacks
 } from "./StackManager";
@@ -43,31 +44,6 @@ export function setupInteractionHandlers(
     let expandedStackId: string | null = null;
 
     let latestMousePos = { x: 0, y: 0 };
-
-    if (canvas && canvas.style) {
-        canvas.style.cursor = "grab";
-    }
-
-    // LEFT_DOWN → set cursor to grabbing
-    handler.setInputAction(
-        () => {
-            if (canvas && canvas.style) {
-                canvas.style.cursor = "grabbing";
-            }
-        },
-        ScreenSpaceEventType.LEFT_DOWN
-    );
-
-    // LEFT_UP → restore cursor to pointer or grab
-    handler.setInputAction(
-        () => {
-            if (canvas && canvas.style) {
-                const entity = findEntityAtPosition(viewer, latestMousePos);
-                canvas.style.cursor = entity ? "pointer" : "grab";
-            }
-        },
-        ScreenSpaceEventType.LEFT_UP
-    );
 
     // Click → select entity or expand stack
     handler.setInputAction(
@@ -116,6 +92,7 @@ export function setupInteractionHandlers(
             if (entity) {
                 useStore.getState().setHoveredEntity(null, null);
                 hoveredEntityIdRef.current = null;
+                clearCursorSourceTargets("cesium");
             }
 
             // Immediately request a render frame to apply highlight changes
@@ -131,7 +108,10 @@ export function setupInteractionHandlers(
 
     // Track camera movement to avoid expensive picking during camera pan
     const onMoveStart = () => { isDragging = true; };
-    const onMoveEnd = () => { isDragging = false; };
+    const onMoveEnd = () => {
+        isDragging = false;
+        clearCursorSourceTargets("system");
+    };
     viewer.camera.moveStart.addEventListener(onMoveStart);
     viewer.camera.moveEnd.addEventListener(onMoveEnd);
 
@@ -148,6 +128,19 @@ export function setupInteractionHandlers(
 
             if (hoveredEntityIdRef.current) {
                 useStore.getState().setHoveredEntity(useStore.getState().hoveredEntity, screenPos);
+                const hovered = useStore.getState().hoveredEntity;
+                if (hovered) {
+                    publishCursorTarget({
+                        id: `cesium-${hovered.id}`,
+                        kind: "cesiumEntity",
+                        source: "cesium",
+                        screenPosition: screenPos,
+                        priority: 84,
+                        confidence: 0.86,
+                        explicitLock: true,
+                        expiresAt: performance.now() + 220,
+                    });
+                }
             }
 
             if (!viewer || viewer.isDestroyed()) return;
@@ -172,8 +165,21 @@ export function setupInteractionHandlers(
 
                 if (prevId !== newId) {
                     hoveredEntityIdRef.current = newId;
-                    canvas.style.cursor = entity ? "pointer" : "grab";
                     useStore.getState().setHoveredEntity(entity, entity ? screenPos : null);
+                    if (entity) {
+                        publishCursorTarget({
+                            id: `cesium-${entity.id}`,
+                            kind: "cesiumEntity",
+                            source: "cesium",
+                            screenPosition: screenPos,
+                            priority: 84,
+                            confidence: 0.88,
+                            explicitLock: true,
+                            expiresAt: performance.now() + 220,
+                        });
+                    } else {
+                        clearCursorSourceTargets("cesium");
+                    }
                     // Trigger render to apply hover highlights immediately
                     viewer.scene.requestRender();
                 }
@@ -191,8 +197,7 @@ export function setupInteractionHandlers(
         if (handler && !handler.isDestroyed()) {
             handler.destroy();
         }
-        if (canvas && canvas.style) {
-            canvas.style.cursor = "default";
-        }
+        clearCursorSourceTargets("cesium");
+        clearCursorSourceTargets("system");
     };
 }

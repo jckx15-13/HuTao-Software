@@ -626,3 +626,7 @@ export const useUIStore = create<UIStore>()(
     },
   ),
 );
+
+if (typeof window !== 'undefined') {
+  (window as any).useUIStore = useUIStore;
+}

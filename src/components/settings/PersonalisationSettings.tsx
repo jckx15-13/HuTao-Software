@@ -6,6 +6,7 @@ import { palettes, type PaletteKey } from '../../lib/themeEngine';
 import { extractThemeFromImage } from '../../lib/imageTheme';
 import { IMAGERY_LAYERS } from '../../core/globe/ImageryProviderFactory';
 import CURSOR_DESIGNS from '@/components/layout/cursorDesigns';
+import { resolveCursorProfile, validateCursorProfile } from '@/core/cursor';
 
 export function PersonalisationSettings() {
   const personalisation = useUIStore((s) => s.personalisation) || {
@@ -463,6 +464,18 @@ export function PersonalisationSettings() {
 function CursorDesignSelector() {
   const cursorDesign = useUIStore((s) => s.cursorDesign);
   const setCursorDesign = useUIStore((s) => s.setCursorDesign);
+  const personalisation = useUIStore((s) => s.personalisation);
+  const particleEffects = useUIStore((s) => s.particleEffects);
+  const profile = resolveCursorProfile({
+    enabled: true,
+    cursorDesign,
+    reducedMotion: personalisation.motionReduced,
+    appHighLoad: false,
+    animationIntensity: personalisation.animationIntensity,
+    accentColor: personalisation.accentColor,
+    particleEffects,
+  });
+  const diagnostic = validateCursorProfile(profile);
 
   return (
     <div className="glass-panel p-4 border border-white/5 space-y-3 rounded-xl">
@@ -471,6 +484,15 @@ function CursorDesignSelector() {
         <span>Cursor & Pointer</span>
       </h3>
       <p className="text-[9px] font-mono text-white/30 uppercase">Choose a pointer design optimized for responsiveness.</p>
+
+      <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3 font-mono">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[10px] uppercase text-white/45">Active Profile</span>
+          <span className="text-[10px] font-bold uppercase text-primary">{profile.label}</span>
+        </div>
+        <div className="mt-1 text-[9px] uppercase text-white/35">{diagnostic.tier}</div>
+        <div className="mt-1 text-[9px] leading-relaxed text-white/45">{diagnostic.message}</div>
+      </div>
 
       <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-2">
         {CURSOR_DESIGNS.map((d) => {
