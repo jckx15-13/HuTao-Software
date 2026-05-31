@@ -121,8 +121,8 @@ export function useBorders(
                         instances.push(new GeometryInstance({
                             geometry: new WallGeometry({
                                 positions,
-                                minimumHeights: new Array(positions.length).fill(-10000), // 10km underground
-                                maximumHeights: new Array(positions.length).fill(100000), // 100km above ground
+                                minimumHeights: new Array(positions.length).fill(-500), // 500m underground
+                                maximumHeights: new Array(positions.length).fill(2000), // 2km above ground
                             }),
                             attributes: {
                                 // Base color, which the appearance will multiply against
@@ -175,7 +175,7 @@ sumLon = 0;
                     const primitive = new Primitive({
                         geometryInstances: batchInstances,
                         appearance: new MaterialAppearance({
-                            material: Material.fromType('Color', { color: Color.RED.withAlpha(0.15) }),
+                            material: Material.fromType('Color', { color: Color.fromCssColorString('rgba(138, 91, 199, 0.35)') }),
                             translucent: true,
                             closed: false
                         }),

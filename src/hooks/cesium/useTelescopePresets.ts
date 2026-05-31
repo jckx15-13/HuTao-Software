@@ -106,8 +106,11 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
     if (!viewer || viewer.isDestroyed()) return;
 
     if (interactionMode === 'telescope') {
-      // Hide the Earth globe to allow clear stargazing from inside out
-      viewer.scene.globe.show = false;
+      // Enable globe translucency to see through the Earth
+      viewer.scene.globe.show = true;
+      viewer.scene.globe.translucency.enabled = true;
+      viewer.scene.globe.translucency.frontFaceAlpha = 0.25;
+      viewer.scene.globe.translucency.backFaceAlpha = 0.15;
       viewer.scene.skyAtmosphere.show = false;
 
       // Find targeted preset
@@ -129,7 +132,7 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
 
         // Position camera exactly at Earth's center pointing outward
         viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.ZERO,
+          destination: new Cesium.Cartesian3(0, 0, 1),
           orientation: {
             direction: direction,
             up: new Cesium.Cartesian3(0, 0, 1), // Align North
@@ -141,7 +144,7 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
         // Reset to default deep sky orientation looking North
         viewer.trackedEntity = undefined;
         viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.ZERO,
+          destination: new Cesium.Cartesian3(0, 0, 1),
           orientation: {
             direction: new Cesium.Cartesian3(0, 1, 0),
             up: new Cesium.Cartesian3(0, 0, 1),
@@ -153,12 +156,14 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
     } else {
       // Restore standard Earth globe and atmosphere layers
       viewer.scene.globe.show = true;
+      viewer.scene.globe.translucency.enabled = false;
       viewer.scene.skyAtmosphere.show = true;
     }
 
     return () => {
       if (viewer && !viewer.isDestroyed()) {
         viewer.scene.globe.show = true;
+        viewer.scene.globe.translucency.enabled = false;
         viewer.scene.skyAtmosphere.show = true;
       }
     };

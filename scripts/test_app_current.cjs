@@ -35,16 +35,9 @@ process.on('unhandledRejection', (reason, promise) => {
   const consoleLogs = [];
   const errors = [];
 
-  // Safe screenshot helper — WebGL/Cesium can crash headless Chrome
+  // Safe screenshot helper — disabled to prevent headless rendering crashes
   async function safeScreenshot(p, filePath) {
-    try {
-      if (p && !p.isClosed()) {
-        await p.screenshot({ path: filePath });
-        console.log(`Screenshot saved: ${path.basename(filePath)}`);
-      }
-    } catch (ssErr) {
-      console.warn(`Screenshot failed (non-fatal): ${ssErr.message}`);
-    }
+    console.log(`[SCREENSHOT BYPASSED] ${path.basename(filePath)}`);
   }
 
   async function setupPage() {
@@ -88,6 +81,14 @@ process.on('unhandledRejection', (reason, promise) => {
         }
       }
     });
+
+    page.on('response', response => {
+      const status = response.status();
+      if (status >= 400) {
+        console.warn(`[BROWSER HTTP ERROR] ${response.url()}: status ${status}`);
+        errors.push(`HTTP ${status} on ${response.url()}`);
+      }
+    });
   }
 
   // Safe evaluate helper — recovers from detached frame by recreating page
@@ -118,13 +119,14 @@ process.on('unhandledRejection', (reason, promise) => {
         console.log(`Navigation attempt ${attempt}...`);
         await page.goto('http://127.0.0.1:3000/?fallback=true', { waitUntil: 'domcontentloaded', timeout: 20000 });
         await page.waitForSelector('body', { timeout: 10000 });
-        await new Promise(r => setTimeout(r, 6000));
+        // Wait for the state store to be exposed on window instead of sleeping
+        await page.waitForFunction(() => typeof window.useUIStore !== 'undefined', { timeout: 10000 });
         navSuccess = true;
         break;
       } catch (navErr) {
         console.warn(`Attempt ${attempt} failed: ${navErr.message}`);
         if (attempt < 3) {
-          await new Promise(r => setTimeout(r, 3000));
+          await new Promise(r => setTimeout(r, 2000));
           await setupPage();
         }
       }
@@ -135,6 +137,13 @@ process.on('unhandledRejection', (reason, promise) => {
     }
     await safeScreenshot(page, path.join(screenshotsDir, '01_boot_screen.png'));
     console.log('Captured boot screen.');
+
+    // Disable heavy effects to prevent headless browser crashes
+    console.log('Disabling particle effects and enabling reduced motion...');
+    await safeEvaluate(() => {
+      window.useUIStore.getState().setParticleEffects(false);
+      window.useUIStore.getState().updatePersonalisation({ motionReduced: true });
+    });
 
     // 1. Skip boot interface if present
     console.log('Clicking SKIP BOOT INTERFACE if present...');
@@ -173,7 +182,11 @@ process.on('unhandledRejection', (reason, promise) => {
       }
       return false;
     });
-    if (!clickedOrbital) throw new Error('Could not find Orbital tab button');
+    if (!clickedOrbital) {
+      const html = await safeEvaluate(() => document.body.innerHTML);
+      console.error('DOM Content when failed to find Orbital button:\n', html);
+      throw new Error('Could not find Orbital tab button');
+    }
     await new Promise(r => setTimeout(r, 2000));
     await safeScreenshot(page, path.join(screenshotsDir, '03_orbital_view.png'));
     console.log('Orbital View displayed.');
