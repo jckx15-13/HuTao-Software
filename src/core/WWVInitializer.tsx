@@ -4,6 +4,7 @@ import { pluginManager } from './plugins/PluginManager';
 import { pluginRegistry } from './plugins/PluginRegistry';
 import { IssPlugin } from '../plugins/iss/IssPlugin';
 import { EarthquakesPlugin } from '../plugins/earthquakes/EarthquakesPlugin';
+import { WeatherPlugin } from '../plugins/weather/WeatherPlugin';
 import { DataBusSubscriber } from '../components/layout/DataBusSubscriber';
 import { TimelineSync } from './globe/TimelineSync';
 import { satelliteService } from '../services/satelliteService';
@@ -29,12 +30,16 @@ export function WWVInitializer({ children }: { children: React.ReactNode }) {
       // Register built-in plugins
       const iss = new IssPlugin();
       const earthquakes = new EarthquakesPlugin();
+      const weather = new WeatherPlugin();
       
       await pluginManager.registerPlugin(iss);
       pluginRegistry.register(iss);
       
       await pluginManager.registerPlugin(earthquakes);
       pluginRegistry.register(earthquakes);
+
+      await pluginManager.registerPlugin(weather);
+      pluginRegistry.register(weather);
       
       // 3. Start Background Ingestion Services
       satelliteService.start();

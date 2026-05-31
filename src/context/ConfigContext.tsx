@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { loadConfig, type Config } from '../lib/config';
+import { loadConfig, type AppConfig as Config } from '../lib/config';
 
 interface ConfigContextValue {
   config: Config | null;

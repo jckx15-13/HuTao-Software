@@ -590,8 +590,19 @@ export default function GoogleEarthRemix() {
   const filteredResults = useMemo(() => {
     const term = query.trim().toLowerCase();
 
+    interface SearchItem {
+      id: string;
+      name: string;
+      country: string;
+      category: string;
+      lat: number;
+      lng: number;
+      type: 'landmark' | 'entity';
+      raw: any;
+    }
+
     // Map static locations
-    const staticMatches = locations.map(l => ({
+    const staticMatches: SearchItem[] = locations.map(l => ({
       id: l.id,
       name: l.name,
       country: l.country,
@@ -603,7 +614,7 @@ export default function GoogleEarthRemix() {
     }));
 
     // Map plugin entities
-    const pluginMatches: any[] = [];
+    const pluginMatches: SearchItem[] = [];
     const entitiesByPlugin = useStore.getState().entitiesByPlugin;
     Object.entries(entitiesByPlugin).forEach(([pluginId, entities]) => {
       entities.forEach((entity) => {

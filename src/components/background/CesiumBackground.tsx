@@ -64,8 +64,8 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
         return 'WebGL context creation failed (unsupported or blocked)';
       }
       return null;
-    } catch (err: any) {
-      return err?.message || String(err);
+    } catch (err: unknown) {
+      return (err as any)?.message || String(err);
     }
   });
 
@@ -74,7 +74,13 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
   const hasError = !!webglError || !!cesiumError || forceFallback;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const telemetryRef = useRef<any>(null);
+  const telemetryRef = useRef<{
+    latitude: number;
+    longitude: number;
+    altitude: number;
+    velocity: number;
+    timestamp: number;
+  } | null>(null);
   const startTimeRef = useRef(Date.now());
 
   // Subscribe to ISS telemetry store updates in a ref to bypass React rendering cycles

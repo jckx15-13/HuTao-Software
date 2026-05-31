@@ -4,14 +4,14 @@
 
 ---
 
-## 🔥 Current High Priority (Run 05 Focus)
+## 🔥 Current High Priority (Run 06 Focus)
 
 - [ ] **Type Safety Phase 2 (UI components)**
   - Category: `Tech Debt` | Tier: <span style="background:#FFF0D6;color:#A35000;padding:0.2em 0.4em;border-radius:0.3em;">🟠 High</span>
   - Why: Fixed core hooks/stores; remaining 20+ occurrences in UI components need fixing.
-- [ ] **3D Telemetry Realism Pass**
-  - Category: `Feature` | Tier: <span style="background:#FFFBDB;color:#8A6D00;padding:0.2em 0.4em;border-radius:0.3em;">🟡 Medium</span>
-  - Why: Sync real-world earthquake/weather data onto the globe as 3D entities.
+- [ ] **Plugin API Modernization (Reactive Streams)**
+  - Category: `Architecture` | Tier: <span style="background:#FFFBDB;color:#8A6D00;padding:0.2em 0.4em;border-radius:0.3em;">🟡 Medium</span>
+  - Why: Legacy polling is inefficient; move to a reactive or subscription model.
 
 ---
 
@@ -24,19 +24,16 @@
 - [ ] **Type Safety Overhaul**
 
 ### 🟡 Medium (2)
-- [ ] **3D Telemetry Realism Pass**
 - [ ] **Visual Diagnostic Panel**
-
-### 🟢 Low (2)
-- [ ] **Theme Variable Naming Cleanup**
 - [ ] **Plugin API Modernization**
 
 ---
 
 ## ✅ Completed Tasks
 
-- [x] ~~**Imagery Switcher UI Implementation**~~ (Visual grid in Settings with thumbnails)
-- [x] ~~**Redundant Config Fetching**~~ (Consolidated into `ConfigContext.tsx`)
+- [x] ~~**3D Telemetry Realism Pass**~~ (Live Earthquake/Weather 3D entities)
+- [x] ~~**Imagery Switcher UI Implementation**~~
+- [x] ~~**Redundant Config Fetching**~~
 - [x] ~~**Live Weather Integration**~~
 - [x] ~~**Satellite SGP4 Refinement**~~
 - [x] ~~**Imagery Provider Metadata**~~

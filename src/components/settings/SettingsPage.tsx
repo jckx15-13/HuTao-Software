@@ -1,4 +1,4 @@
-import { X, Palette, Brain, Link2, Sparkles, Info, Code } from 'lucide-react';
+import { X, Palette, Brain, Link2, Sparkles, Info, Code, Map as MapIcon } from 'lucide-react';
 import { useUIStore, type SettingsCategory } from '@/store/uiStore';
 import { PersonalisationSettings } from './PersonalisationSettings';
 import GlassOpacitySettings from './GlassOpacitySettings';
@@ -6,6 +6,7 @@ import { AiSettings } from './AiSettings';
 import { NotionSettings } from './NotionSettings';
 import { FeedbackSettings } from './FeedbackSettings';
 import { DeveloperSettings } from './DeveloperSettings';
+import { MapSettings } from './MapSettings';
 
 
 export function SettingsPage() {
@@ -19,6 +20,7 @@ export function SettingsPage() {
     { key: 'connections', label: 'Notion Sync', icon: Link2 },
     { key: 'feedback', label: 'Tactile Feedback', icon: Sparkles },
     { key: 'developer' as SettingsCategory, label: 'Developer Panel', icon: Code },
+    { key: 'map' as SettingsCategory, label: 'Map & Imagery', icon: MapIcon },
     { key: 'about', label: 'System Codex', icon: Info },
 
   ];
@@ -85,6 +87,7 @@ export function SettingsPage() {
             {settingsCategory === 'ai' && <AiSettings />}
             {settingsCategory === 'connections' && <NotionSettings />}
             {settingsCategory === 'feedback' && <FeedbackSettings />}
+            {settingsCategory === 'map' && <MapSettings />}
             {settingsCategory === 'developer' && <DeveloperSettings />}
             {settingsCategory === 'about' && <AboutSection />}
 
