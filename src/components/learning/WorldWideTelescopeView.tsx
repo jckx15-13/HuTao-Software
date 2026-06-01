@@ -31,11 +31,22 @@ function CrashComponent(): any {
 
 export default function WorldWideTelescopeView() {
   const storeTarget = useUIStore((s) => s.telescopeTarget);
+  // Normalize store value: accept object or JSON string, validate fields
   const telescopeTarget = useMemo(() => {
-    if (!storeTarget || typeof storeTarget !== 'object' || !storeTarget.name || !storeTarget.url) {
+    try {
+      let tgt: any = storeTarget;
+      if (typeof tgt === 'string') {
+        try {
+          tgt = JSON.parse(tgt);
+        } catch (e) {
+          // leave as string -> invalid
+        }
+      }
+      if (!tgt || typeof tgt !== 'object' || !tgt.name || !tgt.url) return presets[0];
+      return tgt;
+    } catch (e) {
       return presets[0];
     }
-    return storeTarget;
   }, [storeTarget]);
 
   const setTelescopeTarget = useUIStore((s) => s.setTelescopeTarget);
@@ -59,8 +70,13 @@ export default function WorldWideTelescopeView() {
   const setPlaybackMode = useStore((s) => s.setPlaybackMode);
   const timeRange = useStore((s) => s.timeRange);
 
+  // Safe derived values
+  const safeCurrentTime = useMemo(() => parseDateSafe(currentTime) || null, [currentTime]);
+
   // Floating PiP Dragging State
-  const [pos, setPos] = useState({ x: window.innerWidth - 500, y: 16 });
+  // Floating PiP Dragging State (guard window for SSR safety)
+  const getDefaultPos = () => ({ x: typeof window !== 'undefined' ? window.innerWidth - 500 : 500, y: 16 });
+  const [pos, setPos] = useState(getDefaultPos());
   const [isDragging, setIsDragging] = useState(false);
   const [windowSize, setWindowSize] = useState<'normal' | 'large' | 'minimized'>('normal');
 
@@ -86,6 +102,32 @@ export default function WorldWideTelescopeView() {
   // Iframe reference
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // Utility: safely parse dates from a variety of inputs
+  function parseDateSafe(v: any): Date | null {
+    if (v === null || v === undefined) return null;
+    if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+    if (typeof v === 'number') {
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof v === 'string') {
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  }
+
+  const isValidUrl = (u?: string | null) => {
+    if (!u || typeof u !== 'string') return false;
+    try {
+      // eslint-disable-next-line no-new
+      new URL(u);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
   // Iframe loading / connection state
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [iframeError, setIframeError] = useState(false);
@@ -97,7 +139,7 @@ export default function WorldWideTelescopeView() {
       if (!iframeRef.current || !iframeRef.current.contentWindow) return;
       let targetOrigin = '*';
       try {
-        const url = new URL(telescopeTarget.url);
+        const url = new URL(String(telescopeTarget?.url || ''));
         targetOrigin = url.origin;
       } catch (e) {
         // fallback to wildcard origin
@@ -132,14 +174,12 @@ export default function WorldWideTelescopeView() {
     }
   }, [activePreset, refreshKey]);
 
-  // Sync datetime on currentTime change
+  // Sync datetime on currentTime change (defensive)
   useEffect(() => {
-    if (currentTime && currentTime instanceof Date && !isNaN(currentTime.getTime())) {
+    const d = parseDateSafe(currentTime);
+    if (d) {
       try {
-        postToWWT({
-          event: 'set_datetime',
-          isot: currentTime.toISOString()
-        });
+        postToWWT({ event: 'set_datetime', isot: d.toISOString() });
       } catch (err) {
         console.error('[WorldWideTelescopeView] Failed to format date for WWT sync', err);
       }
@@ -284,7 +324,8 @@ export default function WorldWideTelescopeView() {
     useUIStore.getState().addChangeLog('TELESCOPE', `Background imagery array set to: ${layerName}`, 'info');
   };
 
-  const iframeUrl = telescopeTarget?.url || 'https://worldwidetelescope.org/webclient/';
+  const iframeUrl = typeof telescopeTarget?.url === 'string' && telescopeTarget.url.length > 0 ? telescopeTarget.url : 'https://worldwidetelescope.org/webclient/';
+  const safeIframeUrl = isValidUrl(iframeUrl) ? iframeUrl : null;
 
   // Window size CSS styling mapping
   const windowDimensions = {
@@ -307,16 +348,14 @@ export default function WorldWideTelescopeView() {
 
   // Time metrics calculations
   const timeStart = useMemo(() => {
-    if (timeRange && timeRange.start && timeRange.start instanceof Date && !isNaN(timeRange.start.getTime())) {
-      return timeRange.start.getTime();
-    }
+    const s = parseDateSafe(timeRange?.start);
+    if (s) return s.getTime();
     return Date.now() - 86400000;
   }, [timeRange]);
 
   const timeEnd = useMemo(() => {
-    if (timeRange && timeRange.end && timeRange.end instanceof Date && !isNaN(timeRange.end.getTime())) {
-      return timeRange.end.getTime();
-    }
+    const e = parseDateSafe(timeRange?.end);
+    if (e) return e.getTime();
     return Date.now();
   }, [timeRange]);
 
@@ -326,12 +365,10 @@ export default function WorldWideTelescopeView() {
   }, [timeStart, timeEnd]);
 
   const progressPct = useMemo(() => {
-    if (!currentTime || !(currentTime instanceof Date) || isNaN(currentTime.getTime())) {
-      return 0;
-    }
-    const pct = (currentTime.getTime() - timeStart) / totalMs;
+    if (!safeCurrentTime) return 0;
+    const pct = (safeCurrentTime.getTime() - timeStart) / totalMs;
     return isNaN(pct) ? 0 : Math.max(0, Math.min(1, pct));
-  }, [currentTime, timeStart, totalMs]);
+  }, [safeCurrentTime, timeStart, totalMs]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
@@ -347,7 +384,7 @@ export default function WorldWideTelescopeView() {
       {typeof window !== 'undefined' && (window as any).__triggerTelescopeCrash && <CrashComponent />}
       
       {/* Space HUD / Controls Panel (Collapsible Drawer on Left) */}
-      <div className="absolute top-16 left-4 z-40 flex flex-col pointer-events-auto max-h-[calc(100%-140px)]">
+      <div className="absolute top-24 left-4 z-40 flex flex-col pointer-events-auto max-h-[calc(100%-140px)]">
         {drawerOpen ? (
           <div className="glass-panel w-[320px] flex flex-col border border-primary/20 overflow-hidden shadow-2xl animate-slide-in">
             {/* Drawer Header */}
@@ -612,17 +649,6 @@ export default function WorldWideTelescopeView() {
         )}
       </div>
 
-      {/* Draggable HUD Migration & Reset Overlay (Top-Left screen overlay) */}
-      <div className="absolute top-4 left-72 z-50 flex items-center gap-2 pointer-events-auto">
-        <button
-          onClick={() => setRefreshKey(k => k + 1)}
-          className="glass-panel p-3 px-4 hover:bg-white/10 text-white/80 hover:text-white transition-colors rounded shadow-lg flex items-center gap-2 text-xs font-bold font-mono cursor-pointer border border-primary/20"
-          title="Reload Telescope Client"
-        >
-          <RefreshCw className="w-4 h-4 animate-spin-slow" />
-          <span>Refresh WWT</span>
-        </button>
-      </div>
 
       {/* Draggable, Glassmorphic Picture-in-Picture WWT Viewport Window */}
       <div
@@ -669,9 +695,18 @@ export default function WorldWideTelescopeView() {
               </button>
             )}
 
+            {/* Refresh WWT Client */}
+            <button
+              onClick={() => setRefreshKey(k => k + 1)}
+              className="pip-action-btn hover:bg-white/10 p-1 rounded text-white/50 hover:text-white transition-colors cursor-pointer"
+              title="Refresh WWT Client"
+            >
+              <RefreshCw size={14} className="animate-spin-slow" />
+            </button>
+
             {/* External link */}
             <a
-              href={iframeUrl}
+              href={safeIframeUrl || 'https://worldwidetelescope.org/webclient/'}
               target="_blank"
               rel="noopener noreferrer"
               className="pip-action-btn hover:bg-white/10 p-1 rounded text-white/50 hover:text-white transition-colors cursor-pointer"
@@ -744,7 +779,7 @@ export default function WorldWideTelescopeView() {
                 <div className="text-white/50 font-mono text-[8px] leading-relaxed">
                   Unable to reach WorldWide Telescope servers. Check your internet connection or try again.
                 </div>
-                <div className="text-white/30 font-mono text-[7px] break-all lowercase">{iframeUrl}</div>
+                <div className="text-white/30 font-mono text-[7px] break-all lowercase">{safeIframeUrl || String(iframeUrl)}</div>
                 <button
                   onClick={() => { setIframeError(false); setIframeLoaded(false); setRefreshKey(k => k + 1); }}
                   className="mt-2 bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-4 py-1.5 rounded text-[9px] font-bold font-mono uppercase transition-all cursor-pointer"
@@ -763,17 +798,34 @@ export default function WorldWideTelescopeView() {
                     </span>
                   </div>
                 )}
-                <iframe
-                  ref={iframeRef}
-                  key={refreshKey}
-                  src={iframeUrl}
-                  title="WorldWide Telescope PIP Window"
-                  className="w-full h-full border-0 pointer-events-auto"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  onLoad={handleIframeLoad}
-                  onError={handleIframeError}
-                />
+                {safeIframeUrl ? (
+                  <iframe
+                    ref={iframeRef}
+                    key={refreshKey}
+                    src={safeIframeUrl}
+                    title="WorldWide Telescope PIP Window"
+                    className="w-full h-full border-0 pointer-events-auto"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    onLoad={handleIframeLoad}
+                    onError={handleIframeError}
+                  />
+                ) : (
+                  <div className="text-center p-6 max-w-[85%] space-y-3 pointer-events-auto select-text">
+                    <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg">⚠</div>
+                    <div className="text-amber-400 font-mono text-[10px] font-bold uppercase tracking-wider">Invalid Telescope URL</div>
+                    <div className="text-white/50 font-mono text-[8px] leading-relaxed">
+                      The configured telescope iframe URL is invalid. Please choose a different target.
+                    </div>
+                    <div className="text-white/30 font-mono text-[7px] break-all lowercase">{String(iframeUrl)}</div>
+                    <button
+                      onClick={() => { setIframeError(false); setIframeLoaded(false); setRefreshKey(k => k + 1); }}
+                      className="mt-2 bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-4 py-1.5 rounded text-[9px] font-bold font-mono uppercase transition-all cursor-pointer"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
               </>
             )}
             
@@ -823,17 +875,13 @@ export default function WorldWideTelescopeView() {
               <div className="flex items-center gap-1 text-white/50">
                 <Calendar size={11} />
                 <span>
-                  {currentTime && currentTime instanceof Date && !isNaN(currentTime.getTime())
-                    ? currentTime.toLocaleDateString()
-                    : 'N/A'}
+                  {safeCurrentTime ? safeCurrentTime.toLocaleDateString() : 'N/A'}
                 </span>
               </div>
               <div className="flex items-center gap-1 text-white/50">
                 <Clock size={11} />
                 <span className="text-cyan-400 font-bold tabular-nums">
-                  {currentTime && currentTime instanceof Date && !isNaN(currentTime.getTime())
-                    ? currentTime.toLocaleTimeString()
-                    : 'N/A'}
+                  {safeCurrentTime ? safeCurrentTime.toLocaleTimeString() : 'N/A'}
                 </span>
               </div>
             </div>

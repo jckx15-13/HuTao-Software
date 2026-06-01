@@ -9,7 +9,7 @@
 
 import { AnimatePresence } from 'motion/react'; // Handles exit transitions: keeps components in the DOM until their fade/slide animations finish.
 import { Settings } from 'lucide-react'; // Lucide SVG icon definition for the gear button.
-import { Suspense } from 'react'; // React boundary helper: displays a placeholder while code split components are loading.
+import React, { Suspense } from 'react'; // React default + Suspense for lazy imports.
 import { DockedLayout } from './components/layout/DockedLayout'; // Workspace structure defining Left, Center, and Right panels.
 import { IconButton } from './components/common/IconButton'; // Standardized accessible button component with hover glow effects.
 import { ParticleOverlay } from './components/ParticleOverlay'; // Canvas element rendering floating background canvas shapes.
@@ -21,6 +21,9 @@ import { CustomCursor } from './components/layout/CustomCursor'; // Custom point
 import { useThemeVariables } from './hooks/useThemeVariables'; // Computes current palette style objects and monitors CPU strain.
 import { useUIStore } from './store/uiStore'; // Shared state manager (Zustand) tracking navigation and user preferences.
 import { ConfigProvider } from './context/ConfigContext';
+
+// Dev-only harness: lazy-load to avoid impacting production bundles
+const MountUnmountHarness = React.lazy(() => import('./components/dev/MountUnmountHarness'));
 
 // ----------------------------------------------------------------------------
 // 🏷️ Top Navigation Bar
@@ -36,7 +39,7 @@ function TopAppBar() {
       <div className="flex items-center gap-3 font-mono text-xs font-bold uppercase tracking-widest text-primary">
         {/* Glow indicator: styled using a box shadow colored by the primary theme variable */}
         <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_8px_var(--theme-primary)]" />
-        <span>Silver Wolf VI</span>
+        <span className="glitch-target hover-glitch cursor-pointer" data-text="Silver Wolf VI">Silver Wolf VI</span>
       </div>
       {/* settings icon: clicking updates Zustand page string, triggering main App page re-render */}
       <IconButton
@@ -64,6 +67,9 @@ export default function App() {
     navigator.webdriver ||
     window.location.search.includes('fallback')
   );
+
+  // Dev harness toggle: append `?mountharness` to the URL to open the mount/unmount harness
+  const showHarness = typeof window !== 'undefined' && window.location.search.includes('mountharness');
 
   // Destructures computed theme object and the CPU load state.
   const { appStyle, isHighLoad } = useThemeVariables();
@@ -115,6 +121,13 @@ export default function App() {
           <div className="relative z-10 flex h-full w-full pt-12 pointer-events-none">
             <DockedLayout />
           </div>
+
+          {/* Dev harness overlay (rendered when ?mountharness is present) */}
+          {showHarness && (
+            <Suspense fallback={null}>
+              <MountUnmountHarness />
+            </Suspense>
+          )}
 
           {/* AnimatePresence monitors settings page component mounting. When currentPage !== 'settings', it plays slide-out fade before removal. */}
           <AnimatePresence>

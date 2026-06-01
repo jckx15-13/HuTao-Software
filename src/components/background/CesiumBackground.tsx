@@ -7,7 +7,7 @@ import {
   projectLatLng,
 } from '../../lib/globeProjection';
 import { SATELLITES } from '../../data/satellites';
-import { propagateCircularOrbit, propagateCircularOrbitInto } from '../../lib/simulation';
+import { propagateCircularOrbit, propagateCircularOrbitInto, propagateSatelliteTleInto } from '../../lib/simulation';
 
 const CesiumBackground3D = React.lazy(() => import('./CesiumBackground3D'));
 
@@ -240,7 +240,16 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
           lat = telemetryRef.current.latitude;
           lng = telemetryRef.current.longitude;
         } else {
-          propagateCircularOrbitInto(orbitOut, 0, elapsed, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+          const tleData = useUIStore.getState().satelliteData[sat.id]?.tle;
+          if (tleData) {
+            const date = new Date(Date.now());
+            const success = propagateSatelliteTleInto(orbitOut, 0, tleData, date);
+            if (!success) {
+              propagateCircularOrbitInto(orbitOut, 0, elapsed, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+            }
+          } else {
+            propagateCircularOrbitInto(orbitOut, 0, elapsed, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+          }
           lat = orbitOut[0];
           lng = orbitOut[1];
         }
@@ -255,7 +264,18 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
           ctx.beginPath();
           let firstOrbitPoint = true;
           for (let u = 0; u <= 2 * Math.PI; u += 0.12) {
-            propagateCircularOrbitInto(orbitOut, 0, elapsed - u * 500, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+            const tleData = useUIStore.getState().satelliteData[sat.id]?.tle;
+            if (tleData) {
+              // 500 seconds back per step * u
+              const pastDate = new Date(Date.now() - u * 500 * 1000);
+              const success = propagateSatelliteTleInto(orbitOut, 0, tleData, pastDate);
+              if (!success) {
+                propagateCircularOrbitInto(orbitOut, 0, elapsed - u * 500, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+              }
+            } else {
+              propagateCircularOrbitInto(orbitOut, 0, elapsed - u * 500, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+            }
+            
             const opt = projectLatLng(orbitOut[0], orbitOut[1], rotation, tilt, R, cx, cy);
             if (opt.visible) {
               if (firstOrbitPoint) {

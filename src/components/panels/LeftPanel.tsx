@@ -469,7 +469,10 @@ export function LeftPanel() {
       <div className="flex h-12 items-center justify-between px-4 border-b border-white/5 shrink-0 bg-black/20">
         <div className="flex items-center gap-2">
           <Hexagon className="h-5 w-5 text-primary animate-pulse" />
-          <span className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-white/90">
+          <span 
+            className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-white/90 glitch-target hover-glitch cursor-pointer"
+            data-text={isSpatialMode ? 'SPATIAL HUD' : 'SILVER WOLF'}
+          >
             {isSpatialMode ? 'SPATIAL HUD' : 'SILVER WOLF'}
           </span>
         </div>

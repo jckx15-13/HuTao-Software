@@ -1,3 +1,5 @@
+import { User, Bot } from 'lucide-react';
+import { useUIStore } from '../../store/uiStore';
 import type { Message } from '../../lib/messages';
 import { MarkdownMessage } from '../MarkdownMessage';
 import { TypewriterText } from './TypewriterText';
@@ -8,23 +10,54 @@ interface MessageBubbleProps {
   fontSize: number;
 }
 
-const bubbleBaseClass = 'relative w-full max-w-full leading-relaxed';
-
 export function MessageBubble({ message, isHighLoad, fontSize }: MessageBubbleProps) {
   const isUser = message.sender === 'user';
   const isSystem = message.sender === 'system';
 
-  const bubbleClass = [
-    bubbleBaseClass,
-    isUser && 'max-w-[85%] rounded-lg border border-panel-border bg-panel px-4 py-3 text-text-main shadow-sm',
-    isSystem && 'rounded-lg border border-danger/40 bg-danger/20 p-4 font-mono text-sm text-danger shadow-sm',
-    !isUser && !isSystem && 'bg-transparent pt-1 font-sans text-text-main',
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const { chatBubbleStyle = 'glass', iconStyle = 'outlined' } = useUIStore((s) => s.personalisation) || {};
+
+  // Icon styling based on iconStyle and sender
+  const iconBaseClass = `h-7 w-7 rounded-full flex items-center justify-center shrink-0 shadow-md transition-all ${
+    iconStyle === 'filled'
+      ? isUser
+        ? 'bg-primary text-white border-none'
+        : 'bg-white/15 text-white border-none'
+      : isUser
+        ? 'bg-primary/20 border border-primary/30 text-primary'
+        : 'bg-white/5 border border-white/10 text-white/40'
+  }`;
+
+  // Bubble styling based on chatBubbleStyle and sender
+  let bubbleClass = 'relative w-full max-w-[85%] px-4 py-2.5 text-xs leading-relaxed transition-all ';
+  if (isSystem) {
+    bubbleClass = 'relative w-full max-w-full rounded-lg border border-danger/40 bg-danger/20 p-4 font-mono text-xs text-danger shadow-sm ';
+  } else if (chatBubbleStyle === 'glass') {
+    bubbleClass += isUser
+      ? 'bg-primary/10 border border-primary/25 text-white/90 backdrop-blur-md shadow-lg shadow-primary/5 rounded-2xl rounded-tr-sm'
+      : 'bg-white/5 border border-white/10 text-white/80 backdrop-blur-md shadow-lg rounded-2xl rounded-tl-sm';
+  } else if (chatBubbleStyle === 'solid') {
+    bubbleClass += isUser
+      ? 'bg-primary text-white border border-primary-hover shadow-md rounded-2xl rounded-tr-sm'
+      : 'bg-[#151720] border border-[#252836] text-white/90 shadow-md rounded-2xl rounded-tl-sm';
+  } else {
+    // minimal
+    bubbleClass += isUser
+      ? 'bg-transparent border-r-2 border-primary text-white/90 rounded-none px-3 py-1 shadow-none'
+      : 'bg-transparent border-l-2 border-white/20 text-white/80 rounded-none px-3 py-1 shadow-none';
+  }
 
   return (
-    <div className={`group flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <div className={`group flex w-full gap-3 items-start ${isUser ? 'flex-row-reverse' : 'justify-start'}`}>
+      {!isSystem && (
+        <div className={iconBaseClass}>
+          {isUser ? (
+            <User size={12} className={iconStyle === 'filled' ? 'fill-current' : ''} />
+          ) : (
+            <Bot size={12} className={iconStyle === 'filled' ? 'fill-current' : ''} />
+          )}
+        </div>
+      )}
+
       <div className={bubbleClass} style={{ fontSize: isSystem ? undefined : fontSize }}>
         {isUser && <div className="whitespace-pre-wrap">{message.content}</div>}
         {isSystem && <TypewriterText content={message.content} isFast={isHighLoad} />}

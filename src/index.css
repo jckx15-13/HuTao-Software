@@ -227,3 +227,81 @@ body {
   filter: none !important;
   text-shadow: none !important;
 }
+
+/* ──────────────────────────────────────────────────────────────
+   Enhanced Cyberpunk Visual Glitch Animations
+   ──────────────────────────────────────────────────────────── */
+.cyber-glitch {
+  position: relative;
+  display: inline-block;
+}
+
+.cyber-glitch::before,
+.cyber-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.cyber-glitch::before {
+  left: 2px;
+  text-shadow: -1px 0 var(--theme-secondary);
+  clip: rect(44px, 450px, 56px, 0);
+  animation: glitch-anim 4s infinite linear alternate-reverse;
+}
+
+.cyber-glitch::after {
+  left: -2px;
+  text-shadow: -1.5px 0 var(--theme-danger);
+  clip: rect(85px, 450px, 140px, 0);
+  animation: glitch-anim2 3s infinite linear alternate-reverse;
+}
+
+.hover-glitch {
+  transition: text-shadow 0.15s ease;
+}
+
+.hover-glitch:hover {
+  animation: glitch-skew 0.3s steps(2, end) infinite;
+  text-shadow: 1.5px 0 0 var(--theme-danger), -1.5px 0 0 var(--theme-secondary);
+}
+
+@keyframes glitch-skew {
+  0% { transform: skew(0deg); }
+  20% { transform: skew(-1deg); }
+  40% { transform: skew(1.5deg); }
+  60% { transform: skew(-0.5deg); }
+  80% { transform: skew(1deg); }
+  100% { transform: skew(0deg); }
+}
+
+@keyframes glitch-anim {
+  0% { clip: rect(31px, 9999px, 94px, 0); }
+  10% { clip: rect(112px, 9999px, 76px, 0); }
+  20% { clip: rect(85px, 9999px, 5px, 0); }
+  30% { clip: rect(27px, 9999px, 115px, 0); }
+  40% { clip: rect(73px, 9999px, 29px, 0); }
+  50% { clip: rect(118px, 9999px, 145px, 0); }
+  60% { clip: rect(9px, 9999px, 54px, 0); }
+  70% { clip: rect(144px, 9999px, 98px, 0); }
+  80% { clip: rect(39px, 9999px, 13px, 0); }
+  90% { clip: rect(88px, 9999px, 120px, 0); }
+  100% { clip: rect(6px, 9999px, 62px, 0); }
+}
+
+@keyframes glitch-anim2 {
+  0% { clip: rect(76px, 9999px, 116px, 0); }
+  11% { clip: rect(43px, 9999px, 3px, 0); }
+  22% { clip: rect(122px, 9999px, 78px, 0); }
+  33% { clip: rect(5px, 9999px, 85px, 0); }
+  44% { clip: rect(98px, 9999px, 150px, 0); }
+  55% { clip: rect(61px, 9999px, 22px, 0); }
+  66% { clip: rect(104px, 9999px, 131px, 0); }
+  77% { clip: rect(17px, 9999px, 60px, 0); }
+  88% { clip: rect(135px, 9999px, 92px, 0); }
+  100% { clip: rect(52px, 9999px, 10px, 0); }
+}

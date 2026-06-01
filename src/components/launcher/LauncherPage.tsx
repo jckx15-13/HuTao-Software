@@ -73,7 +73,7 @@ export function LauncherPage() {
             <Hexagon className="h-8 w-8 text-primary animate-spin-slow" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-3xl font-black tracking-[0.4em] uppercase text-white font-sans glow-text">
+            <h1 className="text-3xl font-black tracking-[0.4em] uppercase text-white font-sans glow-text cyber-glitch" data-text="SILVER WOLF VI">
               SILVER WOLF VI
             </h1>
             <p className="text-[9px] font-mono uppercase tracking-[0.25em] text-white/40">
@@ -86,7 +86,8 @@ export function LauncherPage() {
         <button
           type="button"
           onClick={() => setLauncherDismissed(true)}
-          className="launcher-breathe group relative flex h-14 w-64 items-center justify-center rounded-xl bg-primary text-xs font-mono font-bold uppercase tracking-[0.2em] hover:bg-primary-hover active:scale-95 transition-all cursor-pointer shadow-lg"
+          className="launcher-breathe group relative flex h-14 w-64 items-center justify-center rounded-xl bg-primary text-xs font-mono font-bold uppercase tracking-[0.2em] hover:bg-primary-hover active:scale-95 transition-all cursor-pointer shadow-lg hover-glitch"
+          data-text="Launch Workspace"
         >
           <span className="flex items-center gap-2">
             Launch Workspace
