@@ -37,8 +37,8 @@ export function MessageBubble({ message, isHighLoad, fontSize }: MessageBubblePr
       : 'bg-white/5 border border-white/10 text-white/80 backdrop-blur-md shadow-lg rounded-2xl rounded-tl-sm';
   } else if (chatBubbleStyle === 'solid') {
     bubbleClass += isUser
-      ? 'bg-primary text-white border border-primary-hover shadow-md rounded-2xl rounded-tr-sm'
-      : 'bg-[#151720] border border-[#252836] text-white/90 shadow-md rounded-2xl rounded-tl-sm';
+      ? 'bg-primary text-primary-text border border-primary-hover shadow-md rounded-2xl rounded-tr-sm'
+      : 'bg-panel border border-panel-border text-text-main shadow-md rounded-2xl rounded-tl-sm';
   } else {
     // minimal
     bubbleClass += isUser

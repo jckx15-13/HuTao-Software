@@ -5,6 +5,7 @@ import { pluginManager } from "../../core/plugins/PluginManager";
 import { wsClient } from "../../core/data/WsClient";
 import { resolveEngineUrl } from "../../core/data/resolveEngineUrl";
 import { fetchLocalEngineManifest } from "../../core/data/engineManifest";
+import { useDiagnosticsStore } from '@/store/diagnosticsStore';
 
 /**
  * Headless component that bridges the DataBus event system with the Zustand store.
@@ -75,6 +76,20 @@ export function DataBusSubscriber() {
             }, 0);
         });
 
+        const unsubPluginErr = dataBus.on('pluginError', ({ pluginId, message, error }) => {
+            try {
+                useDiagnosticsStore.getState().add({
+                    level: 'warning',
+                    message: message || `[Plugin:${pluginId}] error`,
+                    stack: error?.stack || null,
+                    metadata: { pluginId, engineUrl: resolveEngineUrl(pluginId) },
+                    suggestion: 'Inspect plugin manifest and upstream engine availability; check network and auth',
+                });
+            } catch (e) {
+                console.warn('[DataBusSubscriber] failed to record pluginError', e);
+            }
+        });
+
         return () => {
             active = false;
             unsubReg();
@@ -82,6 +97,7 @@ export function DataBusSubscriber() {
             unsubData();
             unsubToggle();
             unsubLoading();
+            unsubPluginErr();
         };
     }, [setPollingInterval, setEntities, setEntityCount, clearEntities, removeLayer, setLayerLoading]);
 

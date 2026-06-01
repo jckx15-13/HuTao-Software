@@ -176,10 +176,10 @@
 }
 
 .earth-globe {
-  --earth-zoom: 42%;
-  --earth-scale: 1;
-  --earth-rotate: 0deg;
-  --earth-tilt: 0deg;
+  --theme-earth-zoom: 42%;
+  --theme-earth-scale: 1;
+  --theme-earth-rotate: 0deg;
+  --theme-earth-tilt: 0deg;
   position: absolute;
   inset: 0;
   display: grid;
@@ -192,7 +192,7 @@
   width: min(65vw, 680px);
   aspect-ratio: 1;
   border-radius: 50%;
-  transform: rotateZ(var(--earth-tilt)) rotateY(var(--earth-rotate)) scale(var(--earth-scale));
+  transform: rotateZ(var(--theme-earth-tilt)) rotateY(var(--theme-earth-rotate)) scale(var(--theme-earth-scale));
   transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
   background:
     radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent 20%),

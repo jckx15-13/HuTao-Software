@@ -21,15 +21,17 @@
   --theme-text-main: #EAECEE;
   --theme-text-muted: #85929E;
 
+  --theme-primary-glow: color-mix(in srgb, var(--theme-primary) 50%, transparent);
+
   /* UI personalisation — set by JS from store */
-  --ui-opacity: 0.75;
-  --ui-blur: 16px;
-  --ui-radius: 12px;
-  --ui-shadow-intensity: 0.5;
-  --ui-animation-speed: 1;
-  --ui-font-scale: 1;
-  --ui-density-row-height: 36px;
-  --ui-border-opacity: 0.08;
+  --theme-ui-opacity: 0.75;
+  --theme-ui-blur: 16px;
+  --theme-ui-radius: 12px;
+  --theme-ui-shadow-intensity: 0.5;
+  --theme-ui-animation-speed: 1;
+  --theme-ui-font-scale: 1;
+  --theme-ui-density-row-height: 36px;
+  --theme-ui-border-opacity: 0.08;
 }
 
 @theme {
@@ -40,6 +42,7 @@
   --color-primary: var(--theme-primary);
   --color-primary-hover: var(--theme-primary-hover);
   --color-primary-text: var(--theme-primary-text);
+  --color-primary-glow: var(--theme-primary-glow);
   
   --color-secondary: var(--theme-secondary);
   --color-secondary-text: var(--theme-secondary-text);
@@ -87,43 +90,43 @@ body {
 }
 
 .panel-glass {
-  background: rgba(15, 17, 26, var(--ui-opacity, 0.75));
-  backdrop-filter: blur(var(--ui-blur, 16px));
-  -webkit-backdrop-filter: blur(var(--ui-blur, 16px));
-  border-radius: calc(var(--ui-radius, 12px) * 1px);
-  border: 1px solid rgba(255, 255, 255, var(--ui-border-opacity, 0.08));
+  background: rgba(15, 17, 26, var(--theme-ui-opacity, 0.75));
+  backdrop-filter: blur(var(--theme-ui-blur, 16px));
+  -webkit-backdrop-filter: blur(var(--theme-ui-blur, 16px));
+  border-radius: calc(var(--theme-ui-radius, 12px) * 1px);
+  border: 1px solid rgba(255, 255, 255, var(--theme-ui-border-opacity, 0.08));
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, calc(var(--ui-shadow-intensity, 0.5) * 0.6)),
+    0 8px 32px rgba(0, 0, 0, calc(var(--theme-ui-shadow-intensity, 0.5) * 0.6)),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .glass-panel {
-  background: rgba(15, 17, 26, var(--ui-opacity, 0.75)) !important;
-  backdrop-filter: blur(var(--ui-blur, 16px)) !important;
-  -webkit-backdrop-filter: blur(var(--ui-blur, 16px)) !important;
-  border-radius: calc(var(--ui-radius, 12px) * 1px);
-  border: 1px solid rgba(255, 255, 255, var(--ui-border-opacity, 0.08)) !important;
+  background: rgba(15, 17, 26, var(--theme-ui-opacity, 0.75)) !important;
+  backdrop-filter: blur(var(--theme-ui-blur, 16px)) !important;
+  -webkit-backdrop-filter: blur(var(--theme-ui-blur, 16px)) !important;
+  border-radius: calc(var(--theme-ui-radius, 12px) * 1px);
+  border: 1px solid rgba(255, 255, 255, var(--theme-ui-border-opacity, 0.08)) !important;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, calc(var(--ui-shadow-intensity, 0.5) * 0.6)),
+    0 8px 32px rgba(0, 0, 0, calc(var(--theme-ui-shadow-intensity, 0.5) * 0.6)),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .glass-panel-subtle {
-  background: rgba(15, 17, 26, calc(var(--ui-opacity, 0.75) * 0.5));
-  backdrop-filter: blur(calc(var(--ui-blur, 16px) * 0.5));
-  -webkit-backdrop-filter: blur(calc(var(--ui-blur, 16px) * 0.5));
-  border-radius: calc(var(--ui-radius, 12px) * 1px);
-  border: 1px solid rgba(255, 255, 255, calc(var(--ui-border-opacity, 0.08) * 0.5));
+  background: rgba(15, 17, 26, calc(var(--theme-ui-opacity, 0.75) * 0.5));
+  backdrop-filter: blur(calc(var(--theme-ui-blur, 16px) * 0.5));
+  -webkit-backdrop-filter: blur(calc(var(--theme-ui-blur, 16px) * 0.5));
+  border-radius: calc(var(--theme-ui-radius, 12px) * 1px);
+  border: 1px solid rgba(255, 255, 255, calc(var(--theme-ui-border-opacity, 0.08) * 0.5));
 }
 
 .glass-panel-strong {
-  background: rgba(15, 17, 26, calc(var(--ui-opacity, 0.75) * 1.2));
-  backdrop-filter: blur(calc(var(--ui-blur, 16px) * 1.5));
-  -webkit-backdrop-filter: blur(calc(var(--ui-blur, 16px) * 1.5));
-  border-radius: calc(var(--ui-radius, 12px) * 1px);
-  border: 1px solid rgba(255, 255, 255, var(--ui-border-opacity, 0.08));
+  background: rgba(15, 17, 26, calc(var(--theme-ui-opacity, 0.75) * 1.2));
+  backdrop-filter: blur(calc(var(--theme-ui-blur, 16px) * 1.5));
+  -webkit-backdrop-filter: blur(calc(var(--theme-ui-blur, 16px) * 1.5));
+  border-radius: calc(var(--theme-ui-radius, 12px) * 1px);
+  border: 1px solid rgba(255, 255, 255, var(--theme-ui-border-opacity, 0.08));
   box-shadow:
-    0 16px 48px rgba(0, 0, 0, calc(var(--ui-shadow-intensity, 0.5) * 0.8)),
+    0 16px 48px rgba(0, 0, 0, calc(var(--theme-ui-shadow-intensity, 0.5) * 0.8)),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
@@ -266,8 +269,10 @@ body {
 }
 
 .hover-glitch:hover {
-  animation: glitch-skew 0.3s steps(2, end) infinite;
-  text-shadow: 1.5px 0 0 var(--theme-danger), -1.5px 0 0 var(--theme-secondary);
+  /* Short, single-pass skew for subtle effect (improves legibility) */
+  animation: glitch-skew 0.24s steps(2, end) 1;
+  /* much smaller offset and slightly transparent colors to avoid heavy blur */
+  text-shadow: 0.6px 0 0 rgba(245,183,177,0.85), -0.6px 0 0 rgba(163,228,215,0.85);
 }
 
 @keyframes glitch-skew {

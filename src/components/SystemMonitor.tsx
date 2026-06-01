@@ -87,6 +87,8 @@ export function SystemMonitor() {
           <AlertTriangle className={`w-4 h-4 ${cpuLoad > 0.8 ? 'text-danger animate-[pulse_0.4s_infinite]' : 'text-primary/50'}`} />
         </h4>
         <input 
+          id="cpu-load-slider"
+          name="cpu-load-slider"
           type="range" 
           min="0" max="1" step="0.01" 
           value={cpuLoad}

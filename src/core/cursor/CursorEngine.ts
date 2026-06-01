@@ -208,7 +208,7 @@ export class CursorEngine implements CursorEngineLifecycle {
       font: "11px/1.35 monospace",
       whiteSpace: "pre",
       pointerEvents: "none",
-      display: this.config.debug || localStorage.getItem("wwv-debug-cursor") === "1" ? "block" : "none",
+      display: this.config.debug || (typeof window !== "undefined" && window.localStorage && localStorage.getItem("wwv-debug-cursor") === "1") ? "block" : "none",
     });
 
     this.mount.append(this.canvas, this.reticle, this.debug);
@@ -464,7 +464,7 @@ export class CursorEngine implements CursorEngineLifecycle {
 
     this.renderCanvas(frame, accent);
 
-    if (this.debug && (this.config.debug || localStorage.getItem("wwv-debug-cursor") === "1")) {
+    if (this.debug && (this.config.debug || (typeof window !== "undefined" && window.localStorage && localStorage.getItem("wwv-debug-cursor") === "1"))) {
       this.debug.style.display = "block";
       this.debug.textContent = [
         `mode: ${frame.mode}`,

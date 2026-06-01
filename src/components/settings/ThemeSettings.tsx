@@ -1,7 +1,7 @@
 import { ChangeEvent, useState } from 'react';
 import { ImageIcon, Loader2, Check } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
-import { palettes, type PaletteKey } from '../../lib/themeEngine';
+import { palettes, type PaletteKey, formatPaletteName } from '../../lib/themeEngine';
 import { extractThemeFromImage } from '../../lib/imageTheme';
 import { SettingsSection } from './SettingsSection';
 
@@ -33,11 +33,11 @@ export function ThemeSettings() {
             onClick={() => updateSettings({ activePalette: pk })} 
             className={`flex items-center justify-between px-4 py-3 rounded-xl border text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${
               activePalette === pk 
-                ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_var(--primary-glow)]'
+                ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_var(--theme-primary-glow)]'
                 : 'border-white/5 bg-white/5 text-white/40 hover:border-white/20 hover:text-white/60'
             }`}
           >
-            {pk} 
+            {formatPaletteName(pk)} 
             {activePalette === pk && <Check size={12} strokeWidth={3} />}
           </button>
         ))}

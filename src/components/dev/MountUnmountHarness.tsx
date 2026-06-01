@@ -31,6 +31,16 @@ export default function MountUnmountHarness() {
     }, 1000);
   };
 
+  // Auto-run cycles when `?mountharness&autorun=1` is present (useful for CI/dev stress testing)
+  React.useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && window.location.search.includes('autorun')) {
+        startCycles();
+      }
+    } catch (e) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="p-4 text-white">
       <div className="mb-2 flex gap-2">

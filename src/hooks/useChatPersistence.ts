@@ -5,15 +5,23 @@ export function useChatPersistence(messages: Message[], setMessages: (messages: 
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    const savedMessages = localStorage.getItem(CHAT_HISTORY_STORAGE_KEY);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const savedMessages = localStorage.getItem(CHAT_HISTORY_STORAGE_KEY);
 
-    if (savedMessages) {
-      try {
-        setMessages(JSON.parse(savedMessages));
-      } catch (error) {
-        console.error('Failed to load chat history', error);
-        localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
+        if (savedMessages) {
+          try {
+            setMessages(JSON.parse(savedMessages));
+          } catch (error) {
+            console.error('Failed to load chat history', error);
+            try {
+              localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
+            } catch {}
+          }
+        }
       }
+    } catch (e) {
+      console.warn('Failed to read chat history from localStorage', e);
     }
 
     setIsHydrated(true);
@@ -22,6 +30,13 @@ export function useChatPersistence(messages: Message[], setMessages: (messages: 
   useEffect(() => {
     if (!isHydrated) return;
 
-    localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(messages));
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(messages));
+      }
+    } catch (e) {
+      console.warn('Failed to save chat history to localStorage', e);
+    }
   }, [isHydrated, messages]);
 }
+

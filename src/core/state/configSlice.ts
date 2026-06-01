@@ -116,8 +116,12 @@ export const createConfigSlice: StateCreator<AppStore, [], [], ConfigSlice> = (s
             dataConfig: { ...state.dataConfig, ...config },
         })),
     updateMapConfig: (config) => set((state) => {
-            if (config.baseLayerId && typeof window !== "undefined" && window.localStorage && typeof window.localStorage.setItem === "function") {
-                localStorage.setItem("wwv_map_layer", config.baseLayerId);
+            try {
+                if (config.baseLayerId && typeof window !== "undefined" && window.localStorage && typeof window.localStorage.setItem === "function") {
+                    localStorage.setItem("wwv_map_layer", config.baseLayerId);
+                }
+            } catch (e) {
+                console.warn("[configSlice] Failed to save baseLayerId to localStorage:", e);
             }
             return { mapConfig: { ...state.mapConfig, ...config } };
         }),

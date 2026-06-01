@@ -27,22 +27,22 @@ export function useThemeVariables(): AppliedTheme {
 
     // Apply personalisation tokens
     const root = document.documentElement;
-    root.style.setProperty('--ui-opacity', personalisation.panelOpacity.toString());
-    root.style.setProperty('--ui-blur', `${personalisation.blurIntensity}px`);
-    root.style.setProperty('--ui-radius', personalisation.cornerRadius.toString());
-    root.style.setProperty('--ui-shadow-intensity', personalisation.shadowIntensity.toString());
-    root.style.setProperty('--ui-animation-speed', personalisation.animationIntensity.toString());
-    root.style.setProperty('--ui-font-scale', personalisation.fontScale.toString());
+    root.style.setProperty('--theme-ui-opacity', personalisation.panelOpacity.toString());
+    root.style.setProperty('--theme-ui-blur', `${personalisation.blurIntensity}px`);
+    root.style.setProperty('--theme-ui-radius', personalisation.cornerRadius.toString());
+    root.style.setProperty('--theme-ui-shadow-intensity', personalisation.shadowIntensity.toString());
+    root.style.setProperty('--theme-ui-animation-speed', personalisation.animationIntensity.toString());
+    root.style.setProperty('--theme-ui-font-scale', personalisation.fontScale.toString());
     
     // Convert UI density to row height
     const densityMap = { compact: '32px', comfortable: '38px', spacious: '44px' };
-    root.style.setProperty('--ui-density-row-height', densityMap[personalisation.uiDensity] || '38px');
+    root.style.setProperty('--theme-ui-density-row-height', densityMap[personalisation.uiDensity] || '38px');
     
     // Border opacity scale
     const borderOpacity = personalisation.borderStyle === 'solid' ? '0.25' : 
                           personalisation.borderStyle === 'glow' ? '0.15' : 
                           personalisation.borderStyle === 'none' ? '0' : '0.08';
-    root.style.setProperty('--ui-border-opacity', borderOpacity);
+    root.style.setProperty('--theme-ui-border-opacity', borderOpacity);
 
     // Apply global border style class
     document.body.classList.remove('border-style-subtle', 'border-style-glow', 'border-style-solid', 'border-style-none');

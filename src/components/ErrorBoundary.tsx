@@ -1,4 +1,5 @@
 import React, { type ErrorInfo, type ReactNode } from 'react';
+import { useDiagnosticsStore } from '@/store/diagnosticsStore';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -28,6 +29,18 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[Silver Wolf VI] Unhandled error:', error, errorInfo);
     this.props.onError?.(error, errorInfo);
+
+    try {
+      // Record to diagnostics store for dev inspection and export
+      useDiagnosticsStore.getState().add({
+        level: 'error',
+        message: error.message || 'ErrorBoundary caught an error',
+        stack: error.stack || null,
+        metadata: { errorInfo },
+      });
+    } catch (e) {
+      console.warn('[ErrorBoundary] failed to record diagnostic', e);
+    }
 
     // Detect headless test context
     const isHeadless = typeof window !== 'undefined' && (

@@ -495,6 +495,8 @@ export function LeftPanel() {
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-white/30" />
               <input
+                id="search-workspaces"
+                name="search-workspaces"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -549,6 +551,8 @@ export function LeftPanel() {
               <div className="relative">
                 <Search className="absolute left-2 top-2 h-3 w-3 text-white/30" />
                 <input
+                  id="orbital-search"
+                  name="orbital-search"
                   type="text"
                   value={orbitalSearchQuery}
                   onChange={(e) => setOrbitalSearchQuery(e.target.value)}
@@ -677,6 +681,8 @@ export function LeftPanel() {
                 <div className="space-y-1">
                   <label className="text-white/40 block text-[8px] uppercase">Imagery Source</label>
                   <select
+                    id="imagery-source"
+                    name="imagery-source"
                     value={mapConfig.baseLayerId}
                     onChange={(e) => updateMapConfig({ baseLayerId: e.target.value })}
                     className="w-full bg-[#111217] border border-white/5 rounded px-2 py-1 text-white text-[9px] focus:outline-none focus:border-primary cursor-pointer"
@@ -692,6 +698,8 @@ export function LeftPanel() {
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
                     <input
+                      id="show-borders"
+                      name="show-borders"
                       type="checkbox"
                       checked={showBorders}
                       onChange={(e) => setShowBorders(e.target.checked)}
@@ -701,6 +709,8 @@ export function LeftPanel() {
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
                     <input
+                      id="show-terrain"
+                      name="show-terrain"
                       type="checkbox"
                       checked={showTerrain}
                       onChange={(e) => setShowTerrain(e.target.checked)}
@@ -710,6 +720,8 @@ export function LeftPanel() {
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
                     <input
+                      id="show-roads"
+                      name="show-roads"
                       type="checkbox"
                       checked={showRoads}
                       onChange={(e) => setShowRoads(e.target.checked)}
@@ -725,6 +737,8 @@ export function LeftPanel() {
                     <span className="text-primary font-bold">{mapConfig.resolutionScale.toFixed(2)}x</span>
                   </div>
                   <input
+                    id="resolution-scale"
+                    name="resolution-scale"
                     type="range"
                     min="0.5"
                     max="1.5"
@@ -748,6 +762,8 @@ export function LeftPanel() {
                 <div className="space-y-1">
                   <label className="text-white/40 block text-[8px] uppercase">Point A (Start):</label>
                   <select
+                    id="measure-point-a"
+                    name="measure-point-a"
                     value={measureStart?.id || ''}
                     onChange={(e) => {
                       const loc = locations.find((l) => l.id === e.target.value);
@@ -765,6 +781,8 @@ export function LeftPanel() {
                 <div className="space-y-1">
                   <label className="text-white/40 block text-[8px] uppercase">Point B (End):</label>
                   <select
+                    id="measure-point-b"
+                    name="measure-point-b"
                     value={measureEnd?.id || ''}
                     onChange={(e) => {
                       const loc = locations.find((l) => l.id === e.target.value);
@@ -800,6 +818,8 @@ export function LeftPanel() {
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-3 w-3 text-white/30" />
                   <input
+                    id="satellite-search"
+                    name="satellite-search"
                     type="text"
                     value={satelliteSearchQuery}
                     onChange={(e) => setSatelliteSearchQuery(e.target.value)}
@@ -846,6 +866,8 @@ export function LeftPanel() {
                 <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-white/5 text-[8px] font-bold">
                   <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
                     <input
+                      id="satellite-show-trails"
+                      name="satellite-show-trails"
                       type="checkbox"
                       checked={satelliteSettings?.showTrails !== false}
                       onChange={(e) => updateSatelliteSettings({ showTrails: e.target.checked })}
@@ -855,6 +877,8 @@ export function LeftPanel() {
                   </label>
                   <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
                     <input
+                      id="satellite-show-all-trails"
+                      name="satellite-show-all-trails"
                       type="checkbox"
                       checked={satelliteSettings?.showAllTrails === true}
                       onChange={(e) => updateSatelliteSettings({ showAllTrails: e.target.checked })}

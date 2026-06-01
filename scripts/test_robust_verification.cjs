@@ -9,8 +9,8 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 
-const BASE_URL = 'http://127.0.0.1:3000/?fallback=true';
-const BRAIN_DIR = 'C:\\Users\\jaron\\.gemini\\antigravity\\brain\\907a618f-ed63-42e7-80f7-2d596d170c59';
+const BASE_URL = 'http://localhost:3005/?fallback=true';
+const BRAIN_DIR = 'C:\\Users\\jaron\\.gemini\\antigravity\\brain\\f2fe35e9-51d4-4853-9d0b-9f71f0c88523';
 const SCREENSHOTS_DIR = path.join(BRAIN_DIR, 'test_screenshots');
 
 if (!fs.existsSync(SCREENSHOTS_DIR)) {
@@ -55,15 +55,27 @@ async function freshPage() {
  * Returns page in workspace-ready state, or null on failure.
  */
 async function prepareWorkspacePage() {
-  const p = await freshPage();
+  let p = await freshPage();
   try {
-    await p.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    console.log("  [TEST-DEBUG] p.goto(BASE_URL)...");
+    try {
+      await p.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    } catch (e) {
+      console.log(`  [TEST-DEBUG] Navigation failed (${e.message.substring(0, 60)}). Re-creating page...`);
+      try { await p.close(); } catch (_) {}
+      await sleep(3000);
+      p = await freshPage();
+      await p.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    }
+    console.log("  [TEST-DEBUG] p.waitForSelector('body')...");
     await p.waitForSelector('body', { timeout: 10000 });
     
     // Wait for React to mount (simple timeout)
+    console.log("  [TEST-DEBUG] sleeping for 3000ms...");
     await sleep(3000);
 
     // Disable animations
+    console.log("  [TEST-DEBUG] disabling animations...");
     await p.evaluate(() => {
       try {
         if (window.useUIStore) {
@@ -76,12 +88,15 @@ async function prepareWorkspacePage() {
     });
 
     // Click SKIP BOOT if present
+    console.log("  [TEST-DEBUG] clicking SKIP BOOT...");
     await p.evaluate(() => {
       const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('SKIP BOOT'));
       if (btn) btn.click();
     });
+    console.log("  [TEST-DEBUG] sleeping for 1500ms...");
     await sleep(1500);
 
+    console.log("  [TEST-DEBUG] prepareWorkspacePage succeeded!");
     return p;
   } catch (err) {
     console.warn(`  ⚠ prepareWorkspacePage failed: ${err.message.substring(0, 80)}`);

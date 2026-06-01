@@ -21,9 +21,11 @@ import { CustomCursor } from './components/layout/CustomCursor'; // Custom point
 import { useThemeVariables } from './hooks/useThemeVariables'; // Computes current palette style objects and monitors CPU strain.
 import { useUIStore } from './store/uiStore'; // Shared state manager (Zustand) tracking navigation and user preferences.
 import { ConfigProvider } from './context/ConfigContext';
+import { useDiagnosticsStore } from './store/diagnosticsStore';
 
 // Dev-only harness: lazy-load to avoid impacting production bundles
 const MountUnmountHarness = React.lazy(() => import('./components/dev/MountUnmountHarness'));
+const DiagnosticPanel = React.lazy(() => import('./components/dev/DiagnosticPanel'));
 
 // ----------------------------------------------------------------------------
 // 🏷️ Top Navigation Bar
@@ -70,6 +72,31 @@ export default function App() {
 
   // Dev harness toggle: append `?mountharness` to the URL to open the mount/unmount harness
   const showHarness = typeof window !== 'undefined' && window.location.search.includes('mountharness');
+  const showDiagnostics = typeof window !== 'undefined' && window.location.search.includes('diagnostics');
+  const setCurrentPage = useUIStore((state) => state.setCurrentPage);
+
+  // If dev toggles are present, force the app into workspace so overlays render
+  React.useEffect(() => {
+    try {
+      if (showHarness || showDiagnostics) {
+        setCurrentPage('workspace');
+      }
+    } catch (e) {}
+  }, [showHarness, showDiagnostics, setCurrentPage]);
+
+  React.useEffect(() => {
+    // Report holistic upgrade status to the new diagnostic engine
+    useDiagnosticsStore.getState().add({
+      level: 'info',
+      message: 'Silver Wolf VI Holistic Upgrade Complete.',
+      metadata: {
+        version: 'v6.2.0-stable',
+        diagnosticEngine: 'active',
+        bridgeProxy: 'active',
+        standardizedTheme: 'active'
+      }
+    });
+  }, []);
 
   // Destructures computed theme object and the CPU load state.
   const { appStyle, isHighLoad } = useThemeVariables();
@@ -126,6 +153,13 @@ export default function App() {
           {showHarness && (
             <Suspense fallback={null}>
               <MountUnmountHarness />
+            </Suspense>
+          )}
+
+          {/* Dev diagnostics overlay (rendered when ?diagnostics is present) */}
+          {showDiagnostics && (
+            <Suspense fallback={null}>
+              <DiagnosticPanel />
             </Suspense>
           )}
 

@@ -124,6 +124,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
 
     const pointOut = new Float32Array(3); // reuse buffer to avoid allocations
     const orbitOut = new Float32Array(2); // lat, lng reuse buffer
+    const trailCache: Record<string, { lastUpdate: number; points: { lat: number; lng: number }[] }> = {};
     let rafId: number | null = null;
 
     const renderFrame = (timestamp?: number) => {
@@ -137,7 +138,8 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
       lastFrameTime = now;
 
       // Calculate earth rotation angle (360 degrees every 90 seconds)
-      const rotation = (Date.now() / 90000) * 2 * Math.PI;
+      const currentTime = Date.now();
+      const rotation = (currentTime / 90000) * 2 * Math.PI;
       const sinRot = Math.sin(rotation);
       const cosRot = Math.cos(rotation);
       const sinTilt = Math.sin(tilt);
@@ -182,10 +184,12 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
       }
 
       // 5. Projected Satellites & Orbit Tracks
-      const showTrails = useUIStore.getState().satelliteSettings?.showTrails !== false;
-      const showAllTrails = useUIStore.getState().satelliteSettings?.showAllTrails === true;
-      const satelliteCategories = useUIStore.getState().satelliteCategories;
-      const activeSatelliteId = useUIStore.getState().activeSatelliteId;
+      const uiState = useUIStore.getState();
+      const showTrails = uiState.satelliteSettings?.showTrails !== false;
+      const showAllTrails = uiState.satelliteSettings?.showAllTrails === true;
+      const satelliteCategories = uiState.satelliteCategories;
+      const activeSatelliteId = uiState.activeSatelliteId;
+      const satDataMap = uiState.satelliteData;
 
       const sidsToDraw: Array<{
         id: string;
@@ -213,7 +217,9 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
       }
 
       // Add other SATELLITES if their category is visible
-      SATELLITES.forEach(sat => {
+      const curatedSats = SATELLITES;
+      for (let i = 0; i < curatedSats.length; i++) {
+        const sat = curatedSats[i];
         if (satelliteCategories[sat.category] !== false) {
           sidsToDraw.push({
             id: sat.id,
@@ -226,11 +232,12 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
             isIss: false
           });
         }
-      });
+      }
 
-      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      const elapsed = (currentTime - startTimeRef.current) / 1000;
 
-      sidsToDraw.forEach(sat => {
+      for (let i = 0; i < sidsToDraw.length; i++) {
+        const sat = sidsToDraw[i];
         const isSelected = activeSatelliteId === sat.id;
         const shouldHaveTrail = showAllTrails || (isSelected && showTrails);
 
@@ -240,10 +247,9 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
           lat = telemetryRef.current.latitude;
           lng = telemetryRef.current.longitude;
         } else {
-          const tleData = useUIStore.getState().satelliteData[sat.id]?.tle;
+          const tleData = satDataMap[sat.id]?.tle;
           if (tleData) {
-            const date = new Date(Date.now());
-            const success = propagateSatelliteTleInto(orbitOut, 0, tleData, date);
+            const success = propagateSatelliteTleInto(orbitOut, 0, tleData, new Date(currentTime));
             if (!success) {
               propagateCircularOrbitInto(orbitOut, 0, elapsed, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
             }
@@ -256,27 +262,38 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
 
         const p = projectLatLng(lat, lng, rotation, tilt, R, cx, cy);
 
-        // Draw trail if needed
+        // Draw trail if needed (with caching to avoid heavy TLE propagation every frame)
         if (shouldHaveTrail) {
+          const cacheKey = `${sat.id}-trail`;
+          const cached = trailCache[cacheKey];
+          // Refresh coordinates cache every 10 seconds or if it doesn't exist
+          if (!cached || (currentTime - cached.lastUpdate > 10000)) {
+            const points = [];
+            const tleData = satDataMap[sat.id]?.tle;
+            for (let u = 0; u <= 2 * Math.PI; u += 0.15) {
+              if (tleData) {
+                const pastDate = new Date(currentTime - u * 500 * 1000);
+                const success = propagateSatelliteTleInto(orbitOut, 0, tleData, pastDate);
+                if (!success) {
+                  propagateCircularOrbitInto(orbitOut, 0, elapsed - u * 500, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+                }
+              } else {
+                propagateCircularOrbitInto(orbitOut, 0, elapsed - u * 500, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
+              }
+              points.push({ lat: orbitOut[0], lng: orbitOut[1] });
+            }
+            trailCache[cacheKey] = { lastUpdate: currentTime, points };
+          }
+
           ctx.strokeStyle = sat.color + '26'; // 15% opacity
           ctx.lineWidth = isSelected ? 1.5 : 0.8;
           ctx.setLineDash([2, 3]);
           ctx.beginPath();
           let firstOrbitPoint = true;
-          for (let u = 0; u <= 2 * Math.PI; u += 0.12) {
-            const tleData = useUIStore.getState().satelliteData[sat.id]?.tle;
-            if (tleData) {
-              // 500 seconds back per step * u
-              const pastDate = new Date(Date.now() - u * 500 * 1000);
-              const success = propagateSatelliteTleInto(orbitOut, 0, tleData, pastDate);
-              if (!success) {
-                propagateCircularOrbitInto(orbitOut, 0, elapsed - u * 500, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
-              }
-            } else {
-              propagateCircularOrbitInto(orbitOut, 0, elapsed - u * 500, sat.altitudeM, sat.inclinationRad, sat.omega0, sat.argLat0);
-            }
-            
-            const opt = projectLatLng(orbitOut[0], orbitOut[1], rotation, tilt, R, cx, cy);
+          const trailCoords = trailCache[cacheKey].points;
+          for (let j = 0; j < trailCoords.length; j++) {
+            const c = trailCoords[j];
+            const opt = projectLatLng(c.lat, c.lng, rotation, tilt, R, cx, cy);
             if (opt.visible) {
               if (firstOrbitPoint) {
                 ctx.moveTo(opt.x, opt.y);
@@ -312,7 +329,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
           ctx.textAlign = 'center';
           ctx.fillText(sat.name.replace(/🛰️\s*|🇨🇳\s*/, ''), p.x, p.y + 14);
         }
-      });
+      }
 
       rafId = requestAnimationFrame(renderFrame);
     };

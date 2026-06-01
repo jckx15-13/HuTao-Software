@@ -144,6 +144,43 @@ export default function WorldWideTelescopeView() {
       } catch (e) {
         // fallback to wildcard origin
       }
+      // Prefer wildcard when running on localhost/127.0.0.1 to avoid noisy
+      // postMessage origin warnings during development or when iframe hasn't
+      // fully loaded yet.
+      if (typeof window !== 'undefined' && (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.hostname === '0.0.0.0')) {
+        targetOrigin = '*';
+      }
+
+      // If the iframe's actual src origin differs from computed target origin,
+      // prefer using wildcard to avoid repeated console warnings. Log a single
+      // diagnostic to help triage the mismatch.
+      try {
+        const src = iframeRef.current.getAttribute?.('src') || iframeRef.current.src || '';
+        let actualOrigin = '';
+        try { actualOrigin = src ? new URL(src).origin : ''; } catch (e) { actualOrigin = ''; }
+
+        if (actualOrigin && targetOrigin !== '*' && actualOrigin !== targetOrigin) {
+          // Record diagnostic once per mismatch to avoid spam
+          if (!(postToWWT as any)._warnedMismatch) {
+            (postToWWT as any)._warnedMismatch = true;
+            try {
+              (globalThis as any).useDiagnosticsStore?.getState?.().add?.({
+                level: 'warning',
+                message: 'WWT iframe origin mismatch detected',
+                suggestion: `Iframe src origin ${actualOrigin} differs from telescope target origin ${targetOrigin}. Using wildcard postMessage to avoid console spam.`,
+                metadata: { component: 'WorldWideTelescopeView', actualOrigin, targetOrigin }
+              });
+            } catch (e) {
+              // ignore diagnostics failures
+            }
+          }
+          // Use wildcard to avoid the browser warning
+          targetOrigin = '*';
+        }
+      } catch (e) {
+        // best-effort only
+      }
+
       iframeRef.current.contentWindow.postMessage(message, targetOrigin);
     } catch (err) {
       console.warn('[WorldWideTelescopeView] postToWWT failed:', err);
@@ -384,7 +421,7 @@ export default function WorldWideTelescopeView() {
       {typeof window !== 'undefined' && (window as any).__triggerTelescopeCrash && <CrashComponent />}
       
       {/* Space HUD / Controls Panel (Collapsible Drawer on Left) */}
-      <div className="absolute top-24 left-4 z-40 flex flex-col pointer-events-auto max-h-[calc(100%-140px)]">
+      <div className="absolute top-24 left-4 z-40 flex flex-col pointer-events-auto max-h-[calc(100%-185px)]">
         {drawerOpen ? (
           <div className="glass-panel w-[320px] flex flex-col border border-primary/20 overflow-hidden shadow-2xl animate-slide-in">
             {/* Drawer Header */}
@@ -431,7 +468,7 @@ export default function WorldWideTelescopeView() {
             </div>
 
             {/* Tab Contents */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 scroller max-h-[380px]">
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 scroller max-h-[300px]">
               
               {/* Tab 1: Celestial Navigator */}
               {activeControlTab === 'navigator' && (
@@ -439,6 +476,8 @@ export default function WorldWideTelescopeView() {
                   <div className="relative flex items-center bg-black/40 border border-white/5 rounded px-2 text-white/50">
                     <Search className="w-3.5 h-3.5 mr-1.5 shrink-0" />
                     <input 
+                      id="wwt-search-targets"
+                      name="wwt-search-targets"
                       type="text" 
                       placeholder="Search targets..." 
                       value={searchQuery}
@@ -463,7 +502,7 @@ export default function WorldWideTelescopeView() {
                           }}
                           className={`w-full text-left p-2.5 rounded-lg border flex items-start gap-2.5 transition-all cursor-pointer ${
                             isActive 
-                              ? 'bg-primary/10 border-primary/40 shadow-[inset_0_0_12px_rgba(var(--color-primary-rgb,138,91,199),0.1)]' 
+                              ? 'bg-primary/10 border-primary/40 shadow-[inset_0_0_12px_color-mix(in_srgb,var(--theme-primary)_10%,transparent)]' 
                               : 'bg-black/25 border-white/5 hover:border-white/15'
                           }`}
                         >
@@ -506,6 +545,8 @@ export default function WorldWideTelescopeView() {
                         <span className="text-white/80">Celestial Grid Lines</span>
                       </div>
                       <input 
+                        id="wwt-grid-lines"
+                        name="wwt-grid-lines"
                         type="checkbox" 
                         checked={showGrid}
                         onChange={e => setShowGrid(e.target.checked)}
@@ -519,6 +560,8 @@ export default function WorldWideTelescopeView() {
                         <span className="text-white/80">Constellation Stick Figures</span>
                       </div>
                       <input 
+                        id="wwt-constellation-lines"
+                        name="wwt-constellation-lines"
                         type="checkbox" 
                         checked={showConstellationLines}
                         onChange={e => setShowConstellationLines(e.target.checked)}
@@ -532,6 +575,8 @@ export default function WorldWideTelescopeView() {
                         <span className="text-white/80">Constellation Artistic Art</span>
                       </div>
                       <input 
+                        id="wwt-constellation-art"
+                        name="wwt-constellation-art"
                         type="checkbox" 
                         checked={showConstellationFigures}
                         onChange={e => setShowConstellationFigures(e.target.checked)}
@@ -545,6 +590,8 @@ export default function WorldWideTelescopeView() {
                         <span className="text-white/80">Constellation Boundaries</span>
                       </div>
                       <input 
+                        id="wwt-constellation-boundaries"
+                        name="wwt-constellation-boundaries"
                         type="checkbox" 
                         checked={showConstellationBoundries}
                         onChange={e => setShowConstellationBoundries(e.target.checked)}
@@ -558,6 +605,8 @@ export default function WorldWideTelescopeView() {
                         <span className="text-white/80">Constellation Selection Highlight</span>
                       </div>
                       <input 
+                        id="wwt-constellation-selection"
+                        name="wwt-constellation-selection"
                         type="checkbox" 
                         checked={showConstellationSelection}
                         onChange={e => setShowConstellationSelection(e.target.checked)}
@@ -616,6 +665,8 @@ export default function WorldWideTelescopeView() {
                   <div className="glass-panel p-2.5 border border-white/5 bg-black/30 space-y-2">
                     <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Ingest Custom WTML Collection</span>
                     <input 
+                      id="wwt-custom-wtml"
+                      name="wwt-custom-wtml"
                       type="text"
                       placeholder="https://example.com/collection.wtml"
                       value={customWtml}
@@ -652,7 +703,7 @@ export default function WorldWideTelescopeView() {
 
       {/* Draggable, Glassmorphic Picture-in-Picture WWT Viewport Window */}
       <div
-        className="absolute z-40 glass-panel border border-primary/20 shadow-2xl flex flex-col overflow-hidden pointer-events-auto transition-shadow hover:shadow-[0_0_30px_rgba(var(--color-primary-rgb,138,91,199),0.15)]"
+        className="absolute z-40 glass-panel border border-primary/20 shadow-2xl flex flex-col overflow-hidden pointer-events-auto transition-shadow hover:shadow-[0_0_30px_color-mix(in_srgb,var(--theme-primary)_15%,transparent)]"
         style={{
           left: `${pos.x}px`,
           top: `${pos.y}px`,
@@ -830,7 +881,7 @@ export default function WorldWideTelescopeView() {
             )}
             
             {/* Luminous Vignette Mask for Space Opera feel */}
-            <div className="absolute inset-0 pointer-events-none border border-primary/5 shadow-[inset_0_0_40px_rgba(var(--color-primary-rgb,138,91,199),0.04)]" />
+            <div className="absolute inset-0 pointer-events-none border border-primary/5 shadow-[inset_0_0_40px_color-mix(in_srgb,var(--theme-primary)_4%,transparent)]" />
           </div>
         )}
       </div>
@@ -895,6 +946,8 @@ export default function WorldWideTelescopeView() {
             <div className="flex-1 flex items-center gap-2">
               <span className="text-[8px] text-white/30">START</span>
               <input 
+                id="wwt-timeline-progress"
+                name="wwt-timeline-progress"
                 type="range"
                 min="0"
                 max="1"

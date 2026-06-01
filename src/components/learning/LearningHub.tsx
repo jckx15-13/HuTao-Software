@@ -24,6 +24,8 @@ export function LearningHub() {
         <div className="relative group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted group-focus-within:text-secondary transition-colors" />
           <input
+            id="learning-hub-search"
+            name="learning-hub-search"
             type="text"
             placeholder="FILTER CONCEPTS..."
             className="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-[10px] focus:outline-none focus:border-secondary/50 focus:ring-1 focus:ring-secondary/20 transition-all placeholder:text-text-muted/50"

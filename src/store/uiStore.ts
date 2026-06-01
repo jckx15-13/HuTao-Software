@@ -75,7 +75,7 @@ export interface SatelliteData {
 
 export type InteractionMode = 'chat' | 'orbital' | 'telescope';
 export type CurrentPage = 'launcher' | 'workspace' | 'settings';
-export type RightPanelTab = 'context' | 'browser' | 'changes';
+export type RightPanelTab = 'context' | 'browser' | 'changes' | 'diagnostics' | 'telemetry';
 export type SettingsCategory = 'personalisation' | 'ai' | 'connections' | 'feedback' | 'developer' | 'about' | 'map';
 
 const defaultPersonalisation: Personalisation = {

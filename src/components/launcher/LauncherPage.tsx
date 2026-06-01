@@ -69,7 +69,7 @@ export function LauncherPage() {
         
         {/* Animated Brand Header */}
         <div className="flex flex-col items-center text-center space-y-3 animate-pulse">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/30 shadow-[0_0_20px_var(--primary-glow)]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/30 shadow-[0_0_20px_var(--theme-primary-glow)]">
             <Hexagon className="h-8 w-8 text-primary animate-spin-slow" />
           </div>
           <div className="space-y-1">

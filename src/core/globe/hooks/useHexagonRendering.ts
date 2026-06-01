@@ -25,8 +25,21 @@ export function useHexagonRendering(
             currentIds.add(id);
 
             const mag = (entity.properties.mag as number) || 1.0;
-            const height = mag * 80000; // 80km per magnitude
-            const radius = mag * 16000;  // 16km per magnitude
+            const size = options.size || 10;
+            
+            // Refined UI dimensions to prevent oversized prisms and overlapping clutter
+            let height = mag * 10000;
+            let radius = size * 1500;
+            
+            if (entity.pluginId === "entity-density" || id.startsWith("hexfeed-")) {
+                // Density columns should be uniform in radius to prevent overlapping in their grid cells
+                radius = 35000; // 35km constant radius fits elegantly on the globe grid
+                height = Math.min(120000, mag * 8000); // Max height 120km (down from 450km)
+            } else {
+                // Earthquakes or other point hexagons
+                height = Math.min(80000, mag * 10000); // Max height 80km (down from 300km)
+                radius = Math.min(20000, size * 1500);   // Max radius 20km (down from 80km)
+            }
             const colorStr = options.color || "#ff8800";
             const color = Color.fromCssColorString(colorStr).withAlpha(0.65);
             const outlineColor = Color.WHITE.withAlpha(0.85);

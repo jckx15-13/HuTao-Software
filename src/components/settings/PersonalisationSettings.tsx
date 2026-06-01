@@ -2,7 +2,7 @@ import { type ChangeEvent, useState } from 'react';
 import { ImageIcon, Loader2, Check, Sparkles, Layout, Type, Palette, Globe, Satellite, Map, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '@/core/state/store';
-import { palettes, type PaletteKey } from '../../lib/themeEngine';
+import { palettes, type PaletteKey, formatPaletteName } from '../../lib/themeEngine';
 import { extractThemeFromImage } from '../../lib/imageTheme';
 import { IMAGERY_LAYERS } from '../../core/globe/ImageryProviderFactory';
 import CURSOR_DESIGNS from '@/components/layout/cursorDesigns';
@@ -85,7 +85,7 @@ export function PersonalisationSettings() {
                         className="h-3 w-3 rounded-full border border-white/10"
                         style={{ backgroundColor: paletteColors['--theme-primary'] }}
                       />
-                      <span>{pk}</span>
+                      <span>{formatPaletteName(pk)}</span>
                     </div>
                     {isSelected && <Check className="h-3.5 w-3.5" />}
                   </button>
@@ -99,12 +99,16 @@ export function PersonalisationSettings() {
             <label className="text-[10px] font-mono uppercase text-white/40 block">Accent Color Override</label>
             <div className="flex gap-2">
               <input
+                id="accent-color-picker"
+                name="accent-color-picker"
                 type="color"
                 value={personalisation.accentColor || palettes[activePalette]['--theme-primary']}
                 onChange={(e) => updatePersonalisation({ accentColor: e.target.value })}
                 className="h-9 w-9 rounded-lg bg-white/5 border border-white/10 p-1 cursor-pointer"
               />
               <input
+                id="accent-color-text"
+                name="accent-color-text"
                 type="text"
                 value={personalisation.accentColor}
                 onChange={(e) => updatePersonalisation({ accentColor: e.target.value })}
@@ -127,6 +131,8 @@ export function PersonalisationSettings() {
           <div className="space-y-2 col-span-1 md:col-span-2 mt-2">
             <label className="text-[10px] font-mono uppercase text-white/40 block">Theme Profile Dropdown</label>
             <select
+              id="theme-profile-select"
+              name="theme-profile-select"
               value={activePalette}
               onChange={(e) => updateSettings({ activePalette: e.target.value as PaletteKey })}
               className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-xs font-mono text-white/70 focus:outline-none focus:ring-1 focus:ring-primary/35 cursor-pointer"
@@ -162,7 +168,7 @@ export function PersonalisationSettings() {
             )}
             <label className="text-[9px] font-mono px-3 py-1.5 bg-primary/20 border border-primary/20 text-primary hover:bg-primary-hover hover:text-white rounded-lg uppercase cursor-pointer transition-all">
               Upload
-              <input type="file" hidden onChange={onUpload} />
+              <input id="personalisation-wallpaper-upload" name="personalisation-wallpaper-upload" type="file" hidden onChange={onUpload} />
             </label>
           </div>
         </div>
@@ -183,6 +189,8 @@ export function PersonalisationSettings() {
               <span className="text-primary font-bold">{Math.round(personalisation.panelOpacity * 100)}%</span>
             </div>
             <input
+              id="personalisation-panel-transparency"
+              name="personalisation-panel-transparency"
               type="range"
               min={10}
               max={100}
@@ -199,6 +207,8 @@ export function PersonalisationSettings() {
               <span className="text-primary font-bold">{personalisation.blurIntensity}px</span>
             </div>
             <input
+              id="personalisation-background-blur"
+              name="personalisation-background-blur"
               type="range"
               min={0}
               max={40}
@@ -215,6 +225,8 @@ export function PersonalisationSettings() {
               <span className="text-primary font-bold">{personalisation.cornerRadius}px</span>
             </div>
             <input
+              id="personalisation-corner-roundness"
+              name="personalisation-corner-roundness"
               type="range"
               min={0}
               max={24}
@@ -231,6 +243,8 @@ export function PersonalisationSettings() {
               <span className="text-primary font-bold">{Math.round(personalisation.shadowIntensity * 100)}%</span>
             </div>
             <input
+              id="personalisation-shadow-intensity"
+              name="personalisation-shadow-intensity"
               type="range"
               min={0}
               max={100}
@@ -356,6 +370,8 @@ export function PersonalisationSettings() {
               <span className="text-primary font-bold">{Math.round(personalisation.fontScale * 100)}%</span>
             </div>
             <input
+              id="personalisation-font-scale"
+              name="personalisation-font-scale"
               type="range"
               min={80}
               max={140}
@@ -369,6 +385,8 @@ export function PersonalisationSettings() {
           <div className="space-y-2">
             <label className="text-[10px] font-mono uppercase text-white/40 block">Font Family</label>
             <select
+              id="personalisation-font-family"
+              name="personalisation-font-family"
               value={personalisation.fontFamily}
               onChange={(e) => updatePersonalisation({ fontFamily: e.target.value as any })}
               className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-xs font-mono text-white/70 focus:outline-none focus:ring-1 focus:ring-primary/35"
@@ -396,6 +414,8 @@ export function PersonalisationSettings() {
               <span className="text-primary font-bold">{Math.round(personalisation.animationIntensity * 100)}%</span>
             </div>
             <input
+              id="personalisation-animation-speed"
+              name="personalisation-animation-speed"
               type="range"
               min={0}
               max={100}
@@ -412,6 +432,8 @@ export function PersonalisationSettings() {
               <span className="text-primary font-bold">{Math.round(cameraSensitivity * 100)}%</span>
             </div>
             <input
+              id="personalisation-camera-sensitivity"
+              name="personalisation-camera-sensitivity"
               type="range"
               min={50}
               max={200}
@@ -428,6 +450,8 @@ export function PersonalisationSettings() {
               <span className="text-[8px] text-white/30 font-mono mt-0.5">Disables animated canvas particles</span>
             </div>
             <input
+              id="personalisation-reduce-motion"
+              name="personalisation-reduce-motion"
               type="checkbox"
               checked={personalisation.motionReduced}
               onChange={(e) => updatePersonalisation({ motionReduced: e.target.checked })}
@@ -442,6 +466,8 @@ export function PersonalisationSettings() {
               <span className="text-[8px] text-white/30 font-mono mt-0.5">Enable CRT-style scanline overlay across the workspace</span>
             </div>
             <input
+              id="personalisation-scanline-overlay"
+              name="personalisation-scanline-overlay"
               type="checkbox"
               checked={scanlineOverlay}
               onChange={(e) => setScanlineOverlay(e.target.checked)}
@@ -550,7 +576,7 @@ function ImageryProviderSelector() {
               onClick={() => handleSelect(layer.id)}
               className={`group relative flex flex-col overflow-hidden rounded-lg border transition-all duration-300 ${
                 isSelected
-                  ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--color-primary-rgb,138,91,199),0.2)] scale-[1.02]'
+                  ? 'border-primary bg-primary/10 shadow-[0_0_15px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] scale-[1.02]'
                   : 'border-white/5 bg-white/5 hover:border-white/20 hover:bg-white/10'
               }`}
             >

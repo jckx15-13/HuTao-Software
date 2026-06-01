@@ -1,7 +1,9 @@
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '../../core/state/store';
 import { pluginManager } from '../../core/plugins/PluginManager';
-import { ChevronRight, Globe, Terminal, Info, MapPin, Radio, Compass, X, ArrowLeft, RotateCw, ExternalLink as ExtLink } from 'lucide-react';
+import { DiagnosticPanel } from '../DiagnosticPanel';
+import { TelemetryPanel } from '../TelemetryPanel';
+import { ChevronRight, Globe, Terminal, Info, MapPin, Radio, Compass, X, ArrowLeft, RotateCw, ExternalLink as ExtLink, Bug, Activity } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 
 export function RightPanel() {
@@ -124,6 +126,24 @@ export function RightPanel() {
             }`}
           >
             Changes
+          </button>
+          <button
+            type="button"
+            onClick={() => setRightPanelTab('diagnostics')}
+            className={`px-2 py-1 rounded transition-colors ${
+              rightPanelTab === 'diagnostics' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
+            }`}
+          >
+            Diagnostics
+          </button>
+          <button
+            type="button"
+            onClick={() => setRightPanelTab('telemetry')}
+            className={`px-2 py-1 rounded transition-colors ${
+              rightPanelTab === 'telemetry' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
+            }`}
+          >
+            Telemetry
           </button>
         </div>
 
@@ -424,6 +444,20 @@ export function RightPanel() {
             ) : (
               <div className="text-[9px] text-white/30 italic py-4">No events logged yet.</div>
             )}
+          </div>
+        )}
+
+        {/* Tab 4: Diagnostic Engine */}
+        {rightPanelTab === 'diagnostics' && (
+          <div className="h-full">
+            <DiagnosticPanel />
+          </div>
+        )}
+
+        {/* Tab 5: DataBus Telemetry */}
+        {rightPanelTab === 'telemetry' && (
+          <div className="h-full">
+            <TelemetryPanel />
           </div>
         )}
       </div>

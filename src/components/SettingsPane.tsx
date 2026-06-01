@@ -52,8 +52,9 @@ interface ToggleSettingProps {
 }
 
 function ToggleSetting({ icon, title, description, checked, onChange }: ToggleSettingProps) {
+  const inputId = title.toLowerCase().replace(/\s+/g, '-');
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-panel-border/60 bg-panel/55 p-4 transition-colors hover:border-primary/40">
+    <label htmlFor={inputId} className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-panel-border/60 bg-panel/55 p-4 transition-colors hover:border-primary/40">
       <div className="flex min-w-0 items-center gap-4">
         {(() => {
           const Icon = icon;
@@ -65,6 +66,8 @@ function ToggleSetting({ icon, title, description, checked, onChange }: ToggleSe
         </div>
       </div>
       <input
+        id={inputId}
+        name={inputId}
         type="checkbox"
         className="h-4 w-4 shrink-0 accent-[var(--theme-primary)]"
         checked={checked}
@@ -108,6 +111,8 @@ function PaletteOption({ paletteKey }: { paletteKey: PaletteKey }) {
   );
 }
 
+import { IMAGERY_LAYERS } from '../core/globe/ImageryProviderFactory';
+
 export function SettingsPane() {
   const customWallpaper = useUIStore((state) => state.customWallpaper);
   const setCustomWallpaper = useUIStore((state) => state.setCustomWallpaper);
@@ -124,6 +129,14 @@ export function SettingsPane() {
   const setSystemInstructions = useUIStore((state) => state.setSystemInstructions);
   const satelliteSettings = useUIStore((state) => state.satelliteSettings);
   const updateSatelliteSettings = useUIStore((state) => state.updateSatelliteSettings);
+  const personalisation = useUIStore((state) => state.personalisation);
+  const updatePersonalisation = useUIStore((state) => state.updatePersonalisation);
+  const scanlineOverlay = useUIStore((state) => state.scanlineOverlay);
+  const setScanlineOverlay = useUIStore((state) => state.setScanlineOverlay);
+  const imageryProvider = useUIStore((state) => state.imageryProvider);
+  const setImageryProvider = useUIStore((state) => state.setImageryProvider);
+  const forceFallback = useUIStore((state) => state.forceFallback);
+  const setForceFallback = useUIStore((state) => state.setForceFallback);
   const [isExtracting, setIsExtracting] = useState(false);
 
   const clearWallpaper = () => {
@@ -193,7 +206,7 @@ export function SettingsPane() {
             }`}
             >
               {isExtracting ? 'Reading' : 'Browse'}
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isExtracting} />
+              <input id="wallpaper-upload" name="wallpaper-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isExtracting} />
             </label>
           </div>
           {customWallpaper && (
@@ -204,6 +217,81 @@ export function SettingsPane() {
               Remove wallpaper
             </button>
           )}
+        </section>
+
+        <section>
+          <SectionHeader title="Personalisation" eyebrow="UI" />
+          <div className="flex flex-col gap-3">
+            <ToggleSetting
+              icon={Sparkles}
+              title="CRT Scanlines"
+              description="Retro-futuristic holographic scanline overlay"
+              checked={scanlineOverlay}
+              onChange={setScanlineOverlay}
+            />
+            <SettingCard icon={Palette} title="Panel opacity" description="Transparency level for side panels">
+              <div className="flex items-center gap-3">
+                <input
+                  id="panel-opacity"
+                  name="panel-opacity"
+                  type="range"
+                  min="0.1"
+                  max="1"
+                  step="0.05"
+                  value={personalisation.panelOpacity}
+                  onChange={(event) => updatePersonalisation({ panelOpacity: Number(event.target.value) })}
+                  className="w-36 accent-[var(--theme-primary)]"
+                />
+                <span className="w-8 text-right font-mono text-xs text-primary">{Math.round(personalisation.panelOpacity * 100)}%</span>
+              </div>
+            </SettingCard>
+            <SettingCard icon={Sparkles} title="Blur intensity" description="Backdrop blur for glassmorphism">
+              <div className="flex items-center gap-3">
+                <input
+                  id="blur-intensity"
+                  name="blur-intensity"
+                  type="range"
+                  min="0"
+                  max="40"
+                  value={personalisation.blurIntensity}
+                  onChange={(event) => updatePersonalisation({ blurIntensity: Number(event.target.value) })}
+                  className="w-36 accent-[var(--theme-primary)]"
+                />
+                <span className="w-8 text-right font-mono text-xs text-primary">{personalisation.blurIntensity}px</span>
+              </div>
+            </SettingCard>
+            <SettingCard icon={Sparkles} title="Corner radius" description="Roundness of UI elements">
+              <div className="flex items-center gap-3">
+                <input
+                  id="corner-radius"
+                  name="corner-radius"
+                  type="range"
+                  min="0"
+                  max="24"
+                  value={personalisation.cornerRadius}
+                  onChange={(event) => updatePersonalisation({ cornerRadius: Number(event.target.value) })}
+                  className="w-36 accent-[var(--theme-primary)]"
+                />
+                <span className="w-8 text-right font-mono text-xs text-primary">{personalisation.cornerRadius}px</span>
+              </div>
+            </SettingCard>
+            <SettingCard icon={Sparkles} title="Shadow intensity" description="Depth of panel shadows">
+              <div className="flex items-center gap-3">
+                <input
+                  id="shadow-intensity"
+                  name="shadow-intensity"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={personalisation.shadowIntensity}
+                  onChange={(event) => updatePersonalisation({ shadowIntensity: Number(event.target.value) })}
+                  className="w-36 accent-[var(--theme-primary)]"
+                />
+                <span className="w-8 text-right font-mono text-xs text-primary">{Math.round(personalisation.shadowIntensity * 100)}%</span>
+              </div>
+            </SettingCard>
+          </div>
         </section>
 
         <section>
@@ -233,6 +321,8 @@ export function SettingsPane() {
             <SettingCard icon={Sparkles} title="Satellite trails" description="Customize orbital trail rendering">
               <div className="flex items-center gap-3">
                 <input
+                  id="satellite-trail-length"
+                  name="satellite-trail-length"
                   type="range"
                   min="5"
                   max="120"
@@ -246,6 +336,8 @@ export function SettingsPane() {
             <SettingCard icon={Globe} title="Satellite icon size" description="Size of rendered satellite icons">
               <div className="flex items-center gap-3">
                 <input
+                  id="satellite-icon-size"
+                  name="satellite-icon-size"
                   type="range"
                   min="12"
                   max="64"
@@ -259,6 +351,8 @@ export function SettingsPane() {
             <SettingCard icon={Type} title="Chat text size" description="Adjust message and input scale">
               <div className="flex items-center gap-3">
                 <input
+                  id="chat-text-size"
+                  name="chat-text-size"
                   type="range"
                   min="12"
                   max="24"
@@ -273,10 +367,46 @@ export function SettingsPane() {
         </section>
 
         <section>
+          <SectionHeader title="Environment" eyebrow="Globe" />
+          <div className="flex flex-col gap-3">
+            <SettingCard icon={Globe} title="Imagery provider" description="Select the graphics source for the 3D globe">
+              <select
+                id="imagery-provider-select"
+                name="imagery-provider-select"
+                value={imageryProvider}
+                onChange={(event) => setImageryProvider(event.target.value)}
+                className="rounded-lg border border-panel-border bg-base px-3 py-1.5 text-sm text-text-main outline-none focus:border-primary"
+              >
+                {IMAGERY_LAYERS.map((layer) => (
+                  <option key={layer.id} value={layer.id}>
+                    {layer.name}
+                  </option>
+                ))}
+              </select>
+            </SettingCard>
+          </div>
+        </section>
+
+        <section>
+          <SectionHeader title="Developer" eyebrow="Diagnostics" />
+          <div className="flex flex-col gap-3">
+            <ToggleSetting
+              icon={Cpu}
+              title="Force Fallback"
+              description="Manually trigger 2D vector globe fallback mode"
+              checked={forceFallback}
+              onChange={setForceFallback}
+            />
+          </div>
+        </section>
+
+        <section>
           <SectionHeader title="AI" eyebrow="Agent" />
           <div className="flex flex-col gap-3">
             <SettingCard icon={Globe} title="Model" description="Choose the Gemini model used for chat responses">
               <select
+                id="ai-model-select"
+                name="ai-model-select"
                 value={aiModel}
                 onChange={(event) => setAiModel(event.target.value as AiModel)}
                 className="rounded-lg border border-panel-border bg-base px-3 py-1.5 text-sm text-text-main outline-none focus:border-primary"
@@ -298,6 +428,8 @@ export function SettingsPane() {
                 </div>
               </div>
               <textarea
+                id="system-instructions-textarea"
+                name="system-instructions-textarea"
                 className="min-h-[96px] w-full resize-none rounded-lg border border-panel-border bg-base p-3 text-sm text-text-main outline-none focus:border-primary"
                 value={systemInstructions}
                 onChange={(event) => setSystemInstructions(event.target.value)}
