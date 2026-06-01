@@ -71,8 +71,11 @@ class SatelliteService {
         // Try bridge proxy
         const proxyUrl = `http://localhost:8001/api/camera/proxy?url=${encodeURIComponent(url)}`;
         const proxyRes = await fetch(proxyUrl);
-        if (!proxyRes.ok) throw new Error(`Proxy failed: ${proxyRes.status}`);
+        if (!proxyRes.ok) throw new Error(`Proxy connection failed: ${proxyRes.status}`);
         const json = await proxyRes.json();
+        if (json.status !== 200) {
+          throw new Error(`Proxy failed: ${json.status} ${json.error || ''}`);
+        }
         text = json.response || '';
       }
 

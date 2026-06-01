@@ -30,6 +30,7 @@ import { useStore } from '../../core/state/store';
 import { pluginManager } from '../../core/plugins/PluginManager';
 import { locations, type LocationData } from '../../data/locations';
 import { tours, type Tour, type TourStep } from '../../data/tours';
+import { SATELLITES } from '../../data/satellites';
 import {
   LANDMASS_POINTS_3D,
   MERIDIANS_3D,
@@ -44,6 +45,12 @@ import './GoogleEarthRemix.css';
 const menuItems = ['File', 'Edit', 'View', 'Add', 'Tools', 'Help'];
 const mapLabels = ['India', 'China', 'Thailand', 'Vietnam', 'Malaysia', 'Indonesia', 'Japan', 'Australia'];
 
+const cleanSatelliteName = (fullName: string): string => {
+  return fullName
+    .replace(/^[^\s\w]+\s*/g, '') // remove leading emojis/symbols
+    .split(' (')[0]             // remove parenthetical info like "(SPACE STATION)"
+    .trim();
+};
 
 export default function GoogleEarthRemix() {
   const isHeadless = typeof window !== 'undefined' && (
@@ -81,6 +88,7 @@ export default function GoogleEarthRemix() {
   const setActiveLocation = useUIStore((s) => s.setActiveLocation);
   const setIssFeedOpen = useUIStore((s) => s.setIssFeedOpen);
   const forceFallback = useUIStore((s) => s.forceFallback);
+  const activeSatelliteId = useUIStore((s) => s.activeSatelliteId);
 
 
   const mapConfig = useStore((s) => s.mapConfig);
@@ -805,87 +813,110 @@ export default function GoogleEarthRemix() {
 
   return (
     <section className="earth-remix" aria-label="Orbital explorer">
-      {/* Top Pro-Style Menu Bar */}
-      <header className="earth-menu">
-        <button
-          type="button"
-          className="earth-logo-container cursor-pointer hover:opacity-85 active:scale-95 transition-all border-0 bg-transparent text-left flex items-center gap-2 p-0"
-          onClick={() => {
-            useUIStore.getState().addChangeLog('ORBITAL', 'Orbital Core diagnostics synced. Status: OPTIMAL.', 'success');
-            alert('Orbital Engine Status: OPTIMAL\nActive Array: WWT/WWV Composite');
-          }}
-        >
-          <div className="earth-logo" aria-hidden="true" />
-          <span className="earth-logo-text">Google Orbital</span>
-        </button>
-        
-        <button 
-          type="button" 
-          className="earth-menu-item"
-          onClick={() => {
-            useUIStore.getState().setLeftPanelOpen(true);
-            useUIStore.getState().addChangeLog('UI', 'Unified Spatial Sidebar opened. Navigate to Plugins section.', 'info');
-          }}
-        >
-          File
-        </button>
-        <button 
-          type="button" 
-          className="earth-menu-item"
-          onClick={() => {
-            setMeasureStart(null);
-            setMeasureEnd(null);
-            setMeasureDistance(null);
-            useUIStore.getState().addChangeLog('MEASUREMENT', 'Ruler markers reset.', 'info');
-          }}
-        >
-          Edit
-        </button>
-        <button 
-          type="button" 
-          className="earth-menu-item"
-          onClick={() => {
-            handleCompass();
-            useUIStore.getState().addChangeLog('CAMERA', 'Camera heading reset to North up.', 'info');
-          }}
-        >
-          View
-        </button>
-        <button 
-          type="button" 
-          className="earth-menu-item"
-          onClick={() => {
-            useUIStore.getState().setLeftPanelOpen(true);
-            useUIStore.getState().addChangeLog('UI', 'Unified Spatial Sidebar opened. Navigate to Saved Places section.', 'info');
-          }}
-        >
-          Add
-        </button>
-        <button 
-          type="button" 
-          className="earth-menu-item"
-          onClick={() => {
-            useUIStore.getState().setLeftPanelOpen(true);
-            useUIStore.getState().addChangeLog('UI', 'Unified Spatial Sidebar opened. Navigate to Style & Graphics section.', 'info');
-          }}
-        >
-          Tools
-        </button>
-        <button 
-          type="button" 
-          className="earth-menu-item"
-          onClick={() => {
-            useUIStore.getState().setRightPanelTab('browser');
-            useUIStore.getState().setRightPanelOpen(true);
-            useUIStore.getState().setBrowserUrl('https://html.duckduckgo.com/html/?q=Silver+Wolf+VI+Operator+Manual');
-            useUIStore.getState().addChangeLog('HELP', 'Opened Help Manual query in Browser.', 'info');
-          }}
-        >
-          Help
-        </button>
+      {/* Cyberpunk Telemetry HUD Bar */}
+      <header className="orbital-hud-bar">
+        {/* Futuristic left-side branding/status/coordinates */}
+        <div className="hud-section branding">
+          <button
+            type="button"
+            className="hud-status-node cursor-pointer border-0 bg-transparent text-left flex items-center p-0 gap-2"
+            onClick={() => {
+              useUIStore.getState().addChangeLog('ORBITAL', 'Orbital Core diagnostics synced. Status: OPTIMAL.', 'success');
+              alert('Orbital Engine Status: OPTIMAL\nActive Array: WWT/WWV Composite');
+            }}
+          >
+            <div className="hud-indicator active animate-pulse" />
+            <span className="hud-label font-bold text-primary tracking-widest text-[9px]">SILVER_WOLF // ORBITAL_ARRAY</span>
+          </button>
+          <div className="hud-metric text-[8px] text-white/40 hidden sm:block">SYS: <span className="text-[#34a853] font-bold">OPTIMAL</span></div>
+          <div className="hud-metric text-[8px] text-white/40 hidden md:block">GRID: <span className="text-[#00FFF7]">WWV/WWT</span></div>
+          <div className="hud-metric text-[8px] text-white/40 hidden lg:block border-l border-white/10 pl-2">
+            <span className="text-cyan-400 font-mono">
+              {activeLocation ? `${activeLocation.lat.toFixed(4)}°N, ${activeLocation.lng.toFixed(4)}°E` : 'AUTO_TRACKING'}
+            </span>
+          </div>
+        </div>
 
-        <div className="earth-menu-spacer" />
-        <span className="earth-menu-badge">Orbital Edition</span>
+        {/* Center spacing gap reserved for mode switcher */}
+        <div className="hud-center-spacer w-[220px] hidden lg:block" />
+
+        {/* High-tech glass action buttons & target telemetry */}
+        <div className="hud-section actions">
+          <div className="hud-metric text-[8px] text-white/40 hidden xl:flex gap-2 mr-2 border-r border-white/10 pr-2">
+            <span>TARGET: <span className="text-purple-400 font-bold uppercase">{activeSatelliteId ? cleanSatelliteName(SATELLITES.find(s => s.id === activeSatelliteId)?.name || activeSatelliteId) : (activeLocation ? activeLocation.name.split(',')[0] : 'EARTH')}</span></span>
+            {activeSatelliteId && <span>ALT: <span className="text-amber-400 font-bold">{(SATELLITES.find(s => s.id === activeSatelliteId)?.altitudeM || 420000) / 1000}KM</span></span>}
+          </div>
+
+          <button 
+            type="button" 
+            className="hud-btn" 
+            title="Toggle Sidebar Control Panel"
+            onClick={() => {
+              useUIStore.getState().setLeftPanelOpen(!useUIStore.getState().leftPanelOpen);
+              useUIStore.getState().addChangeLog('UI', 'Spatial Control Panel toggled.', 'info');
+            }}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>SYS_CONTROL</span>
+          </button>
+
+          <button 
+            type="button" 
+            className="hud-btn"
+            title="Reset Measurement Ruler"
+            onClick={() => {
+              setMeasureStart(null);
+              setMeasureEnd(null);
+              setMeasureDistance(null);
+              useUIStore.getState().addChangeLog('MEASUREMENT', 'Geodetic markers cleared.', 'info');
+            }}
+          >
+            <Ruler className="w-3.5 h-3.5" />
+            <span>CLEAR_RULER</span>
+          </button>
+
+          <button 
+            type="button" 
+            className="hud-btn"
+            title="Reset Camera Orientation North"
+            onClick={() => {
+              handleCompass();
+              useUIStore.getState().addChangeLog('CAMERA', 'Heading reset to North.', 'info');
+            }}
+          >
+            <Navigation className="w-3.5 h-3.5" />
+            <span>ALIGN_NORTH</span>
+          </button>
+
+          <button 
+            type="button" 
+            className="hud-btn"
+            title="Open Diagnostic System Panel"
+            onClick={() => {
+              useUIStore.getState().setRightPanelTab('diagnostics');
+              useUIStore.getState().setRightPanelOpen(true);
+              useUIStore.getState().addChangeLog('UI', 'Diagnostics Panel opened.', 'info');
+            }}
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>DIAGNOSTICS</span>
+          </button>
+
+          <button 
+            type="button" 
+            className="hud-btn"
+            title="Access Help & User Documentation"
+            onClick={() => {
+              useUIStore.getState().setRightPanelTab('browser');
+              useUIStore.getState().setRightPanelOpen(true);
+              useUIStore.getState().setBrowserUrl('https://html.duckduckgo.com/html/?q=Silver+Wolf+VI+Operator+Manual');
+              useUIStore.getState().addChangeLog('HELP', 'Opened manual in system browser.', 'info');
+            }}
+          >
+            <UserCircle className="w-3.5 h-3.5" />
+            <span>SYS_MANUAL</span>
+          </button>
+        </div>
       </header>
 
       <div className="earth-workspace">

@@ -95,8 +95,17 @@ export function RightPanel() {
 
   if (!rightPanelOpen) return null;
 
+  const isSpatialMode = interactionMode === 'orbital' || interactionMode === 'telescope';
+
   return (
-    <aside className="glass-panel flex h-full w-[310px] flex-col border-l border-white/5 select-none pointer-events-auto" style={{ borderRadius: 0 }}>
+    <aside 
+      className={`glass-panel flex flex-col select-none pointer-events-auto transition-all duration-300 ${
+        isSpatialMode 
+          ? 'fixed top-[68px] right-[12px] bottom-[52px] w-[310px] rounded-xl border border-white/10 shadow-2xl z-20 h-auto' 
+          : 'h-full w-[310px] border-l border-white/5'
+      }`} 
+      style={!isSpatialMode ? { borderRadius: 0 } : undefined}
+    >
       {/* Header and Tab Switcher */}
       <div className="flex h-12 items-center justify-between px-3 border-b border-white/5 bg-black/10">
         <div className="flex items-center gap-1.5 font-mono text-[9px]">

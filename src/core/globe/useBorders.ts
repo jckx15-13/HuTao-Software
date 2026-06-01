@@ -184,7 +184,7 @@ sumLon = 0;
                                 horizontalOrigin: HorizontalOrigin.CENTER,
                                 heightReference: HeightReference.NONE,
                                 pixelOffset: new Cartesian2(0, 0),
-                                disableDepthTestDistance: Number.POSITIVE_INFINITY,
+                                disableDepthTestDistance: 0,
                                 scaleByDistance: new NearFarScalar(1.5e5, 1.5, 8.0e6, 0.0),
                                 show: true // Default true during generation
                             });

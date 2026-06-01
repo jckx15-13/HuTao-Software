@@ -106,7 +106,9 @@ pixelOffset: { x: 0, y: -12 } as any,
 id: clickId,
         // WARNING: Do NOT use heightReference: HeightReference.CLAMP_TO_GROUND here.
         // It causes severe lag/performance drops with thousands of dynamic entities.
-        disableDepthTestDistance: item.options.disableDepthTestDistance ?? Number.POSITIVE_INFINITY,
+        disableDepthTestDistance: item.options.disableDepthTestDistance !== undefined 
+            ? item.options.disableDepthTestDistance 
+            : ((item.entity.altitude || 0) < 100 ? Number.POSITIVE_INFINITY : 0),
         translucencyByDistance: new NearFarScalar(1e3, 1.0, 5e5, 0.0),
         distanceDisplayCondition: item.options.distanceDisplayCondition
             ? new DistanceDisplayCondition(item.options.distanceDisplayCondition.near, item.options.distanceDisplayCondition.far)

@@ -309,14 +309,16 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
           ctx.setLineDash([]); // Reset line dash
         }
 
+        if (!p.visible) continue;
+
         // Draw point marker
         const pulse = (Math.sin(Date.now() / 250) + 1) / 2;
-        ctx.fillStyle = p.visible ? sat.color : 'rgba(115, 115, 115, 0.4)';
+        ctx.fillStyle = sat.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, isSelected ? 3.5 : 2, 0, 2 * Math.PI);
         ctx.fill();
 
-        if (p.visible && isSelected) {
+        if (isSelected) {
           ctx.strokeStyle = sat.color + '80'; // 50% opacity
           ctx.lineWidth = 1;
           ctx.beginPath();

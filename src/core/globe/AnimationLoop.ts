@@ -242,8 +242,18 @@ isFaded: boolean
     }
 
     if (!item.options.disableManualHorizonCulling || primitive.disableDepthTestDistance === Number.POSITIVE_INFINITY) {
-        // Mathematical horizon culling (extremely fast, precise for sphere)
-        item._occluded = Cartesian3.dot(posRef, camPos) <= R2;
+        // Mathematical horizon culling scaled to WGS84 ellipsoid
+        // Transforms the ellipsoid to a unit sphere, making culling 100% precise at all latitudes.
+        const px = posRef.x * (1.0 / 6378137.0);
+        const py = posRef.y * (1.0 / 6378137.0);
+        const pz = posRef.z * (1.0 / 6356752.314245);
+
+        const cx = camPos.x * (1.0 / 6378137.0);
+        const cy = camPos.y * (1.0 / 6378137.0);
+        const cz = camPos.z * (1.0 / 6356752.314245);
+
+        item._occluded = (px * cx + py * cy + pz * cz) <= 1.0;
+
         if (item._occluded) {
             if (primitive.show !== false) primitive.show = false;
             hideLabel(item, labelsCollection);

@@ -13,81 +13,118 @@
   pointer-events: none;
 }
 
-/* Classic Pro-Style Top Menu Bar */
-.earth-menu {
+/* Cyberpunk Spacecraft Telemetry HUD Bar */
+.orbital-hud-bar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(16, 18, 27, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.25rem;
+  color: #c4c6cf;
+  font-size: 0.7rem;
+  z-index: 25;
+  pointer-events: auto;
+  transition: all 0.3s ease;
+}
+
+.hud-section {
   display: flex;
   align-items: center;
   gap: 1rem;
-  height: 38px;
-  padding: 0 1rem;
-  background: #111217;
-  color: #c4c6cf;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 0.75rem;
-  z-index: 25;
-  pointer-events: auto;
 }
 
-.earth-logo-container {
+.hud-status-node {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-right: 1.5rem;
 }
 
-.earth-logo {
-  width: 20px;
-  height: 20px;
+.hud-indicator {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 35%, #8ab4f8 0 20%, transparent 22%),
-              linear-gradient(135deg, #4285f4, #1a73e8);
-  box-shadow: 0 0 8px rgba(66, 133, 244, 0.5);
+  background: var(--theme-primary, #8a5bc7);
+  box-shadow: 0 0 8px var(--theme-primary, #8a5bc7);
 }
 
-.earth-logo-text {
+.hud-indicator.active {
+  background: #00fff7;
+  box-shadow: 0 0 10px #00fff7, 0 0 20px rgba(0, 255, 247, 0.4);
+}
+
+.hud-label {
+  font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
-  color: #fff;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.earth-menu-item {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font-size: inherit;
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.15s ease;
-}
-
-.earth-menu-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-}
-
-.earth-menu-spacer {
-  flex: 1;
-}
-
-.earth-menu-badge {
-  background: rgba(66, 133, 244, 0.15);
-  border: 1px solid rgba(66, 133, 244, 0.3);
-  color: #8ab4f8;
-  padding: 0.15rem 0.5rem;
-  border-radius: 99px;
+.hud-metric {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.65rem;
-  font-family: monospace;
-  letter-spacing: 0.05em;
+}
+
+.hud-value {
+  font-weight: bold;
+  letter-spacing: 0.02em;
+}
+
+.hud-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: #c4c6cf;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.3rem 0.6rem;
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.hud-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.hud-btn:active {
+  transform: scale(0.97);
+}
+
+.hud-btn svg {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.hud-btn:hover svg {
+  opacity: 1;
 }
 
 /* Sidebar & Main Screen Workspace Layout */
 .earth-workspace {
-  display: flex;
-  flex: 1;
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: calc(100% - 38px);
-  position: relative;
+  height: 100%;
   overflow: hidden;
   pointer-events: none;
 }
@@ -1087,22 +1124,27 @@
 /* Bottom Status Bar */
 .earth-status {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 24px;
-  background: #111217;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(16, 18, 27, 0.60);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
   display: flex;
   justify-content: flex-end;
   align-items: center;
   padding: 0 1rem;
   gap: 1.5rem;
   font-size: 0.65rem;
-  color: #80868b;
+  color: rgba(255, 255, 255, 0.5);
   font-family: monospace;
   z-index: 10;
   pointer-events: auto;
+  transition: all 0.3s ease;
 }
 
 .earth-copyright {

@@ -71,20 +71,24 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
       const symbol = String(rawName).split(' ')[0] || '🛰️';
       const iconUrl = createIconDataUrl(symbol, (sat as any).color || '#00FFF7');
       const occlude = satelliteSettings?.occludeByGlobe !== false;
+      const cleanLabelText = sat.name
+        .replace(/^[^\s\w]+\s*/g, '')
+        .split(' (')[0]
+        .trim();
 
       const entity = viewer.entities.add({
         id: sat.id,
         position: new Cesium.ConstantPositionProperty(Cesium.Cartesian3.ZERO) as any,
         billboard: iconUrl ? {
           image: iconUrl,
-          width: satelliteSettings?.iconSize ?? 32,
-          height: satelliteSettings?.iconSize ?? 32,
+          width: satelliteSettings?.iconSize ?? 18,
+          height: satelliteSettings?.iconSize ?? 18,
           verticalOrigin: Cesium.VerticalOrigin.CENTER,
           horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-          ...(occlude ? {} : { disableDepthTestDistance: Number.POSITIVE_INFINITY }),
+          disableDepthTestDistance: occlude ? 0 : Number.POSITIVE_INFINITY,
         } : undefined,
         label: {
-          text: sat.name,
+          text: cleanLabelText,
           font: 'bold 7.5pt JetBrains Mono, monospace',
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           outlineWidth: 2,
@@ -93,7 +97,7 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
           outlineColor: Cesium.Color.BLACK,
           showBackground: true,
           backgroundColor: Cesium.Color.fromCssColorString('rgba(10, 11, 16, 0.85)'),
-          ...(occlude ? {} : { disableDepthTestDistance: Number.POSITIVE_INFINITY }),
+          disableDepthTestDistance: occlude ? 0 : Number.POSITIVE_INFINITY,
         },
       });
 

@@ -142,10 +142,10 @@ export default function App() {
           {/* Cyberpunk flicker screen overlay */}
           {scanlineOverlay && <div className="hologram-overlay" />}
           
-          <TopAppBar />
+          {!(interactionMode === 'orbital' || interactionMode === 'telescope') && <TopAppBar />}
 
-          {/* Core viewport layouts: pt-12 leaves space for the 12-unit top app bar */}
-          <div className="relative z-10 flex h-full w-full pt-12 pointer-events-none">
+          {/* Core viewport layouts: pt-12 leaves space for the 12-unit top app bar, cleared in spatial modes for full-screen floating HUD */}
+          <div className={`relative z-10 flex h-full w-full pointer-events-none transition-all duration-300 ${(interactionMode === 'orbital' || interactionMode === 'telescope') ? 'pt-0' : 'pt-12'}`}>
             <DockedLayout />
           </div>
 

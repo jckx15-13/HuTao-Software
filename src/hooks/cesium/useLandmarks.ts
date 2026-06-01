@@ -36,6 +36,7 @@ export function useLandmarks(viewer: Cesium.Viewer | null) {
           color: Cesium.Color.fromCssColorString('#8A5BC7'), // Orbital purple accent matching default HSR theme
           outlineColor: Cesium.Color.fromCssColorString('#ffffff'),
           outlineWidth: 1.5,
+          disableDepthTestDistance: 0,
         },
         label: {
           text: loc.name,
@@ -49,6 +50,7 @@ export function useLandmarks(viewer: Cesium.Viewer | null) {
           showBackground: true,
           backgroundColor: Cesium.Color.fromCssColorString('rgba(13, 16, 27, 0.8)'), // Translucent dark panels
           backgroundPadding: new Cesium.Cartesian2(6, 3),
+          disableDepthTestDistance: 0,
         },
       }),
     );

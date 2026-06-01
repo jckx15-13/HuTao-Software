@@ -194,7 +194,9 @@ function manageDedicatedHub(stack: EntityStack, billboards: BillboardCollection)
             show: isVisible,
             // WARNING: Do NOT use heightReference: HeightReference.CLAMP_TO_GROUND here.
             // It causes severe lag/performance drops with thousands of dynamic entities.
-            disableDepthTestDistance: stack.hubItem.options.disableDepthTestDistance ?? Number.POSITIVE_INFINITY,
+            disableDepthTestDistance: stack.hubItem.options.disableDepthTestDistance !== undefined 
+                ? stack.hubItem.options.disableDepthTestDistance 
+                : ((stack.hubItem.entity.altitude || 0) < 100 ? Number.POSITIVE_INFINITY : 0),
             // Tag with same ID as top entity! So clicking it triggers interaction/selection.
             id: { _wwvEntity: stack.hubItem.entity }
         });

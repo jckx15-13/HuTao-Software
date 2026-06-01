@@ -464,7 +464,14 @@ export function LeftPanel() {
   const isSpatialMode = interactionMode === 'orbital' || interactionMode === 'telescope';
 
   return (
-    <aside className="glass-panel flex h-full w-[260px] flex-col border-r border-white/5 select-none pointer-events-auto" style={{ borderRadius: 0 }}>
+    <aside 
+      className={`glass-panel flex flex-col select-none pointer-events-auto transition-all duration-300 ${
+        isSpatialMode 
+          ? 'fixed top-[68px] left-[12px] bottom-[52px] w-[280px] rounded-xl border border-white/10 shadow-2xl z-20 h-auto' 
+          : 'h-full w-[260px] border-r border-white/5'
+      }`} 
+      style={!isSpatialMode ? { borderRadius: 0 } : undefined}
+    >
       {/* Header section */}
       <div className="flex h-12 items-center justify-between px-4 border-b border-white/5 shrink-0 bg-black/20">
         <div className="flex items-center gap-2">

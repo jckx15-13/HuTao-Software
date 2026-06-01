@@ -513,7 +513,7 @@ export const useUIStore = create<UIStore>()(
           showAllTrails: false,
           occludeByGlobe: true,
           trailLength: 40,
-          iconSize: 32,
+          iconSize: 18,
         },
         updateSatelliteSettings: (settings) => set((s) => ({
           satelliteSettings: { ...s.satelliteSettings, ...settings }
