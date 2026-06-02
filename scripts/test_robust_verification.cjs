@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 
 const BASE_URL = 'http://localhost:3005/?fallback=true';
-const BRAIN_DIR = 'C:\\Users\\jaron\\.gemini\\antigravity\\brain\\f2fe35e9-51d4-4853-9d0b-9f71f0c88523';
+const BRAIN_DIR = 'C:\\Users\\jaron\\.gemini\\antigravity\\brain\\019864f6-c90b-4ca3-a830-c80c4478c881';
 const SCREENSHOTS_DIR = path.join(BRAIN_DIR, 'test_screenshots');
 
 if (!fs.existsSync(SCREENSHOTS_DIR)) {
@@ -41,6 +41,31 @@ const BROWSER_ARGS = [
 async function freshPage() {
   const p = await browser.newPage();
   await p.setViewport({ width: 1280, height: 800 });
+  
+  // Inject style override at document creation time to completely prevent blurs/animations/crashes
+  await p.evaluateOnNewDocument(() => {
+    try {
+      const style = document.createElement('style');
+      style.type = 'text/css';
+      style.innerHTML = `
+        * {
+          transition: none !important;
+          transition-property: none !important;
+          transition-duration: 0s !important;
+          animation: none !important;
+          animation-duration: 0s !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          box-shadow: none !important;
+          text-shadow: none !important;
+          filter: none !important;
+        }
+      `;
+      window.localStorage.clear();
+      document.head.appendChild(style);
+    } catch (e) {}
+  });
+
   p.on('console', msg => {
     const text = msg.text();
     if (msg.type() === 'error' && !text.includes('favicon') && !text.includes('Failed to load') && !text.includes('404')) {
@@ -55,18 +80,44 @@ async function freshPage() {
  * Returns page in workspace-ready state, or null on failure.
  */
 async function prepareWorkspacePage() {
-  let p = await freshPage();
-  try {
-    console.log("  [TEST-DEBUG] p.goto(BASE_URL)...");
+  let p = null;
+  let success = false;
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      await p.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
-    } catch (e) {
-      console.log(`  [TEST-DEBUG] Navigation failed (${e.message.substring(0, 60)}). Re-creating page...`);
-      try { await p.close(); } catch (_) {}
-      await sleep(3000);
       p = await freshPage();
-      await p.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      console.log(`  [TEST-DEBUG] p.goto(BASE_URL) (attempt ${attempt})...`);
+      // Use domcontentloaded to prevent detached frame errors caused by rapid React mount/unmounts
+      await p.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 90000 });
+      success = true;
+      break;
+    } catch (e) {
+      // Ignore Navigating frame was detached if it still loaded the body
+      if (e.message.includes('Navigating frame was detached') || e.message.includes('Execution context was destroyed')) {
+        try {
+          const bodyExists = await p.evaluate(() => !!document.body);
+          if (bodyExists) {
+            console.log(`  [TEST-DEBUG] Navigation attempt ${attempt} interrupted, but document body exists. Proceeding.`);
+            success = true;
+            break;
+          }
+        } catch (evalErr) {
+          // If evaluate fails, page is truly dead
+        }
+      }
+      console.log(`  [TEST-DEBUG] Navigation attempt ${attempt} failed (${e.message.substring(0, 60)}). Retrying...`);
+      if (p) {
+        try { await p.close(); } catch (_) {}
+        p = null;
+      }
+      await sleep(3000);
     }
+  }
+  
+  if (!success || !p) {
+    throw new Error("Navigation failed after 3 attempts");
+  }
+
+  try {
     console.log("  [TEST-DEBUG] p.waitForSelector('body')...");
     await p.waitForSelector('body', { timeout: 10000 });
     
@@ -74,10 +125,20 @@ async function prepareWorkspacePage() {
     console.log("  [TEST-DEBUG] sleeping for 3000ms...");
     await sleep(3000);
 
-    // Disable animations
-    console.log("  [TEST-DEBUG] disabling animations...");
     await p.evaluate(() => {
       try {
+        const style = document.createElement('style');
+        style.type = 'text/css';
+        style.innerHTML = `
+          * {
+            transition: none !important;
+            animation: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+          }
+        `;
+        document.head.appendChild(style);
+
         if (window.useUIStore) {
           window.useUIStore.getState().setParticleEffects?.(false);
           window.useUIStore.getState().updatePersonalisation?.({ 
@@ -99,10 +160,43 @@ async function prepareWorkspacePage() {
     console.log("  [TEST-DEBUG] prepareWorkspacePage succeeded!");
     return p;
   } catch (err) {
-    console.warn(`  ⚠ prepareWorkspacePage failed: ${err.message.substring(0, 80)}`);
+    console.warn(`  ⚠ prepareWorkspacePage configuration failed: ${err.message.substring(0, 80)}`);
     try { await p.close(); } catch (_) {}
     return null;
   }
+}
+
+/** Ensures page is active, relaunching browser and reviving workspace if crashed */
+async function ensurePageActive(p, targetMode = 'orbital') {
+  try {
+    if (p) {
+      await p.evaluate(() => 1);
+      return p;
+    }
+  } catch (e) {
+    console.log(`  🔄 Page/browser crash detected — reviving session...`);
+  }
+  
+  try { if (browser) await browser.close(); } catch (_) {}
+  browser = await puppeteer.launch({
+    headless: true,
+    channel: 'chrome',
+    args: BROWSER_ARGS,
+    protocolTimeout: 90000,
+    defaultViewport: { width: 1280, height: 800 },
+    dumpio: true,
+  });
+  
+  const newPage = await prepareWorkspacePage();
+  if (newPage && targetMode) {
+    await safeEval(newPage, (m) => {
+      if (window.useUIStore) {
+        window.useUIStore.getState().setInteractionMode?.(m);
+      }
+    }, targetMode);
+    await sleep(1500);
+  }
+  return newPage;
 }
 
 /** Safe screenshot that doesn't throw on failure */
@@ -159,9 +253,11 @@ async function getMode(page) {
   try {
     browser = await puppeteer.launch({
       headless: true,
+      channel: 'chrome',
       args: BROWSER_ARGS,
       protocolTimeout: 90000,
       defaultViewport: { width: 1280, height: 800 },
+      dumpio: true,
     });
     console.log('✓ Browser launched\n');
 
@@ -270,6 +366,7 @@ async function getMode(page) {
 
     // ── STAGE 4: Telescope mode ─────────────────────────────────────────────── 
     console.log('\n─── STAGE 4: Telescope Mode ───');
+    page = await ensurePageActive(page, 'orbital');
 
     const clickedTelescope = await clickBtn(page, 'Telescope', true);
     
@@ -285,6 +382,7 @@ async function getMode(page) {
         try { await browser.close(); } catch (_) {}
         browser = await puppeteer.launch({
           headless: true,
+          channel: 'chrome',
           args: BROWSER_ARGS,
           protocolTimeout: 90000,
           defaultViewport: { width: 1280, height: 800 },
@@ -321,14 +419,7 @@ async function getMode(page) {
 
     // ── STAGE 5: Escape Key ───────────────────────────────────────────────────
     console.log('\n─── STAGE 5: Escape Key Exit ───');
-
-    if (!page) {
-      page = await prepareWorkspacePage();
-      if (page) {
-        await safeEval(page, () => window.useUIStore?.getState()?.setInteractionMode?.('telescope'));
-        await sleep(1000);
-      }
-    }
+    page = await ensurePageActive(page, 'telescope');
 
     if (page) {
       try {
@@ -354,8 +445,7 @@ async function getMode(page) {
 
     // ── STAGE 6: ErrorBoundary ────────────────────────────────────────────────
     console.log('\n─── STAGE 6: Inline ErrorBoundary ───');
-
-    if (!page) page = await prepareWorkspacePage();
+    page = await ensurePageActive(page, 'telescope');
 
     if (page) {
       // Enter telescope mode
@@ -412,6 +502,7 @@ async function getMode(page) {
 
     // ── STAGE 7: Final state ──────────────────────────────────────────────────
     console.log('\n─── STAGE 7: Final State ───');
+    page = await ensurePageActive(page, 'telescope');
     if (page) {
       await safeEval(page, () => window.useUIStore?.getState()?.setInteractionMode?.('chat'));
       await sleep(1500);

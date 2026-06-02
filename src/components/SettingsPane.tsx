@@ -1,6 +1,6 @@
-import { useState, type ChangeEvent, type ReactNode } from 'react';
+import React, { useState, type ChangeEvent, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { Cpu, Globe, Image as ImageIcon, Loader2, Palette, Sparkles, Type, Volume2 } from 'lucide-react';
+import { Cpu, Database, Globe, Image as ImageIcon, Loader2, Palette, Sparkles, Type, Volume2, ChevronRight, Puzzle } from 'lucide-react';
 import { SectionHeader } from './common/SectionHeader';
 import { extractThemeFromImage } from '../lib/imageTheme';
 import { formatPaletteName, palettes, type PaletteKey, type ThemeVars } from '../lib/themeEngine';
@@ -112,8 +112,11 @@ function PaletteOption({ paletteKey }: { paletteKey: PaletteKey }) {
 }
 
 import { IMAGERY_LAYERS } from '../core/globe/ImageryProviderFactory';
+const PluginInspector = React.lazy(() => import('./dev/PluginInspector'));
+const PluginSettingsList = React.lazy(() => import('./settings/PluginSettingsList'));
 
 export function SettingsPane() {
+  const [showInspector, setShowInspector] = useState(false);
   const customWallpaper = useUIStore((state) => state.customWallpaper);
   const setCustomWallpaper = useUIStore((state) => state.setCustomWallpaper);
   const setDynamicTheme = useUIStore((state) => state.setDynamicTheme);
@@ -397,6 +400,36 @@ export function SettingsPane() {
               checked={forceFallback}
               onChange={setForceFallback}
             />
+            <button
+              onClick={() => setShowInspector(!showInspector)}
+              className="flex items-center justify-between gap-4 rounded-lg border border-panel-border/60 bg-panel/55 p-4 transition-colors hover:border-primary/40"
+            >
+              <div className="flex min-w-0 items-center gap-4">
+                <Database className="h-5 w-5 shrink-0 text-text-muted" />
+                <div className="min-w-0">
+                  <div className="font-mono text-sm tracking-wide text-text-main">Inspect Runtime</div>
+                  <div className="mt-1 text-xs text-text-muted">Visual telemetry and plugin entity buffers</div>
+                </div>
+              </div>
+              <ChevronRight className={`h-4 w-4 transition-transform ${showInspector ? 'rotate-90' : ''}`} />
+            </button>
+
+            {showInspector && (
+              <div className="rounded-lg border border-panel-border/60 bg-black/40 p-4">
+                <React.Suspense fallback={<div className="font-mono text-[10px] text-white/40">Initialising Inspector...</div>}>
+                  <PluginInspector />
+                </React.Suspense>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section>
+          <SectionHeader title="Plugins" eyebrow="Extensions" />
+          <div className="flex flex-col gap-3">
+            <React.Suspense fallback={<div className="font-mono text-[10px] text-white/40 italic">Loading Plugin Registry...</div>}>
+              <PluginSettingsList />
+            </React.Suspense>
           </div>
         </section>
 

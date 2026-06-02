@@ -280,6 +280,10 @@ export function LeftPanel() {
   const telescopeTarget = useUIStore((s) => s.telescopeTarget) || presets[0];
   const setTelescopeTarget = useUIStore((s) => s.setTelescopeTarget);
   const setInteractionMode = useUIStore((s) => s.setInteractionMode);
+  const spaceBlendOpacity = useUIStore((s) => s.spaceBlendOpacity);
+  const setSpaceBlendOpacity = useUIStore((s) => s.setSpaceBlendOpacity);
+  const spaceInteractionTarget = useUIStore((s) => s.spaceInteractionTarget);
+  const setSpaceInteractionTarget = useUIStore((s) => s.setSpaceInteractionTarget);
 
   const activeTour = useUIStore((s) => s.activeTour);
   const setActiveTour = useUIStore((s) => s.setActiveTour);
@@ -453,6 +457,8 @@ export function LeftPanel() {
   };
 
   const handleStartTour = (tour: import('../../data/tours').Tour) => {
+    setSpaceInteractionTarget('earth');
+    setSpaceBlendOpacity(1.0);
     setActiveTour(tour);
     setActiveTourStepIndex(0);
     flyToTourStep(tour.steps[0]);
@@ -461,7 +467,7 @@ export function LeftPanel() {
 
   if (!leftPanelOpen) return null;
 
-  const isSpatialMode = interactionMode === 'orbital' || interactionMode === 'telescope';
+  const isSpatialMode = interactionMode === 'orbital';
 
   return (
     <aside 
@@ -578,6 +584,8 @@ export function LeftPanel() {
                       key={result.id}
                       type="button"
                       onClick={() => {
+                        setSpaceInteractionTarget('earth');
+                        setSpaceBlendOpacity(1.0);
                         if (result.type === 'landmark') {
                           setActiveLocation(result.raw);
                           useStore.getState().setSelectedEntity(null);
@@ -619,7 +627,11 @@ export function LeftPanel() {
                     <button
                       key={loc.id}
                       type="button"
-                      onClick={() => setActiveLocation(loc)}
+                      onClick={() => {
+                        setSpaceInteractionTarget('earth');
+                        setSpaceBlendOpacity(1.0);
+                        setActiveLocation(loc);
+                      }}
                       className={`earth-result-item w-full text-left p-1.5 rounded transition-all cursor-pointer flex items-center gap-1.5 ${
                         isSelected ? 'bg-primary/20 text-primary font-bold' : 'hover:bg-white/5 text-white/60'
                       }`}
@@ -755,6 +767,55 @@ export function LeftPanel() {
                     className="w-full accent-primary h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
                   />
                 </div>
+
+                {/* Viewport Blend Controls (Space Mode only) */}
+                {interactionMode === 'orbital' && (
+                  <div className="border-t border-white/5 pt-3 space-y-3">
+                    <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Viewport Blend</span>
+                    
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[8px]">
+                        <span>Globe Opacity</span>
+                        <span className="text-primary font-bold">{Math.round(spaceBlendOpacity * 100)}%</span>
+                      </div>
+                      <input
+                        id="left-panel-globe-opacity"
+                        name="left-panel-globe-opacity"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={spaceBlendOpacity * 100}
+                        onChange={(e) => setSpaceBlendOpacity(parseFloat(e.target.value) / 100)}
+                        className="w-full accent-primary h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-white/40 block text-[8px] uppercase">Active Input Focus</label>
+                      <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded border border-white/5 bg-black/30 text-[8px] text-center">
+                        <button
+                          type="button"
+                          onClick={() => setSpaceInteractionTarget('earth')}
+                          className={`py-1 rounded transition-all cursor-pointer font-bold ${
+                            spaceInteractionTarget === 'earth' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'
+                          }`}
+                        >
+                          EARTH
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSpaceInteractionTarget('telescope')}
+                          className={`py-1 rounded transition-all cursor-pointer font-bold ${
+                            spaceInteractionTarget === 'telescope' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'
+                          }`}
+                        >
+                          TELESCOPE
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </CollapsibleSection>
 
@@ -974,7 +1035,7 @@ export function LeftPanel() {
 
 
             {/* --- COSMIC TELESCOPE HUB --- */}
-            {(interactionMode === 'orbital' || interactionMode === 'telescope') && (
+            {interactionMode === 'orbital' && (
               <div className="mt-4 flex flex-col">
                 <div className="p-2.5 border-t border-b border-white/5 bg-primary/5 text-[9px] font-mono uppercase tracking-[0.2em] font-bold text-primary flex items-center gap-1.5">
                   <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
@@ -997,7 +1058,9 @@ export function LeftPanel() {
                           type="button"
                           onClick={() => {
                             setTelescopeTarget(preset);
-                            setInteractionMode('telescope');
+                            setInteractionMode('orbital');
+                            setSpaceInteractionTarget('telescope');
+                            setSpaceBlendOpacity(0.0);
                             useUIStore.getState().addChangeLog('TELESCOPE', `Telescope target pointed: ${preset.name}`, 'success');
                           }}
                           className={`w-full text-left p-1.5 rounded transition-all cursor-pointer flex items-center justify-between gap-1.5 border border-transparent ${

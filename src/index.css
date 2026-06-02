@@ -32,6 +32,20 @@
   --theme-ui-font-scale: 1;
   --theme-ui-density-row-height: 36px;
   --theme-ui-border-opacity: 0.08;
+
+  --theme-font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --theme-font-mono: Consolas, "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Sleek clean shadows */
+  --theme-shadow-2-5d: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --theme-shadow-2-5d-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+
+  /* Spacing Tokens */
+  --theme-space-xs: 4px;
+  --theme-space-sm: 8px;
+  --theme-space-md: 16px;
+  --theme-space-lg: 24px;
+  --theme-space-xl: 32px;
 }
 
 @theme {
@@ -54,12 +68,11 @@
   --color-text-main: var(--theme-text-main);
   --color-text-muted: var(--theme-text-muted);
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: Consolas, "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: var(--theme-font-sans);
+  --font-mono: var(--theme-font-mono);
 
-  /* Sleek clean shadows */
-  --shadow-2-5d: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-2-5d-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-2-5d: var(--theme-shadow-2-5d);
+  --shadow-2-5d-hover: var(--theme-shadow-2-5d-hover);
 }
 
 body {

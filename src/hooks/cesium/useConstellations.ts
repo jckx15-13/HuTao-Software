@@ -15,7 +15,7 @@ export function useConstellations(viewer: Cesium.Viewer | null) {
   useEffect(() => {
     if (!viewer || (viewer as any).isDestroyed?.()) return;
 
-    const active = interactionMode === 'orbital' || interactionMode === 'telescope';
+    const active = interactionMode === 'orbital';
     const entities: Cesium.Entity[] = [];
 
     if (active) {
@@ -92,7 +92,7 @@ export function useConstellations(viewer: Cesium.Viewer | null) {
 
   useEffect(() => {
     if (!viewer || (viewer as any).isDestroyed?.()) return;
-    if (!(interactionMode === 'orbital' || interactionMode === 'telescope')) return;
+    if (interactionMode !== 'orbital') return;
 
     viewer.entities.values.forEach((entity) => {
       if (entity.id && typeof entity.id === 'string' && entity.id.startsWith('star-') && entity.label) {

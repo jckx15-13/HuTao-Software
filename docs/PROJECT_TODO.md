@@ -4,38 +4,45 @@
 
 ---
 
-## 🔥 Current High Priority (Run 07 Focus)
+## 🔥 Current High Priority (Run 10 Focus)
 
-- [ ] **Visual Diagnostic Panel**
-  - Category: `DX` | Tier: <span style="background:#FFFBDB;color:#8A6D00;padding:0.2em 0.4em;border-radius:0.3em;">🟡 Medium</span>
-  - Why: Needed to inspect raw plugin telemetry (like TLE strings) easily within the UI.
-- [ ] **Theme Variable Naming Cleanup**
-  - Category: `Tech Debt` | Tier: <span style="background:#E8F7E6;color:#2D6A2D;padding:0.2em 0.4em;border-radius:0.3em;">🟢 Low</span>
-  - Why: Standardize `--theme-` prefixing across all JS and CSS files.
+- [ ] **Automated Documentation Generation**
+  - Category: `DX` | Tier: <span style="background:#E8F0FE;color:#1A73E8;padding:0.2em(0.4em;border-radius:0.3em;">🔵 Low</span>
+  - Why: Keep DOCS.md in sync with the codebase automatically.
 
 ---
 
-## 🚦 Priority Tiers + Status
+## ✅ Completed Tasks (Run 08 & 09)
 
-### 🔴 Critical (0)
-*No critical issues detected.*
-
-### 🟠 High (0)
-*No high priority issues detected.*
-
-### 🟡 Medium (1)
-- [ ] **Visual Diagnostic Panel**
-
-### 🟢 Low (2)
-- [ ] **Theme Variable Naming Cleanup**
-- [ ] **Plugin API Modernization (Phase 2)**
-
-### ⚪ Trivial (1)
-- [ ] **Uncommitted local edits detection**
+- [x] **API Key Sanitization in Logs**
+  - Implementation: Added recursive `sanitize` helper to `diagnosticsStore.ts`.
+- [x] **Component Virtualization for Chat**
+  - Implementation: Integrated `react-virtuoso` in `ChatFeed.tsx`.
+- [x] **Global Error Boundary Enhancement**
+  - Implementation: Added `ChunkLoadError` detection and theme-consistent UI in `ErrorBoundary.tsx`.
+- [x] **Uncommitted local edits detection**
+  - Implementation: Added `/git/status` endpoint to Bridge and warning UI in Launcher.
+- [x] **Plugin API Modernization (Phase 2)**
+  - Implementation: Created `PluginSettingsList` and integrated into Settings pane for custom plugin config.
+- [x] **Memoize Cesium Entities**
+  - Implementation: Wired up `getCachedRenderOptions` in `useWWVGlobe.ts`.
+- [x] **Keyboard Shortcuts for Navigation**
+  - Implementation: Created `useKeyboardShortcuts` hook (Alt+1,2,3,S,W,L,R).
 
 ---
 
-## ✅ Completed Tasks
+## ✅ Completed Tasks (Run 07)
+
+- [x] **Visual Diagnostic Panel**
+  - Implementation: Created `PluginInspector` and integrated into Settings.
+- [x] **Theme Variable Naming Cleanup**
+  - Implementation: Standardized `--theme-` prefix across `index.css`, `SystemMonitor.tsx`, and `geojson-importer.css`.
+- [x] **Custom Hook for DataBus Subscription**
+  - Implementation: Created `useDataBus` hook to safely handle event listeners.
+
+---
+
+## ✅ Historical Completed Tasks
 
 - [x] ~~**Type Safety Phase 2**~~ (Resolved remaining UI `any` types in LeftPanel and others)
 - [x] ~~**Plugin API Modernization (Reactive Streams)**~~ (Added `streamUnsubscribe` to `PluginManager`)
@@ -53,31 +60,8 @@
 - [x] ~~Imagery Provider Switcher Logic~~
 - [x] ~~Memory Leak Audit (Timers)~~
 
-### 🟢 Low (3)
-- [ ] **Visual Diagnostic Panel**
-- [ ] **Theme Variable Naming Cleanup**
-- [ ] **Plugin API Modernization**
-
-### ⚪ Trivial (1)
-- [ ] **Uncommitted local edits detection**
-
----
-
-## ✅ Completed Tasks
-
-- [x] ~~`next-auth/jwt` missing~~ (Build fix)
-- [x] ~~Docker/local DB setup~~ (Documentation & README)
-- [x] ~~Cesium per-frame allocations~~ (Performance optimization)
-- [x] ~~`@sentry/nextjs` missing~~ (Verification)
-- [x] ~~Turbopack root warning~~ (Config fix)
-- [x] ~~Satellite TLE Ingestion~~ (Infrastructure established)
-- [x] ~~Imagery Provider Switcher~~ (Core logic & UI)
-- [x] ~~Large audit doc cleanup~~ (Archived to reduce noise)
-- [x] ~~Git path warnings on Windows~~ (Documentation)
-
 ---
 
 ## 🛠 Quick Actions
-1. **Move satellite logic** out of `uiStore.ts` into `SatelliteService.ts`.
-2. **Implement OpenWeather seeder** for the Global Weather plugin.
-3. **Add retry logic** to `EarthquakesPlugin` using exponential backoff.
+1. **Uncommitted local edits detection** - Add a check in the launcher to warn if there are pending git changes.
+2. **Plugin API Modernization (Phase 2)** - Standardize settings component injection.

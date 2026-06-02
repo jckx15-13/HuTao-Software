@@ -9,6 +9,7 @@ import urllib.request
 import urllib.parse
 import json
 import datetime
+import subprocess
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -207,11 +208,11 @@ async def chat(req: ChatRequest):
         raise HTTPException(status_code=500, detail="Local model failed to respond") from exc
 
 def fetch_url_sync(url: str) -> dict:
-    req = urllib.request.Request(
-        url,
-        headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-    )
     try:
+        req = urllib.request.Request(
+            url,
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+        )
         with urllib.request.urlopen(req, timeout=10) as response:
             raw_data = response.read()
             text = raw_data.decode('utf-8', errors='replace')
@@ -231,6 +232,28 @@ async def proxy_url(url: str):
         # We still return 200 to the frontend so it can read the internal 'status'
         return result
     return result
+
+@app.get("/git/status")
+async def git_status():
+    try:
+        # Run git status --porcelain to get a machine-readable list of changes
+        def run_git():
+            return subprocess.run(
+                ["git", "status", "--porcelain"], 
+                capture_output=True, 
+                text=True, 
+                cwd=BASE_DIR.parent
+            )
+        
+        result = await anyio.to_thread.run_sync(run_git)
+        changes = result.stdout.strip().split('\n') if result.stdout.strip() else []
+        return {
+            "has_changes": len(changes) > 0,
+            "change_count": len(changes),
+            "changes": changes
+        }
+    except Exception as e:
+        return {"has_changes": False, "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn

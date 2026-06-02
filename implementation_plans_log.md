@@ -113,13 +113,50 @@ This file tracks the planning and execution of features, fixes, and optimization
 
 ## [2026-06-01] Run 07: Diagnostic UI & Theme Consistency
 
-**Status:** PLANNED 📅
+**Status:** COMPLETED ✅
 
 ### 🎯 Goals
 - Implement a Visual Diagnostic panel to inspect raw plugin telemetry.
 - Standardize `--theme-` prefixing across all JS and CSS files.
+- Create a reusable hook for DataBus subscriptions.
 
 ### 📝 Plan
-1. [ ] **Diagnostic UI:** Create a `PluginInspector` component for real-time telemetry debugging in Settings.
-2. [ ] **Theme Standardization:** Global find-and-replace for legacy color variables.
-3. [ ] **Verification:** Build and visual check.
+1. [x] **Diagnostic UI:** Created `PluginInspector` component for real-time telemetry debugging in Settings.
+2. [x] **Theme Standardization:** Global find-and-replace for legacy color variables; added spacing tokens to `index.css`.
+3. [x] **Hook Creation:** Implemented `useDataBus` to reduce subscription boilerplate.
+4. [x] **Verification:** Verified `PluginInspector` correctly displays satellite TLE strings and earthquake data.
+
+---
+
+## [2026-06-01] Run 08: Security Sanitization & Performance Virtualization
+
+**Status:** COMPLETED ✅
+
+### 🎯 Goals
+- Sanitization of sensitive keys (Notion, OpenWeather) in diagnostic logs.
+- Implement virtualization for chat messages to improve performance.
+- Enhance Global Error Boundary with auto-recovery.
+
+### 📝 Plan
+1. [x] **Log Sanitization:** Updated `diagnosticsStore.ts` with recursive `sanitize` helper.
+2. [x] **Chat Virtualization:** Integrated `react-virtuoso` in `ChatFeed.tsx` for O(1) rendering of long histories.
+3. [x] **Error Resilience:** Refactored `ErrorBoundary.tsx` to handle `ChunkLoadError` with auto-reload and updated theme.
+
+---
+
+## [2026-06-01] Run 09: DX Improvements & API Modernization
+
+**Status:** COMPLETED ✅
+
+### 🎯 Goals
+- Warn users of uncommitted changes during boot.
+- Implement Phase 2 of Plugin API (Custom Settings UI).
+- Optimize globe performance via entity memoization.
+- Add keyboard shortcuts for power users.
+
+### 📝 Plan
+1. [x] **Git Detection:** Added `/git/status` endpoint to Python bridge and `AlertTriangle` warning to Launcher.
+2. [x] **Plugin Settings:** Created `PluginSettingsList` and integrated into Settings pane; reified `getSettingsComponent` from SDK.
+3. [x] **Entity Memoization:** Wired `getCachedRenderOptions` into `useWWVGlobe` render loop.
+4. [x] **Shortcuts:** Created `useKeyboardShortcuts` hook for Alt+Number and Alt+S/W navigation.
+

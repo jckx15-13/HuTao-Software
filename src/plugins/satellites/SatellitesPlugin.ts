@@ -79,6 +79,7 @@ export class SatellitesPlugin implements WorldPlugin {
                     velocity: this.engine.calculateOrbitalSpeed(sat.altitudeM),
                     category: sat.category,
                     color: sat.color,
+                    tle: tleData,
                     rawEntity: sat
                 }
             };

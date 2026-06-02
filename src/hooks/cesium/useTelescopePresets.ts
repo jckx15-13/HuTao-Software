@@ -13,7 +13,7 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
     if (!viewer || viewer.isDestroyed()) return;
 
     // Active in both orbital and telescope views to show celestial sphere outer layers
-    const active = interactionMode === 'orbital' || interactionMode === 'telescope';
+    const active = interactionMode === 'orbital';
     const entities: Cesium.Entity[] = [];
 
     if (active) {
@@ -105,7 +105,7 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
 
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;
-    if (!(interactionMode === 'orbital' || interactionMode === 'telescope')) return;
+    if (interactionMode !== 'orbital') return;
 
     try {
       TELESCOPE_PRESETS.forEach((preset) => {

@@ -1,5 +1,5 @@
-import { useRef } from 'react';
-import { useAutoScroll } from '../../hooks/useAutoScroll';
+import { useRef, useEffect } from 'react';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import type { Message } from '../../lib/messages';
 import { MessageBubble } from './MessageBubble';
 
@@ -11,24 +11,42 @@ interface ChatFeedProps {
 }
 
 export function ChatFeed({ messages, isProcessing, isHighLoad, fontSize }: ChatFeedProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
 
-  useAutoScroll(scrollRef, [messages, isProcessing]);
+  // Auto-scroll logic handled by Virtuoso's followOutput prop, 
+  // but we also trigger it on data length changes for reliability.
+  useEffect(() => {
+    if (virtuosoRef.current) {
+      virtuosoRef.current.scrollToIndex({
+        index: messages.length - 1,
+        behavior: 'smooth'
+      });
+    }
+  }, [messages.length]);
 
   return (
-    <div ref={scrollRef} className="relative z-10 flex-1 space-y-6 overflow-y-auto scroll-smooth p-4 sm:p-6">
-      {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} isHighLoad={isHighLoad} fontSize={fontSize} />
-      ))}
-
-      {isProcessing && (
-        <div className="mt-2 flex w-full justify-start">
-          <div className="flex items-center gap-3 p-4 text-sm text-text-muted">
-            <div className="h-2 w-2 rounded-full bg-primary/60 animate-pulse" />
-            <span className="font-mono text-[10px] uppercase tracking-widest">Thinking</span>
+    <div className="relative z-10 flex-1 overflow-hidden">
+      <Virtuoso
+        ref={virtuosoRef}
+        data={messages}
+        followOutput="auto"
+        className="scroller h-full"
+        itemContent={(_index, message) => (
+          <div className="px-4 py-3 sm:px-6">
+            <MessageBubble message={message} isHighLoad={isHighLoad} fontSize={fontSize} />
           </div>
-        </div>
-      )}
+        )}
+        components={{
+          Footer: () => isProcessing ? (
+            <div className="px-4 py-3 sm:px-6">
+              <div className="flex items-center gap-3 p-4 text-sm text-text-muted">
+                <div className="h-2 w-2 rounded-full bg-primary/60 animate-pulse" />
+                <span className="font-mono text-[10px] uppercase tracking-widest">Thinking</span>
+              </div>
+            </div>
+          ) : <div className="h-6" />
+        }}
+      />
     </div>
   );
 }

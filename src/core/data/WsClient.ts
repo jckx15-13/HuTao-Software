@@ -4,6 +4,7 @@ import { pluginManager } from "../plugins/PluginManager";
 import { useStore } from "../state/store";
 import { ticketAuthEnabledForPlugin } from "../edition";
 import type { PluginTicket } from "../../wwv-sdk/index";
+import { useDiagnosticsStore } from "../../store/diagnosticsStore";
 
 async function fetchPluginTicket(pluginId: string): Promise<PluginTicket> {
   const res = await fetch(`/api/auth/ticket?pluginId=${encodeURIComponent(pluginId)}`);
@@ -134,7 +135,18 @@ class WebSocketClient {
     };
 
     engine.ws.onerror = () => {
-      console.warn(`[WSClient] Connection to ${engineUrl} failed. Retrying in background...`);
+      const errMsg = `Connection to ${engineUrl} failed. Retrying in background...`;
+      console.warn(`[WSClient] ${errMsg}`);
+      try {
+        useDiagnosticsStore.getState().add({
+          level: 'error',
+          message: `[WSClient] ${errMsg}`,
+          suggestion: 'Ensure that the local backend service or engine is reachable at the specified address, or check for network connectivity issues.',
+          metadata: { engineUrl }
+        });
+      } catch (e) {
+        // ignore diagnostics errors
+      }
     };
 
     engine.ws.onclose = () => {
@@ -157,7 +169,20 @@ class WebSocketClient {
         );
         const delay = expDelay + Math.random() * RECONNECT_JITTER_MS;
         engine.reconnectAttempts++;
-        console.warn(`[WSClient] Disconnected from ${engineUrl}. Reconnecting in ${Math.round(delay / 1000)}s (attempt ${engine.reconnectAttempts})...`);
+        const reconnectMessage = `Disconnected from ${engineUrl}. Reconnecting in ${Math.round(delay / 1000)}s (attempt ${engine.reconnectAttempts})...`;
+        console.warn(`[WSClient] ${reconnectMessage}`);
+        
+        try {
+          useDiagnosticsStore.getState().add({
+            level: 'warning',
+            message: `[WSClient] ${reconnectMessage}`,
+            suggestion: 'Verify that the engine server is running at the configured URL and that there are no local firewall or routing blockers.',
+            metadata: { engineUrl, reconnectAttempts: engine.reconnectAttempts, delay }
+          });
+        } catch (e) {
+          // ignore diagnostics errors
+        }
+
         engine.reconnectTimer = setTimeout(() => this.connectEngine(engineUrl), delay);
       }
     };

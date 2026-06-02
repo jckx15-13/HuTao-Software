@@ -27,10 +27,8 @@ export function TimelineSync() {
         return unsub;
     }, []);
 
-    // Sync Timeline Availability
+    // Sync Timeline Availability (fetch on mount and on layer toggles)
     useEffect(() => {
-        if (!isPlaybackMode) return;
-
         const fetchAvailability = (pluginId: string) => {
             const plugin = pluginManager.getPlugin(pluginId)?.plugin;
             if (!plugin) return;
@@ -62,7 +60,7 @@ export function TimelineSync() {
         });
 
         return unsub;
-    }, [isPlaybackMode, setTimelineAvailability]);
+    }, [setTimelineAvailability]);
 
     // Playback Mode: Trigger fetches when time changes significantly (e.g. by scrubber or playback)
     useEffect(() => {

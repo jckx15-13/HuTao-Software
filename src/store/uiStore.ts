@@ -76,7 +76,7 @@ export interface SatelliteData {
 export type InteractionMode = 'chat' | 'orbital' | 'telescope';
 export type CurrentPage = 'launcher' | 'workspace' | 'settings';
 export type RightPanelTab = 'context' | 'browser' | 'changes' | 'diagnostics' | 'telemetry';
-export type SettingsCategory = 'personalisation' | 'ai' | 'connections' | 'feedback' | 'developer' | 'about' | 'map';
+export type SettingsCategory = 'personalisation' | 'ai' | 'connections' | 'feedback' | 'developer' | 'about' | 'map' | 'plugins';
 
 const defaultPersonalisation: Personalisation = {
   panelOpacity: 0.75,
@@ -246,6 +246,10 @@ export interface UIStore {
   setEngineUrlOverride: (v: string) => void;
   imageryProvider: string;
   setImageryProvider: (v: string) => void;
+  spaceBlendOpacity: number;
+  setSpaceBlendOpacity: (v: number) => void;
+  spaceInteractionTarget: 'earth' | 'telescope';
+  setSpaceInteractionTarget: (v: 'earth' | 'telescope') => void;
 
 
   // Panel State
@@ -532,6 +536,10 @@ export const useUIStore = create<UIStore>()(
         setEngineUrlOverride: (engineUrlOverride) => set({ engineUrlOverride }),
         imageryProvider: 'cesium',
         setImageryProvider: (imageryProvider) => set({ imageryProvider }),
+        spaceBlendOpacity: 0.35,
+        setSpaceBlendOpacity: (spaceBlendOpacity) => set({ spaceBlendOpacity }),
+        spaceInteractionTarget: 'earth',
+        setSpaceInteractionTarget: (spaceInteractionTarget) => set({ spaceInteractionTarget }),
 
 
         // Panel State
@@ -647,6 +655,8 @@ export const useUIStore = create<UIStore>()(
         engineUrlOverride: s.engineUrlOverride,
         imageryProvider: s.imageryProvider,
         cursorDesign: s.cursorDesign,
+        spaceBlendOpacity: s.spaceBlendOpacity,
+        spaceInteractionTarget: s.spaceInteractionTarget,
       }),
     },
   ),

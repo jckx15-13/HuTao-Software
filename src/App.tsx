@@ -7,13 +7,14 @@
 // 3. Performs lazy-loading fallback boundaries (Suspense) for large components.
 // ============================================================================
 
-import { AnimatePresence } from 'motion/react'; // Handles exit transitions: keeps components in the DOM until their fade/slide animations finish.
+import { AnimatePresence, MotionConfig } from 'motion/react'; // Handles exit transitions: keeps components in the DOM until their fade/slide animations finish.
 import { Settings } from 'lucide-react'; // Lucide SVG icon definition for the gear button.
 import React, { Suspense } from 'react'; // React default + Suspense for lazy imports.
 import { DockedLayout } from './components/layout/DockedLayout'; // Workspace structure defining Left, Center, and Right panels.
 import { IconButton } from './components/common/IconButton'; // Standardized accessible button component with hover glow effects.
 import { ParticleOverlay } from './components/ParticleOverlay'; // Canvas element rendering floating background canvas shapes.
 import { CesiumBackground } from './components/background/CesiumBackground'; // Virtual Earth component rendered on a persistent background layer.
+import WorldWideTelescopeView from './components/learning/WorldWideTelescopeView';
 import { LauncherPage } from './components/launcher/LauncherPage'; // Welcome/Splash component shown when first loading the interface.
 import { SettingsPage } from './components/settings/SettingsPage'; // Configuration panel (lazy loaded to reduce initial bundle size).
 import { ErrorBoundary } from './components/ErrorBoundary'; // React error boundary: catches runtime crashes inside nested components without freezing the tab.
@@ -22,6 +23,7 @@ import { useThemeVariables } from './hooks/useThemeVariables'; // Computes curre
 import { useUIStore } from './store/uiStore'; // Shared state manager (Zustand) tracking navigation and user preferences.
 import { ConfigProvider } from './context/ConfigContext';
 import { useDiagnosticsStore } from './store/diagnosticsStore';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 // Dev-only harness: lazy-load to avoid impacting production bundles
 const MountUnmountHarness = React.lazy(() => import('./components/dev/MountUnmountHarness'));
@@ -57,11 +59,14 @@ function TopAppBar() {
 // 👑 Core Application Entrypoint
 // ----------------------------------------------------------------------------
 export default function App() {
+  useKeyboardShortcuts();
   // Subscription selectors: only trigger re-renders when these specific properties change in the Zustand store.
   const currentPage = useUIStore((state) => state.currentPage);
   const interactionMode = useUIStore((state) => state.interactionMode);
   const customWallpaper = useUIStore((state) => state.customWallpaper);
   const scanlineOverlay = useUIStore((state) => state.scanlineOverlay);
+  const spaceBlendOpacity = useUIStore((state) => state.spaceBlendOpacity);
+  const spaceInteractionTarget = useUIStore((state) => state.spaceInteractionTarget);
   
   // Detect if running in headless test/fallback mode
   const isHeadless = typeof window !== 'undefined' && (
@@ -108,6 +113,7 @@ export default function App() {
 
   return (
     <ConfigProvider>
+      <MotionConfig reducedMotion={isHeadless ? "always" : "user"}>
       {/* Outer viewport root container. Covers whole screen (h-screen, w-full), disables default scrolls (overflow-hidden). */}
       <div
         className={`relative flex h-screen w-full overflow-hidden bg-base font-sans text-text-main transition-colors duration-500 ${
@@ -115,13 +121,34 @@ export default function App() {
         } ${isHeadless ? 'is-headless' : ''}`}
         style={{ ...appStyle, ...backgroundStyle }} // Merge global theme CSS variables with optional background image style.
       >
-      {/* 🌍 3D MAP BACKGROUND: Cesium globe element. Disabled if custom wallpaper is used to save memory. */}
+      {/* 🌍 3D MAP & SPACE BACKGROUND: Layered WWT and Cesium Globe */}
       {!customWallpaper && (
-        <CesiumBackground interactive={interactionMode === 'orbital' || interactionMode === 'telescope'} />
+        <div className="absolute inset-0 z-0">
+          {/* 1. Telescope Background Layer (WWT) at z-0 */}
+          {interactionMode === 'orbital' && (!isHeadless || spaceInteractionTarget === 'telescope') && (
+            <div className="absolute inset-0 z-0">
+              <WorldWideTelescopeView bgOnly />
+            </div>
+          )}
+          
+          {/* 2. Earth Globe Background Layer (Cesium) at z-10 */}
+          <div 
+            className="absolute inset-0 transition-all duration-500 ease-in-out"
+            style={{
+              zIndex: 10,
+              opacity: interactionMode === 'orbital' 
+                ? (spaceInteractionTarget === 'telescope' ? spaceBlendOpacity : 1.0) 
+                : 1.0,
+              pointerEvents: interactionMode === 'orbital' && spaceInteractionTarget === 'earth' ? 'auto' : 'none'
+            }}
+          >
+            <CesiumBackground interactive={interactionMode === 'orbital' && spaceInteractionTarget === 'earth'} />
+          </div>
+        </div>
       )}
 
       {/* 🕶️ BACKDROP SHADE: Semi-translucent screen layer. Fades the map so chat text contrast remains high. */}
-      {interactionMode !== 'orbital' && interactionMode !== 'telescope' && (
+      {interactionMode !== 'orbital' && (
         <div className="absolute inset-0 bg-[#06070a]/75 backdrop-blur-[2px] pointer-events-none z-0" />
       )}
 
@@ -142,10 +169,10 @@ export default function App() {
           {/* Cyberpunk flicker screen overlay */}
           {scanlineOverlay && <div className="hologram-overlay" />}
           
-          {!(interactionMode === 'orbital' || interactionMode === 'telescope') && <TopAppBar />}
+          {interactionMode !== 'orbital' && <TopAppBar />}
 
           {/* Core viewport layouts: pt-12 leaves space for the 12-unit top app bar, cleared in spatial modes for full-screen floating HUD */}
-          <div className={`relative z-10 flex h-full w-full pointer-events-none transition-all duration-300 ${(interactionMode === 'orbital' || interactionMode === 'telescope') ? 'pt-0' : 'pt-12'}`}>
+          <div className={`relative z-10 flex h-full w-full pointer-events-none transition-all duration-300 ${interactionMode === 'orbital' ? 'pt-0' : 'pt-12'}`}>
             <DockedLayout />
           </div>
 
@@ -177,6 +204,7 @@ export default function App() {
         </>
       )}
     </div>
+      </MotionConfig>
     </ConfigProvider>
   );
 }

@@ -30,13 +30,17 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     console.error('[Silver Wolf VI] Unhandled error:', error, errorInfo);
     this.props.onError?.(error, errorInfo);
 
+    const isChunkError = 
+      error.name === 'ChunkLoadError' || 
+      /Loading chunk .* failed/.test(error.message);
+
     try {
       // Record to diagnostics store for dev inspection and export
       useDiagnosticsStore.getState().add({
         level: 'error',
-        message: error.message || 'ErrorBoundary caught an error',
+        message: isChunkError ? 'Chunk load failure detected. Forcing cache refresh.' : (error.message || 'ErrorBoundary caught an error'),
         stack: error.stack || null,
-        metadata: { errorInfo },
+        metadata: { errorInfo, isChunkError },
       });
     } catch (e) {
       console.warn('[ErrorBoundary] failed to record diagnostic', e);
@@ -48,6 +52,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       navigator.webdriver ||
       window.location.search.includes('fallback')
     );
+
+    if (isChunkError && !isHeadless) {
+      console.log('[ErrorBoundary] Chunk error detected, forcing reload...');
+      window.location.reload();
+      return;
+    }
 
     // Auto-retry with exponential backoff, except in headless/E2E test environments
     const MAX_RETRIES = 3;
@@ -89,60 +99,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     const isAutoRetrying = this.state.retryCount === 0;
 
     if (variant === 'inline') {
-      return (        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '100%',
-            height: '100%',
-            minHeight: '120px',
-            background: 'rgba(10, 11, 16, 0.95)',
-            borderRadius: '12px',
-            border: '1px solid rgba(245, 183, 177, 0.15)',
-            color: '#EAECEE',
-            fontFamily: '"Inter", system-ui, sans-serif',
-            padding: '1.5rem',
-            textAlign: 'center',
-            gap: '0.75rem',
-          }}
-        >
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: '50%',
-              background: 'rgba(245, 183, 177, 0.12)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 18,
-            }}
-          >
+      return (
+        <div className="flex flex-col items-center justify-center w-full h-full min-h-[120px] glass-panel-strong border-danger/20 p-6 text-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-danger/10 flex items-center justify-center text-lg text-danger">
             ⚠
           </div>
-          <span
-            style={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: 10,
-              textTransform: 'uppercase',
-              letterSpacing: '0.2em',
-              color: '#F5B7B1',
-              margin: 0,
-            }}
-          >
+          <span className="font-mono text-[10px] uppercase tracking-widest text-danger/80">
             {fallbackMessage || 'Component Error'}
           </span>
-          <p
-            style={{
-              fontSize: 11,
-              color: '#85929E',
-              maxWidth: 360,
-              lineHeight: 1.5,
-              margin: 0,
-            }}
-          >
+          <p className="text-[11px] text-text-muted max-w-[360px] leading-relaxed">
             {isAutoRetrying
               ? 'Auto-retrying in a moment...'
               : (this.state.error?.message || 'An unexpected error occurred')}
@@ -150,18 +115,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           {!isAutoRetrying && (
             <button
               onClick={this.handleReset}
-              style={{
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 10,
-                textTransform: 'uppercase',
-                letterSpacing: '0.15em',
-                padding: '6px 20px',
-                borderRadius: 6,
-                border: '1px solid rgba(138, 91, 199, 0.4)',
-                background: 'rgba(138, 91, 199, 0.15)',
-                color: '#A67BEA',
-                cursor: 'pointer',
-              }}
+              className="font-mono text-[10px] uppercase tracking-widest px-5 py-1.5 rounded bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-colors"
             >
               Retry
             </button>
@@ -170,85 +124,30 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       );
     }
 
-    // Fullscreen variant (original behavior)
+    // Fullscreen variant
     return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh',
-          width: '100vw',
-          background: '#0a0b10',
-          color: '#EAECEE',
-          fontFamily: '"Inter", system-ui, sans-serif',
-          padding: '2rem',
-          textAlign: 'center',
-          gap: '1.5rem',
-        }}
-      >
-        <div
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: '50%',
-            background: 'rgba(245, 183, 177, 0.15)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 24,
-          }}
-        >
+      <div className="flex flex-col items-center justify-center h-screen w-screen bg-base text-text-main p-8 text-center gap-6">
+        <div className="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center text-2xl text-danger animate-pulse">
           ⚠
         </div>
-        <h1
-          style={{
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 12,
-            textTransform: 'uppercase',
-            letterSpacing: '0.2em',
-            color: '#F5B7B1',
-            margin: 0,
-          }}
-        >
-          SYSTEM // RUNTIME ERROR
-        </h1>
-        <p style={{ fontSize: 14, color: '#85929E', maxWidth: 480, lineHeight: 1.6 }}>
-          {fallbackMessage || 'An unexpected error occurred. Your chat history has been preserved in local storage.'}
-        </p>
-        <pre
-          style={{
-            fontSize: 12,
-            color: '#F5B7B1',
-            background: 'rgba(245, 183, 177, 0.08)',
-            border: '1px solid rgba(245, 183, 177, 0.2)',
-            borderRadius: 8,
-            padding: '12px 20px',
-            maxWidth: 560,
-            overflow: 'auto',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}
-        >
+        <div className="space-y-2">
+          <h1 className="font-mono text-[12px] uppercase tracking-[0.3em] text-danger">
+            SYSTEM // RUNTIME ERROR
+          </h1>
+          <p className="text-[14px] text-text-muted max-w-lg leading-relaxed">
+            {fallbackMessage || 'An unexpected error occurred. Your session state has been preserved.'}
+          </p>
+        </div>
+        
+        <pre className="text-[12px] text-danger/80 bg-danger/5 border border-danger/20 rounded-lg p-5 max-w-xl overflow-auto scroller font-mono whitespace-pre-wrap break-all">
           {this.state.error?.message || 'Unknown error'}
         </pre>
+
         <button
           onClick={this.handleReset}
-          style={{
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 11,
-            textTransform: 'uppercase',
-            letterSpacing: '0.15em',
-            padding: '10px 28px',
-            borderRadius: 8,
-            border: '1px solid rgba(138, 91, 199, 0.4)',
-            background: 'rgba(138, 91, 199, 0.15)',
-            color: '#A67BEA',
-            cursor: 'pointer',
-          }}
+          className="font-mono text-[11px] uppercase tracking-[0.2em] px-8 py-3 rounded-lg bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-all hover:scale-105 active:scale-95"
         >
-          Retry
+          Force System Reset
         </button>
       </div>
     );

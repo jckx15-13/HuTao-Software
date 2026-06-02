@@ -8,7 +8,7 @@ interface PollingTask {
     pluginId: string;
     intervalMs: number;
     callback: () => Promise<void>;
-    timerId: ReturnType<typeof setInterval> | null;
+    timerId: ReturnType<typeof setTimeout> | null;
     isPaused: boolean;
     errorCount: number;
     maxBackoff: number;
@@ -62,8 +62,9 @@ class PollingManager {
         const task = this.tasks.get(pluginId);
         if (!task || task.timerId) return;
 
-        const run = async () => {
-            if (task.isPaused) return;
+        const runNext = async () => {
+            if (task.isPaused || !task.timerId) return;
+
             try {
                 await task.callback();
                 task.errorCount = 0;
@@ -74,15 +75,23 @@ class PollingManager {
                     err
                 );
             }
+
+            // Schedule the next execution if not stopped or paused during callback execution
+            if (task.timerId && !task.isPaused) {
+                const effectiveInterval = this.getEffectiveInterval(task);
+                if (effectiveInterval > 0) {
+                    task.timerId = setTimeout(runNext, effectiveInterval);
+                } else {
+                    task.timerId = "ws-push-only" as any;
+                }
+            }
         };
 
-        // Run immediately, then set interval if > 0
-        run();
-        const effectiveInterval = this.getEffectiveInterval(task);
-        if (effectiveInterval > 0) {
-            task.timerId = setInterval(run, effectiveInterval);
+        const initialInterval = this.getEffectiveInterval(task);
+        if (initialInterval > 0) {
+            // Set a temporary timerId to block concurrent start calls and allow stop/pause to interrupt
+            task.timerId = setTimeout(runNext, 0);
         } else {
-            // For WebSocket-driven push plugins, mark as started
             task.timerId = "ws-push-only" as any;
         }
     }
@@ -90,7 +99,9 @@ class PollingManager {
     stop(pluginId: string): void {
         const task = this.tasks.get(pluginId);
         if (!task || !task.timerId) return;
-        clearInterval(task.timerId);
+        if (task.timerId !== ("ws-push-only" as any)) {
+            clearTimeout(task.timerId);
+        }
         task.timerId = null;
         task.errorCount = 0;
     }
@@ -100,7 +111,7 @@ class PollingManager {
         if (task) {
             task.isPaused = true;
             if (task.timerId && task.timerId !== ("ws-push-only" as any)) {
-                clearInterval(task.timerId);
+                clearTimeout(task.timerId);
                 task.timerId = null;
             }
         }
@@ -130,7 +141,7 @@ class PollingManager {
         if (task.errorCount === 0) return task.intervalMs;
         // Exponential backoff: interval * 2^errorCount, capped at maxBackoff
         const backoff = Math.min(
-            task.intervalMs * 2**task.errorCount,
+            task.intervalMs * Math.pow(2, task.errorCount),
             task.maxBackoff
         );
         return backoff;

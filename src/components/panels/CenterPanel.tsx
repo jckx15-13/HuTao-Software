@@ -2,7 +2,6 @@ import React, { Suspense, useState, useEffect, useCallback } from 'react';
 import { MessageSquare, Globe2, Sparkles, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { ChatPanel } from '../ChatPanel';
-import { ChatInputBar } from '../chat/ChatInputBar';
 import { useAIChat } from '../../hooks/useAIChat';
 import GoogleEarthRemix from '../learning/GoogleEarthRemix';
 import WorldWideTelescopeView from '../learning/WorldWideTelescopeView';
@@ -60,7 +59,7 @@ export function CenterPanel() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [interactionMode, setInteractionMode]);
 
-  const isSpaceMode = interactionMode === 'orbital' || interactionMode === 'telescope';
+  const isSpaceMode = interactionMode === 'orbital';
 
   return (
     // Root container: ALWAYS pointer-events-none to let Cesium globe receive drags underneath.
@@ -91,17 +90,7 @@ export function CenterPanel() {
             }`}
           >
             <Globe2 className="h-3 w-3" />
-            <span>Orbital</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setInteractionMode('telescope')}
-            className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-mono font-bold uppercase rounded-full tracking-wider transition-all cursor-pointer ${
-              interactionMode === 'telescope' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'
-            }`}
-          >
-            <Sparkles className="h-3 w-3" />
-            <span>Telescope</span>
+            <span>Space</span>
           </button>
         </div>
       </div>
@@ -130,10 +119,7 @@ export function CenterPanel() {
               <ChatPanel />
             </div>
 
-            {/* Input bar */}
-            <div className="pointer-events-auto">
-              <ChatInputBar onSend={sendMessage} disabled={isProcessing} />
-            </div>
+            {/* Input bar removed to prevent duplication (ChatPanel manages its own) */}
           </div>
         </div>
 
@@ -145,29 +131,23 @@ export function CenterPanel() {
               : 'translate-x-full opacity-0 pointer-events-none z-0'
           }`}
         >
-          {/* GoogleEarthRemix overlay — pointer-events-none so globe underneath gets drags */}
+          {/* WorldWide Telescope controls overlay — wrapped in inline ErrorBoundary for graceful degradation */}
           {isSpaceMode && (
-            <div className={`absolute inset-0 pointer-events-none transition-all duration-700 ease-in-out ${
-              interactionMode === 'telescope' ? 'opacity-30' : 'opacity-100'
-            }`}>
-              <GoogleEarthRemix />
-            </div>
-          )}
-          
-          {/* WorldWide Telescope overlay — wrapped in inline ErrorBoundary for graceful degradation */}
-          {isSpaceMode && (
-            <div className={`absolute inset-0 pointer-events-none transition-all duration-700 ease-in-out ${
-              interactionMode === 'telescope' 
-                ? 'opacity-100 scale-100' 
-                : 'opacity-90 scale-[0.98] translate-x-2'
-            }`}>
+            <div className="absolute inset-0 pointer-events-none z-20">
               <ErrorBoundary
                 variant="inline"
-                fallbackMessage="Telescope View Encountered an Error"
+                fallbackMessage="Telescope Controls Error"
                 onError={handleTelescopeError}
               >
-                <WorldWideTelescopeView />
+                <WorldWideTelescopeView controlsOnly />
               </ErrorBoundary>
+            </div>
+          )}
+
+          {/* GoogleEarthRemix overlay — pointer-events-none so globe underneath gets drags */}
+          {isSpaceMode && (
+            <div className="absolute inset-0 pointer-events-none z-10">
+              <GoogleEarthRemix />
             </div>
           )}
         </div>

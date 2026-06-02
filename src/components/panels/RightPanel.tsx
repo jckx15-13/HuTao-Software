@@ -95,7 +95,7 @@ export function RightPanel() {
 
   if (!rightPanelOpen) return null;
 
-  const isSpatialMode = interactionMode === 'orbital' || interactionMode === 'telescope';
+  const isSpatialMode = interactionMode === 'orbital';
 
   return (
     <aside 

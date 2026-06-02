@@ -8,6 +8,8 @@ import {
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '@/core/state/store';
 import { TELESCOPE_PRESETS as presets } from '@/data/telescopePresets';
+import TimelineLanes from './TimelineLanes';
+import { pluginManager } from '@/core/plugins/PluginManager';
 
 const BACKGROUND_LAYERS = [
   { id: 'dss', name: 'Digitized Sky Survey (Color)', value: 'Digitized Sky Survey (Color)', desc: 'Visible light survey mapping the sky.' },
@@ -29,8 +31,15 @@ function CrashComponent(): any {
   throw new Error("Simulated Telescope Crash");
 }
 
-export default function WorldWideTelescopeView() {
+export default function WorldWideTelescopeView({
+  bgOnly = false,
+  controlsOnly = false,
+}: {
+  bgOnly?: boolean;
+  controlsOnly?: boolean;
+} = {}) {
   const storeTarget = useUIStore((s) => s.telescopeTarget);
+  const spaceInteractionTarget = useUIStore((s) => s.spaceInteractionTarget);
   // Normalize store value: accept object or JSON string, validate fields
   const telescopeTarget = useMemo(() => {
     try {
@@ -69,6 +78,7 @@ export default function WorldWideTelescopeView() {
   const isPlaybackMode = useStore((s) => s.isPlaybackMode);
   const setPlaybackMode = useStore((s) => s.setPlaybackMode);
   const timeRange = useStore((s) => s.timeRange);
+  const setTimeRange = useStore((s) => s.setTimeRange);
 
   // Safe derived values
   const safeCurrentTime = useMemo(() => parseDateSafe(currentTime) || null, [currentTime]);
@@ -135,6 +145,10 @@ export default function WorldWideTelescopeView() {
 
   // Post message to WWT iframe helper — with full error handling
   const postToWWT = (message: any) => {
+    if (controlsOnly && typeof window !== 'undefined' && (window as any).postToWWTBackground) {
+      (window as any).postToWWTBackground(message);
+      return;
+    }
     try {
       if (!iframeRef.current || !iframeRef.current.contentWindow) return;
       let targetOrigin = '*';
@@ -361,6 +375,24 @@ export default function WorldWideTelescopeView() {
     useUIStore.getState().addChangeLog('TELESCOPE', `Background imagery array set to: ${layerName}`, 'info');
   };
 
+  // Register window callbacks in background mode for communication from controls
+  useEffect(() => {
+    if (bgOnly && typeof window !== 'undefined') {
+      (window as any).postToWWTBackground = postToWWT;
+      (window as any).refreshWwtIframe = () => setRefreshKey(k => k + 1);
+      (window as any).wwtLoadCollection = handleLoadCollection;
+      (window as any).wwtSetBackground = handleSetBackground;
+    }
+    return () => {
+      if (bgOnly && typeof window !== 'undefined') {
+        delete (window as any).postToWWTBackground;
+        delete (window as any).refreshWwtIframe;
+        delete (window as any).wwtLoadCollection;
+        delete (window as any).wwtSetBackground;
+      }
+    };
+  }, [bgOnly, refreshKey, telescopeTarget]);
+
   const iframeUrl = typeof telescopeTarget?.url === 'string' && telescopeTarget.url.length > 0 ? telescopeTarget.url : 'https://worldwidetelescope.org/webclient/';
   const safeIframeUrl = isValidUrl(iframeUrl) ? iframeUrl : null;
 
@@ -413,582 +445,557 @@ export default function WorldWideTelescopeView() {
     const targetMs = timeStart + val * totalMs;
     if (!isNaN(targetMs)) {
       setCurrentTime(new Date(targetMs));
+
+      // Center the active timeRange on scrubbed time to make plugin fetches
+      // and availability timelines predictable for the user.
+      const newRange = { start: new Date(targetMs - totalMs), end: new Date(targetMs) };
+      try {
+        (useUIStore.getState() as any).setTimeRange?.(newRange as any);
+      } catch (err) {
+        // ignore if store doesn't expose setTimeRange in some environments
+      }
+
+      // Debounced fetch/update of plugin data for scrubbed time
+      if ((handleSliderChange as any)._debounce) {
+        clearTimeout((handleSliderChange as any)._debounce);
+      }
+      (handleSliderChange as any)._debounce = window.setTimeout(() => {
+        try {
+          // Ask plugin manager to update enabled plugins to the new range
+          (window as any).pluginManager?.updateTimeRange(newRange as any).catch(() => {});
+        } catch (e) {
+          // swallow errors to avoid breaking UI
+        }
+      }, 220);
     }
   };
 
-  return (
-    <div className="relative w-full h-full flex overflow-hidden bg-transparent select-none pointer-events-none">
-      {typeof window !== 'undefined' && (window as any).__triggerTelescopeCrash && <CrashComponent />}
-      
-      {/* Space HUD / Controls Panel (Collapsible Drawer on Left) */}
-      <div className="absolute top-24 left-4 z-40 flex flex-col pointer-events-auto max-h-[calc(100%-185px)]">
-        {drawerOpen ? (
-          <div className="glass-panel w-[320px] flex flex-col border border-primary/20 overflow-hidden shadow-2xl animate-slide-in">
-            {/* Drawer Header */}
-            <div className="flex h-10 items-center justify-between px-3 bg-black/40 border-b border-white/5">
-              <div className="flex items-center gap-1.5 text-primary text-[10px] font-mono font-bold uppercase tracking-wider">
-                <Compass className="w-3.5 h-3.5 glow-pulse" />
-                <span>Space Array Control</span>
+  const renderIframe = () => {
+    if (window.location.search.includes('fallback')) {
+      return (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#05070a] overflow-hidden">
+          {/* Simulated Starfield Background */}
+          <div className="absolute inset-0 opacity-20 pointer-events-none">
+            {[...Array(50)].map((_, i) => (
+              <div 
+                key={i}
+                className="absolute bg-white rounded-full animate-pulse"
+                style={{
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  width: `${Math.random() * 2}px`,
+                  height: `${Math.random() * 2}px`,
+                  animationDelay: `${Math.random() * 3}s`,
+                  animationDuration: `${2 + Math.random() * 3}s`
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Constellation Schematic Overlay */}
+          <div className="absolute inset-0 opacity-10 pointer-events-none flex items-center justify-center">
+            <svg width="100%" height="100%" viewBox="0 0 100 100" className="text-primary fill-none stroke-current stroke-[0.2]">
+              <path d="M 20 20 L 40 30 L 60 20 M 40 30 L 40 60 L 20 80 M 40 60 L 70 70" />
+              <circle cx="20" cy="20" r="0.5" className="fill-current stroke-none" />
+              <circle cx="40" cy="30" r="0.5" className="fill-current stroke-none" />
+              <circle cx="60" cy="20" r="0.5" className="fill-current stroke-none" />
+              <circle cx="40" cy="60" r="0.5" className="fill-current stroke-none" />
+              <circle cx="20" cy="80" r="0.5" className="fill-current stroke-none" />
+              <circle cx="70" cy="70" r="0.5" className="fill-current stroke-none" />
+            </svg>
+          </div>
+
+          <div className="text-primary font-mono text-[9px] text-center p-6 border border-primary/20 bg-primary/10 rounded-lg max-w-[85%] space-y-2 pointer-events-auto select-text uppercase relative z-10 backdrop-blur-md">
+            <div className="font-bold tracking-wider text-primary">Celestial Target Synchronized</div>
+            <div className="text-white/60">Target: {telescopeTarget.name}</div>
+            <div className="text-white/40 text-[7px] break-all lowercase">{iframeUrl}</div>
+            <div className="mt-4 pt-4 border-t border-primary/10 text-[7px] text-primary/50">
+              Fallback mode active: Starfield telemetry simulated via constellation schematic
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (iframeError) {
+      return (
+        <div className="text-center p-6 max-w-[85%] space-y-3 pointer-events-auto select-text z-10">
+          <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg">⚠</div>
+          <div className="text-amber-400 font-mono text-[10px] font-bold uppercase tracking-wider">WWT Connection Failed</div>
+          <div className="text-white/50 font-mono text-[8px] leading-relaxed">
+            Unable to reach WorldWide Telescope servers. Check your internet connection or try again.
+          </div>
+          <div className="text-white/30 font-mono text-[7px] break-all lowercase">{safeIframeUrl || String(iframeUrl)}</div>
+          <button
+            onClick={() => { setIframeError(false); setIframeLoaded(false); setRefreshKey(k => k + 1); }}
+            className="mt-2 bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-4 py-1.5 rounded text-[9px] font-bold font-mono uppercase transition-all cursor-pointer pointer-events-auto z-20"
+          >
+            Retry Connection
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        {!iframeLoaded && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/80">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <span className="mt-2 font-mono text-[8px] uppercase tracking-[0.2em] text-primary/60 animate-pulse">
+              Connecting to WWT...
+            </span>
+          </div>
+        )}
+        {safeIframeUrl ? (
+          <iframe
+            ref={iframeRef}
+            key={refreshKey}
+            src={safeIframeUrl}
+            title="WorldWide Telescope Viewport"
+            className={`w-full h-full border-0 transition-all ${
+              spaceInteractionTarget === 'telescope' ? 'pointer-events-auto' : 'pointer-events-none'
+            }`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            onLoad={handleIframeLoad}
+            onError={handleIframeError}
+          />
+        ) : (
+          <div className="text-center p-6 max-w-[85%] space-y-3 pointer-events-auto select-text">
+            <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg">⚠</div>
+            <div className="text-amber-400 font-mono text-[10px] font-bold uppercase tracking-wider">Invalid Telescope URL</div>
+            <div className="text-white/50 font-mono text-[8px] leading-relaxed">
+              The configured telescope iframe URL is invalid. Please choose a different target.
+            </div>
+            <div className="text-white/30 font-mono text-[7px] break-all lowercase">{String(iframeUrl)}</div>
+            <button
+              onClick={() => { setIframeError(false); setIframeLoaded(false); setRefreshKey(k => k + 1); }}
+              className="mt-2 bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-4 py-1.5 rounded text-[9px] font-bold font-mono uppercase transition-all cursor-pointer pointer-events-auto"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const renderHUDAndTimeline = () => {
+    return (
+      <div className="absolute inset-0 w-full h-full flex overflow-hidden bg-transparent select-none pointer-events-none">
+        {/* Space HUD / Controls Panel (Collapsible Drawer on Left) */}
+        <div className="absolute top-24 left-4 z-40 flex flex-col pointer-events-auto max-h-[calc(100%-185px)]">
+          {drawerOpen ? (
+            <div className="glass-panel w-[320px] flex flex-col border border-primary/20 overflow-hidden shadow-2xl animate-slide-in">
+              {/* Drawer Header */}
+              <div className="flex h-10 items-center justify-between px-3 bg-black/40 border-b border-white/5">
+                <div className="flex items-center gap-1.5 text-primary text-[10px] font-mono font-bold uppercase tracking-wider">
+                  <Compass className="w-3.5 h-3.5 glow-pulse animate-spin-slow" />
+                  <span>Space Array Control</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setRefreshKey(k => k + 1)}
+                    className="text-white/40 hover:text-white/80 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
+                    title="Refresh WWT Client"
+                  >
+                    <RefreshCw size={12} />
+                  </button>
+                  <button 
+                    onClick={() => setDrawerOpen(false)}
+                    className="text-white/40 hover:text-white/80 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
+                    title="Collapse Panel"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                </div>
               </div>
-              <button 
-                onClick={() => setDrawerOpen(false)}
-                className="text-white/40 hover:text-white/80 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
-                title="Collapse Panel"
-              >
-                <ChevronLeft size={14} />
-              </button>
-            </div>
 
-            {/* Tab Selectors */}
-            <div className="flex bg-black/20 border-b border-white/5 p-1 gap-1 text-[9px] font-mono">
-              <button
-                onClick={() => setActiveControlTab('navigator')}
-                className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'navigator' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
-              >
-                Navigator
-              </button>
-              <button
-                onClick={() => setActiveControlTab('overlays')}
-                className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'overlays' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
-              >
-                Overlays
-              </button>
-              <button
-                onClick={() => setActiveControlTab('imagery')}
-                className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'imagery' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
-              >
-                Imagery
-              </button>
-              <button
-                onClick={() => setActiveControlTab('photos')}
-                className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'photos' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
-              >
-                Photos
-              </button>
-            </div>
+              {/* Tab Selectors */}
+              <div className="flex bg-black/20 border-b border-white/5 p-1 gap-1 text-[9px] font-mono">
+                <button
+                  onClick={() => setActiveControlTab('navigator')}
+                  className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'navigator' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
+                >
+                  Navigator
+                </button>
+                <button
+                  onClick={() => setActiveControlTab('overlays')}
+                  className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'overlays' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
+                >
+                  Overlays
+                </button>
+                <button
+                  onClick={() => setActiveControlTab('imagery')}
+                  className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'imagery' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
+                >
+                  Imagery
+                </button>
+                <button
+                  onClick={() => setActiveControlTab('photos')}
+                  className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'photos' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
+                >
+                  Photos
+                </button>
+              </div>
 
-            {/* Tab Contents */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 scroller max-h-[300px]">
-              
-              {/* Tab 1: Celestial Navigator */}
-              {activeControlTab === 'navigator' && (
-                <div className="space-y-2.5">
-                  <div className="relative flex items-center bg-black/40 border border-white/5 rounded px-2 text-white/50">
-                    <Search className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-                    <input 
-                      id="wwt-search-targets"
-                      name="wwt-search-targets"
-                      type="text" 
-                      placeholder="Search targets..." 
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      className="bg-transparent border-none text-[10px] py-1.5 w-full text-white/80 focus:outline-none placeholder:text-white/20 font-mono"
-                    />
-                    {searchQuery && (
-                      <button onClick={() => setSearchQuery('')} className="p-0.5 hover:bg-white/10 rounded cursor-pointer text-white/40">
-                        <X size={10} />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {filteredPresets.map(preset => {
-                      const isActive = activePreset.id === preset.id;
-                      return (
-                        <button
-                          key={preset.id}
-                          onClick={() => {
-                            setTelescopeTarget(preset);
-                          }}
-                          className={`w-full text-left p-2.5 rounded-lg border flex items-start gap-2.5 transition-all cursor-pointer ${
-                            isActive 
-                              ? 'bg-primary/10 border-primary/40 shadow-[inset_0_0_12px_color-mix(in_srgb,var(--theme-primary)_10%,transparent)]' 
-                              : 'bg-black/25 border-white/5 hover:border-white/15'
-                          }`}
-                        >
-                          <div 
-                            className="w-2 h-2 rounded-full mt-1.5 shrink-0 animate-pulse"
-                            style={{ backgroundColor: preset.color }}
-                          />
-                          <div className="min-w-0">
-                            <div className={`text-[10px] font-bold font-mono ${isActive ? 'text-primary' : 'text-white/80'}`}>
-                              {preset.name}
-                            </div>
-                            <div className="text-[8px] text-white/40 mt-0.5 font-mono">
-                              RA: {preset.ra} • DEC: {preset.dec} • FOV: {preset.fov}
-                            </div>
-                            <div className="text-[8px] text-white/50 mt-1 leading-relaxed truncate font-sans">
-                              {preset.description}
-                            </div>
-                          </div>
+              {/* Tab Contents */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 scroller max-h-[300px]">
+                {/* Tab 1: Celestial Navigator */}
+                {activeControlTab === 'navigator' && (
+                  <div className="space-y-2.5">
+                    <div className="relative flex items-center bg-black/40 border border-white/5 rounded px-2 text-white/50">
+                      <Search className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                      <input 
+                        id="wwt-search-targets"
+                        name="wwt-search-targets"
+                        type="text" 
+                        placeholder="Search targets..." 
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="bg-transparent border-none text-[10px] py-1.5 w-full text-white/80 focus:outline-none placeholder:text-white/20 font-mono"
+                      />
+                      {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} className="p-0.5 hover:bg-white/10 rounded cursor-pointer text-white/40">
+                          <X size={10} />
                         </button>
-                      );
-                    })}
-                    {filteredPresets.length === 0 && (
-                      <div className="text-center font-mono text-[8px] py-6 text-white/20 italic">
-                        No astronomical objects found
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+                      )}
+                    </div>
 
-              {/* Tab 2: Constellations & Overlays */}
-              {activeControlTab === 'overlays' && (
-                <div className="space-y-3 font-mono text-[9px]">
-                  <div className="glass-panel p-2.5 bg-black/30 space-y-2.5 border border-white/5">
-                    <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Sky Map Overlays</span>
-                    
-                    <label className="flex items-center justify-between py-1 cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <Grid className="w-3.5 h-3.5 text-primary/70" />
-                        <span className="text-white/80">Celestial Grid Lines</span>
-                      </div>
-                      <input 
-                        id="wwt-grid-lines"
-                        name="wwt-grid-lines"
-                        type="checkbox" 
-                        checked={showGrid}
-                        onChange={e => setShowGrid(e.target.checked)}
-                        className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
-                      />
-                    </label>
-
-                    <label className="flex items-center justify-between py-1 cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <Star className="w-3.5 h-3.5 text-primary/70" />
-                        <span className="text-white/80">Constellation Stick Figures</span>
-                      </div>
-                      <input 
-                        id="wwt-constellation-lines"
-                        name="wwt-constellation-lines"
-                        type="checkbox" 
-                        checked={showConstellationLines}
-                        onChange={e => setShowConstellationLines(e.target.checked)}
-                        className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
-                      />
-                    </label>
-
-                    <label className="flex items-center justify-between py-1 cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <ImageIcon className="w-3.5 h-3.5 text-primary/70" />
-                        <span className="text-white/80">Constellation Artistic Art</span>
-                      </div>
-                      <input 
-                        id="wwt-constellation-art"
-                        name="wwt-constellation-art"
-                        type="checkbox" 
-                        checked={showConstellationFigures}
-                        onChange={e => setShowConstellationFigures(e.target.checked)}
-                        className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
-                      />
-                    </label>
-
-                    <label className="flex items-center justify-between py-1 cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <Eye className="w-3.5 h-3.5 text-primary/70" />
-                        <span className="text-white/80">Constellation Boundaries</span>
-                      </div>
-                      <input 
-                        id="wwt-constellation-boundaries"
-                        name="wwt-constellation-boundaries"
-                        type="checkbox" 
-                        checked={showConstellationBoundries}
-                        onChange={e => setShowConstellationBoundries(e.target.checked)}
-                        className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
-                      />
-                    </label>
-
-                    <label className="flex items-center justify-between py-1 cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <Compass className="w-3.5 h-3.5 text-primary/70" />
-                        <span className="text-white/80">Constellation Selection Highlight</span>
-                      </div>
-                      <input 
-                        id="wwt-constellation-selection"
-                        name="wwt-constellation-selection"
-                        type="checkbox" 
-                        checked={showConstellationSelection}
-                        onChange={e => setShowConstellationSelection(e.target.checked)}
-                        className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="p-2 bg-white/5 border border-white/5 rounded text-[8px] text-white/50 leading-relaxed uppercase">
-                    Constellation configurations update the embedded WorldWide Telescope WebGL render pipeline in real-time.
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 3: Background Imagery Layers */}
-              {activeControlTab === 'imagery' && (
-                <div className="space-y-1.5 font-mono">
-                  {BACKGROUND_LAYERS.map(layer => (
-                    <button
-                      key={layer.id}
-                      onClick={() => handleSetBackground(layer.value)}
-                      className="w-full text-left p-2 rounded border border-white/5 bg-black/25 hover:border-primary/30 transition-all cursor-pointer flex items-center justify-between"
-                    >
-                      <div>
-                        <div className="text-[10px] text-white/80 font-bold">{layer.name}</div>
-                        <div className="text-[8px] text-white/40 mt-0.5">{layer.desc}</div>
-                      </div>
-                      <Plus size={12} className="text-white/30" />
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Tab 4: Pictures & Photos (WTML Collections) */}
-              {activeControlTab === 'photos' && (
-                <div className="space-y-3 font-mono">
-                  {/* Photo Collections Grid */}
-                  <div className="space-y-2">
-                    <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Premium Imagery Databases</span>
-                    {PHOTO_COLLECTIONS.map(col => (
-                      <button
-                        key={col.id}
-                        onClick={() => handleLoadCollection(col.url, col.name)}
-                        className="w-full text-left p-2.5 rounded border border-white/5 bg-black/25 hover:border-primary/30 transition-all cursor-pointer block"
-                      >
-                        <div className="text-[10px] text-primary font-bold flex items-center justify-between">
-                          <span>{col.name}</span>
-                          <span className="text-[7.5px] uppercase bg-primary/20 text-primary px-1 py-0.5 rounded">WTML</span>
+                    <div className="space-y-1.5">
+                      {filteredPresets.map(preset => {
+                        const isActive = activePreset.id === preset.id;
+                        return (
+                          <button
+                            key={preset.id}
+                            onClick={() => {
+                              setTelescopeTarget(preset);
+                            }}
+                            className={`w-full text-left p-2.5 rounded-lg border flex items-start gap-2.5 transition-all cursor-pointer ${
+                              isActive 
+                                ? 'bg-primary/10 border-primary/40 shadow-[inset_0_0_12px_color-mix(in_srgb,var(--theme-primary)_10%,transparent)]' 
+                                : 'bg-black/25 border-white/5 hover:border-white/15'
+                            }`}
+                          >
+                            <div 
+                              className="w-2 h-2 rounded-full mt-1.5 shrink-0 animate-pulse"
+                              style={{ backgroundColor: preset.color }}
+                            />
+                            <div className="min-w-0">
+                              <div className={`text-[10px] font-bold font-mono ${isActive ? 'text-primary' : 'text-white/80'}`}>
+                                {preset.name}
+                              </div>
+                              <div className="text-[8px] text-white/40 mt-0.5 font-mono">
+                                RA: {preset.ra} • DEC: {preset.dec} • FOV: {preset.fov}
+                              </div>
+                              <div className="text-[8px] text-white/50 mt-1 leading-relaxed truncate font-sans">
+                                {preset.description}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                      {filteredPresets.length === 0 && (
+                        <div className="text-center font-mono text-[8px] py-6 text-white/20 italic">
+                          No astronomical objects found
                         </div>
-                        <div className="text-[8px] text-white/50 mt-1 leading-relaxed">{col.desc}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 2: Constellations & Overlays */}
+                {activeControlTab === 'overlays' && (
+                  <div className="space-y-3 font-mono text-[9px]">
+                    <div className="glass-panel p-2.5 bg-black/30 space-y-2.5 border border-white/5">
+                      <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Sky Map Overlays</span>
+                      
+                      <label className="flex items-center justify-between py-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <Grid className="w-3.5 h-3.5 text-primary/70" />
+                          <span className="text-white/80">Celestial Grid Lines</span>
+                        </div>
+                        <input 
+                          id="wwt-grid-lines"
+                          name="wwt-grid-lines"
+                          type="checkbox" 
+                          checked={showGrid}
+                          onChange={e => setShowGrid(e.target.checked)}
+                          className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between py-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <Star className="w-3.5 h-3.5 text-primary/70" />
+                          <span className="text-white/80">Constellation Stick Figures</span>
+                        </div>
+                        <input 
+                          id="wwt-constellation-lines"
+                          name="wwt-constellation-lines"
+                          type="checkbox" 
+                          checked={showConstellationLines}
+                          onChange={e => setShowConstellationLines(e.target.checked)}
+                          className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between py-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="w-3.5 h-3.5 text-primary/70" />
+                          <span className="text-white/80">Constellation Artistic Art</span>
+                        </div>
+                        <input 
+                          id="wwt-constellation-art"
+                          name="wwt-constellation-art"
+                          type="checkbox" 
+                          checked={showConstellationFigures}
+                          onChange={e => setShowConstellationFigures(e.target.checked)}
+                          className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between py-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <Eye className="w-3.5 h-3.5 text-primary/70" />
+                          <span className="text-white/80">Constellation Boundaries</span>
+                        </div>
+                        <input 
+                          id="wwt-constellation-boundaries"
+                          name="wwt-constellation-boundaries"
+                          type="checkbox" 
+                          checked={showConstellationBoundries}
+                          onChange={e => setShowConstellationBoundries(e.target.checked)}
+                          className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between py-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <Compass className="w-3.5 h-3.5 text-primary/70" />
+                          <span className="text-white/80">Constellation Selection Highlight</span>
+                        </div>
+                        <input 
+                          id="wwt-constellation-selection"
+                          name="wwt-constellation-selection"
+                          type="checkbox" 
+                          checked={showConstellationSelection}
+                          onChange={e => setShowConstellationSelection(e.target.checked)}
+                          className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="p-2 bg-white/5 border border-white/5 rounded text-[8px] text-white/50 leading-relaxed uppercase">
+                      Constellation configurations update the embedded WorldWide Telescope WebGL render pipeline in real-time.
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 3: Background Imagery Layers */}
+                {activeControlTab === 'imagery' && (
+                  <div className="space-y-1.5 font-mono">
+                    {BACKGROUND_LAYERS.map(layer => (
+                      <button
+                        key={layer.id}
+                        onClick={() => handleSetBackground(layer.value)}
+                        className="w-full text-left p-2 rounded border border-white/5 bg-black/25 hover:border-primary/30 transition-all cursor-pointer flex items-center justify-between"
+                      >
+                        <div>
+                          <div className="text-[10px] text-white/80 font-bold">{layer.name}</div>
+                          <div className="text-[8px] text-white/40 mt-0.5">{layer.desc}</div>
+                        </div>
+                        <Plus size={12} className="text-white/30" />
                       </button>
                     ))}
                   </div>
-
-                  {/* Custom WTML url loader */}
-                  <div className="glass-panel p-2.5 border border-white/5 bg-black/30 space-y-2">
-                    <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Ingest Custom WTML Collection</span>
-                    <input 
-                      id="wwt-custom-wtml"
-                      name="wwt-custom-wtml"
-                      type="text"
-                      placeholder="https://example.com/collection.wtml"
-                      value={customWtml}
-                      onChange={e => setCustomWtml(e.target.value)}
-                      className="w-full bg-black/45 border border-white/5 rounded p-1.5 text-[9px] text-white/80 focus:outline-none placeholder:text-white/20 select-text"
-                    />
-                    <button
-                      onClick={() => handleLoadCollection(customWtml, 'Custom Collection')}
-                      disabled={!customWtml || wtmlStatus === 'loading'}
-                      className="w-full bg-primary/20 hover:bg-primary/45 text-primary border border-primary/30 p-1.5 rounded text-[9px] font-bold transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-                    >
-                      {wtmlStatus === 'loading' ? 'Ingesting...' : 
-                       wtmlStatus === 'success' ? 'Ingested Successfully' :
-                       wtmlStatus === 'error' ? 'Ingestion Failed' : 'Load Custom WTML'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="glass-panel p-3 px-4 hover:bg-white/10 text-white/80 hover:text-white transition-colors rounded shadow-lg flex items-center gap-2 text-xs font-bold font-mono cursor-pointer border border-primary/20"
-            title="Expand Control Panel"
-          >
-            <Compass className="w-4 h-4 text-primary animate-pulse" />
-            <span>Show Space Array controls</span>
-          </button>
-        )}
-      </div>
-
-
-      {/* Draggable, Glassmorphic Picture-in-Picture WWT Viewport Window */}
-      <div
-        className="absolute z-40 glass-panel border border-primary/20 shadow-2xl flex flex-col overflow-hidden pointer-events-auto transition-shadow hover:shadow-[0_0_30px_color-mix(in_srgb,var(--theme-primary)_15%,transparent)]"
-        style={{
-          left: `${pos.x}px`,
-          top: `${pos.y}px`,
-          width: dim.width,
-          height: dim.height,
-          transition: isDragging ? 'none' : 'width 0.3s ease, height 0.3s ease, top 0.3s ease, left 0.3s ease'
-        }}
-      >
-        {/* Titlebar / Drag Handle */}
-        <header
-          onMouseDown={handleMouseDown}
-          className="pip-drag-handle flex h-[38px] shrink-0 items-center justify-between px-3 border-b border-white/5 bg-black/40 cursor-grab active:cursor-grabbing text-white"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <Sparkles className="h-3.5 w-3.5 text-primary glow-pulse shrink-0" />
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider truncate">
-              WWT Viewport: {telescopeTarget.name}
-            </span>
-          </div>
-
-          {/* Draggable window Controls */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Collapse / Minimized Toggle */}
-            <button
-              onClick={() => setWindowSize(s => s === 'minimized' ? 'normal' : 'minimized')}
-              className="pip-action-btn hover:bg-white/10 p-1 rounded text-white/50 hover:text-white transition-colors cursor-pointer"
-              title={windowSize === 'minimized' ? 'Restore Window' : 'Collapse Window'}
-            >
-              {windowSize === 'minimized' ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-            </button>
-
-            {/* Normal / Large toggle */}
-            {windowSize !== 'minimized' && (
-              <button
-                onClick={() => setWindowSize(s => s === 'large' ? 'normal' : 'large')}
-                className="pip-action-btn hover:bg-white/10 p-1 rounded text-white/50 hover:text-white transition-colors cursor-pointer"
-                title={windowSize === 'large' ? 'Shrink Window' : 'Expand Window'}
-              >
-                {windowSize === 'large' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-              </button>
-            )}
-
-            {/* Refresh WWT Client */}
-            <button
-              onClick={() => setRefreshKey(k => k + 1)}
-              className="pip-action-btn hover:bg-white/10 p-1 rounded text-white/50 hover:text-white transition-colors cursor-pointer"
-              title="Refresh WWT Client"
-            >
-              <RefreshCw size={14} className="animate-spin-slow" />
-            </button>
-
-            {/* External link */}
-            <a
-              href={safeIframeUrl || 'https://worldwidetelescope.org/webclient/'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="pip-action-btn hover:bg-white/10 p-1 rounded text-white/50 hover:text-white transition-colors cursor-pointer"
-              title="Open full page telescope client"
-            >
-              <ExternalLink size={14} />
-            </a>
-
-            {/* Close pip / return to orbital mode */}
-            <button
-              onClick={() => setInteractionMode('orbital')}
-              className="pip-action-btn hover:bg-red-500/20 hover:text-red-400 p-1 rounded text-white/50 transition-colors cursor-pointer"
-              title="Exit Telescope View"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        </header>
-
-        {/* Viewport Frame Container */}
-        {windowSize !== 'minimized' && (
-          <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden">
-            {window.location.search.includes('fallback') ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-[#05070a] overflow-hidden">
-                {/* Simulated Starfield Background */}
-                <div className="absolute inset-0 opacity-20 pointer-events-none">
-                  {[...Array(50)].map((_, i) => (
-                    <div 
-                      key={i}
-                      className="absolute bg-white rounded-full animate-pulse"
-                      style={{
-                        top: `${Math.random() * 100}%`,
-                        left: `${Math.random() * 100}%`,
-                        width: `${Math.random() * 2}px`,
-                        height: `${Math.random() * 2}px`,
-                        animationDelay: `${Math.random() * 3}s`,
-                        animationDuration: `${2 + Math.random() * 3}s`
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* Constellation Schematic Overlay */}
-                <div className="absolute inset-0 opacity-10 pointer-events-none flex items-center justify-center">
-                  <svg width="100%" height="100%" viewBox="0 0 100 100" className="text-primary fill-none stroke-current stroke-[0.2]">
-                    <path d="M 20 20 L 40 30 L 60 20 M 40 30 L 40 60 L 20 80 M 40 60 L 70 70" />
-                    <circle cx="20" cy="20" r="0.5" className="fill-current stroke-none" />
-                    <circle cx="40" cy="30" r="0.5" className="fill-current stroke-none" />
-                    <circle cx="60" cy="20" r="0.5" className="fill-current stroke-none" />
-                    <circle cx="40" cy="60" r="0.5" className="fill-current stroke-none" />
-                    <circle cx="20" cy="80" r="0.5" className="fill-current stroke-none" />
-                    <circle cx="70" cy="70" r="0.5" className="fill-current stroke-none" />
-                  </svg>
-                </div>
-
-                <div className="text-primary font-mono text-[9px] text-center p-6 border border-primary/20 bg-primary/10 rounded-lg max-w-[85%] space-y-2 pointer-events-auto select-text uppercase relative z-10 backdrop-blur-md">
-                  <div className="font-bold tracking-wider text-primary">Celestial Target Synchronized</div>
-                  <div className="text-white/60">Target: {telescopeTarget.name}</div>
-                  <div className="text-white/40 text-[7px] break-all lowercase">{iframeUrl}</div>
-                  <div className="mt-4 pt-4 border-t border-primary/10 text-[7px] text-primary/50">
-                    Fallback mode active: Starfield telemetry simulated via constellation schematic
-                  </div>
-                </div>
-              </div>
-            ) :
- iframeError ? (
-              <div className="text-center p-6 max-w-[85%] space-y-3 pointer-events-auto select-text">
-                <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg">⚠</div>
-                <div className="text-amber-400 font-mono text-[10px] font-bold uppercase tracking-wider">WWT Connection Failed</div>
-                <div className="text-white/50 font-mono text-[8px] leading-relaxed">
-                  Unable to reach WorldWide Telescope servers. Check your internet connection or try again.
-                </div>
-                <div className="text-white/30 font-mono text-[7px] break-all lowercase">{safeIframeUrl || String(iframeUrl)}</div>
-                <button
-                  onClick={() => { setIframeError(false); setIframeLoaded(false); setRefreshKey(k => k + 1); }}
-                  className="mt-2 bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-4 py-1.5 rounded text-[9px] font-bold font-mono uppercase transition-all cursor-pointer"
-                >
-                  Retry Connection
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Loading spinner while iframe initializes */}
-                {!iframeLoaded && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/80">
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    <span className="mt-2 font-mono text-[8px] uppercase tracking-[0.2em] text-primary/60 animate-pulse">
-                      Connecting to WWT...
-                    </span>
-                  </div>
                 )}
-                {safeIframeUrl ? (
-                  <iframe
-                    ref={iframeRef}
-                    key={refreshKey}
-                    src={safeIframeUrl}
-                    title="WorldWide Telescope PIP Window"
-                    className="w-full h-full border-0 pointer-events-auto"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    onLoad={handleIframeLoad}
-                    onError={handleIframeError}
-                  />
-                ) : (
-                  <div className="text-center p-6 max-w-[85%] space-y-3 pointer-events-auto select-text">
-                    <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg">⚠</div>
-                    <div className="text-amber-400 font-mono text-[10px] font-bold uppercase tracking-wider">Invalid Telescope URL</div>
-                    <div className="text-white/50 font-mono text-[8px] leading-relaxed">
-                      The configured telescope iframe URL is invalid. Please choose a different target.
+
+                {/* Tab 4: Pictures & Photos */}
+                {activeControlTab === 'photos' && (
+                  <div className="space-y-3 font-mono">
+                    <div className="space-y-2">
+                      <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Premium Imagery Databases</span>
+                      {PHOTO_COLLECTIONS.map(col => (
+                        <button
+                          key={col.id}
+                          onClick={() => handleLoadCollection(col.url, col.name)}
+                          className="w-full text-left p-2.5 rounded border border-white/5 bg-black/25 hover:border-primary/30 transition-all cursor-pointer block"
+                        >
+                          <div className="text-[10px] text-primary font-bold flex items-center justify-between">
+                            <span>{col.name}</span>
+                            <span className="text-[7.5px] uppercase bg-primary/20 text-primary px-1 py-0.5 rounded">WTML</span>
+                          </div>
+                          <div className="text-[8px] text-white/50 mt-1 leading-relaxed">{col.desc}</div>
+                        </button>
+                      ))}
                     </div>
-                    <div className="text-white/30 font-mono text-[7px] break-all lowercase">{String(iframeUrl)}</div>
-                    <button
-                      onClick={() => { setIframeError(false); setIframeLoaded(false); setRefreshKey(k => k + 1); }}
-                      className="mt-2 bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-4 py-1.5 rounded text-[9px] font-bold font-mono uppercase transition-all cursor-pointer"
-                    >
-                      Retry
-                    </button>
+
+                    <div className="glass-panel p-2.5 border border-white/5 bg-black/30 space-y-2">
+                      <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Ingest Custom WTML Collection</span>
+                      <input 
+                        id="wwt-custom-wtml"
+                        name="wwt-custom-wtml"
+                        type="text"
+                        placeholder="https://example.com/collection.wtml"
+                        value={customWtml}
+                        onChange={e => setCustomWtml(e.target.value)}
+                        className="w-full bg-black/45 border border-white/5 rounded p-1.5 text-[9px] text-white/80 focus:outline-none placeholder:text-white/20 select-text"
+                      />
+                      <button
+                        onClick={() => handleLoadCollection(customWtml, 'Custom Collection')}
+                        disabled={!customWtml || wtmlStatus === 'loading'}
+                        className="w-full bg-primary/20 hover:bg-primary/45 text-primary border border-primary/30 p-1.5 rounded text-[9px] font-bold transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                      >
+                        {wtmlStatus === 'loading' ? 'Ingesting...' : 
+                         wtmlStatus === 'success' ? 'Ingested Successfully' :
+                         wtmlStatus === 'error' ? 'Ingestion Failed' : 'Load Custom WTML'}
+                      </button>
+                    </div>
                   </div>
                 )}
-              </>
-            )}
-            
-            {/* Luminous Vignette Mask for Space Opera feel */}
-            <div className="absolute inset-0 pointer-events-none border border-primary/5 shadow-[inset_0_0_40px_color-mix(in_srgb,var(--theme-primary)_4%,transparent)]" />
-          </div>
-        )}
-      </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="glass-panel p-3 px-4 hover:bg-white/10 text-white/80 hover:text-white transition-colors rounded shadow-lg flex items-center gap-2 text-xs font-bold font-mono cursor-pointer border border-primary/20"
+              title="Expand Control Panel"
+            >
+              <Compass className="w-4 h-4 text-primary animate-pulse" />
+              <span>Show Space Array controls</span>
+            </button>
+          )}
+        </div>
 
-      {/* Floating Telemetry Timeline Playback Controller (Bottom Center) */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 pointer-events-auto w-[620px] max-w-[95vw]">
-        <div className="glass-panel border border-primary/20 shadow-2xl p-3 px-5 flex flex-col gap-2 font-mono text-white text-[10px]">
-          
-          {/* Timeline Header Row (Date, Mode, Play State) */}
-          <div className="flex items-center justify-between border-b border-white/5 pb-2">
+        {/* Floating Telemetry Timeline Playback Controller (Bottom Center) */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 pointer-events-auto w-[620px] max-w-[95vw]">
+          <div className="glass-panel border border-primary/20 shadow-2xl p-3 px-5 flex flex-col gap-2 font-mono text-white text-[10px]">
             
-            {/* Mode & Live status */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setPlaybackMode(!isPlaybackMode)}
-                className={`px-2 py-0.5 rounded text-[8px] font-bold border transition-all cursor-pointer ${
-                  isPlaybackMode 
-                    ? 'border-cyan-500/30 bg-cyan-950/20 text-cyan-400' 
-                    : 'border-green-500/30 bg-green-950/20 text-green-400'
-                }`}
-                title="Toggle Live vs Recorded Playback Mode"
-              >
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-1.5 h-1.5 rounded-full ${isPlaybackMode ? 'bg-cyan-400' : 'bg-green-400 animate-pulse'}`} />
-                  <span>{isPlaybackMode ? 'PLAYBACK MODE' : 'LIVE TELEMETRY'}</span>
-                </div>
-              </button>
-
-              {isPlaybackMode && (
+            {/* Timeline Header Row */}
+            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setPlaying(!isPlaying)}
-                  className="flex items-center justify-center p-1 rounded hover:bg-white/5 text-primary hover:text-primary-hover cursor-pointer"
-                  title={isPlaying ? 'Pause Playback' : 'Start Playback'}
+                  onClick={() => setPlaybackMode(!isPlaybackMode)}
+                  className={`px-2 py-0.5 rounded text-[8px] font-bold border transition-all cursor-pointer ${
+                    isPlaybackMode 
+                      ? 'border-cyan-500/30 bg-cyan-950/20 text-cyan-400' 
+                      : 'border-green-500/30 bg-green-950/20 text-green-400'
+                  }`}
+                  title="Toggle Live vs Recorded Playback Mode"
                 >
-                  {isPlaying ? <Pause size={13} /> : <Play size={13} />}
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-1.5 h-1.5 rounded-full ${isPlaybackMode ? 'bg-cyan-400' : 'bg-green-400 animate-pulse'}`} />
+                    <span>{isPlaybackMode ? 'PLAYBACK MODE' : 'LIVE TELEMETRY'}</span>
+                  </div>
                 </button>
-              )}
+
+                {isPlaybackMode && (
+                  <button
+                    onClick={() => setPlaying(!isPlaying)}
+                    className="flex items-center justify-center p-1 rounded hover:bg-white/5 text-primary hover:text-primary-hover cursor-pointer"
+                    title={isPlaying ? 'Pause Playback' : 'Start Playback'}
+                  >
+                    {isPlaying ? <Pause size={13} /> : <Play size={13} />}
+                  </button>
+                )}
+              </div>
+
+              {/* DateTime Display */}
+              <div className="flex items-center gap-2.5 text-white/80 text-[9px]">
+                <div className="flex items-center gap-1 text-white/50">
+                  <Calendar size={11} />
+                  <span>
+                    {safeCurrentTime ? safeCurrentTime.toLocaleDateString() : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-white/50">
+                  <Clock size={11} />
+                  <span className="text-cyan-400 font-bold tabular-nums">
+                    {safeCurrentTime ? safeCurrentTime.toLocaleTimeString() : 'N/A'}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* DateTime Display */}
-            <div className="flex items-center gap-2.5 text-white/80 text-[9px]">
-              <div className="flex items-center gap-1 text-white/50">
-                <Calendar size={11} />
-                <span>
-                  {safeCurrentTime ? safeCurrentTime.toLocaleDateString() : 'N/A'}
-                </span>
+            {/* Timeline slider and speed multipliers */}
+            <div className="flex flex-col gap-2">
+              <div className="px-1">
+                <TimelineLanes timeStart={timeStart} timeEnd={timeEnd} />
               </div>
-              <div className="flex items-center gap-1 text-white/50">
-                <Clock size={11} />
-                <span className="text-cyan-400 font-bold tabular-nums">
-                  {safeCurrentTime ? safeCurrentTime.toLocaleTimeString() : 'N/A'}
-                </span>
+
+              <div className="flex items-center gap-4">
+                <div className="flex-1 flex items-center gap-2">
+                  <span className="text-[8px] text-white/30">START</span>
+                  <input 
+                    id="wwt-timeline-progress"
+                    name="wwt-timeline-progress"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.0001"
+                    value={progressPct}
+                    onChange={handleSliderChange}
+                    disabled={!isPlaybackMode}
+                    className="w-full h-1 bg-black/45 border border-white/5 rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{
+                      background: `linear-gradient(to right, var(--theme-primary) 0%, var(--theme-primary) ${progressPct * 100}%, rgba(255,255,255,0.05) ${progressPct * 100}%, rgba(255,255,255,0.05) 100%)`
+                    }}
+                  />
+                  <span className="text-[8px] text-white/30">NOW</span>
+                </div>
+
+                {isPlaybackMode && (
+                  <div className="flex items-center gap-1 bg-black/30 border border-white/5 p-0.5 rounded text-[8px]">
+                    {['1', '10', '100', '1000'].map(spd => {
+                      const s = parseInt(spd);
+                      const isSpeed = playbackSpeed === s;
+                      return (
+                        <button
+                          key={spd}
+                          onClick={() => setPlaybackSpeed(s)}
+                          className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                            isSpeed ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'
+                          }`}
+                        >
+                          {spd}x
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
           </div>
-
-          {/* Timeline slider and speed multipliers */}
-          <div className="flex items-center gap-4">
-            
-            {/* Playback Scrub slider */}
-            <div className="flex-1 flex items-center gap-2">
-              <span className="text-[8px] text-white/30">START</span>
-              <input 
-                id="wwt-timeline-progress"
-                name="wwt-timeline-progress"
-                type="range"
-                min="0"
-                max="1"
-                step="0.0001"
-                value={progressPct}
-                onChange={handleSliderChange}
-                disabled={!isPlaybackMode}
-                className="w-full h-1 bg-black/45 border border-white/5 rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{
-                  background: `linear-gradient(to right, var(--theme-primary) 0%, var(--theme-primary) ${progressPct * 100}%, rgba(255,255,255,0.05) ${progressPct * 100}%, rgba(255,255,255,0.05) 100%)`
-                }}
-              />
-              <span className="text-[8px] text-white/30">NOW</span>
-            </div>
-
-            {/* Speed selection multipliers */}
-            {isPlaybackMode && (
-              <div className="flex items-center gap-1 bg-black/30 border border-white/5 p-0.5 rounded text-[8px]">
-                {['1', '10', '100', '1000'].map(spd => {
-                  const s = parseInt(spd);
-                  const isSpeed = playbackSpeed === s;
-                  return (
-                    <button
-                      key={spd}
-                      onClick={() => setPlaybackSpeed(s)}
-                      className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
-                        isSpeed ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'
-                      }`}
-                    >
-                      {spd}x
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-          </div>
-
         </div>
       </div>
+    );
+  };
 
+  // Branch return statements
+  if (bgOnly) {
+    return (
+      <div className="absolute inset-0 w-full h-full bg-black select-none pointer-events-none">
+        {typeof window !== 'undefined' && (window as any).__triggerTelescopeCrash && <CrashComponent />}
+        <div className="w-full h-full flex items-center justify-center relative overflow-hidden">
+          {renderIframe()}
+        </div>
+      </div>
+    );
+  }
+
+  if (controlsOnly) {
+    return renderHUDAndTimeline();
+  }
+
+  // Fallback: render both side-by-side / overlayed if no props passed (for safety)
+  return (
+    <div className="relative w-full h-full flex overflow-hidden bg-transparent select-none pointer-events-none">
+      <div className="absolute inset-0 z-0">
+        {renderIframe()}
+      </div>
+      {renderHUDAndTimeline()}
     </div>
   );
 }

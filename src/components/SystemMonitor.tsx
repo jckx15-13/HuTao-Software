@@ -80,7 +80,7 @@ export function SystemMonitor() {
       </div>
 
       {/* CPU Load Controls (2.5D Style) */}
-      <div className="mb-8 p-4 bg-base/30 backdrop-blur-md shadow-[var(--shadow-2-5d)] rounded-lg relative overflow-hidden group border border-primary/10 transition-shadow hover:shadow-[var(--shadow-2-5d-hover)]">
+      <div className="mb-8 p-4 bg-base/30 backdrop-blur-md shadow-[var(--theme-shadow-2-5d)] rounded-lg relative overflow-hidden group border border-primary/10 transition-shadow hover:shadow-[var(--theme-shadow-2-5d-hover)]">
         <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
         <h4 className="text-[9px] uppercase tracking-widest text-text-muted mb-3 flex items-center justify-between">
           <span>CPU Load</span>

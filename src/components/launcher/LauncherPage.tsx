@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
-import { Hexagon, Terminal, ChevronDown, ChevronUp, Cpu, Wifi, Battery, Database, ArrowRight } from 'lucide-react';
+import { Hexagon, Terminal, ChevronDown, ChevronUp, Cpu, Wifi, Battery, Database, ArrowRight, AlertTriangle } from 'lucide-react';
 
 export function LauncherPage() {
   const setLauncherDismissed = useUIStore((s) => s.setLauncherDismissed);
@@ -10,6 +10,7 @@ export function LauncherPage() {
   const clearDiagnostics = useUIStore((s) => s.clearDiagnostics);
 
   const [bridgeStatus, setBridgeStatus] = useState<'checking' | 'active' | 'offline'>('checking');
+  const [gitStatus, setGitStatus] = useState<{ has_changes: boolean, count: number }>({ has_changes: false, count: 0 });
   const [logsExpanded, setLogsExpanded] = useState(false);
 
   // Initialize diagnostics logs and check bridge health
@@ -22,6 +23,17 @@ export function LauncherPage() {
     addDiagnostic({ source: 'BRIDGE', level: 'info', message: 'Pinging Assistant Bridge on port 8001...' });
 
     let active = true;
+
+    async function checkGit() {
+      try {
+        const response = await fetch('http://localhost:8001/git/status');
+        const data = await response.json();
+        if (data.has_changes && active) {
+          setGitStatus({ has_changes: true, count: data.change_count });
+          addDiagnostic({ source: 'GIT', level: 'warning', message: `Found ${data.change_count} uncommitted local changes.` });
+        }
+      } catch (e) {}
+    }
 
     async function checkBridge() {
       try {
@@ -42,6 +54,7 @@ export function LauncherPage() {
         if (response.ok || response.status === 422 || response.status === 400) {
           setBridgeStatus('active');
           addDiagnostic({ source: 'BRIDGE', level: 'success', message: 'Assistant Bridge verified active on port 8001.' });
+          checkGit();
         } else {
           setBridgeStatus('offline');
           addDiagnostic({ source: 'BRIDGE', level: 'warning', message: `Bridge returned status ${response.status}.` });
@@ -81,6 +94,21 @@ export function LauncherPage() {
             </p>
           </div>
         </div>
+
+        {/* Git Status Warning */}
+        {gitStatus.has_changes && (
+          <div className="w-full p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+              <AlertTriangle className="text-amber-500 h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <div className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Uncommitted Edits Detected</div>
+              <div className="text-[9px] text-amber-500/60 font-mono leading-tight mt-0.5">
+                {gitStatus.count} files have pending changes. Please ensure work is committed before launching production cycles to prevent data loss or sync drift.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Core Launch Action CTA */}
         <button

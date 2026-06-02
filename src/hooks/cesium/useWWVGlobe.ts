@@ -9,6 +9,7 @@ import { useModelRendering } from '@/core/globe/hooks/useModelRendering';
 import { useTrailRendering } from '@/core/globe/hooks/useTrailRendering';
 import { useSatelliteFrustum } from '@/core/globe/hooks/useSatelliteFrustum';
 import { useHexagonRendering } from '@/core/globe/hooks/useHexagonRendering';
+import { getCachedRenderOptions } from '@/core/globe/renderOptionsCache';
 import { GeoEntity, CesiumEntityOptions } from '@/core/plugins/PluginTypes';
 
 /**
@@ -48,7 +49,7 @@ export function useWWVGlobe(viewer: Viewer | null) {
       const entities = entitiesByPlugin[pId] || [];
       
       for (const e of entities) {
-        const options = managed.plugin.renderEntity(e);
+        const options = getCachedRenderOptions(managed.plugin, e);
         visible.push({ entity: e, options });
       }
     }

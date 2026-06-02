@@ -1,10 +1,10 @@
 /* ─── GeoJSON Importer Styles ────────────────────────────────── */
 
 .geojson-import-panel {
-    padding: var(--space-md);
+    padding: var(--theme-space-md);
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
+    gap: var(--theme-space-md);
 }
 
 /* ─── Buttons ─────────────────────────────────────────────── */
@@ -13,7 +13,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-xs);
+    gap: var(--theme-space-xs);
     padding: 8px 16px;
     border: none;
     border-radius: 6px;
@@ -40,7 +40,7 @@
 
 .geojson-btn--secondary {
     background: rgba(255, 255, 255, 0.08);
-    color: var(--text-primary);
+    color: var(--theme-text-main);
     border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
@@ -94,13 +94,13 @@
     margin: 0;
     font-size: 16px;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--theme-text-main);
 }
 
 .geojson-modal__close {
     background: none;
     border: none;
-    color: var(--text-muted);
+    color: var(--theme-text-muted);
     cursor: pointer;
     padding: 4px;
     border-radius: 4px;
@@ -108,7 +108,7 @@
 }
 
 .geojson-modal__close:hover {
-    color: var(--text-primary);
+    color: var(--theme-text-main);
 }
 
 /* ─── Tabs ────────────────────────────────────────────────── */
@@ -128,7 +128,7 @@
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: var(--text-muted);
+    color: var(--theme-text-muted);
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
@@ -137,7 +137,7 @@
 
 .geojson-tab:hover {
     background: rgba(255, 255, 255, 0.06);
-    color: var(--text-primary);
+    color: var(--theme-text-main);
 }
 
 .geojson-tab--active {
@@ -165,7 +165,7 @@
     padding: 32px 20px;
     border: 2px dashed rgba(255, 255, 255, 0.15);
     border-radius: 10px;
-    color: var(--text-muted);
+    color: var(--theme-text-muted);
     cursor: pointer;
     transition: all 0.2s;
     text-align: center;
@@ -197,8 +197,8 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.3);
-    color: var(--text-primary);
-    font-family: "JetBrains Mono", "Fira Code", monospace;
+    color: var(--theme-text-main);
+    font-family: var(--theme-font-mono);
     font-size: 12px;
     resize: vertical;
     transition: border-color 0.2s;
@@ -217,7 +217,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;
     background: rgba(0, 0, 0, 0.3);
-    color: var(--text-primary);
+    color: var(--theme-text-main);
     font-size: 13px;
     transition: border-color 0.2s;
 }
@@ -228,7 +228,7 @@
 }
 
 .geojson-input::placeholder {
-    color: var(--text-muted);
+    color: var(--theme-text-muted);
 }
 
 /* ─── Color Row ───────────────────────────────────────────── */
@@ -238,7 +238,7 @@
     align-items: center;
     gap: 10px;
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--theme-text-muted);
 }
 
 .geojson-color-row input[type="color"] {
@@ -265,7 +265,7 @@
 
 .geojson-preview__stat {
     font-size: 12px;
-    color: var(--text-secondary);
+    color: var(--theme-text-muted);
 }
 
 .geojson-preview__warn {
@@ -307,7 +307,7 @@
 .geojson-empty {
     text-align: center;
     padding: 24px 16px;
-    color: var(--text-muted);
+    color: var(--theme-text-muted);
     font-size: 12px;
 }
 
@@ -346,7 +346,7 @@
 .geojson-layer-item__name {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--theme-text-main);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -354,13 +354,13 @@
 
 .geojson-layer-item__count {
     font-size: 11px;
-    color: var(--text-muted);
+    color: var(--theme-text-muted);
 }
 
 .geojson-layer-item__btn {
     background: none;
     border: none;
-    color: var(--text-muted);
+    color: var(--theme-text-muted);
     cursor: pointer;
     padding: 4px;
     border-radius: 4px;
@@ -368,7 +368,7 @@
 }
 
 .geojson-layer-item__btn:hover {
-    color: var(--text-primary);
+    color: var(--theme-text-main);
 }
 
 .geojson-layer-item__btn--danger:hover {
