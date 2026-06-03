@@ -3,6 +3,7 @@ import { useStore } from '../../core/state/store';
 import { pluginManager } from '../../core/plugins/PluginManager';
 import { DiagnosticPanel } from '../DiagnosticPanel';
 import { TelemetryPanel } from '../TelemetryPanel';
+import { OdysseusConsole } from '../dev/OdysseusConsole';
 import { ChevronRight, Globe, Terminal, Info, MapPin, Radio, Compass, X, ArrowLeft, RotateCw, ExternalLink as ExtLink, Bug, Activity } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 
@@ -107,12 +108,12 @@ export function RightPanel() {
       style={!isSpatialMode ? { borderRadius: 0 } : undefined}
     >
       {/* Header and Tab Switcher */}
-      <div className="flex h-12 items-center justify-between px-3 border-b border-white/5 bg-black/10">
-        <div className="flex items-center gap-1.5 font-mono text-[9px]">
+      <div className="flex min-h-12 py-1.5 items-center justify-between px-3 border-b border-white/5 bg-black/10">
+        <div className="flex flex-wrap items-center gap-1 font-mono text-[8.5px]">
           <button
             type="button"
             onClick={() => setRightPanelTab('context')}
-            className={`px-2 py-1 rounded transition-colors ${
+            className={`px-1.5 py-0.5 rounded transition-colors ${
               rightPanelTab === 'context' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -121,7 +122,7 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('browser')}
-            className={`px-2 py-1 rounded transition-colors ${
+            className={`px-1.5 py-0.5 rounded transition-colors ${
               rightPanelTab === 'browser' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -130,7 +131,7 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('changes')}
-            className={`px-2 py-1 rounded transition-colors ${
+            className={`px-1.5 py-0.5 rounded transition-colors ${
               rightPanelTab === 'changes' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -139,7 +140,7 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('diagnostics')}
-            className={`px-2 py-1 rounded transition-colors ${
+            className={`px-1.5 py-0.5 rounded transition-colors ${
               rightPanelTab === 'diagnostics' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -148,11 +149,20 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('telemetry')}
-            className={`px-2 py-1 rounded transition-colors ${
+            className={`px-1.5 py-0.5 rounded transition-colors ${
               rightPanelTab === 'telemetry' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
             Telemetry
+          </button>
+          <button
+            type="button"
+            onClick={() => setRightPanelTab('odysseus')}
+            className={`px-1.5 py-0.5 rounded transition-colors ${
+              rightPanelTab === 'odysseus' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
+            }`}
+          >
+            Odysseus
           </button>
         </div>
 
@@ -467,6 +477,13 @@ export function RightPanel() {
         {rightPanelTab === 'telemetry' && (
           <div className="h-full">
             <TelemetryPanel />
+          </div>
+        )}
+
+        {/* Tab 6: Odysseus Console */}
+        {rightPanelTab === 'odysseus' && (
+          <div className="h-full">
+            <OdysseusConsole />
           </div>
         )}
       </div>

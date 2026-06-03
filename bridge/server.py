@@ -1,5 +1,8 @@
 import os
+import sys
+import secrets
 import threading
+import subprocess
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -9,14 +12,14 @@ import urllib.request
 import urllib.parse
 import json
 import datetime
-import subprocess
+import httpx
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, field_validator
 
 MODEL_NAME = os.getenv("HF_MODEL_NAME", "google/gemma-2-27b-it")
-HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 PORT = int(os.getenv("BRIDGE_PORT", "8001"))
 HOST = os.getenv("BRIDGE_HOST", "0.0.0.0")
 BASE_DIR = Path(__file__).resolve().parent
@@ -28,15 +31,86 @@ ALLOWED_ROLES = {"user", "assistant", "ai", "system"}
 sync_lock = Lock()
 log_lock = Lock()
 
+# Generate internal tool token to authenticate with Odysseus
+INTERNAL_TOOL_TOKEN = os.getenv("ODYSSEUS_INTERNAL_TOKEN") or secrets.token_hex(32)
+odysseus_proc = None
+
 raw_origins = os.getenv("BRIDGE_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3005,http://127.0.0.1:3005")
 allowed_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
+def run_odysseus_setup():
+    """Runs first-time setup for Odysseus database and credentials."""
+    print("Running Odysseus setup.py...")
+    try:
+        env = os.environ.copy()
+        env["ODYSSEUS_SKIP_ADMIN_PROMPT"] = "1"
+        env["ODYSSEUS_ADMIN_PASSWORD"] = "admin_pass_123!"
+        env["ODYSSEUS_INTERNAL_TOKEN"] = INTERNAL_TOOL_TOKEN
+        
+        res = subprocess.run(
+            [sys.executable, "setup.py"],
+            cwd=str(BASE_DIR.parent / "odysseus"),
+            env=env,
+            capture_output=True,
+            text=True
+        )
+        print("Odysseus Setup Output:", res.stdout)
+        if res.stderr:
+            print("Odysseus Setup Errors:", res.stderr)
+    except Exception as e:
+        print(f"Error during Odysseus setup: {e}")
+
+def start_odysseus_subprocess():
+    """Starts the Odysseus backend process on port 7000."""
+    global odysseus_proc
+    print("Starting Odysseus backend subprocess...")
+    try:
+        env = os.environ.copy()
+        env["ODYSSEUS_INTERNAL_TOKEN"] = INTERNAL_TOOL_TOKEN
+        env["AUTH_ENABLED"] = "true"
+        env["LOCALHOST_BYPASS"] = "false"
+        
+        odysseus_proc = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "app:app", "--host", "127.0.0.1", "--port", "7000"],
+            cwd=str(BASE_DIR.parent / "odysseus"),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        
+        def log_odysseus_output():
+            while True:
+                line = odysseus_proc.stdout.readline()
+                if not line:
+                    break
+                print(f"[Odysseus] {line.strip()}")
+                
+        threading.Thread(target=log_odysseus_output, daemon=True).start()
+    except Exception as e:
+        print(f"Failed to start Odysseus subprocess: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    threading.Thread(target=load_model_worker, daemon=True).start()
+    # Run setup
+    run_odysseus_setup()
+    # Start server
+    start_odysseus_subprocess()
     yield
+    # Terminate process on shutdown
+    global odysseus_proc
+    if odysseus_proc:
+        print("Stopping Odysseus backend subprocess...")
+        try:
+            odysseus_proc.terminate()
+            odysseus_proc.wait(timeout=5)
+        except Exception:
+            try:
+                odysseus_proc.kill()
+            except Exception:
+                pass
 
-app = FastAPI(title="Silver Wolf Bridge", lifespan=lifespan)
+app = FastAPI(title="Silver Wolf Bridge & Odysseus Proxy", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -44,9 +118,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-chatbot_pipeline = None
-loading_status = "Not Started"
 
 class LogEntry(BaseModel):
     level: str
@@ -125,11 +196,21 @@ async def log_diagnostic(entry: LogEntry):
 @app.get("/")
 @app.get("/status")
 async def get_status():
+    odysseus_healthy = False
+    try:
+        async with httpx.AsyncClient(timeout=1.0) as client:
+            resp = await client.get("http://127.0.0.1:7000/api/health")
+            if resp.status_code == 200:
+                odysseus_healthy = True
+    except Exception:
+        pass
+        
     return {
-        "status": loading_status,
-        "ready": chatbot_pipeline is not None,
+        "status": "Ready" if odysseus_healthy else "Starting Odysseus...",
+        "ready": odysseus_healthy,
         "sync_file": SYNC_FILE.exists(),
         "host": HOST,
+        "odysseus_health": "healthy" if odysseus_healthy else "offline"
     }
 
 def compact_sync_file() -> None:
@@ -138,53 +219,10 @@ def compact_sync_file() -> None:
     content = SYNC_FILE.read_text(encoding="utf-8", errors="replace")
     SYNC_FILE.write_text(content[-MAX_SYNC_BYTES // 2 :], encoding="utf-8")
 
-def load_model_worker() -> None:
-    global chatbot_pipeline, loading_status
-
-    if not HF_TOKEN:
-        loading_status = "Mock Mode (HF_TOKEN missing)"
-        print("HF_TOKEN is not set. Bridge is running in mock mode.")
-        return
-
-    try:
-        loading_status = "Authenticating..."
-        try:
-            import torch
-            from huggingface_hub import login
-            from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
-        except ImportError as exc:
-            loading_status = f"Mock Mode (Libraries missing: {exc})"
-            print(f"Running in mock mode. Optional model libraries are unavailable: {exc}")
-            return
-
-        login(token=HF_TOKEN)
-        loading_status = f"Loading {MODEL_NAME}..."
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-        model = AutoModelForCausalLM.from_pretrained(
-            MODEL_NAME,
-            device_map="auto",
-            torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
-        )
-        chatbot_pipeline = pipeline("text-generation", model=model, tokenizer=tokenizer)
-        loading_status = "Ready"
-        print("Assistant model loaded successfully.")
-    except Exception as exc:
-        loading_status = f"Error: {exc}"
-        print(f"Failed to load model: {exc}")
-
 def compact_and_write_sync(role: str, message: str) -> None:
     compact_sync_file()
     with SYNC_FILE.open("a", encoding="utf-8") as file:
         file.write(f"[{role.upper()}]: {message}\n---\n")
-
-def generate_local_response(prompt: str) -> str:
-    response = chatbot_pipeline(prompt, max_new_tokens=500, do_sample=True, temperature=0.7)
-    generated_text = response[0]["generated_text"]
-    if generated_text.startswith(prompt):
-        generated_text = generated_text[len(prompt) :].strip()
-    return generated_text
 
 @app.post("/sync")
 async def sync(req: SyncRequest):
@@ -197,16 +235,83 @@ async def sync(req: SyncRequest):
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    if not chatbot_pipeline:
-        return {"response": f"[Local Sync Mode] Received: {req.message[:80]}..."}
+    """Proxies the chat call from the frontend to the Odysseus backend chat endpoint."""
+    headers = {
+        "X-Odysseus-Internal-Token": INTERNAL_TOOL_TOKEN,
+        "Content-Type": "application/json"
+    }
+    
+    async with httpx.AsyncClient(timeout=180.0) as client:
+        try:
+            # 1. Fetch sessions to find or create one
+            sessions_resp = await client.get("http://127.0.0.1:7000/api/sessions", headers=headers)
+            sessions = sessions_resp.json() if sessions_resp.status_code == 200 else []
+            
+            session_id = None
+            if isinstance(sessions, list) and len(sessions) > 0:
+                session_id = sessions[0]["id"]
+            else:
+                # Need to resolve a default model first
+                models_resp = await client.get("http://127.0.0.1:7000/api/models", headers=headers)
+                models_data = models_resp.json() if models_resp.status_code == 200 else {}
+                
+                # Try to extract the first model ID
+                model_name = "mock-model"
+                endpoint_url = "http://127.0.0.1:7000/api"
+                if isinstance(models_data, dict) and "endpoints" in models_data:
+                    for ep in models_data["endpoints"]:
+                        if ep.get("models"):
+                            model_name = ep["models"][0]
+                            endpoint_url = ep.get("base_url", endpoint_url)
+                            break
+                elif isinstance(models_data, list) and len(models_data) > 0:
+                    model_name = models_data[0].get("id", model_name)
+                    endpoint_url = models_data[0].get("endpoint", endpoint_url)
+                
+                # Create a session
+                create_data = {
+                    "name": "Silver Wolf Session",
+                    "endpoint_url": endpoint_url,
+                    "model": model_name,
+                    "rag": "false",
+                    "skip_validation": "true"
+                }
+                session_create_resp = await client.post(
+                    "http://127.0.0.1:7000/api/session",
+                    data=create_data,
+                    headers={"X-Odysseus-Internal-Token": INTERNAL_TOOL_TOKEN}
+                )
+                if session_create_resp.status_code == 200:
+                    session_id = session_create_resp.json().get("id")
+                else:
+                    raise Exception(f"Failed to create session in Odysseus: {session_create_resp.text}")
+            
+            # Send message to /api/chat
+            chat_data = {
+                "message": req.message,
+                "session": session_id,
+                "use_web": False,
+                "use_research": False,
+                "preset_id": None
+            }
+            
+            chat_resp = await client.post(
+                "http://127.0.0.1:7000/api/chat",
+                json=chat_data,
+                headers=headers
+            )
+            
+            if chat_resp.status_code == 200:
+                resp_json = chat_resp.json()
+                return {"response": resp_json.get("response", "No response generated.")}
+            else:
+                return {"response": f"[Odysseus Error {chat_resp.status_code}] {chat_resp.text}"}
+                
+        except Exception as exc:
+            print(f"Proxy Chat Error: {exc}")
+            return {"response": f"Connection to Odysseus engine failed: {exc}"}
 
-    try:
-        prompt = f"{req.system_instruction}\n\nUser: {req.message}\nAssistant:" if req.system_instruction else req.message
-        generated_text = await anyio.to_thread.run_sync(generate_local_response, prompt)
-        return {"response": generated_text}
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail="Local model failed to respond") from exc
-
+@app.get("/api/camera/proxy")
 def fetch_url_sync(url: str) -> dict:
     try:
         req = urllib.request.Request(
@@ -225,18 +330,9 @@ def fetch_url_sync(url: str) -> dict:
     except Exception as e:
         return {"status": 500, "error": str(e), "response": ""}
 
-@app.get("/api/camera/proxy")
-async def proxy_url(url: str):
-    result = await anyio.to_thread.run_sync(fetch_url_sync, url)
-    if result.get("status") != 200:
-        # We still return 200 to the frontend so it can read the internal 'status'
-        return result
-    return result
-
 @app.get("/git/status")
 async def git_status():
     try:
-        # Run git status --porcelain to get a machine-readable list of changes
         def run_git():
             return subprocess.run(
                 ["git", "status", "--porcelain"], 
@@ -254,6 +350,57 @@ async def git_status():
         }
     except Exception as e:
         return {"has_changes": False, "error": str(e)}
+
+# Secure Generic Proxy to Odysseus Endpoints
+@app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def proxy_to_odysseus(path: str, request: Request):
+    # Exclude our custom camera proxy
+    if path == "camera/proxy":
+        url = request.query_params.get("url")
+        return fetch_url_sync(url)
+
+    # Reject folder traversal attacks in proxy path
+    if ".." in path or "\\" in path or "%5c" in path.lower() or "%2e" in path.lower():
+        raise HTTPException(status_code=400, detail="Invalid path traversal sequence detected")
+
+    # Sanitize query parameters
+    query_str = str(request.url.query)
+    if ".." in query_str or "\\" in query_str or "%5c" in query_str.lower() or "%2e" in query_str.lower():
+        raise HTTPException(status_code=400, detail="Invalid characters in parameters")
+
+    target_url = f"http://127.0.0.1:7000/api/{path}"
+    if request.url.query:
+        target_url += f"?{request.url.query}"
+
+    headers = dict(request.headers)
+    headers.pop("host", None)
+    headers["X-Odysseus-Internal-Token"] = INTERNAL_TOOL_TOKEN
+
+    method = request.method
+    body = await request.body()
+
+    try:
+        client = httpx.AsyncClient(timeout=180.0)
+        req_headers = {k: v for k, v in headers.items() if k.lower() != 'content-length'}
+        
+        if "chat_stream" in path or "stream" in path:
+            async def stream_generator():
+                async with client.stream(method, target_url, headers=req_headers, content=body) as response:
+                    async for chunk in response.aiter_bytes():
+                        yield chunk
+                await client.aclose()
+            return StreamingResponse(stream_generator(), media_type="text/event-stream")
+        else:
+            response = await client.request(method, target_url, headers=req_headers, content=body)
+            resp = Response(
+                content=response.content,
+                status_code=response.status_code,
+                headers=dict(response.headers)
+            )
+            await client.aclose()
+            return resp
+    except Exception as e:
+        return JSONResponse(status_code=502, content={"error": f"Odysseus backend unreachable: {e}"})
 
 if __name__ == "__main__":
     import uvicorn

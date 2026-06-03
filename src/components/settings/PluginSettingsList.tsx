@@ -19,6 +19,7 @@ export default function PluginSettingsList() {
     <div className="space-y-6">
       {pluginsWithSettings.map(({ plugin, enabled }) => {
         const SettingsComponent = plugin.getSettingsComponent!();
+        const IconComponent = typeof plugin.icon !== 'string' ? plugin.icon as React.ComponentType<any> : null;
         
         return (
           <div key={plugin.id} className={`p-4 rounded-xl border transition-all ${
@@ -30,7 +31,7 @@ export default function PluginSettingsList() {
                   {typeof plugin.icon === 'string' ? (
                     <img src={plugin.icon} className="w-5 h-5" alt="" />
                   ) : (
-                    <plugin.icon size={20} className="text-primary" />
+                    IconComponent && <IconComponent size={20} className="text-primary" />
                   )}
                 </div>
                 <div>
