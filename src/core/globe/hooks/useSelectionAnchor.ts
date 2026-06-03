@@ -43,8 +43,8 @@ export function useSelectionAnchor(
                 },
                 billboard: {
                     image: SELECTION_BOX_SVG,
-                    width: 56,
-                    height: 56,
+                    width: 24,
+                    height: 24,
                     show: false,
                     disableDepthTestDistance: Number.POSITIVE_INFINITY, // Always rendered on top
                 } as any

@@ -59,7 +59,7 @@ export function FileTreeSection({ title, icon: Icon, defaultOpen = false, itemCo
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-7 w-full items-center justify-between px-2 text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors text-[9px] font-mono uppercase tracking-widest font-bold"
+        className="flex h-7 w-full items-center justify-between px-2 text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors text-xs font-mono uppercase tracking-widest font-bold"
       >
         <div className="flex items-center gap-1.5">
           {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
@@ -67,7 +67,7 @@ export function FileTreeSection({ title, icon: Icon, defaultOpen = false, itemCo
           <span>{title}</span>
         </div>
         {itemCount !== undefined && itemCount > 0 && (
-          <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[8px] text-white/50">{itemCount}</span>
+          <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-xs text-white/50">{itemCount}</span>
         )}
       </button>
 
@@ -94,7 +94,7 @@ export function TreeItem({ label, icon: Icon, depth = 0, selected = false, onCli
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-7 w-full items-center justify-between rounded px-2 text-[11px] font-mono text-white/60 hover:bg-white/5 hover:text-white/90 transition-all select-none cursor-pointer ${
+      className={`flex h-7 w-full items-center justify-between rounded px-2 text-sm font-mono text-white/60 hover:bg-white/5 hover:text-white/90 transition-all select-none cursor-pointer ${
         selected ? 'bg-primary/15 text-primary border-l-2 border-primary font-bold' : ''
       }`}
       style={{ paddingLeft: `${depth * 8 + 8}px` }}
@@ -104,7 +104,7 @@ export function TreeItem({ label, icon: Icon, depth = 0, selected = false, onCli
         <span className="truncate">{label}</span>
       </div>
       {badge !== undefined && (
-        <span className={`rounded px-1 text-[8px] ${selected ? 'bg-primary/20 text-primary' : 'bg-white/5 text-white/40'}`}>
+        <span className={`rounded px-1 text-xs ${selected ? 'bg-primary/20 text-primary' : 'bg-white/5 text-white/40'}`}>
           {badge}
         </span>
       )}
@@ -139,7 +139,7 @@ export function ChatSessionList() {
               key={chat.id}
               type="button"
               onClick={() => setActiveChatId(chat.id)}
-              className={`group flex h-8 w-full items-center justify-between rounded px-2.5 text-[11px] text-white/70 hover:bg-white/5 hover:text-white/95 transition-all select-none cursor-pointer border-l-2 ${
+              className={`group flex h-8 w-full items-center justify-between rounded px-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white/95 transition-all select-none cursor-pointer border-l-2 ${
                 isActive ? 'border-primary bg-primary/10 text-primary font-bold' : 'border-transparent'
               }`}
             >
@@ -147,13 +147,13 @@ export function ChatSessionList() {
                 <MessageSquare className={`h-3.5 w-3.5 ${isActive ? 'text-primary' : 'text-white/30'}`} />
                 <span>{chat.name}</span>
               </div>
-              <span className="rounded bg-primary/20 px-1 text-[8px] text-primary">GLOBAL</span>
+              <span className="rounded bg-primary/20 px-1 text-xs text-primary">GLOBAL</span>
             </button>
           );
         })}
       </div>
 
-      <div className="flex items-center justify-between px-2 text-[9px] uppercase tracking-widest text-white/30 font-bold select-none">
+      <div className="flex items-center justify-between px-2 text-xs uppercase tracking-widest text-white/30 font-bold select-none">
         <span>Project Workspaces</span>
         <button
           type="button"
@@ -167,14 +167,14 @@ export function ChatSessionList() {
 
       <div className="flex flex-col gap-1">
         {projectChats.length === 0 ? (
-          <div className="px-2.5 py-1 text-[10px] text-white/20 italic">No project workspaces.</div>
+          <div className="px-2.5 py-1 text-xs text-white/20 italic">No project workspaces.</div>
         ) : (
           projectChats.map((chat) => {
             const isActive = chat.id === activeChatId;
             return (
               <div
                 key={chat.id}
-                className={`group flex h-8 w-full items-center justify-between rounded px-2.5 text-[11px] text-white/70 hover:bg-white/5 transition-all ${
+                className={`group flex h-8 w-full items-center justify-between rounded px-2.5 text-sm text-white/70 hover:bg-white/5 transition-all ${
                   isActive ? 'bg-primary/10 text-primary font-bold' : ''
                 }`}
               >
@@ -238,7 +238,7 @@ function CollapsibleSection({ title, icon: Icon, isOpen, onToggle, children }: C
         type="button"
         onClick={onToggle}
         title={title}
-        className="flex w-full items-center justify-between py-2.5 px-3 hover:bg-white/5 text-white/60 hover:text-white transition-all text-[10px] font-mono select-none"
+        className="flex w-full items-center justify-between py-2.5 px-3 hover:bg-white/5 text-white/60 hover:text-white transition-all text-xs font-mono select-none"
       >
         <div className="flex items-center gap-2">
           <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -529,7 +529,7 @@ export function LeftPanel() {
 
             {/* Selected Location context indicator */}
             {activeLocation && (
-              <div className="rounded-lg bg-primary/5 border border-primary/15 p-2.5 font-mono text-[10px]">
+              <div className="rounded-lg bg-primary/5 border border-primary/15 p-2.5 font-mono text-xs">
                 <div className="flex items-center gap-1.5 text-primary font-bold uppercase tracking-wider">
                   <Flame className="h-3.5 w-3.5" />
                   <span>Target Pointed</span>
@@ -549,7 +549,7 @@ export function LeftPanel() {
           <div className="flex flex-col">
             
             {/* --- ORBITAL CONTROL HUB --- */}
-            <div className="p-2.5 border-b border-white/5 bg-primary/5 text-[9px] font-mono uppercase tracking-[0.2em] font-bold text-primary flex items-center gap-1.5">
+            <div className="p-2.5 border-b border-white/5 bg-primary/5 text-xs font-mono uppercase tracking-[0.2em] font-bold text-primary flex items-center gap-1.5">
               <Compass className="h-3.5 w-3.5 animate-spin-slow text-primary" />
               <span>Orbital Controls</span>
             </div>
@@ -570,10 +570,10 @@ export function LeftPanel() {
                   value={orbitalSearchQuery}
                   onChange={(e) => setOrbitalSearchQuery(e.target.value)}
                   placeholder="Search landmarks, entities..."
-                  className="w-full rounded bg-white/5 py-1.5 pl-7 pr-2 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-primary/30 font-mono border border-white/5"
+                  className="w-full rounded bg-white/5 py-1.5 pl-7 pr-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary/30 font-mono border border-white/5"
                 />
               </div>
-              <div className="space-y-1 max-h-[140px] overflow-y-auto scroller font-mono text-[9px]">
+              <div className="space-y-1 max-h-[140px] overflow-y-auto scroller font-mono text-xs">
                 {filteredOrbitalResults.map((result) => {
                   const isSelected = result.type === 'landmark'
                     ? activeLocation && result.id === activeLocation.id
@@ -606,7 +606,7 @@ export function LeftPanel() {
                       }`}
                     >
                       <div className="truncate font-bold">{result.name}</div>
-                      <div className="text-[7px] text-white/30 truncate">{result.country} · {result.category}</div>
+                      <div className="text-xs text-white/30 truncate">{result.country} · {result.category}</div>
                     </button>
                   );
                 })}
@@ -620,7 +620,7 @@ export function LeftPanel() {
               isOpen={expanded.places}
               onToggle={() => toggleSection('places')}
             >
-              <div className="space-y-1 max-h-[160px] overflow-y-auto scroller font-mono text-[9px]">
+              <div className="space-y-1 max-h-[160px] overflow-y-auto scroller font-mono text-xs">
                 {locations.map((loc) => {
                   const isSelected = activeLocation && loc.id === activeLocation.id;
                   return (
@@ -654,12 +654,12 @@ export function LeftPanel() {
               <div className="space-y-2 max-h-[180px] overflow-y-auto scroller">
                 {tours.map((tour) => (
                   <div key={tour.id} className="p-2 rounded border border-white/5 bg-white/5 space-y-1">
-                    <div className="font-mono text-[9px] font-bold text-white/80 truncate uppercase">{tour.title}</div>
-                    <p className="text-[8px] text-white/40 leading-normal line-clamp-2 uppercase font-mono">{tour.description}</p>
+                    <div className="font-mono text-xs font-bold text-white/80 truncate uppercase">{tour.title}</div>
+                    <p className="text-xs text-white/40 leading-normal line-clamp-2 uppercase font-mono">{tour.description}</p>
                     <button
                       type="button"
                       onClick={() => handleStartTour(tour)}
-                      className="w-full text-center py-1 rounded bg-primary/20 hover:bg-primary/30 text-primary font-mono text-[8px] uppercase tracking-wider font-bold transition-all cursor-pointer"
+                      className="w-full text-center py-1 rounded bg-primary/20 hover:bg-primary/30 text-primary font-mono text-xs uppercase tracking-wider font-bold transition-all cursor-pointer"
                     >
                       Start Tour
                     </button>
@@ -675,8 +675,8 @@ export function LeftPanel() {
               isOpen={expanded.style}
               onToggle={() => toggleSection('style')}
             >
-              <div className="space-y-3 font-mono text-[9px] text-white/70">
-                <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded border border-white/5 bg-black/30 text-[8px] text-center">
+              <div className="space-y-3 font-mono text-xs text-white/70">
+                <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded border border-white/5 bg-black/30 text-xs text-center">
                   <button
                     type="button"
                     onClick={() => applyGraphicsPreset('low')}
@@ -698,13 +698,13 @@ export function LeftPanel() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-[8px] uppercase">Imagery Source</label>
+                  <label className="text-white/40 block text-xs uppercase">Imagery Source</label>
                   <select
                     id="imagery-source"
                     name="imagery-source"
                     value={mapConfig.baseLayerId}
                     onChange={(e) => updateMapConfig({ baseLayerId: e.target.value })}
-                    className="w-full bg-[#111217] border border-white/5 rounded px-2 py-1 text-white text-[9px] focus:outline-none focus:border-primary cursor-pointer"
+                    className="w-full bg-[#111217] border border-white/5 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-primary cursor-pointer"
                   >
                     {IMAGERY_LAYERS.map((layer) => (
                       <option key={layer.id} value={layer.id}>
@@ -751,7 +751,7 @@ export function LeftPanel() {
                 </div>
 
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[8px]">
+                  <div className="flex justify-between text-xs">
                     <span>Resolution Scale</span>
                     <span className="text-primary font-bold">{mapConfig.resolutionScale.toFixed(2)}x</span>
                   </div>
@@ -771,10 +771,10 @@ export function LeftPanel() {
                 {/* Viewport Blend Controls (Space Mode only) */}
                 {interactionMode === 'orbital' && (
                   <div className="border-t border-white/5 pt-3 space-y-3">
-                    <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Viewport Blend</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-primary block">Viewport Blend</span>
                     
                     <div className="space-y-1">
-                      <div className="flex justify-between text-[8px]">
+                      <div className="flex justify-between text-xs">
                         <span>Globe Opacity</span>
                         <span className="text-primary font-bold">{Math.round(spaceBlendOpacity * 100)}%</span>
                       </div>
@@ -792,8 +792,8 @@ export function LeftPanel() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-white/40 block text-[8px] uppercase">Active Input Focus</label>
-                      <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded border border-white/5 bg-black/30 text-[8px] text-center">
+                      <label className="text-white/40 block text-xs uppercase">Active Input Focus</label>
+                      <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded border border-white/5 bg-black/30 text-xs text-center">
                         <button
                           type="button"
                           onClick={() => setSpaceInteractionTarget('earth')}
@@ -826,9 +826,9 @@ export function LeftPanel() {
               isOpen={expanded.measure}
               onToggle={() => toggleSection('measure')}
             >
-              <div className="space-y-2 font-mono text-[9px]">
+              <div className="space-y-2 font-mono text-xs">
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-[8px] uppercase">Point A (Start):</label>
+                  <label className="text-white/40 block text-xs uppercase">Point A (Start):</label>
                   <select
                     id="measure-point-a"
                     name="measure-point-a"
@@ -837,7 +837,7 @@ export function LeftPanel() {
                       const loc = locations.find((l) => l.id === e.target.value);
                       setMeasureStart(loc || null);
                     }}
-                    className="earth-measure-select w-full bg-[#111217] border border-white/5 rounded px-2 py-1 text-white text-[9px] focus:outline-none focus:border-primary"
+                    className="earth-measure-select w-full bg-[#111217] border border-white/5 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-primary"
                   >
                     <option value="">-- Select Point A --</option>
                     {locations.map((l) => (
@@ -847,7 +847,7 @@ export function LeftPanel() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-[8px] uppercase">Point B (End):</label>
+                  <label className="text-white/40 block text-xs uppercase">Point B (End):</label>
                   <select
                     id="measure-point-b"
                     name="measure-point-b"
@@ -856,7 +856,7 @@ export function LeftPanel() {
                       const loc = locations.find((l) => l.id === e.target.value);
                       setMeasureEnd(loc || null);
                     }}
-                    className="earth-measure-select w-full bg-[#111217] border border-white/5 rounded px-2 py-1 text-white text-[9px] focus:outline-none focus:border-primary"
+                    className="earth-measure-select w-full bg-[#111217] border border-white/5 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-primary"
                   >
                     <option value="">-- Select Point B --</option>
                     {locations.map((l) => (
@@ -867,7 +867,7 @@ export function LeftPanel() {
 
                 {measureDistance !== null && (
                   <div className="p-2 rounded bg-primary/10 border border-primary/20 text-center space-y-0.5 animate-pulse">
-                    <span className="text-[7px] text-white/30 block uppercase font-bold tracking-widest">Calculated Distance</span>
+                    <span className="text-xs text-white/30 block uppercase font-bold tracking-widest">Calculated Distance</span>
                     <span className="text-xs text-primary font-bold">{measureDistance.toFixed(2)} km</span>
                   </div>
                 )}
@@ -881,7 +881,7 @@ export function LeftPanel() {
               isOpen={expanded.satellites}
               onToggle={() => toggleSection('satellites')}
             >
-              <div className="space-y-3 font-mono text-[9px] text-white/70">
+              <div className="space-y-3 font-mono text-xs text-white/70">
                 {/* Search */}
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-3 w-3 text-white/30" />
@@ -892,14 +892,14 @@ export function LeftPanel() {
                     value={satelliteSearchQuery}
                     onChange={(e) => setSatelliteSearchQuery(e.target.value)}
                     placeholder="Search satellites..."
-                    className="w-full rounded bg-[#0a0b10] border border-white/5 py-1.5 pl-7 pr-2 text-[9px] text-white focus:outline-none focus:border-primary/50 font-mono"
+                    className="w-full rounded bg-[#0a0b10] border border-white/5 py-1.5 pl-7 pr-2 text-xs text-white focus:outline-none focus:border-primary/50 font-mono"
                   />
                 </div>
 
                 {/* Category Toggles (Grid) */}
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-[7px] uppercase tracking-wider">Categories</label>
-                  <div className="grid grid-cols-2 gap-1 text-[8px]">
+                  <label className="text-white/40 block text-xs uppercase tracking-wider">Categories</label>
+                  <div className="grid grid-cols-2 gap-1 text-xs">
                     {Object.entries(SATELLITE_CATEGORIES_METADATA).map(([key, meta]) => {
                       const isToggled = satelliteCategories[key] !== false;
                       const count = key === 'spaceStations' 
@@ -921,9 +921,9 @@ export function LeftPanel() {
                               className="h-1.5 w-1.5 rounded-full shrink-0 animate-pulse" 
                               style={{ backgroundColor: isToggled ? meta.color : 'rgba(255,255,255,0.1)' }} 
                             />
-                            <span className="truncate max-w-[65px] uppercase font-bold text-[7px]">{meta.label}</span>
+                            <span className="truncate max-w-[65px] uppercase font-bold text-xs">{meta.label}</span>
                           </div>
-                          <span className="text-[7px] text-white/30 font-bold shrink-0">({count})</span>
+                          <span className="text-xs text-white/30 font-bold shrink-0">({count})</span>
                         </button>
                       );
                     })}
@@ -931,7 +931,7 @@ export function LeftPanel() {
                 </div>
 
                 {/* Controls (Trails) */}
-                <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-white/5 text-[8px] font-bold">
+                <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-white/5 text-xs font-bold">
                   <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
                     <input
                       id="satellite-show-trails"
@@ -967,8 +967,8 @@ export function LeftPanel() {
                         activeSatelliteId === 'iss' ? 'bg-primary/20 text-primary font-bold border-primary/20' : 'hover:bg-white/5 text-white/60'
                       }`}
                     >
-                      <span className="truncate uppercase font-bold text-[8px]">🛰️ ISS (LIVE FEED)</span>
-                      <span className="text-[7px] text-white/30 shrink-0">420KM</span>
+                      <span className="truncate uppercase font-bold text-xs">🛰️ ISS (LIVE FEED)</span>
+                      <span className="text-xs text-white/30 shrink-0">420KM</span>
                     </button>
                   )}
 
@@ -984,8 +984,8 @@ export function LeftPanel() {
                           isSelected ? 'bg-primary/20 text-primary font-bold border-primary/20' : 'hover:bg-white/5 text-white/60'
                         }`}
                       >
-                        <span className="truncate uppercase font-bold text-[8px]">{sat.name}</span>
-                        <span className="text-[7px] text-white/30 shrink-0">{Math.round(sat.altitudeM / 1000)}KM</span>
+                        <span className="truncate uppercase font-bold text-xs">{sat.name}</span>
+                        <span className="text-xs text-white/30 shrink-0">{Math.round(sat.altitudeM / 1000)}KM</span>
                       </button>
                     );
                   })}
@@ -1006,7 +1006,7 @@ export function LeftPanel() {
                   const layerState = layers[pId] || { enabled: false, entityCount: 0, loading: false };
                   const Icon = managed.plugin.icon || FolderKanban;
                   return (
-                    <div key={pId} className="p-2 rounded border border-white/5 bg-black/30 font-mono text-[9px] space-y-1.5">
+                    <div key={pId} className="p-2 rounded border border-white/5 bg-black/30 font-mono text-xs space-y-1.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -1037,7 +1037,7 @@ export function LeftPanel() {
             {/* --- COSMIC TELESCOPE HUB --- */}
             {interactionMode === 'orbital' && (
               <div className="mt-4 flex flex-col">
-                <div className="p-2.5 border-t border-b border-white/5 bg-primary/5 text-[9px] font-mono uppercase tracking-[0.2em] font-bold text-primary flex items-center gap-1.5">
+                <div className="p-2.5 border-t border-b border-white/5 bg-primary/5 text-xs font-mono uppercase tracking-[0.2em] font-bold text-primary flex items-center gap-1.5">
                   <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
                   <span>Telescope Array</span>
                 </div>
@@ -1049,7 +1049,7 @@ export function LeftPanel() {
                   isOpen={expanded.presets}
                   onToggle={() => toggleSection('presets')}
                 >
-                  <div className="space-y-1 max-h-[140px] overflow-y-auto scroller font-mono text-[9px]">
+                  <div className="space-y-1 max-h-[140px] overflow-y-auto scroller font-mono text-xs">
                     {presets.map((preset) => {
                       const isActive = telescopeTarget.name === preset.name;
                       return (
@@ -1069,9 +1069,9 @@ export function LeftPanel() {
                         >
                           <div className="flex items-center gap-1.5 min-w-0">
                             <Star className={`h-2.5 w-2.5 shrink-0 ${isActive ? 'fill-primary text-primary' : 'text-white/20'}`} />
-                            <span className="truncate uppercase text-[8px]">{preset.name}</span>
+                            <span className="truncate uppercase text-xs">{preset.name}</span>
                           </div>
-                          <span className="text-[7px] text-white/30 shrink-0 font-normal">{preset.fov}</span>
+                          <span className="text-xs text-white/30 shrink-0 font-normal">{preset.fov}</span>
                         </button>
                       );
                     })}
@@ -1085,17 +1085,17 @@ export function LeftPanel() {
                   isOpen={expanded.telemetry}
                   onToggle={() => toggleSection('telemetry')}
                 >
-                  <div className="grid grid-cols-2 gap-2 text-[9px] font-mono bg-black/25 p-2 rounded border border-white/5 text-white/50">
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-black/25 p-2 rounded border border-white/5 text-white/50">
                     <div>
-                      <span className="text-white/20 block text-[7px] uppercase">Right Ascension</span>
+                      <span className="text-white/20 block text-xs uppercase">Right Ascension</span>
                       <span className="text-primary font-bold">{telescopeTarget.ra}</span>
                     </div>
                     <div>
-                      <span className="text-white/20 block text-[7px] uppercase">Declination</span>
+                      <span className="text-white/20 block text-xs uppercase">Declination</span>
                       <span className="text-primary font-bold">{telescopeTarget.dec}</span>
                     </div>
                     <div className="col-span-2 border-t border-white/5 pt-1.5 mt-1.5">
-                      <span className="text-white/20 block text-[7px] uppercase">Field of View</span>
+                      <span className="text-white/20 block text-xs uppercase">Field of View</span>
                       <span className="text-white/80 font-bold">{telescopeTarget.fov}</span>
                     </div>
                   </div>
@@ -1108,7 +1108,7 @@ export function LeftPanel() {
                   isOpen={expanded.synopsis}
                   onToggle={() => toggleSection('synopsis')}
                 >
-                  <div className="p-2.5 rounded bg-black/25 border border-white/5 font-mono text-[8px] text-white/40 leading-relaxed uppercase">
+                  <div className="p-2.5 rounded bg-black/25 border border-white/5 font-mono text-xs text-white/40 leading-relaxed uppercase">
                     {telescopeTarget.description}
                   </div>
                 </CollapsibleSection>
@@ -1126,8 +1126,8 @@ export function LeftPanel() {
             <User className="h-4 w-4 text-primary" />
           </div>
           <div className="flex flex-col font-mono">
-            <span className="text-[10px] font-bold text-white/80 leading-none">OPERATOR</span>
-            <span className="text-[8px] text-white/30 uppercase mt-0.5">Level 6 Sec</span>
+            <span className="text-xs font-bold text-white/80 leading-none">OPERATOR</span>
+            <span className="text-xs text-white/30 uppercase mt-0.5">Level 6 Sec</span>
           </div>
         </div>
 
