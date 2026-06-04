@@ -34,6 +34,8 @@ function SidebarTrigger() {
 export function CenterPanel() {
   const interactionMode = useUIStore((s) => s.interactionMode);
   const setInteractionMode = useUIStore((s) => s.setInteractionMode);
+  const spaceInteractionTarget = useUIStore((s) => s.spaceInteractionTarget);
+  const setSpaceInteractionTarget = useUIStore((s) => s.setSpaceInteractionTarget);
   const isProcessing = useUIStore((s) => s.isProcessing);
   
   const { sendMessage } = useAIChat();
@@ -51,15 +53,18 @@ export function CenterPanel() {
   // Keyboard shortcut: Escape exits telescope mode back to orbital
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && interactionMode === 'telescope') {
-        setInteractionMode('orbital');
+      if (e.key === 'Escape') {
+        if (interactionMode === 'telescope' || spaceInteractionTarget === 'telescope') {
+          setInteractionMode('orbital');
+          setSpaceInteractionTarget('earth');
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [interactionMode, setInteractionMode]);
+  }, [interactionMode, spaceInteractionTarget, setInteractionMode, setSpaceInteractionTarget]);
 
-  const isSpaceMode = interactionMode === 'orbital';
+  const isSpaceMode = interactionMode === 'orbital' || interactionMode === 'telescope';
 
   return (
     // Root container: ALWAYS pointer-events-none to let Cesium globe receive drags underneath.

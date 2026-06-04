@@ -25,8 +25,8 @@ import puppeteer from 'puppeteer';
   });
 
   try {
-    console.log('Navigating to http://localhost:3005 ...');
-    await page.goto('http://localhost:3005/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    console.log('Navigating to http://localhost:3000/?fallback=true ...');
+    await page.goto('http://localhost:3000/?fallback=true', { waitUntil: 'domcontentloaded', timeout: 30000 });
     console.log('App loaded. Waiting for React to mount...');
     await new Promise(r => setTimeout(r, 5000)); // wait for cesium and react to settle
     

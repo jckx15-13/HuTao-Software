@@ -89,6 +89,19 @@ export default function App() {
     } catch (e) {}
   }, [showHarness, showDiagnostics, setCurrentPage]);
 
+  // Sync is-headless class to html/body for portal styling overrides
+  React.useEffect(() => {
+    try {
+      if (isHeadless) {
+        document.documentElement.classList.add('is-headless');
+        document.body.classList.add('is-headless');
+      } else {
+        document.documentElement.classList.remove('is-headless');
+        document.body.classList.remove('is-headless');
+      }
+    } catch (e) {}
+  }, [isHeadless]);
+
   React.useEffect(() => {
     // Report holistic upgrade status to the new diagnostic engine
     useDiagnosticsStore.getState().add({
@@ -125,7 +138,7 @@ export default function App() {
       {!customWallpaper && (
         <div className="absolute inset-0 z-0">
           {/* 1. Telescope Background Layer (WWT) at z-0 */}
-          {interactionMode === 'orbital' && (!isHeadless || spaceInteractionTarget === 'telescope') && (
+          {(interactionMode === 'orbital' || interactionMode === 'telescope') && (!isHeadless || spaceInteractionTarget === 'telescope' || interactionMode === 'telescope') && (
             <div className="absolute inset-0 z-0">
               <WorldWideTelescopeView bgOnly />
             </div>
@@ -136,13 +149,13 @@ export default function App() {
             className="absolute inset-0 transition-all duration-500 ease-in-out"
             style={{
               zIndex: 10,
-              opacity: interactionMode === 'orbital' 
-                ? (spaceInteractionTarget === 'telescope' ? spaceBlendOpacity : 1.0) 
+              opacity: (interactionMode === 'orbital' || interactionMode === 'telescope')
+                ? ((spaceInteractionTarget === 'telescope' || interactionMode === 'telescope') ? spaceBlendOpacity : 1.0) 
                 : 1.0,
-              pointerEvents: interactionMode === 'orbital' && spaceInteractionTarget === 'earth' ? 'auto' : 'none'
+              pointerEvents: (interactionMode === 'orbital' || interactionMode === 'telescope') && (spaceInteractionTarget === 'earth' && interactionMode !== 'telescope') ? 'auto' : 'none'
             }}
           >
-            <CesiumBackground interactive={interactionMode === 'orbital' && spaceInteractionTarget === 'earth'} />
+            <CesiumBackground interactive={(interactionMode === 'orbital' || interactionMode === 'telescope') && (spaceInteractionTarget === 'earth' && interactionMode !== 'telescope')} />
           </div>
         </div>
       )}

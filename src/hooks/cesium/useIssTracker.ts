@@ -43,7 +43,7 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
     const addSatelliteEntity = (sat: SatelliteConfig | { id: string; name: string; altitudeM: number; color: string }) => {
       if (entities.has(sat.id)) return;
 
-      const createIconDataUrl = (symbol: string, color: string, size = satelliteSettings?.iconSize ?? 32) => {
+      const createIconDataUrl = (color: string, isIss = false, size = satelliteSettings?.iconSize ?? 32) => {
         try {
           const canvas = document.createElement('canvas');
           canvas.width = size;
@@ -51,25 +51,54 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
           const ctx = canvas.getContext('2d');
           if (!ctx) return undefined;
           ctx.clearRect(0, 0, size, size);
+          
+          const c = size / 2;
+          const r = isIss ? size / 2.8 : size / 3.8;
+
+          // Draw outer ring
           ctx.beginPath();
-          ctx.fillStyle = color || '#ffffff';
-          ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+          ctx.arc(c, c, r, 0, Math.PI * 2);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = isIss ? 1.8 : 1.2;
+          ctx.stroke();
+
+          if (isIss) {
+            // Draw secondary inner ring for ISS
+            ctx.beginPath();
+            ctx.arc(c, c, r - 3, 0, Math.PI * 2);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+          }
+
+          // Draw central dot
+          ctx.beginPath();
+          ctx.arc(c, c, isIss ? 3.5 : 2.0, 0, Math.PI * 2);
+          ctx.fillStyle = color;
           ctx.fill();
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#000000';
-          const fontSize = Math.floor(size * 0.6);
-          ctx.font = `${fontSize}px serif`;
-          ctx.fillText(symbol, size / 2, size / 2 + 1);
+
+          // Draw subtle crosshair ticks (minimalist telemetry design)
+          const tickLen = 2.5;
+          ctx.beginPath();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 0.8;
+          // Top tick
+          ctx.moveTo(c, c - r - tickLen); ctx.lineTo(c, c - r + tickLen);
+          // Bottom tick
+          ctx.moveTo(c, c + r - tickLen); ctx.lineTo(c, c + r + tickLen);
+          // Left tick
+          ctx.moveTo(c - r - tickLen, c); ctx.lineTo(c - r + tickLen, c);
+          // Right tick
+          ctx.moveTo(c + r - tickLen, c); ctx.lineTo(c + r + tickLen, c);
+          ctx.stroke();
+
           return canvas.toDataURL();
         } catch (e) {
           return undefined;
         }
       };
 
-      const rawName = (sat as any).name || '';
-      const symbol = String(rawName).split(' ')[0] || '🛰️';
-      const iconUrl = createIconDataUrl(symbol, (sat as any).color || '#00FFF7');
+      const iconUrl = createIconDataUrl((sat as any).color || '#00FFF7', sat.id === 'iss');
       const occlude = satelliteSettings?.occludeByGlobe !== false;
       const cleanLabelText = sat.name
         .replace(/^[^\s\w]+\s*/g, '')

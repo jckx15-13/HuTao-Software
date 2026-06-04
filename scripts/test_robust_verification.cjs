@@ -9,7 +9,7 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 
-const BASE_URL = 'http://localhost:3005/?fallback=true';
+const BASE_URL = 'http://127.0.0.1:3000/?fallback=true';
 const BRAIN_DIR = 'C:\\Users\\jaron\\.gemini\\antigravity\\brain\\019864f6-c90b-4ca3-a830-c80c4478c881';
 const SCREENSHOTS_DIR = path.join(BRAIN_DIR, 'test_screenshots');
 
@@ -29,12 +29,6 @@ const BROWSER_ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
   '--disable-dev-shm-usage',
-  '--no-proxy-server',
-  '--proxy-bypass-list=*',
-  '--disable-features=site-per-process',
-  '--disable-gpu',
-  '--hide-scrollbars',
-  '--mute-audio',
 ];
 
 /** Create a fresh page with standard setup */
@@ -61,16 +55,18 @@ async function freshPage() {
           filter: none !important;
         }
       `;
-      window.localStorage.clear();
-      document.head.appendChild(style);
+      document.documentElement.appendChild(style);
     } catch (e) {}
   });
 
   p.on('console', msg => {
     const text = msg.text();
-    if (msg.type() === 'error' && !text.includes('favicon') && !text.includes('Failed to load') && !text.includes('404')) {
-      console.log(`  [BROWSER] ${text.substring(0, 100)}`);
+    if (!text.includes('favicon') && !text.includes('404')) {
+      console.log(`  [BROWSER ${msg.type().toUpperCase()}] ${text.substring(0, 120)}`);
     }
+  });
+  p.on('pageerror', err => {
+    console.log(`  [BROWSER EXCEPTION] ${err.message}`);
   });
   return p;
 }
@@ -80,90 +76,111 @@ async function freshPage() {
  * Returns page in workspace-ready state, or null on failure.
  */
 async function prepareWorkspacePage() {
-  let p = null;
-  let success = false;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    let p = null;
     try {
+      // If browser was disconnected or closed due to crash, relaunch it
+      if (!browser || !browser.connected) {
+        console.log("  [TEST-DEBUG] Browser not connected. Relaunching browser...");
+        try { if (browser) await browser.close(); } catch (_) {}
+        browser = await puppeteer.launch({
+          headless: true,
+          executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+          args: BROWSER_ARGS,
+          protocolTimeout: 90000,
+          defaultViewport: { width: 1280, height: 800 },
+          dumpio: true,
+        });
+      }
+
       p = await freshPage();
       console.log(`  [TEST-DEBUG] p.goto(BASE_URL) (attempt ${attempt})...`);
-      // Use domcontentloaded to prevent detached frame errors caused by rapid React mount/unmounts
-      await p.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      success = true;
-      break;
-    } catch (e) {
-      // Ignore Navigating frame was detached if it still loaded the body
-      if (e.message.includes('Navigating frame was detached') || e.message.includes('Execution context was destroyed')) {
+      
+      // Navigate to base URL
+      await p.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      
+      console.log("  [TEST-DEBUG] p.waitForSelector('body')...");
+      await p.waitForSelector('body', { timeout: 15000 });
+      
+      console.log("  [TEST-DEBUG] sleeping for 3000ms for React/Vite to settle...");
+      await sleep(3000);
+
+      // Verify page context is active (handling HMR reload mid-loading)
+      let stable = false;
+      for (let i = 0; i < 5; i++) {
         try {
-          const bodyExists = await p.evaluate(() => !!document.body);
-          if (bodyExists) {
-            console.log(`  [TEST-DEBUG] Navigation attempt ${attempt} interrupted, but document body exists. Proceeding.`);
-            success = true;
-            break;
-          }
+          await p.evaluate(() => 1);
+          stable = true;
+          break;
         } catch (evalErr) {
-          // If evaluate fails, page is truly dead
+          console.warn(`  [TEST-DEBUG] evaluate check failed (attempt ${i+1}): ${evalErr.message}. Waiting 2s...`);
+          await sleep(2000);
         }
       }
-      console.log(`  [TEST-DEBUG] Navigation attempt ${attempt} failed (${e.message.substring(0, 60)}). Retrying...`);
+
+      if (!stable) {
+        throw new Error("Page evaluation context remained detached or unstable");
+      }
+
+      // Inject styling override
+      await p.evaluate(() => {
+        try {
+          const style = document.createElement('style');
+          style.type = 'text/css';
+          style.innerHTML = `
+            * {
+              transition: none !important;
+              animation: none !important;
+              backdrop-filter: none !important;
+              -webkit-backdrop-filter: none !important;
+            }
+          `;
+          document.documentElement.appendChild(style);
+
+          if (window.useUIStore) {
+            window.useUIStore.getState().setParticleEffects?.(false);
+            window.useUIStore.getState().updatePersonalisation?.({ 
+              motionReduced: true, animationIntensity: 0, blurIntensity: 0, shadowIntensity: 0 
+            });
+          }
+        } catch (e) {}
+      });
+
+      // Click SKIP BOOT if present (retry if frame detached mid-way)
+      console.log("  [TEST-DEBUG] clicking SKIP BOOT...");
+      let bootSkipped = false;
+      for (let i = 0; i < 3; i++) {
+        try {
+          await p.evaluate(() => {
+            const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('SKIP BOOT'));
+            if (btn) {
+              btn.click();
+              return true;
+            }
+            return false;
+          });
+          bootSkipped = true;
+          break;
+        } catch (e) {
+          console.warn(`  [TEST-DEBUG] skip boot click failed (attempt ${i+1}): ${e.message}. Waiting 1s...`);
+          await sleep(1000);
+        }
+      }
+
+      console.log("  [TEST-DEBUG] sleeping for 1500ms after skipping boot...");
+      await sleep(1500);
+
+      console.log("  [TEST-DEBUG] prepareWorkspacePage succeeded!");
+      return p;
+    } catch (err) {
+      console.warn(`  [TEST-DEBUG] prepareWorkspacePage attempt ${attempt} failed: ${err.message}`);
       if (p) {
         try { await p.close(); } catch (_) {}
-        p = null;
       }
-      await sleep(3000);
+      await sleep(2500);
     }
   }
-  
-  if (!success || !p) {
-    throw new Error("Navigation failed after 3 attempts");
-  }
-
-  try {
-    console.log("  [TEST-DEBUG] p.waitForSelector('body')...");
-    await p.waitForSelector('body', { timeout: 10000 });
-    
-    // Wait for React to mount (simple timeout)
-    console.log("  [TEST-DEBUG] sleeping for 3000ms...");
-    await sleep(3000);
-
-    await p.evaluate(() => {
-      try {
-        const style = document.createElement('style');
-        style.type = 'text/css';
-        style.innerHTML = `
-          * {
-            transition: none !important;
-            animation: none !important;
-            backdrop-filter: none !important;
-            -webkit-backdrop-filter: none !important;
-          }
-        `;
-        document.head.appendChild(style);
-
-        if (window.useUIStore) {
-          window.useUIStore.getState().setParticleEffects?.(false);
-          window.useUIStore.getState().updatePersonalisation?.({ 
-            motionReduced: true, animationIntensity: 0, blurIntensity: 0, shadowIntensity: 0 
-          });
-        }
-      } catch (e) {}
-    });
-
-    // Click SKIP BOOT if present
-    console.log("  [TEST-DEBUG] clicking SKIP BOOT...");
-    await p.evaluate(() => {
-      const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('SKIP BOOT'));
-      if (btn) btn.click();
-    });
-    console.log("  [TEST-DEBUG] sleeping for 1500ms...");
-    await sleep(1500);
-
-    console.log("  [TEST-DEBUG] prepareWorkspacePage succeeded!");
-    return p;
-  } catch (err) {
-    console.warn(`  ⚠ prepareWorkspacePage configuration failed: ${err.message.substring(0, 80)}`);
-    try { await p.close(); } catch (_) {}
-    return null;
-  }
+  return null;
 }
 
 /** Ensures page is active, relaunching browser and reviving workspace if crashed */
@@ -180,7 +197,7 @@ async function ensurePageActive(p, targetMode = 'orbital') {
   try { if (browser) await browser.close(); } catch (_) {}
   browser = await puppeteer.launch({
     headless: true,
-    channel: 'chrome',
+    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     args: BROWSER_ARGS,
     protocolTimeout: 90000,
     defaultViewport: { width: 1280, height: 800 },
@@ -191,7 +208,13 @@ async function ensurePageActive(p, targetMode = 'orbital') {
   if (newPage && targetMode) {
     await safeEval(newPage, (m) => {
       if (window.useUIStore) {
-        window.useUIStore.getState().setInteractionMode?.(m);
+        if (m === 'telescope') {
+          window.useUIStore.getState().setInteractionMode?.('orbital');
+          window.useUIStore.getState().setSpaceInteractionTarget?.('telescope');
+        } else {
+          window.useUIStore.getState().setInteractionMode?.(m);
+          window.useUIStore.getState().setSpaceInteractionTarget?.('earth');
+        }
       }
     }, targetMode);
     await sleep(1500);
@@ -241,7 +264,13 @@ async function hasText(page, text) {
 
 async function getMode(page) {
   try {
-    return await page.evaluate(() => window.useUIStore?.getState()?.interactionMode);
+    return await page.evaluate(() => {
+      const state = window.useUIStore?.getState();
+      if (state?.interactionMode === 'orbital' && state?.spaceInteractionTarget === 'telescope') {
+        return 'telescope';
+      }
+      return state?.interactionMode;
+    });
   } catch { return null; }
 }
 
@@ -253,7 +282,7 @@ async function getMode(page) {
   try {
     browser = await puppeteer.launch({
       headless: true,
-      channel: 'chrome',
+      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
       args: BROWSER_ARGS,
       protocolTimeout: 90000,
       defaultViewport: { width: 1280, height: 800 },
@@ -289,7 +318,7 @@ async function getMode(page) {
     // ── STAGE 2: Orbital view tests ──────────────────────────────────────────
     console.log('\n─── STAGE 2: Orbital View & Controls ───');
 
-    const clickedOrbital = await clickBtn(page, 'Orbital', true);
+    const clickedOrbital = await clickBtn(page, 'Space', true);
     if (clickedOrbital) {
       passed.push('Orbital: tab button clickable');
       console.log('  ✔ Orbital tab clicked');
@@ -368,7 +397,11 @@ async function getMode(page) {
     console.log('\n─── STAGE 4: Telescope Mode ───');
     page = await ensurePageActive(page, 'orbital');
 
-    const clickedTelescope = await clickBtn(page, 'Telescope', true);
+    // First click "Style & Graphics" section to expand it and reveal the TELESCOPE button
+    await clickBtn(page, 'Style & Graphics', true);
+    await sleep(600);
+
+    const clickedTelescope = await clickBtn(page, 'TELESCOPE', true);
     
     if (clickedTelescope) {
       passed.push('Telescope: tab button exists and is clickable');
@@ -382,7 +415,7 @@ async function getMode(page) {
         try { await browser.close(); } catch (_) {}
         browser = await puppeteer.launch({
           headless: true,
-          channel: 'chrome',
+          executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
           args: BROWSER_ARGS,
           protocolTimeout: 90000,
           defaultViewport: { width: 1280, height: 800 },
@@ -475,7 +508,7 @@ async function getMode(page) {
 
       // Graceful degradation: mode switcher still usable
       const switcherOk = await safeEval(page, () => {
-        const b = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Orbital');
+        const b = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Space');
         return b ? !b.disabled : false;
       });
       if (switcherOk) {
