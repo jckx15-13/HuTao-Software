@@ -1,6 +1,7 @@
-import React, { Suspense, useState, useEffect, useRef } from 'react';
+import React, { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { useUIStore } from '@/store/uiStore';
 import { useIssTelemetry } from '../../hooks/useIssTelemetry';
+// ... other imports ...
 import {
   LANDMASS_POINTS_3D,
   projectUnitVectorInto,
@@ -53,6 +54,16 @@ interface CesiumBackgroundRealProps {
 function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
   // Scanline/CRT overlay toggle
   const scanlineOverlay = useUIStore((s) => s.scanlineOverlay);
+
+  const wwvWorker = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      return new Worker(new URL('../../workers/wwv.worker.ts', import.meta.url), { type: 'module' });
+    } catch (e) {
+      console.error('Failed to initialize WWV Worker:', e);
+      return null;
+    }
+  }, []);
 
   // Synchronously detect WebGL availability
   const [webglError] = useState<string | null>(() => {

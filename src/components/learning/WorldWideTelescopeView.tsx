@@ -10,6 +10,9 @@ import { useStore } from '@/core/state/store';
 import { TELESCOPE_PRESETS as presets } from '@/data/telescopePresets';
 import TimelineLanes from './TimelineLanes';
 import { pluginManager } from '@/core/plugins/PluginManager';
+import { useCameraSync } from '@/hooks/useCameraSync';
+import { useWWTListener } from '@/hooks/useWWTListener';
+import { formatRA, formatDec } from '@/lib/coordinateTransforms';
 
 const BACKGROUND_LAYERS = [
   { id: 'dss', name: 'Digitized Sky Survey (Color)', value: 'Digitized Sky Survey (Color)', desc: 'Visible light survey mapping the sky.' },
@@ -60,6 +63,8 @@ export default function WorldWideTelescopeView({
 
   const setTelescopeTarget = useUIStore((s) => s.setTelescopeTarget);
   const setInteractionMode = useUIStore((s) => s.setInteractionMode);
+  const telescopeTelemetry = useUIStore((s) => s.telescopeTelemetry);
+  const syncSource = useUIStore((s) => s.syncSource);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Resolve telescopeTarget to data-level TelescopePreset
@@ -200,6 +205,12 @@ export default function WorldWideTelescopeView({
       console.warn('[WorldWideTelescopeView] postToWWT failed:', err);
     }
   };
+
+  // --- Camera Sync Integration ---
+  // Connects WWT and Cesium via the useCameraSync Mutex and postMessage listener
+  const cesiumViewer = typeof window !== 'undefined' ? (window as any).cesiumViewer : null;
+  useCameraSync(cesiumViewer, postToWWT);
+  useWWTListener();
 
   // Sync Coordinates on activePreset change (smooth pans!)
   useEffect(() => {
@@ -583,6 +594,33 @@ export default function WorldWideTelescopeView({
   const renderHUDAndTimeline = () => {
     return (
       <div className="absolute inset-0 w-full h-full flex overflow-hidden bg-transparent select-none pointer-events-none">
+        
+        {/* --- Real-time Telescope Telemetry Overlay --- */}
+        {telescopeTelemetry && (
+          <div className="absolute top-4 right-4 z-50 pointer-events-auto">
+            <div className="glass-panel border border-primary/20 p-2.5 px-4 font-mono text-[9px] uppercase tracking-wider space-y-1 shadow-xl">
+              <div className="flex items-center justify-between gap-6">
+                <span className="text-white/40">Right Ascension</span>
+                <span className="text-primary font-bold">{formatRA(telescopeTelemetry.ra)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-6">
+                <span className="text-white/40">Declination</span>
+                <span className="text-primary font-bold">{formatDec(telescopeTelemetry.dec)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-6">
+                <span className="text-white/40">Camera Roll</span>
+                <span className="text-primary/60">{telescopeTelemetry.roll.toFixed(2)}°</span>
+              </div>
+              {syncSource !== 'none' && (
+                <div className="pt-1 mt-1 border-t border-white/5 flex items-center gap-1.5 text-[7px] text-white/30 italic">
+                  <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+                  <span>SYNC SOURCE: {syncSource.toUpperCase()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Space HUD / Controls Panel (Collapsible Drawer on Left) */}
         {spaceInteractionTarget === 'telescope' && (
           <div className="absolute top-24 left-4 z-40 flex flex-col pointer-events-auto max-h-[calc(100%-185px)]">

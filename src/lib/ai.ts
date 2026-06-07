@@ -1,9 +1,16 @@
 const bridge = 'http://127.0.0.1:8001';
 
 export async function aiChat(model: string, text: string, contents: any[], systemInstruction?: string) {
-  if (model === 'local-assistant') {
+  if (model === 'local-assistant' || model === 'odysseus-local') {
     try {
-      const res = await fetch(`${bridge}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, system_instruction: systemInstruction }) });
+      const res = await fetch(`${bridge}/chat`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+          message: text, 
+          system_instruction: systemInstruction 
+        }) 
+      });
       const data = await res.json();
       return { text: data.response || 'No local response.' };
     } catch { return { text: '', error: 'Local bridge unreachable.' }; }

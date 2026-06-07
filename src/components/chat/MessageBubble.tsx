@@ -1,8 +1,10 @@
-import { User, Bot } from 'lucide-react';
+import { User, Bot, Brain, Check, RefreshCw } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useUIStore } from '../../store/uiStore';
 import type { Message } from '../../lib/messages';
 import { MarkdownMessage } from '../MarkdownMessage';
 import { TypewriterText } from './TypewriterText';
+import { useMemoryPush } from '../../hooks/ai/useMemoryPush';
 
 interface MessageBubbleProps {
   message: Message;
@@ -13,6 +15,7 @@ interface MessageBubbleProps {
 export function MessageBubble({ message, isHighLoad, fontSize }: MessageBubbleProps) {
   const isUser = message.sender === 'user';
   const isSystem = message.sender === 'system';
+  const { pushToMemory, isPushing, isPushed } = useMemoryPush();
 
   const { chatBubbleStyle = 'glass', iconStyle = 'outlined' } = useUIStore((s) => s.personalisation) || {};
 
@@ -67,6 +70,36 @@ export function MessageBubble({ message, isHighLoad, fontSize }: MessageBubblePr
           </div>
         )}
       </div>
+
+      {/* --- Action Buttons (Visible on hover) --- */}
+      {!isSystem && (
+        <motion.div 
+          initial={{ opacity: 0, x: isUser ? 5 : -5 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          className={`flex flex-col gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity ${isUser ? 'mr-1' : 'ml-1'}`}
+        >
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => pushToMemory(message.content, message.sender)}
+            disabled={isPushing || isPushed}
+            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+              isPushed 
+                ? 'bg-green-500/20 border-green-500/40 text-green-400' 
+                : 'bg-white/5 border-white/10 text-white/30 hover:text-white/60 hover:bg-white/10'
+            }`}
+            title={isPushed ? "Knowledge Secure" : "Push to Neural Memory"}
+          >
+            {isPushing ? (
+              <RefreshCw size={11} className="animate-spin" />
+            ) : isPushed ? (
+              <Check size={11} />
+            ) : (
+              <Brain size={11} />
+            )}
+          </motion.button>
+        </motion.div>
+      )}
     </div>
   );
 }

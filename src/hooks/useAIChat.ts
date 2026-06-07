@@ -24,7 +24,7 @@ export function useAIChat() {
     setIsProcessing(true);
     
     try {
-      if (aiModel === 'local-assistant') {
+      if (aiModel === 'local-assistant' || aiModel === 'odysseus-local') {
         const response = await aiChat(aiModel, text, [], systemInstructions);
         if (response.error) {
           throw new Error(response.error);

@@ -6,7 +6,7 @@ import { type LocationData } from '../data/locations';
 import { type Tour } from '../data/tours';
 import { type WeatherData } from '../services/weatherService';
 
-export type AiModel = 'gemini-3-flash' | 'gemini-3-pro' | 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-2.0-flash' | 'local-assistant' | 'gemini-3.1-pro-preview' | 'gemini-1.5-pro' | 'gemini-1.5-flash';
+export type AiModel = 'gemini-3-flash' | 'gemini-3-pro' | 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-2.0-flash' | 'local-assistant' | 'gemini-3.1-pro-preview' | 'gemini-1.5-pro' | 'gemini-1.5-flash' | 'odysseus-local';
 
 export interface SystemMetrics {
   ramUsage: number;
@@ -73,7 +73,14 @@ export interface SatelliteData {
   timestamp: number;
 }
 
+export interface TelescopeTelemetry {
+  ra: number;
+  dec: number;
+  roll: number;
+}
+
 export type InteractionMode = 'chat' | 'orbital' | 'telescope';
+export type SyncSource = 'cesium' | 'wwt' | 'none';
 export type CurrentPage = 'launcher' | 'workspace' | 'settings';
 export type RightPanelTab = 'context' | 'browser' | 'changes' | 'diagnostics' | 'telemetry' | 'odysseus';
 export type SettingsCategory = 'personalisation' | 'ai' | 'connections' | 'feedback' | 'developer' | 'about' | 'map' | 'plugins';
@@ -191,6 +198,12 @@ export interface UIStore {
   setActiveTour: (tour: Tour | null) => void;
   activeTourStepIndex: number;
   setActiveTourStepIndex: (idx: number) => void;
+
+  // Camera Sync
+  syncSource: SyncSource;
+  setSyncSource: (v: SyncSource) => void;
+  telescopeTelemetry: TelescopeTelemetry | null;
+  setTelescopeTelemetry: (v: TelescopeTelemetry | null) => void;
 
   // Browser URL
   browserUrl: string;
@@ -446,6 +459,12 @@ export const useUIStore = create<UIStore>()(
         setActiveTour: (activeTour) => set({ activeTour }),
         activeTourStepIndex: 0,
         setActiveTourStepIndex: (activeTourStepIndex) => set({ activeTourStepIndex }),
+
+        // Camera Sync
+        syncSource: 'none',
+        setSyncSource: (syncSource) => set({ syncSource }),
+        telescopeTelemetry: null,
+        setTelescopeTelemetry: (telescopeTelemetry) => set({ telescopeTelemetry }),
 
         // Browser URL
         browserUrl: 'https://nasa.gov',

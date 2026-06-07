@@ -12,6 +12,9 @@ export function MapSettings() {
   const showTerrain = useUIStore((s) => s.showTerrain);
   const setShowTerrain = useUIStore((s) => s.setShowTerrain);
 
+  const spaceBlendOpacity = useUIStore((s) => s.spaceBlendOpacity);
+  const setSpaceBlendOpacity = useUIStore((s) => s.setSpaceBlendOpacity);
+
   return (
     <div className="space-y-6">
       <SettingsSection title="Map & Imagery Layers">
@@ -96,6 +99,34 @@ export function MapSettings() {
                 <ToggleLeft className="h-6 w-6 text-white/20" />
               )}
             </div>
+          </div>
+
+          {/* Onion Skinning / Space Blend */}
+          <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-2">
+                <Layers size={14} className="text-primary" />
+                Onion Skinning: Space/Earth Blend
+              </label>
+              <span className="text-[10px] font-mono text-primary font-bold">
+                {Math.round(spaceBlendOpacity * 100)}%
+              </span>
+            </div>
+            <input
+              id="space-blend-slider"
+              name="space-blend-slider"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={spaceBlendOpacity}
+              onChange={(e) => setSpaceBlendOpacity(parseFloat(e.target.value))}
+              className="w-full h-1 bg-black/40 rounded-lg appearance-none cursor-pointer accent-primary"
+            />
+            <p className="text-[8px] text-white/30 font-mono">
+              Adjust the translucency of the Earth globe when in Telescope mode. 
+              Higher values show more Earth, lower values reveal more deep space.
+            </p>
           </div>
 
         </div>
