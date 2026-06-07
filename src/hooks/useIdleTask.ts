@@ -9,7 +9,10 @@ type IdleWindow = Window & {
 
 export function useIdleTask(task: () => void, deps: unknown[], intervalMs: number) {
   const taskRef = useRef(task);
-  taskRef.current = task;
+
+  useEffect(() => {
+    taskRef.current = task;
+  });
 
   useEffect(() => {
     const w = window as IdleWindow;

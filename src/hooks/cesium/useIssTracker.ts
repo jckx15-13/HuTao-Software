@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as Cesium from 'cesium';
 import { useUIStore } from '@/store/uiStore';
 import { OrbitEngine, Coordinates } from '../../core/satellites/OrbitEngine';
@@ -13,15 +13,89 @@ const scratchMatrix3 = new Cesium.Matrix3();
 const scratchMatrix4 = new Cesium.Matrix4();
 const scratchJulianDate = new Cesium.JulianDate();
 
+const createIconDataUrl = (color: string, isIss = false, size = 32, isActive = false) => {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return undefined;
+    ctx.clearRect(0, 0, size, size);
+
+    const c = size / 2;
+
+    if (!isActive) {
+      // Minimalist tiny dot icon
+      ctx.beginPath();
+      ctx.arc(c, c, 1.8, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      // Subtle semi-transparent halo
+      ctx.beginPath();
+      ctx.arc(c, c, 3.5, 0, Math.PI * 2);
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.25;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+      return canvas.toDataURL();
+    }
+
+    // Active crosshair/telemetry ring
+    const r = isIss ? size / 2.8 : size / 3.8;
+
+    // Draw outer ring
+    ctx.beginPath();
+    ctx.arc(c, c, r, 0, Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = isIss ? 1.8 : 1.2;
+    ctx.stroke();
+
+    if (isIss) {
+      // Draw secondary inner ring for ISS
+      ctx.beginPath();
+      ctx.arc(c, c, r - 3, 0, Math.PI * 2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+
+    // Draw central dot
+    ctx.beginPath();
+    ctx.arc(c, c, isIss ? 3.5 : 2.0, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    // Draw subtle crosshair ticks (minimalist telemetry design)
+    const tickLen = 2.5;
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.8;
+    // Top tick
+    ctx.moveTo(c, c - r - tickLen); ctx.lineTo(c, c - r + tickLen);
+    // Bottom tick
+    ctx.moveTo(c, c + r - tickLen); ctx.lineTo(c, c + r + tickLen);
+    // Left tick
+    ctx.moveTo(c - r - tickLen, c); ctx.lineTo(c - r + tickLen, c);
+    // Right tick
+    ctx.moveTo(c + r - tickLen, c); ctx.lineTo(c + r + tickLen, c);
+    ctx.stroke();
+
+    return canvas.toDataURL();
+  } catch (e) {
+    return undefined;
+  }
+};
+
 export function useIssTracker(viewer: Cesium.Viewer | null) {
   const engine = OrbitEngine.getInstance();
-  
+
   const issTelemetry = useUIStore((s) => s.issTelemetry);
   const activeSatelliteId = useUIStore((s) => s.activeSatelliteId);
   const satelliteCategories = useUIStore((s) => s.satelliteCategories);
   const satelliteSettings = useUIStore((s) => s.satelliteSettings);
 
-  const startTimeRef = useRef(Date.now());
+  const [startTime] = useState(() => Date.now());
   const updateCountRef = useRef(0);
   const isProcessingBatch = useRef(false);
 
@@ -30,6 +104,91 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
   const pathsRef = useRef<Map<string, Cesium.Entity>>(new Map());
   const historyRef = useRef<Map<string, Cesium.Cartesian3[]>>(new Map());
   const frustumEntityRef = useRef<Cesium.Entity | null>(null);
+
+  const hoveredSatelliteIdRef = useRef<string | null>(null);
+
+  const updateEntityVisuals = (id: string, isSelected: boolean, isHovered: boolean) => {
+    const ent = entitiesRef.current.get(id);
+    if (!ent) return;
+
+    const isIss = id === 'iss';
+    const satConfig = SATELLITES.find(s => s.id === id) || { color: '#00FFF7' };
+    const color = (satConfig as any).color || '#00FFF7';
+    const isActive = isSelected || isHovered;
+
+    const targetSize = isActive ? 20 : 10;
+    const iconUrl = createIconDataUrl(color, isIss, 32, isActive);
+
+    if (ent.billboard) {
+      if (iconUrl) {
+        if (ent.billboard.image && typeof (ent.billboard.image as any).setValue === 'function') {
+          (ent.billboard.image as any).setValue(iconUrl);
+        } else {
+          ent.billboard.image = iconUrl as any;
+        }
+      }
+
+      if (ent.billboard.width && typeof (ent.billboard.width as any).setValue === 'function') {
+        (ent.billboard.width as any).setValue(targetSize);
+      } else {
+        ent.billboard.width = targetSize as any;
+      }
+
+      if (ent.billboard.height && typeof (ent.billboard.height as any).setValue === 'function') {
+        (ent.billboard.height as any).setValue(targetSize);
+      } else {
+        ent.billboard.height = targetSize as any;
+      }
+    }
+
+    if (ent.label) {
+      if (ent.label.show && typeof (ent.label.show as any).setValue === 'function') {
+        (ent.label.show as any).setValue(isActive);
+      } else {
+        ent.label.show = isActive as any;
+      }
+    }
+  };
+
+  // Mouse hover event handler for minimalist satellite entity visual updates
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed()) return;
+
+    const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+
+    handler.setInputAction((movement: any) => {
+      const pickedObject = viewer.scene.pick(movement.endPosition);
+
+      let foundSatId: string | null = null;
+      if (Cesium.defined(pickedObject) && pickedObject.id instanceof Cesium.Entity) {
+        const ent = pickedObject.id;
+        if (entitiesRef.current.has(ent.id)) {
+          foundSatId = ent.id;
+        }
+      }
+
+      const prevHovered = hoveredSatelliteIdRef.current;
+      if (foundSatId !== prevHovered) {
+        hoveredSatelliteIdRef.current = foundSatId;
+
+        // Update previous hovered entity visual state
+        if (prevHovered && prevHovered !== activeSatelliteId) {
+          updateEntityVisuals(prevHovered, false, false);
+        }
+        // Update new hovered entity visual state
+        if (foundSatId) {
+          const isSelected = activeSatelliteId === foundSatId;
+          updateEntityVisuals(foundSatId, isSelected, true);
+        }
+      }
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+    return () => {
+      if (!handler.isDestroyed()) {
+        handler.destroy();
+      }
+    };
+  }, [viewer, activeSatelliteId]);
 
   // Synchronize dynamic active categories and add/remove satellite entities
   useEffect(() => {
@@ -43,75 +202,26 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
     const addSatelliteEntity = (sat: SatelliteConfig | { id: string; name: string; altitudeM: number; color: string }) => {
       if (entities.has(sat.id)) return;
 
-      const createIconDataUrl = (color: string, isIss = false, size = satelliteSettings?.iconSize ?? 32) => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = size;
-          canvas.height = size;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return undefined;
-          ctx.clearRect(0, 0, size, size);
-          
-          const c = size / 2;
-          const r = isIss ? size / 2.8 : size / 3.8;
+      const isSelected = activeSatelliteId === sat.id;
+      const isHovered = hoveredSatelliteIdRef.current === sat.id;
+      const isActive = isSelected || isHovered;
 
-          // Draw outer ring
-          ctx.beginPath();
-          ctx.arc(c, c, r, 0, Math.PI * 2);
-          ctx.strokeStyle = color;
-          ctx.lineWidth = isIss ? 1.8 : 1.2;
-          ctx.stroke();
-
-          if (isIss) {
-            // Draw secondary inner ring for ISS
-            ctx.beginPath();
-            ctx.arc(c, c, r - 3, 0, Math.PI * 2);
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 0.8;
-            ctx.stroke();
-          }
-
-          // Draw central dot
-          ctx.beginPath();
-          ctx.arc(c, c, isIss ? 3.5 : 2.0, 0, Math.PI * 2);
-          ctx.fillStyle = color;
-          ctx.fill();
-
-          // Draw subtle crosshair ticks (minimalist telemetry design)
-          const tickLen = 2.5;
-          ctx.beginPath();
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 0.8;
-          // Top tick
-          ctx.moveTo(c, c - r - tickLen); ctx.lineTo(c, c - r + tickLen);
-          // Bottom tick
-          ctx.moveTo(c, c + r - tickLen); ctx.lineTo(c, c + r + tickLen);
-          // Left tick
-          ctx.moveTo(c - r - tickLen, c); ctx.lineTo(c - r + tickLen, c);
-          // Right tick
-          ctx.moveTo(c + r - tickLen, c); ctx.lineTo(c + r + tickLen, c);
-          ctx.stroke();
-
-          return canvas.toDataURL();
-        } catch (e) {
-          return undefined;
-        }
-      };
-
-      const iconUrl = createIconDataUrl((sat as any).color || '#00FFF7', sat.id === 'iss');
+      const iconUrl = createIconDataUrl((sat as any).color || '#00FFF7', sat.id === 'iss', 32, isActive);
       const occlude = satelliteSettings?.occludeByGlobe !== false;
       const cleanLabelText = sat.name
         .replace(/^[^\s\w]+\s*/g, '')
         .split(' (')[0]
         .trim();
 
+      const targetSize = isActive ? 20 : 10;
+
       const entity = viewer.entities.add({
         id: sat.id,
         position: new Cesium.ConstantPositionProperty(Cesium.Cartesian3.ZERO) as any,
         billboard: iconUrl ? {
           image: iconUrl,
-          width: satelliteSettings?.iconSize ?? 18,
-          height: satelliteSettings?.iconSize ?? 18,
+          width: targetSize,
+          height: targetSize,
           verticalOrigin: Cesium.VerticalOrigin.CENTER,
           horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
           disableDepthTestDistance: occlude ? 0 : Number.POSITIVE_INFINITY,
@@ -127,6 +237,7 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
           showBackground: true,
           backgroundColor: Cesium.Color.fromCssColorString('rgba(10, 11, 16, 0.85)'),
           disableDepthTestDistance: occlude ? 0 : Number.POSITIVE_INFINITY,
+          show: isActive,
         },
       });
 
@@ -161,6 +272,9 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
     for (const [id, ent] of entities.entries()) {
       const isSelected = activeSatelliteId === id;
       const shouldHaveTrail = showAllTrails || (isSelected && showTrails);
+
+      // Re-evaluate appearance on activeSatelliteId change
+      updateEntityVisuals(id, isSelected, hoveredSatelliteIdRef.current === id);
 
       if (shouldHaveTrail) {
         if (!paths.has(id)) {
@@ -253,7 +367,7 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
       const history = historyRef.current;
       const satelliteData = useUIStore.getState().satelliteData;
       const now = new Date();
-      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      const elapsed = (Date.now() - startTime) / 1000;
 
       // Prepare batch for async engine
       const batch: Array<{ id: string; tleLines: string[] }> = [];
@@ -275,7 +389,7 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
       // Update positions
       for (const id of entities.keys()) {
         let coords: Coordinates | null = null;
-        
+
         if (id === 'iss' && issTelemetry) {
           coords = { lat: issTelemetry.latitude, lng: issTelemetry.longitude, altitude: issTelemetry.altitude * 1000 };
         } else if (batchResults.has(id)) {
@@ -285,12 +399,12 @@ export function useIssTracker(viewer: Cesium.Viewer | null) {
         // Fallback for manual or failed batch
         if (!coords) {
           const sat = SATELLITES.find(s => s.id === id) || { altitudeM: 420_000, inclinationRad: (51.64 * Math.PI) / 180, omega0: 0, argLat0: 0 };
-          coords = { 
-            ...engine.propagateCircularOrbit(elapsed, { 
-              altitudeMeters: sat.altitudeM, 
-              inclinationRad: sat.inclinationRad, 
-              omega0: sat.omega0, 
-              argLat0: sat.argLat0 
+          coords = {
+            ...engine.propagateCircularOrbit(elapsed, {
+              altitudeMeters: sat.altitudeM,
+              inclinationRad: sat.inclinationRad,
+              omega0: sat.omega0,
+              argLat0: sat.argLat0
             }),
             altitude: sat.altitudeM
           };

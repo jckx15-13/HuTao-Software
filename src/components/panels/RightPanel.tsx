@@ -10,14 +10,14 @@ import { useState, useEffect, useMemo } from 'react';
 export function RightPanel() {
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
   const setRightPanelOpen = useUIStore((s) => s.setRightPanelOpen);
-  
+
   const rightPanelTab = useUIStore((s) => s.rightPanelTab);
   const setRightPanelTab = useUIStore((s) => s.setRightPanelTab);
 
   const interactionMode = useUIStore((s) => s.interactionMode);
   const activeLocation = useUIStore((s) => s.activeLocation);
   const setActiveLocation = useUIStore((s) => s.setActiveLocation);
-  
+
   const issFeedOpen = useUIStore((s) => s.issFeedOpen);
   const setIssFeedOpen = useUIStore((s) => s.setIssFeedOpen);
   const issTelemetry = useUIStore((s) => s.issTelemetry);
@@ -99,12 +99,12 @@ export function RightPanel() {
   const isSpatialMode = interactionMode === 'orbital';
 
   return (
-    <aside 
+    <aside
       className={`glass-panel flex flex-col select-none pointer-events-auto transition-all duration-300 ${
-        isSpatialMode 
-          ? 'fixed top-[68px] right-[12px] bottom-[52px] w-[310px] rounded-xl border border-white/10 shadow-2xl z-20 h-auto' 
+        isSpatialMode
+          ? 'fixed top-[68px] right-[12px] bottom-[52px] w-[310px] rounded-xl border border-white/10 shadow-2xl z-20 h-auto'
           : 'h-full w-[310px] border-l border-white/5'
-      }`} 
+      }`}
       style={!isSpatialMode ? { borderRadius: 0 } : undefined}
     >
       {/* Header and Tab Switcher */}
@@ -416,7 +416,7 @@ export function RightPanel() {
                 <ExtLink size={12} />
               </button>
             </div>
-            
+
             {/* Sandboxed iframe viewport */}
             <div className="relative flex-1 flex flex-col h-[400px] w-full rounded-xl overflow-hidden border border-white/5 bg-black shadow-lg pointer-events-auto flex items-center justify-center">
               {window.location.search.includes('fallback') ? (
@@ -498,7 +498,7 @@ import { useRef } from 'react';
 function SatelliteTelemetryCard({ satId }: { satId: string }) {
   const issTelemetry = useUIStore((s) => s.issTelemetry);
   const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
-  const startTimeRef = useRef(Date.now());
+  const [startTime] = useState(() => Date.now());
 
   const satConfig = useMemo(() => {
     return SATELLITES.find(s => s.id === satId);
@@ -509,12 +509,12 @@ function SatelliteTelemetryCard({ satId }: { satId: string }) {
 
     const updateLoop = () => {
       if (!satConfig) return;
-      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      const elapsed = (Date.now() - startTime) / 1000;
       const currentCoords = propagateCircularOrbit(
-        elapsed, 
-        satConfig.altitudeM, 
-        satConfig.inclinationRad, 
-        satConfig.omega0, 
+        elapsed,
+        satConfig.altitudeM,
+        satConfig.inclinationRad,
+        satConfig.omega0,
         satConfig.argLat0
       );
       setCoords(currentCoords);
@@ -586,9 +586,9 @@ function SatelliteTelemetryCard({ satId }: { satId: string }) {
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-sm tracking-wide text-white uppercase">{satConfig.name}</h3>
-          <span 
-            className="h-2 w-2 rounded-full animate-pulse" 
-            style={{ backgroundColor: satConfig.color }} 
+          <span
+            className="h-2 w-2 rounded-full animate-pulse"
+            style={{ backgroundColor: satConfig.color }}
           />
         </div>
         <span className="text-[7.5px] text-white/30 font-mono uppercase tracking-widest block">

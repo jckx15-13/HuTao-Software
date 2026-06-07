@@ -22,11 +22,14 @@ const FETCH_TIMEOUT = 3000;
  */
 export function useIssTelemetry() {
   const setIssTelemetry = useUIStore((s) => s.setIssTelemetry);
-  const startTimeRef = useRef(Date.now());
+  const startTimeRef = useRef<number | null>(null);
   const lastFetchedRef = useRef<{ lat: number; lng: number; alt: number; time: number } | null>(null);
   const failCountRef = useRef(0);
 
   useEffect(() => {
+    if (startTimeRef.current === null) {
+      startTimeRef.current = Date.now();
+    }
     let active = true;
     let timer: ReturnType<typeof setTimeout>;
 
@@ -71,7 +74,7 @@ export function useIssTelemetry() {
           lng = coords.lng;
           alt = baseline.alt;
         } else {
-          const elapsed = (Date.now() - startTimeRef.current) / 1000;
+          const elapsed = (Date.now() - (startTimeRef.current ?? Date.now())) / 1000;
           const coords = propagateCircularOrbit(elapsed, ISS_ALTITUDE_M, ISS_INCLINATION_RAD, 0, 0);
           lat = coords.lat;
           lng = coords.lng;

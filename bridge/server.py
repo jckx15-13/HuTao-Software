@@ -3,6 +3,9 @@ import sys
 import secrets
 import threading
 import subprocess
+import socket
+import ipaddress
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -11,6 +14,10 @@ import anyio
 import urllib.request
 import urllib.parse
 import json
+
+if sys.platform == 'win32':
+    asyncio.WindowsProactorEventLoopPolicy = asyncio.WindowsSelectorEventLoopPolicy
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 import datetime
 import httpx
 
@@ -38,6 +45,18 @@ odysseus_proc = None
 raw_origins = os.getenv("BRIDGE_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3005,http://127.0.0.1:3005")
 allowed_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
+def get_python_executable() -> str:
+    """Returns the path to the virtual environment python if it exists, fallback to sys.executable."""
+    odysseus_dir = BASE_DIR.parent / "odysseus"
+    if os.name == "nt":
+        venv_python = odysseus_dir / "venv" / "Scripts" / "python.exe"
+    else:
+        venv_python = odysseus_dir / "venv" / "bin" / "python"
+
+    if venv_python.exists():
+        return str(venv_python)
+    return sys.executable
+
 def run_odysseus_setup():
     """Runs first-time setup for Odysseus database and credentials."""
     print("Running Odysseus setup.py...")
@@ -46,9 +65,11 @@ def run_odysseus_setup():
         env["ODYSSEUS_SKIP_ADMIN_PROMPT"] = "1"
         env["ODYSSEUS_ADMIN_PASSWORD"] = "admin_pass_123!"
         env["ODYSSEUS_INTERNAL_TOKEN"] = INTERNAL_TOOL_TOKEN
-        
+
+        py_exec = get_python_executable()
+        print(f"Using python executable: {py_exec}")
         res = subprocess.run(
-            [sys.executable, "setup.py"],
+            [py_exec, "setup.py"],
             cwd=str(BASE_DIR.parent / "odysseus"),
             env=env,
             capture_output=True,
@@ -69,23 +90,24 @@ def start_odysseus_subprocess():
         env["ODYSSEUS_INTERNAL_TOKEN"] = INTERNAL_TOOL_TOKEN
         env["AUTH_ENABLED"] = "true"
         env["LOCALHOST_BYPASS"] = "false"
-        
+
+        py_exec = get_python_executable()
         odysseus_proc = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "app:app", "--host", "127.0.0.1", "--port", "7000"],
+            [py_exec, "-m", "uvicorn", "app:app", "--host", "127.0.0.1", "--port", "7000"],
             cwd=str(BASE_DIR.parent / "odysseus"),
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True
         )
-        
+
         def log_odysseus_output():
             while True:
                 line = odysseus_proc.stdout.readline()
                 if not line:
                     break
                 print(f"[Odysseus] {line.strip()}")
-                
+
         threading.Thread(target=log_odysseus_output, daemon=True).start()
     except Exception as e:
         print(f"Failed to start Odysseus subprocess: {e}")
@@ -204,7 +226,7 @@ async def get_status():
                 odysseus_healthy = True
     except Exception:
         pass
-        
+
     return {
         "status": "Ready" if odysseus_healthy else "Starting Odysseus...",
         "ready": odysseus_healthy,
@@ -240,13 +262,13 @@ async def chat(req: ChatRequest):
         "X-Odysseus-Internal-Token": INTERNAL_TOOL_TOKEN,
         "Content-Type": "application/json"
     }
-    
+
     async with httpx.AsyncClient(timeout=180.0) as client:
         try:
             # 1. Fetch sessions to find or create one
             sessions_resp = await client.get("http://127.0.0.1:7000/api/sessions", headers=headers)
             sessions = sessions_resp.json() if sessions_resp.status_code == 200 else []
-            
+
             session_id = None
             if isinstance(sessions, list) and len(sessions) > 0:
                 session_id = sessions[0]["id"]
@@ -254,7 +276,7 @@ async def chat(req: ChatRequest):
                 # Need to resolve a default model first
                 models_resp = await client.get("http://127.0.0.1:7000/api/models", headers=headers)
                 models_data = models_resp.json() if models_resp.status_code == 200 else {}
-                
+
                 # Try to extract the first model ID
                 model_name = "mock-model"
                 endpoint_url = "http://127.0.0.1:7000/api"
@@ -267,7 +289,7 @@ async def chat(req: ChatRequest):
                 elif isinstance(models_data, list) and len(models_data) > 0:
                     model_name = models_data[0].get("id", model_name)
                     endpoint_url = models_data[0].get("endpoint", endpoint_url)
-                
+
                 # Create a session
                 create_data = {
                     "name": "Silver Wolf Session",
@@ -285,7 +307,7 @@ async def chat(req: ChatRequest):
                     session_id = session_create_resp.json().get("id")
                 else:
                     raise Exception(f"Failed to create session in Odysseus: {session_create_resp.text}")
-            
+
             # Send message to /api/chat
             chat_data = {
                 "message": req.message,
@@ -294,39 +316,74 @@ async def chat(req: ChatRequest):
                 "use_research": False,
                 "preset_id": None
             }
-            
+
             chat_resp = await client.post(
                 "http://127.0.0.1:7000/api/chat",
                 json=chat_data,
                 headers=headers
             )
-            
+
             if chat_resp.status_code == 200:
                 resp_json = chat_resp.json()
                 return {"response": resp_json.get("response", "No response generated.")}
             else:
                 return {"response": f"[Odysseus Error {chat_resp.status_code}] {chat_resp.text}"}
-                
+
         except Exception as exc:
             print(f"Proxy Chat Error: {exc}")
             return {"response": f"Connection to Odysseus engine failed: {exc}"}
 
-@app.get("/api/camera/proxy")
-def fetch_url_sync(url: str) -> dict:
+def is_safe_url(url: str) -> bool:
     try:
-        req = urllib.request.Request(
-            url,
-            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-        )
-        with urllib.request.urlopen(req, timeout=10) as response:
-            raw_data = response.read()
-            text = raw_data.decode('utf-8', errors='replace')
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+
+        hostname_lower = hostname.lower()
+        if hostname_lower in ("localhost", "127.0.0.1", "::1", "localhost.localdomain"):
+            return False
+
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_multicast or ip.is_unspecified:
+                return False
+        except ValueError:
+            pass
+
+        try:
+            for info in socket.getaddrinfo(hostname, None):
+                ip_str = info[4][0]
+                ip = ipaddress.ip_address(ip_str)
+                if ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_multicast or ip.is_unspecified:
+                    return False
+        except Exception:
+            return False
+
+        return True
+    except Exception:
+        return False
+
+@app.get("/api/camera/proxy")
+async def fetch_url_async(url: str) -> dict:
+    if not is_safe_url(url):
+        return {"status": 400, "error": "SSRF threat detected: URL accesses disallowed location.", "response": ""}
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(url, headers=headers)
+            text = response.text
             try:
-                return {"status": response.status, "response": json.loads(text)}
+                return {"status": response.status_code, "response": json.loads(text)}
             except json.JSONDecodeError:
-                return {"status": response.status, "response": text}
-    except urllib.error.HTTPError as e:
-        return {"status": e.code, "error": str(e), "response": ""}
+                return {"status": response.status_code, "response": text}
+    except httpx.HTTPStatusError as e:
+        return {"status": e.response.status_code, "error": str(e), "response": ""}
     except Exception as e:
         return {"status": 500, "error": str(e), "response": ""}
 
@@ -335,12 +392,12 @@ async def git_status():
     try:
         def run_git():
             return subprocess.run(
-                ["git", "status", "--porcelain"], 
-                capture_output=True, 
-                text=True, 
+                ["git", "status", "--porcelain"],
+                capture_output=True,
+                text=True,
                 cwd=BASE_DIR.parent
             )
-        
+
         result = await anyio.to_thread.run_sync(run_git)
         changes = result.stdout.strip().split('\n') if result.stdout.strip() else []
         return {
@@ -357,7 +414,7 @@ async def proxy_to_odysseus(path: str, request: Request):
     # Exclude our custom camera proxy
     if path == "camera/proxy":
         url = request.query_params.get("url")
-        return fetch_url_sync(url)
+        return await fetch_url_async(url)
 
     # Reject folder traversal attacks in proxy path
     if ".." in path or "\\" in path or "%5c" in path.lower() or "%2e" in path.lower():
@@ -382,7 +439,7 @@ async def proxy_to_odysseus(path: str, request: Request):
     try:
         client = httpx.AsyncClient(timeout=180.0)
         req_headers = {k: v for k, v in headers.items() if k.lower() != 'content-length'}
-        
+
         if "chat_stream" in path or "stream" in path:
             async def stream_generator():
                 async with client.stream(method, target_url, headers=req_headers, content=body) as response:

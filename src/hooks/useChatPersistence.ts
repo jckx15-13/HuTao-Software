@@ -5,26 +5,39 @@ export function useChatPersistence(messages: Message[], setMessages: (messages: 
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const savedMessages = localStorage.getItem(CHAT_HISTORY_STORAGE_KEY);
+    let active = true;
 
-        if (savedMessages) {
-          try {
-            setMessages(JSON.parse(savedMessages));
-          } catch (error) {
-            console.error('Failed to load chat history', error);
+    const hydrate = () => {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const savedMessages = localStorage.getItem(CHAT_HISTORY_STORAGE_KEY);
+
+          if (savedMessages && active) {
             try {
-              localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
-            } catch {}
+              setMessages(JSON.parse(savedMessages));
+            } catch (error) {
+              console.error('Failed to load chat history', error);
+              try {
+                localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
+              } catch {}
+            }
           }
         }
+      } catch (e) {
+        console.warn('Failed to read chat history from localStorage', e);
       }
-    } catch (e) {
-      console.warn('Failed to read chat history from localStorage', e);
-    }
 
-    setIsHydrated(true);
+      if (active) {
+        setIsHydrated(true);
+      }
+    };
+
+    const timer = setTimeout(hydrate, 0);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [setMessages]);
 
   useEffect(() => {

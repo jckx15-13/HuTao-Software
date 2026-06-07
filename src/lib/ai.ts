@@ -1,4 +1,4 @@
-const bridge = 'http://localhost:8001';
+const bridge = 'http://127.0.0.1:8001';
 
 export async function aiChat(model: string, text: string, contents: any[], systemInstruction?: string) {
   if (model === 'local-assistant') {
@@ -8,7 +8,7 @@ export async function aiChat(model: string, text: string, contents: any[], syste
       return { text: data.response || 'No local response.' };
     } catch { return { text: '', error: 'Local bridge unreachable.' }; }
   }
-  
+
   // Remote AI providers should be called from a server-side boundary.
   // The browser keeps this response local unless the localhost bridge is selected.
   return { text: "AI Response simulation (API key needed for real requests)" };

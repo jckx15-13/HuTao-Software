@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Activity, 
-  Database, 
-  Clock, 
-  Cpu, 
-  RefreshCw, 
-  Play, 
-  Pause, 
-  CheckCircle, 
-  XCircle, 
-  Server, 
-  Terminal, 
-  Layers, 
+import {
+  Activity,
+  Database,
+  Clock,
+  Cpu,
+  RefreshCw,
+  Play,
+  Pause,
+  CheckCircle,
+  XCircle,
+  Server,
+  Terminal,
+  Layers,
   HelpCircle,
   ExternalLink
 } from 'lucide-react';
@@ -60,12 +60,12 @@ export function OdysseusConsole() {
   const [models, setModels] = useState<any>(null);
   const [tasks, setTasks] = useState<OdysseusTask[]>([]);
   const [dbStats, setDbStats] = useState<DBStats | null>(null);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  const bridgeUrl = 'http://localhost:8001';
+  const bridgeUrl = 'http://127.0.0.1:8001';
 
   const refreshAll = useCallback(async () => {
     setLoading(true);
@@ -157,8 +157,8 @@ export function OdysseusConsole() {
         </div>
         <div className="flex items-center gap-2">
           <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] font-bold ${
-            isOnline 
-              ? 'bg-green-500/25 text-green-400 border border-green-500/30' 
+            isOnline
+              ? 'bg-green-500/25 text-green-400 border border-green-500/30'
               : 'bg-red-500/25 text-red-400 border border-red-500/30'
           }`}>
             <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${isOnline ? 'bg-green-400 animate-ping' : 'bg-red-400'}`} />
@@ -182,8 +182,8 @@ export function OdysseusConsole() {
             key={tab}
             onClick={() => setActiveSubTab(tab)}
             className={`flex-1 py-1 rounded text-center uppercase text-[8px] font-bold tracking-wider transition-all duration-150 ${
-              activeSubTab === tab 
-                ? 'bg-primary/20 text-primary font-bold shadow' 
+              activeSubTab === tab
+                ? 'bg-primary/20 text-primary font-bold shadow'
                 : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -240,7 +240,7 @@ export function OdysseusConsole() {
             <div className="glass-panel p-3 border border-white/5 bg-black/20 space-y-2 rounded-xl">
               <div className="text-[9px] text-white/30 uppercase tracking-wider font-bold mb-1">BRIDGE CONTEXT LOGS</div>
               <div className="bg-black/40 border border-white/5 rounded p-2 text-[8px] font-mono text-white/60 min-h-[80px] max-h-[150px] overflow-y-auto scroller">
-                <div>[SYSTEM] Bridge Server active on: http://localhost:8001</div>
+                <div>[SYSTEM] Bridge Server active on: http://127.0.0.1:8001</div>
                 <div>[SYSTEM] Admin Authorization Token Generated.</div>
                 {isOnline ? (
                   <>
@@ -272,7 +272,7 @@ export function OdysseusConsole() {
             {models ? (
               <div className="space-y-2.5">
                 <div className="text-[9px] text-white/30 uppercase tracking-wider font-bold">DISCOVERED ENDPOINTS</div>
-                
+
                 {/* Active Endpoint List */}
                 {models.endpoints && Array.isArray(models.endpoints) && models.endpoints.map((ep: any, index: number) => (
                   <div key={index} className="glass-panel p-2.5 border border-white/5 bg-black/20 rounded-xl space-y-1.5">
@@ -339,7 +339,7 @@ export function OdysseusConsole() {
                           </div>
                         )}
                       </div>
-                      
+
                       <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold font-mono ml-2 uppercase ${
                         task.status === 'active' || task.status === 'running'
                           ? 'bg-green-500/10 text-green-400 border border-green-500/20'
@@ -368,7 +368,7 @@ export function OdysseusConsole() {
                         <Play size={10} />
                         <span>Run Now</span>
                       </button>
-                      
+
                       {task.status === 'active' ? (
                         <button
                           onClick={() => handleTaskAction(task.id, 'pause')}
@@ -403,7 +403,7 @@ export function OdysseusConsole() {
         {activeSubTab === 'memory' && (
           <div className="space-y-3">
             <div className="text-[9px] text-white/30 uppercase tracking-wider font-bold">DATABASE STATISTICS</div>
-            
+
             {dbStats ? (
               <div className="space-y-3">
                 <div className="glass-panel p-3 border border-white/5 bg-black/20 rounded-xl space-y-2">

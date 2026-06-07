@@ -13,16 +13,16 @@ fs.writeFileSync(logFile, `=====================================================
 function log(source, level, message) {
   const timestamp = new Date().toISOString();
   const cleanMsg = `[${timestamp}] [${level}] [${source}] ${message}`;
-  
+
   // Print to console with cyberpunk colors
   let color = '\x1b[0m';
   if (level === 'SUCCESS') color = '\x1b[32m'; // green
   if (level === 'WARNING') color = '\x1b[33m'; // yellow
   if (level === 'ERROR') color = '\x1b[31m';   // red
   if (level === 'INFO') color = '\x1b[36m';    // cyan
-  
+
   console.log(`${color}[${source}] ${message}\x1b[0m`);
-  
+
   // Write to log file
   fs.appendFileSync(logFile, cleanMsg + '\n');
 }
@@ -34,7 +34,7 @@ function clearPort(port) {
     const output = execSync('netstat -ano -p tcp', { encoding: 'utf8' });
     const lines = output.split('\n');
     const pids = new Set();
-    
+
     for (const line of lines) {
       const parts = line.trim().split(/\s+/);
       if (parts.length >= 5) {
@@ -42,7 +42,7 @@ function clearPort(port) {
         const localAddress = parts[1];
         const state = parts[3];
         const pid = parts[4];
-        
+
         if (proto === 'TCP' && state === 'LISTENING' && localAddress.endsWith(`:${port}`)) {
           if (parseInt(pid) > 0) {
             pids.add(pid);
@@ -50,7 +50,7 @@ function clearPort(port) {
         }
       }
     }
-    
+
     for (const pid of pids) {
       log('Engine', 'WARNING', `Port ${port} in use by PID ${pid}. Terminating process...`);
       try {
@@ -61,7 +61,7 @@ function clearPort(port) {
       }
     }
   } catch (err) {
-    // Ignore errors
+    log('Engine', 'ERROR', `clearPort failed: ${err.message}`);
   }
 }
 
@@ -69,15 +69,21 @@ function clearPort(port) {
 async function main() {
   log('Engine', 'INFO', 'Starting Silver Wolf VI Environment Setup...');
 
-  // 1. Clear ports 8001 and 3000 to prevent port collisions
+  // 1. Clear ports 8001, 3000, and 7000 to prevent port collisions
   clearPort(8001);
   clearPort(3000);
+  clearPort(7000);
+
+  // Wait for ports to be fully released by the OS
+  log('Engine', 'INFO', 'Waiting 3 seconds for ports to be fully released by OS...');
+  await new Promise(r => setTimeout(r, 3000));
 
   // 2. Start Assistant Bridge
   log('Bridge', 'INFO', 'Starting Assistant Bridge FastAPI server (python)...');
   const bridgeProcess = spawn('python', ['./bridge/server.py'], {
     cwd: __dirname,
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, PYTHONUNBUFFERED: '1' }
   });
 
   bridgeProcess.stdout.on('data', (data) => {
@@ -101,16 +107,17 @@ async function main() {
     log('Bridge', 'ERROR', `Failed to start Python bridge: ${err.message}`);
   });
 
-  // 3. Start Vite Dev Server
-  log('Vite', 'INFO', 'Starting Vite frontend dev server...');
-  // Launch Vite by invoking the local node binary on the vite JS entrypoint.
-  // This avoids shell wrappers (npm.cmd) and the DeprecationWarning on Windows.
+  // 3. Start Vite Preview Server
+  log('Vite', 'INFO', 'Starting Vite frontend production preview server...');
+  // Launch Vite in preview mode to serve the compiled production build from dist/.
+  // This completely avoids dev client reloads and ensures 100% E2E test stability.
   const viteBin = path.join(__dirname, 'node_modules', 'vite', 'bin', 'vite.js');
   const nodeExec = process.execPath || 'node';
-  const viteArgs = [viteBin, '--port', '3000', '--host', '127.0.0.1', '--open'];
+  const viteArgs = [viteBin, 'preview', '--port', '3000', '--host', '127.0.0.1'];
   const viteProcess = spawn(nodeExec, viteArgs, {
     cwd: __dirname,
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env }
   });
 
   viteProcess.stdout.on('data', (data) => {
@@ -144,6 +151,9 @@ async function main() {
 
   process.on('SIGINT', cleanup);
   process.on('SIGTERM', cleanup);
+
+  // Keep the launcher process alive indefinitely so background tasks do not get cleaned up
+  setInterval(() => {}, 60000);
 }
 
 main();

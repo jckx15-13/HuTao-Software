@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  Sparkles, Compass, Eye, RefreshCw, X, Maximize2, Minimize2, 
-  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Play, Pause, 
-  Calendar, Clock, Image as ImageIcon, Layers, Search, 
+import {
+  Sparkles, Compass, Eye, RefreshCw, X, Maximize2, Minimize2,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Play, Pause,
+  Calendar, Clock, Image as ImageIcon, Layers, Search,
   MapPin, Grid, Plus, Check, Info, Radio, Star
 } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
@@ -97,14 +97,14 @@ export default function WorldWideTelescopeView({
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [activeControlTab, setActiveControlTab] = useState<'navigator' | 'overlays' | 'imagery' | 'photos'>('navigator');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // WWT Settings States
   const [showConstellationFigures, setShowConstellationFigures] = useState(false);
   const [showConstellationLines, setShowConstellationLines] = useState(true);
   const [showConstellationBoundries, setShowConstellationBoundries] = useState(false); // WWT typo mapped
   const [showConstellationSelection, setShowConstellationSelection] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
-  
+
   // Custom WTML loader state
   const [customWtml, setCustomWtml] = useState('');
   const [wtmlStatus, setWtmlStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -409,8 +409,8 @@ export default function WorldWideTelescopeView({
   const filteredPresets = useMemo(() => {
     const term = searchQuery.trim().toLowerCase();
     if (!term) return presets;
-    return presets.filter(p => 
-      p.name.toLowerCase().includes(term) || 
+    return presets.filter(p =>
+      p.name.toLowerCase().includes(term) ||
       (p.description && p.description.toLowerCase().includes(term))
     );
   }, [searchQuery]);
@@ -477,7 +477,7 @@ export default function WorldWideTelescopeView({
           {/* Simulated Starfield Background */}
           <div className="absolute inset-0 opacity-20 pointer-events-none">
             {[...Array(50)].map((_, i) => (
-              <div 
+              <div
                 key={i}
                 className="absolute bg-white rounded-full animate-pulse"
                 style={{
@@ -584,302 +584,304 @@ export default function WorldWideTelescopeView({
     return (
       <div className="absolute inset-0 w-full h-full flex overflow-hidden bg-transparent select-none pointer-events-none">
         {/* Space HUD / Controls Panel (Collapsible Drawer on Left) */}
-        <div className="absolute top-24 left-4 z-40 flex flex-col pointer-events-auto max-h-[calc(100%-185px)]">
-          {drawerOpen ? (
-            <div className="glass-panel w-[320px] flex flex-col border border-primary/20 overflow-hidden shadow-2xl animate-slide-in">
-              {/* Drawer Header */}
-              <div className="flex h-10 items-center justify-between px-3 bg-black/40 border-b border-white/5">
-                <div className="flex items-center gap-1.5 text-primary text-[10px] font-mono font-bold uppercase tracking-wider">
-                  <Compass className="w-3.5 h-3.5 glow-pulse animate-spin-slow" />
-                  <span>Space Array Control</span>
+        {spaceInteractionTarget === 'telescope' && (
+          <div className="absolute top-24 left-4 z-40 flex flex-col pointer-events-auto max-h-[calc(100%-185px)]">
+            {drawerOpen ? (
+              <div className="glass-panel w-[320px] flex flex-col border border-primary/20 overflow-hidden shadow-2xl animate-slide-in">
+                {/* Drawer Header */}
+                <div className="flex h-10 items-center justify-between px-3 bg-black/40 border-b border-white/5">
+                  <div className="flex items-center gap-1.5 text-primary text-[10px] font-mono font-bold uppercase tracking-wider">
+                    <Compass className="w-3.5 h-3.5 glow-pulse animate-spin-slow" />
+                    <span>Space Array Control</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setRefreshKey(k => k + 1)}
+                      className="text-white/40 hover:text-white/80 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
+                      title="Refresh WWT Client"
+                    >
+                      <RefreshCw size={12} />
+                    </button>
+                    <button
+                      onClick={() => setDrawerOpen(false)}
+                      className="text-white/40 hover:text-white/80 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
+                      title="Collapse Panel"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
+
+                {/* Tab Selectors */}
+                <div className="flex bg-black/20 border-b border-white/5 p-1 gap-1 text-[9px] font-mono">
                   <button
-                    onClick={() => setRefreshKey(k => k + 1)}
-                    className="text-white/40 hover:text-white/80 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
-                    title="Refresh WWT Client"
+                    onClick={() => setActiveControlTab('navigator')}
+                    className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'navigator' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
                   >
-                    <RefreshCw size={12} />
+                    Navigator
                   </button>
-                  <button 
-                    onClick={() => setDrawerOpen(false)}
-                    className="text-white/40 hover:text-white/80 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
-                    title="Collapse Panel"
+                  <button
+                    onClick={() => setActiveControlTab('overlays')}
+                    className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'overlays' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
                   >
-                    <ChevronLeft size={14} />
+                    Overlays
+                  </button>
+                  <button
+                    onClick={() => setActiveControlTab('imagery')}
+                    className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'imagery' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
+                  >
+                    Imagery
+                  </button>
+                  <button
+                    onClick={() => setActiveControlTab('photos')}
+                    className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'photos' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
+                  >
+                    Photos
                   </button>
                 </div>
-              </div>
 
-              {/* Tab Selectors */}
-              <div className="flex bg-black/20 border-b border-white/5 p-1 gap-1 text-[9px] font-mono">
-                <button
-                  onClick={() => setActiveControlTab('navigator')}
-                  className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'navigator' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
-                >
-                  Navigator
-                </button>
-                <button
-                  onClick={() => setActiveControlTab('overlays')}
-                  className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'overlays' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
-                >
-                  Overlays
-                </button>
-                <button
-                  onClick={() => setActiveControlTab('imagery')}
-                  className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'imagery' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
-                >
-                  Imagery
-                </button>
-                <button
-                  onClick={() => setActiveControlTab('photos')}
-                  className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${activeControlTab === 'photos' ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'}`}
-                >
-                  Photos
-                </button>
-              </div>
-
-              {/* Tab Contents */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-3 scroller max-h-[300px]">
-                {/* Tab 1: Celestial Navigator */}
-                {activeControlTab === 'navigator' && (
-                  <div className="space-y-2.5">
-                    <div className="relative flex items-center bg-black/40 border border-white/5 rounded px-2 text-white/50">
-                      <Search className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-                      <input 
-                        id="wwt-search-targets"
-                        name="wwt-search-targets"
-                        type="text" 
-                        placeholder="Search targets..." 
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className="bg-transparent border-none text-[10px] py-1.5 w-full text-white/80 focus:outline-none placeholder:text-white/20 font-mono"
-                      />
-                      {searchQuery && (
-                        <button onClick={() => setSearchQuery('')} className="p-0.5 hover:bg-white/10 rounded cursor-pointer text-white/40">
-                          <X size={10} />
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      {filteredPresets.map(preset => {
-                        const isActive = activePreset.id === preset.id;
-                        return (
-                          <button
-                            key={preset.id}
-                            onClick={() => {
-                              setTelescopeTarget(preset);
-                            }}
-                            className={`w-full text-left p-2.5 rounded-lg border flex items-start gap-2.5 transition-all cursor-pointer ${
-                              isActive 
-                                ? 'bg-primary/10 border-primary/40 shadow-[inset_0_0_12px_color-mix(in_srgb,var(--theme-primary)_10%,transparent)]' 
-                                : 'bg-black/25 border-white/5 hover:border-white/15'
-                            }`}
-                          >
-                            <div 
-                              className="w-2 h-2 rounded-full mt-1.5 shrink-0 animate-pulse"
-                              style={{ backgroundColor: preset.color }}
-                            />
-                            <div className="min-w-0">
-                              <div className={`text-[10px] font-bold font-mono ${isActive ? 'text-primary' : 'text-white/80'}`}>
-                                {preset.name}
-                              </div>
-                              <div className="text-[8px] text-white/40 mt-0.5 font-mono">
-                                RA: {preset.ra} • DEC: {preset.dec} • FOV: {preset.fov}
-                              </div>
-                              <div className="text-[8px] text-white/50 mt-1 leading-relaxed truncate font-sans">
-                                {preset.description}
-                              </div>
-                            </div>
+                {/* Tab Contents */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-3 scroller max-h-[300px]">
+                  {/* Tab 1: Celestial Navigator */}
+                  {activeControlTab === 'navigator' && (
+                    <div className="space-y-2.5">
+                      <div className="relative flex items-center bg-black/40 border border-white/5 rounded px-2 text-white/50">
+                        <Search className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                        <input
+                          id="wwt-search-targets"
+                          name="wwt-search-targets"
+                          type="text"
+                          placeholder="Search targets..."
+                          value={searchQuery}
+                          onChange={e => setSearchQuery(e.target.value)}
+                          className="bg-transparent border-none text-[10px] py-1.5 w-full text-white/80 focus:outline-none placeholder:text-white/20 font-mono"
+                        />
+                        {searchQuery && (
+                          <button onClick={() => setSearchQuery('')} className="p-0.5 hover:bg-white/10 rounded cursor-pointer text-white/40">
+                            <X size={10} />
                           </button>
-                        );
-                      })}
-                      {filteredPresets.length === 0 && (
-                        <div className="text-center font-mono text-[8px] py-6 text-white/20 italic">
-                          No astronomical objects found
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                        )}
+                      </div>
 
-                {/* Tab 2: Constellations & Overlays */}
-                {activeControlTab === 'overlays' && (
-                  <div className="space-y-3 font-mono text-[9px]">
-                    <div className="glass-panel p-2.5 bg-black/30 space-y-2.5 border border-white/5">
-                      <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Sky Map Overlays</span>
-                      
-                      <label className="flex items-center justify-between py-1 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <Grid className="w-3.5 h-3.5 text-primary/70" />
-                          <span className="text-white/80">Celestial Grid Lines</span>
-                        </div>
-                        <input 
-                          id="wwt-grid-lines"
-                          name="wwt-grid-lines"
-                          type="checkbox" 
-                          checked={showGrid}
-                          onChange={e => setShowGrid(e.target.checked)}
-                          className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
-                        />
-                      </label>
-
-                      <label className="flex items-center justify-between py-1 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <Star className="w-3.5 h-3.5 text-primary/70" />
-                          <span className="text-white/80">Constellation Stick Figures</span>
-                        </div>
-                        <input 
-                          id="wwt-constellation-lines"
-                          name="wwt-constellation-lines"
-                          type="checkbox" 
-                          checked={showConstellationLines}
-                          onChange={e => setShowConstellationLines(e.target.checked)}
-                          className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
-                        />
-                      </label>
-
-                      <label className="flex items-center justify-between py-1 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <ImageIcon className="w-3.5 h-3.5 text-primary/70" />
-                          <span className="text-white/80">Constellation Artistic Art</span>
-                        </div>
-                        <input 
-                          id="wwt-constellation-art"
-                          name="wwt-constellation-art"
-                          type="checkbox" 
-                          checked={showConstellationFigures}
-                          onChange={e => setShowConstellationFigures(e.target.checked)}
-                          className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
-                        />
-                      </label>
-
-                      <label className="flex items-center justify-between py-1 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <Eye className="w-3.5 h-3.5 text-primary/70" />
-                          <span className="text-white/80">Constellation Boundaries</span>
-                        </div>
-                        <input 
-                          id="wwt-constellation-boundaries"
-                          name="wwt-constellation-boundaries"
-                          type="checkbox" 
-                          checked={showConstellationBoundries}
-                          onChange={e => setShowConstellationBoundries(e.target.checked)}
-                          className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
-                        />
-                      </label>
-
-                      <label className="flex items-center justify-between py-1 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <Compass className="w-3.5 h-3.5 text-primary/70" />
-                          <span className="text-white/80">Constellation Selection Highlight</span>
-                        </div>
-                        <input 
-                          id="wwt-constellation-selection"
-                          name="wwt-constellation-selection"
-                          type="checkbox" 
-                          checked={showConstellationSelection}
-                          onChange={e => setShowConstellationSelection(e.target.checked)}
-                          className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
-                        />
-                      </label>
-                    </div>
-
-                    <div className="p-2 bg-white/5 border border-white/5 rounded text-[8px] text-white/50 leading-relaxed uppercase">
-                      Constellation configurations update the embedded WorldWide Telescope WebGL render pipeline in real-time.
-                    </div>
-                  </div>
-                )}
-
-                {/* Tab 3: Background Imagery Layers */}
-                {activeControlTab === 'imagery' && (
-                  <div className="space-y-1.5 font-mono">
-                    {BACKGROUND_LAYERS.map(layer => (
-                      <button
-                        key={layer.id}
-                        onClick={() => handleSetBackground(layer.value)}
-                        className="w-full text-left p-2 rounded border border-white/5 bg-black/25 hover:border-primary/30 transition-all cursor-pointer flex items-center justify-between"
-                      >
-                        <div>
-                          <div className="text-[10px] text-white/80 font-bold">{layer.name}</div>
-                          <div className="text-[8px] text-white/40 mt-0.5">{layer.desc}</div>
-                        </div>
-                        <Plus size={12} className="text-white/30" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Tab 4: Pictures & Photos */}
-                {activeControlTab === 'photos' && (
-                  <div className="space-y-3 font-mono">
-                    <div className="space-y-2">
-                      <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Premium Imagery Databases</span>
-                      {PHOTO_COLLECTIONS.map(col => (
-                        <button
-                          key={col.id}
-                          onClick={() => handleLoadCollection(col.url, col.name)}
-                          className="w-full text-left p-2.5 rounded border border-white/5 bg-black/25 hover:border-primary/30 transition-all cursor-pointer block"
-                        >
-                          <div className="text-[10px] text-primary font-bold flex items-center justify-between">
-                            <span>{col.name}</span>
-                            <span className="text-[7.5px] uppercase bg-primary/20 text-primary px-1 py-0.5 rounded">WTML</span>
+                      <div className="space-y-1.5">
+                        {filteredPresets.map(preset => {
+                          const isActive = activePreset.id === preset.id;
+                          return (
+                            <button
+                              key={preset.id}
+                              onClick={() => {
+                                setTelescopeTarget(preset);
+                              }}
+                              className={`w-full text-left p-2.5 rounded-lg border flex items-start gap-2.5 transition-all cursor-pointer ${
+                                isActive
+                                  ? 'bg-primary/10 border-primary/40 shadow-[inset_0_0_12px_color-mix(in_srgb,var(--theme-primary)_10%,transparent)]'
+                                  : 'bg-black/25 border-white/5 hover:border-white/15'
+                              }`}
+                            >
+                              <div
+                                className="w-2 h-2 rounded-full mt-1.5 shrink-0 animate-pulse"
+                                style={{ backgroundColor: preset.color }}
+                              />
+                              <div className="min-w-0">
+                                <div className={`text-[10px] font-bold font-mono ${isActive ? 'text-primary' : 'text-white/80'}`}>
+                                  {preset.name}
+                                </div>
+                                <div className="text-[8px] text-white/40 mt-0.5 font-mono">
+                                  RA: {preset.ra} • DEC: {preset.dec} • FOV: {preset.fov}
+                                </div>
+                                <div className="text-[8px] text-white/50 mt-1 leading-relaxed truncate font-sans">
+                                  {preset.description}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                        {filteredPresets.length === 0 && (
+                          <div className="text-center font-mono text-[8px] py-6 text-white/20 italic">
+                            No astronomical objects found
                           </div>
-                          <div className="text-[8px] text-white/50 mt-1 leading-relaxed">{col.desc}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 2: Constellations & Overlays */}
+                  {activeControlTab === 'overlays' && (
+                    <div className="space-y-3 font-mono text-[9px]">
+                      <div className="glass-panel p-2.5 bg-black/30 space-y-2.5 border border-white/5">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Sky Map Overlays</span>
+
+                        <label className="flex items-center justify-between py-1 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Grid className="w-3.5 h-3.5 text-primary/70" />
+                            <span className="text-white/80">Celestial Grid Lines</span>
+                          </div>
+                          <input
+                            id="wwt-grid-lines"
+                            name="wwt-grid-lines"
+                            type="checkbox"
+                            checked={showGrid}
+                            onChange={e => setShowGrid(e.target.checked)}
+                            className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
+                          />
+                        </label>
+
+                        <label className="flex items-center justify-between py-1 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Star className="w-3.5 h-3.5 text-primary/70" />
+                            <span className="text-white/80">Constellation Stick Figures</span>
+                          </div>
+                          <input
+                            id="wwt-constellation-lines"
+                            name="wwt-constellation-lines"
+                            type="checkbox"
+                            checked={showConstellationLines}
+                            onChange={e => setShowConstellationLines(e.target.checked)}
+                            className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
+                          />
+                        </label>
+
+                        <label className="flex items-center justify-between py-1 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <ImageIcon className="w-3.5 h-3.5 text-primary/70" />
+                            <span className="text-white/80">Constellation Artistic Art</span>
+                          </div>
+                          <input
+                            id="wwt-constellation-art"
+                            name="wwt-constellation-art"
+                            type="checkbox"
+                            checked={showConstellationFigures}
+                            onChange={e => setShowConstellationFigures(e.target.checked)}
+                            className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
+                          />
+                        </label>
+
+                        <label className="flex items-center justify-between py-1 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Eye className="w-3.5 h-3.5 text-primary/70" />
+                            <span className="text-white/80">Constellation Boundaries</span>
+                          </div>
+                          <input
+                            id="wwt-constellation-boundaries"
+                            name="wwt-constellation-boundaries"
+                            type="checkbox"
+                            checked={showConstellationBoundries}
+                            onChange={e => setShowConstellationBoundries(e.target.checked)}
+                            className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
+                          />
+                        </label>
+
+                        <label className="flex items-center justify-between py-1 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Compass className="w-3.5 h-3.5 text-primary/70" />
+                            <span className="text-white/80">Constellation Selection Highlight</span>
+                          </div>
+                          <input
+                            id="wwt-constellation-selection"
+                            name="wwt-constellation-selection"
+                            type="checkbox"
+                            checked={showConstellationSelection}
+                            onChange={e => setShowConstellationSelection(e.target.checked)}
+                            className="rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer w-3.5 h-3.5"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="p-2 bg-white/5 border border-white/5 rounded text-[8px] text-white/50 leading-relaxed uppercase">
+                        Constellation configurations update the embedded WorldWide Telescope WebGL render pipeline in real-time.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 3: Background Imagery Layers */}
+                  {activeControlTab === 'imagery' && (
+                    <div className="space-y-1.5 font-mono">
+                      {BACKGROUND_LAYERS.map(layer => (
+                        <button
+                          key={layer.id}
+                          onClick={() => handleSetBackground(layer.value)}
+                          className="w-full text-left p-2 rounded border border-white/5 bg-black/25 hover:border-primary/30 transition-all cursor-pointer flex items-center justify-between"
+                        >
+                          <div>
+                            <div className="text-[10px] text-white/80 font-bold">{layer.name}</div>
+                            <div className="text-[8px] text-white/40 mt-0.5">{layer.desc}</div>
+                          </div>
+                          <Plus size={12} className="text-white/30" />
                         </button>
                       ))}
                     </div>
+                  )}
 
-                    <div className="glass-panel p-2.5 border border-white/5 bg-black/30 space-y-2">
-                      <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Ingest Custom WTML Collection</span>
-                      <input 
-                        id="wwt-custom-wtml"
-                        name="wwt-custom-wtml"
-                        type="text"
-                        placeholder="https://example.com/collection.wtml"
-                        value={customWtml}
-                        onChange={e => setCustomWtml(e.target.value)}
-                        className="w-full bg-black/45 border border-white/5 rounded p-1.5 text-[9px] text-white/80 focus:outline-none placeholder:text-white/20 select-text"
-                      />
-                      <button
-                        onClick={() => handleLoadCollection(customWtml, 'Custom Collection')}
-                        disabled={!customWtml || wtmlStatus === 'loading'}
-                        className="w-full bg-primary/20 hover:bg-primary/45 text-primary border border-primary/30 p-1.5 rounded text-[9px] font-bold transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-                      >
-                        {wtmlStatus === 'loading' ? 'Ingesting...' : 
-                         wtmlStatus === 'success' ? 'Ingested Successfully' :
-                         wtmlStatus === 'error' ? 'Ingestion Failed' : 'Load Custom WTML'}
-                      </button>
+                  {/* Tab 4: Pictures & Photos */}
+                  {activeControlTab === 'photos' && (
+                    <div className="space-y-3 font-mono">
+                      <div className="space-y-2">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Premium Imagery Databases</span>
+                        {PHOTO_COLLECTIONS.map(col => (
+                          <button
+                            key={col.id}
+                            onClick={() => handleLoadCollection(col.url, col.name)}
+                            className="w-full text-left p-2.5 rounded border border-white/5 bg-black/25 hover:border-primary/30 transition-all cursor-pointer block"
+                          >
+                            <div className="text-[10px] text-primary font-bold flex items-center justify-between">
+                              <span>{col.name}</span>
+                              <span className="text-[7.5px] uppercase bg-primary/20 text-primary px-1 py-0.5 rounded">WTML</span>
+                            </div>
+                            <div className="text-[8px] text-white/50 mt-1 leading-relaxed">{col.desc}</div>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="glass-panel p-2.5 border border-white/5 bg-black/30 space-y-2">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Ingest Custom WTML Collection</span>
+                        <input
+                          id="wwt-custom-wtml"
+                          name="wwt-custom-wtml"
+                          type="text"
+                          placeholder="https://example.com/collection.wtml"
+                          value={customWtml}
+                          onChange={e => setCustomWtml(e.target.value)}
+                          className="w-full bg-black/45 border border-white/5 rounded p-1.5 text-[9px] text-white/80 focus:outline-none placeholder:text-white/20 select-text"
+                        />
+                        <button
+                          onClick={() => handleLoadCollection(customWtml, 'Custom Collection')}
+                          disabled={!customWtml || wtmlStatus === 'loading'}
+                          className="w-full bg-primary/20 hover:bg-primary/45 text-primary border border-primary/30 p-1.5 rounded text-[9px] font-bold transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                          {wtmlStatus === 'loading' ? 'Ingesting...' :
+                           wtmlStatus === 'success' ? 'Ingested Successfully' :
+                           wtmlStatus === 'error' ? 'Ingestion Failed' : 'Load Custom WTML'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setDrawerOpen(true)}
-              className="glass-panel p-3 px-4 hover:bg-white/10 text-white/80 hover:text-white transition-colors rounded shadow-lg flex items-center gap-2 text-xs font-bold font-mono cursor-pointer border border-primary/20"
-              title="Expand Control Panel"
-            >
-              <Compass className="w-4 h-4 text-primary animate-pulse" />
-              <span>Show Space Array controls</span>
-            </button>
-          )}
-        </div>
+            ) : (
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="glass-panel p-3 px-4 hover:bg-white/10 text-white/80 hover:text-white transition-colors rounded shadow-lg flex items-center gap-2 text-xs font-bold font-mono cursor-pointer border border-primary/20"
+                title="Expand Control Panel"
+              >
+                <Compass className="w-4 h-4 text-primary animate-pulse" />
+                <span>Show Space Array controls</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Floating Telemetry Timeline Playback Controller (Bottom Center) */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 pointer-events-auto w-[620px] max-w-[95vw]">
           <div className="glass-panel border border-primary/20 shadow-2xl p-3 px-5 flex flex-col gap-2 font-mono text-white text-[10px]">
-            
+
             {/* Timeline Header Row */}
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setPlaybackMode(!isPlaybackMode)}
                   className={`px-2 py-0.5 rounded text-[8px] font-bold border transition-all cursor-pointer ${
-                    isPlaybackMode 
-                      ? 'border-cyan-500/30 bg-cyan-950/20 text-cyan-400' 
+                    isPlaybackMode
+                      ? 'border-cyan-500/30 bg-cyan-950/20 text-cyan-400'
                       : 'border-green-500/30 bg-green-950/20 text-green-400'
                   }`}
                   title="Toggle Live vs Recorded Playback Mode"
@@ -927,7 +929,7 @@ export default function WorldWideTelescopeView({
               <div className="flex items-center gap-4">
                 <div className="flex-1 flex items-center gap-2">
                   <span className="text-[8px] text-white/30">START</span>
-                  <input 
+                  <input
                     id="wwt-timeline-progress"
                     name="wwt-timeline-progress"
                     type="range"

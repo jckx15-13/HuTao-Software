@@ -26,7 +26,7 @@ export function LauncherPage() {
 
     async function checkGit() {
       try {
-        const response = await fetch('http://localhost:8001/git/status');
+        const response = await fetch('http://127.0.0.1:8001/git/status');
         const data = await response.json();
         if (data.has_changes && active) {
           setGitStatus({ has_changes: true, count: data.change_count });
@@ -39,9 +39,9 @@ export function LauncherPage() {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2000);
-        
+
         // Simple ping to bridge health or root
-        const response = await fetch('http://localhost:8001/chat', {
+        const response = await fetch('http://127.0.0.1:8001/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: 'ping_test_diagnostics' }),
@@ -50,7 +50,7 @@ export function LauncherPage() {
         clearTimeout(timeoutId);
 
         if (!active) return;
-        
+
         if (response.ok || response.status === 422 || response.status === 400) {
           setBridgeStatus('active');
           addDiagnostic({ source: 'BRIDGE', level: 'success', message: 'Assistant Bridge verified active on port 8001.' });
@@ -79,7 +79,7 @@ export function LauncherPage() {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,6px_100%] pointer-events-none" />
 
       <div className="w-full max-w-[620px] space-y-8 flex flex-col items-center z-10">
-        
+
         {/* Animated Brand Header */}
         <div className="flex flex-col items-center text-center space-y-3 animate-pulse">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/30 shadow-[0_0_20px_var(--theme-primary-glow)]">

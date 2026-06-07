@@ -52,6 +52,21 @@ const cleanSatelliteName = (fullName: string): string => {
     .trim();
 };
 
+// Calculate distance formula (Haversine)
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // Radius of earth in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export default function GoogleEarthRemix() {
   const isHeadless = typeof window !== 'undefined' && (
     /HeadlessChrome/i.test(navigator.userAgent) ||
@@ -62,7 +77,7 @@ export default function GoogleEarthRemix() {
   // 1. Primitive useState hooks
   const [query, setQuery] = useState('');
   const [zoom, setZoom] = useState(42);
-  
+
   // Connected to global Zustand uiStore to sync with Cesium background
   const showBorders = useUIStore((s) => s.showBorders);
   const setShowBorders = useUIStore((s) => s.setShowBorders);
@@ -79,7 +94,6 @@ export default function GoogleEarthRemix() {
   const setMeasureStart = useUIStore((s) => s.setMeasureStart);
   const measureEnd = useUIStore((s) => s.measureEnd);
   const setMeasureEnd = useUIStore((s) => s.setMeasureEnd);
-  const [measureDistance, setMeasureDistance] = useState<number | null>(null);
   const [activePanorama, setActivePanorama] = useState<string | null>(null);
   const [hasCesium, setHasCesium] = useState(false);
 
@@ -89,6 +103,8 @@ export default function GoogleEarthRemix() {
   const setIssFeedOpen = useUIStore((s) => s.setIssFeedOpen);
   const forceFallback = useUIStore((s) => s.forceFallback);
   const activeSatelliteId = useUIStore((s) => s.activeSatelliteId);
+  const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
+  const setLeftPanelOpen = useUIStore((s) => s.setLeftPanelOpen);
 
 
   const mapConfig = useStore((s) => s.mapConfig);
@@ -141,18 +157,18 @@ export default function GoogleEarthRemix() {
     if (isDraggingRef.current) {
       const dx = e.clientX - lastMousePosRef.current.x;
       const dy = e.clientY - lastMousePosRef.current.y;
-      
+
       const scale = 0.45 * (42 / zoom);
       cameraRef.current.lng -= dx * scale;
       cameraRef.current.lat += dy * scale;
-      
+
       // Clamp lat to prevent upside-down camera flips
       cameraRef.current.lat = Math.max(-85, Math.min(85, cameraRef.current.lat));
-      
+
       // Keep target synchronized so it doesn't glide back to previous location on release
       targetRef.current.lng = cameraRef.current.lng;
       targetRef.current.lat = cameraRef.current.lat;
-      
+
       lastMousePosRef.current = { x: e.clientX, y: e.clientY };
       canvas.style.cursor = 'grabbing';
     } else {
@@ -161,7 +177,7 @@ export default function GoogleEarthRemix() {
       const cy = rect.height / 2;
       const R_base = Math.min(rect.width, rect.height) * 0.35;
       const R = R_base * (zoom / 42);
-      
+
       let foundHover: LocationData | null = null;
       for (const loc of locations) {
         const p = projectLatLng(loc.lat, loc.lng, (cameraRef.current.lng * Math.PI) / 180, (cameraRef.current.lat * Math.PI) / 180, R, cx, cy);
@@ -173,7 +189,7 @@ export default function GoogleEarthRemix() {
           }
         }
       }
-      
+
       hoverLocationRef.current = foundHover;
       canvas.style.cursor = foundHover ? 'pointer' : 'grab';
     }
@@ -210,15 +226,15 @@ export default function GoogleEarthRemix() {
       const touch = e.touches[0];
       const dx = touch.clientX - lastMousePosRef.current.x;
       const dy = touch.clientY - lastMousePosRef.current.y;
-      
+
       const scale = 0.45 * (42 / zoom);
       cameraRef.current.lng -= dx * scale;
       cameraRef.current.lat += dy * scale;
       cameraRef.current.lat = Math.max(-85, Math.min(85, cameraRef.current.lat));
-      
+
       targetRef.current.lng = cameraRef.current.lng;
       targetRef.current.lat = cameraRef.current.lat;
-      
+
       lastMousePosRef.current = { x: touch.clientX, y: touch.clientY };
     }
   };
@@ -238,7 +254,7 @@ export default function GoogleEarthRemix() {
           const cy = rect.height / 2;
           const R_base = Math.min(rect.width, rect.height) * 0.35;
           const R = R_base * (zoom / 42);
-          
+
           for (const loc of locations) {
             const p = projectLatLng(loc.lat, loc.lng, (cameraRef.current.lng * Math.PI) / 180, (cameraRef.current.lat * Math.PI) / 180, R, cx, cy);
             if (p.visible) {
@@ -299,7 +315,7 @@ export default function GoogleEarthRemix() {
       // Smooth camera glide (LERP) or snap immediately in headless
       const current = cameraRef.current;
       const target = targetRef.current;
-      
+
       if (isHeadless) {
         current.lng = target.lng;
         current.lat = target.lat;
@@ -307,7 +323,7 @@ export default function GoogleEarthRemix() {
         let diffLng = target.lng - current.lng;
         diffLng = ((diffLng + 180) % 360) - 180;
         current.lng += diffLng * 0.12; // Slow glide LERP
-        
+
         const diffLat = target.lat - current.lat;
         current.lat += diffLat * 0.12;
       }
@@ -393,11 +409,11 @@ export default function GoogleEarthRemix() {
       if (measureStart && measureEnd) {
         const v1 = latLngToVector(measureStart.lat, measureStart.lng);
         const v2 = latLngToVector(measureEnd.lat, measureEnd.lng);
-        
+
         ctx.strokeStyle = 'rgba(66, 133, 244, 0.85)';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        
+
         let firstPt = true;
         const segments = 45;
         for (let i = 0; i <= segments; i++) {
@@ -405,7 +421,7 @@ export default function GoogleEarthRemix() {
           const v = slerp(v1, v2, t);
           const lat = (Math.asin(v.z) * 180) / Math.PI;
           const lng = (Math.atan2(v.y, v.x) * 180) / Math.PI;
-          
+
           const opt = projectLatLng(lat, lng, rotationRad, tiltRad, R, cx, cy);
           if (opt.visible) {
             if (firstPt) {
@@ -480,7 +496,7 @@ export default function GoogleEarthRemix() {
             ctx.shadowOffsetY = 1;
             ctx.textAlign = 'left';
             ctx.fillText(loc.name.split(',')[0], p.x + 8, p.y + 3);
-            
+
             // Clear text shadow context
             ctx.shadowBlur = 0;
             ctx.shadowOffsetX = 0;
@@ -585,20 +601,10 @@ export default function GoogleEarthRemix() {
           },
         });
 
-        const distance = calculateDistance(
-          measureStart.lat,
-          measureStart.lng,
-          measureEnd.lat,
-          measureEnd.lng
-        );
-        setMeasureDistance(distance);
         viewer.scene.requestRender();
-      } else {
-        setMeasureDistance(null);
       }
     } catch (err) {
       console.warn('[GoogleEarthRemix] Error adding measurement line:', err);
-      setMeasureDistance(null);
     }
 
     return () => {
@@ -696,20 +702,7 @@ export default function GoogleEarthRemix() {
     }
   };
 
-  // Calculate distance formula (Haversine)
-  function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-    const R = 6371; // Radius of earth in km
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
+  // Inner calculateDistance removed
 
   // Camera flights
   const handleZoomIn = () => {
@@ -866,12 +859,12 @@ export default function GoogleEarthRemix() {
             {activeSatelliteId && <span>ALT: <span className="text-amber-400 font-bold">{(SATELLITES.find(s => s.id === activeSatelliteId)?.altitudeM || 420000) / 1000}KM</span></span>}
           </div>
 
-          <button 
-            type="button" 
-            className="hud-btn" 
+          <button
+            type="button"
+            className="hud-btn"
             title="Toggle Sidebar Control Panel"
             onClick={() => {
-              useUIStore.getState().setLeftPanelOpen(!useUIStore.getState().leftPanelOpen);
+              setLeftPanelOpen(!leftPanelOpen);
               useUIStore.getState().addChangeLog('UI', 'Spatial Control Panel toggled.', 'info');
             }}
           >
@@ -879,14 +872,13 @@ export default function GoogleEarthRemix() {
             <span>SYS_CONTROL</span>
           </button>
 
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="hud-btn"
             title="Reset Measurement Ruler"
             onClick={() => {
               setMeasureStart(null);
               setMeasureEnd(null);
-              setMeasureDistance(null);
               useUIStore.getState().addChangeLog('MEASUREMENT', 'Geodetic markers cleared.', 'info');
             }}
           >
@@ -894,8 +886,8 @@ export default function GoogleEarthRemix() {
             <span>CLEAR_RULER</span>
           </button>
 
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="hud-btn"
             title="Reset Camera Orientation North"
             onClick={() => {
@@ -907,8 +899,8 @@ export default function GoogleEarthRemix() {
             <span>ALIGN_NORTH</span>
           </button>
 
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="hud-btn"
             title="Open Diagnostic System Panel"
             onClick={() => {
@@ -921,8 +913,8 @@ export default function GoogleEarthRemix() {
             <span>DIAGNOSTICS</span>
           </button>
 
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="hud-btn"
             title="Access Help & User Documentation"
             onClick={() => {
@@ -941,17 +933,17 @@ export default function GoogleEarthRemix() {
       <div className="earth-workspace">
         {/* Core Stage */}
         <div className="earth-stage">
-          
+
           {/* Spatial HUD Migration Notice */}
-          {!useUIStore.getState().leftPanelOpen && (
-            <div className="absolute top-4 left-4 z-50 glass-panel p-3 px-4 flex items-center gap-3 animate-fade-in">
+          {!leftPanelOpen && (
+            <div className="absolute top-[80px] left-[20px] z-50 glass-panel p-3 px-4 flex items-center gap-3 animate-fade-in pointer-events-auto">
               <div className="flex items-center gap-2 text-white/80 text-xs font-mono">
                 <Compass className="w-4 h-4 text-primary animate-pulse" />
-                <span>Controls moved to Spatial HUD</span>
+                <span>Spatial HUD collapsed. Controls moved to sidebar.</span>
               </div>
               <button
-                onClick={() => useUIStore.getState().setLeftPanelOpen(true)}
-                className="bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer"
+                onClick={() => setLeftPanelOpen(true)}
+                className="bg-primary/25 hover:bg-primary/45 text-primary border border-primary/30 px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer"
               >
                 Open HUD
               </button>
@@ -982,9 +974,9 @@ export default function GoogleEarthRemix() {
             <aside className="earth-tour-guide" aria-label="Tour step guides">
               <div className="earth-tour-guide-header">
                 <span className="earth-tour-guide-name">{selectedTour.title}</span>
-                <button 
-                  type="button" 
-                  className="earth-tour-close" 
+                <button
+                  type="button"
+                  className="earth-tour-close"
                   onClick={() => setSelectedTour(null)}
                   title="End Tour"
                 >
@@ -1000,12 +992,12 @@ export default function GoogleEarthRemix() {
                   <h2>{activeTourStep.title}</h2>
                   <small className="earth-tour-step-meta">{activeTourStep.location}</small>
                   <p className="scroller">{activeTourStep.description}</p>
-                  
+
                   <div className="earth-tour-controls">
                     <button type="button" onClick={handlePrevStep} className="earth-tour-btn-nav"><ChevronLeft size={16} /></button>
                     {activeTourStep.panoramaUrl && (
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => setActivePanorama(activeTourStep.panoramaUrl || null)}
                         className="earth-tour-streetview-btn"
                       >
@@ -1022,8 +1014,8 @@ export default function GoogleEarthRemix() {
           {/* Right-Side Google Earth Knowledge Card (Slides in when location selected) */}
           {activeLocation && !selectedTour && (
             <aside className="earth-place pointer-events-auto" aria-label="Selected place details">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="earth-place-close"
                 onClick={() => setActiveLocation(null)}
                 title="Dismiss knowledge card"
@@ -1035,9 +1027,9 @@ export default function GoogleEarthRemix() {
                 <span className="earth-place-category">{activeLocation.category}</span>
                 <h2 className="earth-place-name">{activeLocation.name}</h2>
                 <span className="earth-place-country">{activeLocation.country}</span>
-                
+
                 <p className="scroller">{activeLocation.description}</p>
-                
+
                 <div className="earth-facts-grid">
                   <div className="earth-fact-node">
                     <span className="lbl">Elevation</span>
@@ -1048,7 +1040,7 @@ export default function GoogleEarthRemix() {
                     <span className="val">{activeLocation.lat.toFixed(3)}° N, {activeLocation.lng.toFixed(3)}° E</span>
                   </div>
                 </div>
-                
+
                 {activeLocation.facts && activeLocation.facts.length > 0 && (
                   <div className="earth-facts-bullet">
                     <h4>Landmark Codex</h4>
@@ -1064,9 +1056,9 @@ export default function GoogleEarthRemix() {
           )}
 
           {/* Minimap (Radar Grid) */}
-          <button 
+          <button
             type="button"
-            className="earth-minimap cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200" 
+            className="earth-minimap cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200"
             title="Recenter Camera to Global View"
             onClick={handleRecenter}
           >
@@ -1076,26 +1068,26 @@ export default function GoogleEarthRemix() {
 
           {/* Bottom Right Globe Navigation Controls */}
           <div className="earth-controls" aria-label="Map controls">
-            <button 
-              type="button" 
-              className="earth-ctrl-btn pegman-btn" 
+            <button
+              type="button"
+              className="earth-ctrl-btn pegman-btn"
               title="Drag Pegman / ISS Tracker"
               onClick={() => setIssFeedOpen(true)}
             >
               <UserCircle size={22} />
             </button>
-            <button 
-              type="button" 
-              className="earth-ctrl-btn" 
-              onClick={handleRecenter} 
+            <button
+              type="button"
+              className="earth-ctrl-btn"
+              onClick={handleRecenter}
               title="Fly to active location"
             >
               <Navigation size={20} />
             </button>
-            <button 
-              type="button" 
-              className="earth-ctrl-btn compass-btn" 
-              onClick={handleCompass} 
+            <button
+              type="button"
+              className="earth-ctrl-btn compass-btn"
+              onClick={handleCompass}
               title="Reset camera heading (North up)"
             >
               <Compass size={20} />
@@ -1113,9 +1105,9 @@ export default function GoogleEarthRemix() {
 
           {/* Draggable Street View Panorama Overlayer */}
           {activePanorama && (
-            <PanoramaViewer 
-              imageUrl={activePanorama} 
-              onClose={() => setActivePanorama(null)} 
+            <PanoramaViewer
+              imageUrl={activePanorama}
+              onClose={() => setActivePanorama(null)}
             />
           )}
 
@@ -1173,16 +1165,16 @@ function PanoramaViewer({ imageUrl, onClose }: { imageUrl: string; onClose: () =
 
   return (
     <div className="earth-panorama-overlay pointer-events-auto">
-      <button 
-        type="button" 
-        className="earth-panorama-close" 
-        onClick={onClose} 
+      <button
+        type="button"
+        className="earth-panorama-close"
+        onClick={onClose}
         aria-label="Exit Street View"
         title="Exit Street View"
       >
         ✕
       </button>
-      <div 
+      <div
         ref={containerRef}
         className="earth-panorama-container"
         onMouseDown={handleMouseDown}
@@ -1191,9 +1183,9 @@ function PanoramaViewer({ imageUrl, onClose }: { imageUrl: string; onClose: () =
         onMouseLeave={handleMouseUpOrLeave}
         style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
       >
-        <img 
-          src={imageUrl} 
-          alt="Street View 360" 
+        <img
+          src={imageUrl}
+          alt="Street View 360"
           className="earth-panorama-image"
           draggable="false"
         />

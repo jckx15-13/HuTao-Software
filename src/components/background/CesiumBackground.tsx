@@ -81,7 +81,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
     velocity: number;
     timestamp: number;
   } | null>(null);
-  const startTimeRef = useRef(Date.now());
+  const [startTime] = useState(() => Date.now());
 
   // Subscribe to ISS telemetry store updates in a ref to bypass React rendering cycles
   useEffect(() => {
@@ -234,7 +234,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
         }
       }
 
-      const elapsed = (currentTime - startTimeRef.current) / 1000;
+      const elapsed = (currentTime - startTime) / 1000;
 
       for (let i = 0; i < sidsToDraw.length; i++) {
         const sat = sidsToDraw[i];
@@ -360,7 +360,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
         {/* 2D Vector Globe Display */}
         <div className="relative flex flex-col items-center gap-8 z-10">
           <div className="relative w-64 h-64 flex items-center justify-center border border-primary/10 rounded-full bg-[#08090f]/60 backdrop-blur-md shadow-[0_0_60px_rgba(138,91,199,0.06),inset_0_0_20px_rgba(138,91,199,0.03)]">
-            
+
             {/* Canvas-based spinning vector globe */}
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ display: 'block' }} />
 

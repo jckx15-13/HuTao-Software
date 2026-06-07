@@ -25,16 +25,16 @@ const SENSITIVE_KEYS = /(key|token|auth|password|secret|notion|weather|credentia
 
 function sanitize(data: any): any {
   if (!data) return data;
-  
+
   if (typeof data === 'string') {
     // Redact common API key patterns in URLs or strings
     return data.replace(/([&?]?(?:key|token|auth|apiKey)=)([a-zA-Z0-9_-]{8,})/gi, '$1REDACTED');
   }
-  
+
   if (Array.isArray(data)) {
     return data.map(sanitize);
   }
-  
+
   if (typeof data === 'object') {
     const clean: any = {};
     for (const [k, v] of Object.entries(data)) {
@@ -46,7 +46,7 @@ function sanitize(data: any): any {
     }
     return clean;
   }
-  
+
   return data;
 }
 
@@ -79,9 +79,9 @@ export const useDiagnosticsStore = create<DiagnosticsState>((set, get) => ({
       level: entry.level || 'error',
       suggestion: (entry as any).suggestion || null,
     };
-    
+
     // Asynchronously send to bridge for file logging
-    fetch('http://localhost:8001/log', {
+    fetch('http://127.0.0.1:8001/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(full),
@@ -97,10 +97,27 @@ export const useDiagnosticsStore = create<DiagnosticsState>((set, get) => ({
 
 // Auto-capture uncaught exceptions, promise rejections, and client load performance
 if (typeof window !== 'undefined') {
+  // 1. Capture phase listener for resource load errors (img, script, link, etc.)
+  window.addEventListener('error', (event) => {
+    try {
+      const target = event.target as any;
+      if (target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK' || target.tagName === 'IMG' || target.tagName === 'VIDEO')) {
+        const src = target.src || target.href || 'unknown source';
+        useDiagnosticsStore.getState().add({
+          level: 'warning',
+          message: `Resource load failure: <${target.tagName.toLowerCase()}> from url "${src}"`,
+          metadata: { tagName: target.tagName, src },
+          suggestion: 'Verify network connection, asset path correctness, or resource CORS policies.'
+        });
+      }
+    } catch (e) {}
+  }, true);
+
+  // 2. Uncaught runtime exceptions
   window.addEventListener('error', (event) => {
     // Avoid double logging if message already captured
     if (event.message?.includes('Script error.')) return;
-    
+
     useDiagnosticsStore.getState().add({
       level: 'error',
       message: event.message || 'Unhandled runtime error',
@@ -114,6 +131,7 @@ if (typeof window !== 'undefined') {
     });
   });
 
+  // 3. Unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
     const msg = event.reason?.message || String(event.reason);
     useDiagnosticsStore.getState().add({
@@ -125,6 +143,81 @@ if (typeof window !== 'undefined') {
     });
   });
 
+  // 4. Global fetch latency & error interceptor
+  const originalFetch = window.fetch;
+  window.fetch = async function (input, init) {
+    const startTime = performance.now();
+    const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : '');
+
+    // Avoid intercepting calls to the logging endpoint to prevent infinite recursion loop
+    if (url.includes('/log')) {
+      return originalFetch.apply(this, arguments as any);
+    }
+
+    try {
+      const response = await originalFetch.apply(this, arguments as any);
+      const duration = performance.now() - startTime;
+
+      if (!response.ok) {
+        useDiagnosticsStore.getState().add({
+          level: 'error',
+          message: `API request failed: ${response.status} ${response.statusText} on ${url}`,
+          metadata: { url, status: response.status, statusText: response.statusText, durationMs: duration },
+          suggestion: 'Check if the backend bridge server is running, or verify API parameters and CORS configurations.'
+        });
+      } else if (duration > 2000 && url.includes('/api/')) {
+        useDiagnosticsStore.getState().add({
+          level: 'warning',
+          message: `High latency API response: ${duration.toFixed(0)}ms on ${url}`,
+          metadata: { url, durationMs: duration },
+          suggestion: 'Optimize database indexes, reduce payload sizes, or check backend performance metrics.'
+        });
+      }
+      return response;
+    } catch (err: any) {
+      const duration = performance.now() - startTime;
+      useDiagnosticsStore.getState().add({
+        level: 'error',
+        message: `API request error: "${err.message || err}" on ${url}`,
+        metadata: { url, durationMs: duration, error: String(err) },
+        suggestion: 'Verify the FastAPI server is running at port 8001 and check browser network tab.'
+      });
+      throw err;
+    }
+  };
+
+  // 5. Intercept console.error and console.warn to capture third-party/lib issues
+  const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
+
+  console.error = function (...args) {
+    originalConsoleError.apply(console, args);
+    try {
+      const msg = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+      // Filter out redundant logs or log loop triggers
+      if (msg.includes('/log') || msg.includes('Script error.') || msg.includes('Cesium')) return;
+      useDiagnosticsStore.getState().add({
+        level: 'error',
+        message: `Console Error: ${msg.substring(0, 300)}`,
+        suggestion: 'Trace this error using browser devtools stack trace or check related components.'
+      });
+    } catch (e) {}
+  };
+
+  console.warn = function (...args) {
+    originalConsoleWarn.apply(console, args);
+    try {
+      const msg = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+      if (msg.includes('/log') || msg.includes('Cesium')) return;
+      useDiagnosticsStore.getState().add({
+        level: 'warning',
+        message: `Console Warning: ${msg.substring(0, 300)}`,
+        suggestion: 'Resolve warnings to ensure optimal performance and standard-compliant rendering.'
+      });
+    } catch (e) {}
+  };
+
+  // 6. Navigation Performance and Vitals check
   window.addEventListener('load', () => {
     setTimeout(() => {
       try {
@@ -142,6 +235,87 @@ if (typeof window !== 'undefined') {
             suggestion: 'For optimal startup, minimize direct imports, utilize React.lazy, or enable bundle compression.'
           });
         }
+
+        // WebGL capability check
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (!gl) {
+          useDiagnosticsStore.getState().add({
+            level: 'warning',
+            message: 'WebGL context creation failed: Hardware acceleration might be disabled or unsupported.',
+            suggestion: 'Enable hardware acceleration in Chrome settings or update graphics driver configurations.'
+          });
+        }
+
+        // 7. WebGL Context Loss listener on page canvases
+        document.querySelectorAll('canvas').forEach(c => {
+          c.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault();
+            useDiagnosticsStore.getState().add({
+              level: 'error',
+              message: 'WebGL context lost detected on active viewport canvas.',
+              suggestion: 'Reduce resolution scale, disable shadows, or reload the page to restore graphics context.'
+            });
+          });
+        });
+
+        // 8. Viewport Resolution Check
+        const checkViewport = () => {
+          if (window.innerWidth < 1024) {
+            useDiagnosticsStore.getState().add({
+              level: 'warning',
+              message: `Sub-optimal viewport size: ${window.innerWidth}px width. HUD layout requires at least 1024px.`,
+              suggestion: 'Resize browser window or adjust screen scaling to prevent layout overlaps.'
+            });
+          }
+        };
+        checkViewport();
+        window.addEventListener('resize', () => {
+          // Throttle check
+          if ((window as any).__viewportCheckTimeout) clearTimeout((window as any).__viewportCheckTimeout);
+          (window as any).__viewportCheckTimeout = setTimeout(checkViewport, 5000);
+        });
+
+        // 9. Periodic Bridge Server Health Checks
+        let lastBridgeState = 'unknown';
+        const checkBridgeHealth = async () => {
+          try {
+            const res = await originalFetch('http://127.0.0.1:8001/status');
+            const data = await res.json();
+            if (data.ready) {
+              if (lastBridgeState !== 'ready') {
+                useDiagnosticsStore.getState().add({
+                  level: 'info',
+                  message: 'FastAPI bridge server and Odysseus backend engine are online and healthy.',
+                  suggestion: 'System operates under optimal telemetry sync.'
+                });
+                lastBridgeState = 'ready';
+              }
+            } else {
+              if (lastBridgeState !== 'starting') {
+                useDiagnosticsStore.getState().add({
+                  level: 'warning',
+                  message: 'FastAPI bridge server is online, but Odysseus backend engine is starting...',
+                  suggestion: 'Wait a few seconds for database collections to mount.'
+                });
+                lastBridgeState = 'starting';
+              }
+            }
+          } catch (e) {
+            if (lastBridgeState !== 'offline') {
+              useDiagnosticsStore.getState().add({
+                level: 'error',
+                message: 'FastAPI bridge server is offline or unreachable on port 8001.',
+                suggestion: 'Restart services via "node launch.js" and ensure port 8001 is not blocked.'
+              });
+              lastBridgeState = 'offline';
+            }
+          }
+        };
+        // Initial delayed check, then periodic
+        setTimeout(checkBridgeHealth, 2000);
+        setInterval(checkBridgeHealth, 15000);
+
       } catch (e) {
         // Fallback performance check
       }

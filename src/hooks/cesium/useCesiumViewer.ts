@@ -24,7 +24,7 @@ const isLowEndHardware = () => {
  * - Screen-space camera controller tweaks
  */
 export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | null>) {
-  const viewerRef = useRef<Cesium.Viewer | null>(null);
+  const [viewer, setViewer] = useState<Cesium.Viewer | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { config, isLoading: configLoading } = useConfig();
@@ -32,29 +32,32 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
   // Stable error setter for child components
   const onError = useCallback((msg: string) => setError(msg), []);
 
-  useEffect(() => {
-    if (!containerRef.current || configLoading || !config) return;
-
-    // Pre-flight: WebGL availability check
+  // WebGL availability check derived lazily
+  const [webglError] = useState<string | null>(() => {
     try {
+      if (typeof window === 'undefined') return null;
       if (
         /HeadlessChrome/i.test(navigator.userAgent) ||
         navigator.webdriver ||
-        (typeof window !== 'undefined' && window.location.search.includes('fallback'))
+        window.location.search.includes('fallback')
       ) {
-        throw new Error('WebGL disabled in headless browser environment');
+        return 'WebGL disabled in headless browser environment';
       }
       const canvas = document.createElement('canvas');
       if (!(canvas.getContext('webgl2') || canvas.getContext('webgl'))) {
-        throw new Error('WebGL context creation failed');
+        return 'WebGL context creation failed';
       }
+      return null;
     } catch (err: any) {
-      setError(err?.message ?? String(err));
-      setIsLoaded(true);
-      return;
+      return err?.message ?? String(err);
     }
+  });
 
-    let viewer: Cesium.Viewer;
+  useEffect(() => {
+    if (webglError) return;
+    if (!containerRef.current || configLoading || !config) return;
+
+    let activeViewer: Cesium.Viewer | null = null;
     let active = true;
     const lowEndDevice = isLowEndHardware();
     let canvas: HTMLCanvasElement | null = null;
@@ -69,7 +72,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
       // Firefox detection for MSAA workaround (from WWV)
       const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
 
-      viewer = new Cesium.Viewer(containerRef.current, {
+      activeViewer = new Cesium.Viewer(containerRef.current, {
         // Disable all default UI widgets — we render our own
         animation: false,
         baseLayerPicker: false,
@@ -104,57 +107,61 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
         creditContainer: document.createElement('div'),
       });
 
-      viewerRef.current = viewer;
-      (window as any).cesiumViewer = viewer;
+      (window as any).cesiumViewer = activeViewer;
     } catch (err: any) {
       if (!active) return;
-      setError(err?.message ?? String(err));
-      setIsLoaded(true);
+      const msg = err?.message ?? String(err);
+      setTimeout(() => {
+        setError(msg);
+        setIsLoaded(true);
+      }, 0);
       return;
     }
+
+    const viewerInstance = activeViewer;
 
     // --- Performance tuning (WWV patterns) ---
 
     // Resolution scale: lower quality on low-end devices to reduce GPU load
-    viewer.resolutionScale = lowEndDevice ? 0.65 : 0.85;
+    viewerInstance.resolutionScale = lowEndDevice ? 0.65 : 0.85;
 
     // Globe polygon detail: coarser on low-end devices
-    viewer.scene.globe.maximumScreenSpaceError = lowEndDevice ? 4.5 : 2.5;
+    viewerInstance.scene.globe.maximumScreenSpaceError = lowEndDevice ? 4.5 : 2.5;
 
     // Disable expensive FXAA post-process (we use MSAA instead)
-    if (viewer.scene.postProcessStages.fxaa) {
-      viewer.scene.postProcessStages.fxaa.enabled = false;
+    if (viewerInstance.scene.postProcessStages.fxaa) {
+      viewerInstance.scene.postProcessStages.fxaa.enabled = false;
     }
 
     // --- Visual quality (Anime Sci-Fi Space Opera / WWT Aesthetics) ---
-    viewer.scene.globe.enableLighting = !lowEndDevice; // Disable expensive globe lighting on weaker hardware
-    viewer.scene.globe.showWaterEffect = false;
-    viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#08101d');
-    if ((viewer.scene.globe as any).showGroundAtmosphere !== undefined) {
-      (viewer.scene.globe as any).showGroundAtmosphere = !lowEndDevice;
+    viewerInstance.scene.globe.enableLighting = !lowEndDevice; // Disable expensive globe lighting on weaker hardware
+    viewerInstance.scene.globe.showWaterEffect = false;
+    viewerInstance.scene.globe.baseColor = Cesium.Color.fromCssColorString('#08101d');
+    if ((viewerInstance.scene.globe as any).showGroundAtmosphere !== undefined) {
+      (viewerInstance.scene.globe as any).showGroundAtmosphere = !lowEndDevice;
     }
-    viewer.scene.globe.depthTestAgainstTerrain = true; // Proper occlusion
-    viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#020205'); // Space opera dark background
-    viewer.scene.highDynamicRange = !lowEndDevice; // Disable HDR on low-end devices
+    viewerInstance.scene.globe.depthTestAgainstTerrain = true; // Proper occlusion
+    viewerInstance.scene.backgroundColor = Cesium.Color.fromCssColorString('#020205'); // Space opera dark background
+    viewerInstance.scene.highDynamicRange = !lowEndDevice; // Disable HDR on low-end devices
 
     // Cool-toned luminous space atmosphere
-    viewer.scene.skyAtmosphere.show = !lowEndDevice;
+    viewerInstance.scene.skyAtmosphere.show = !lowEndDevice;
     if (!lowEndDevice) {
-      viewer.scene.skyAtmosphere.brightnessShift = 0.15; // Enhanced brightness contrast
-      viewer.scene.skyAtmosphere.saturationShift = 0.45; // Luminous saturation
-      viewer.scene.skyAtmosphere.hueShift = -0.05; // Cool cyan/purple shift
+      viewerInstance.scene.skyAtmosphere.brightnessShift = 0.15; // Enhanced brightness contrast
+      viewerInstance.scene.skyAtmosphere.saturationShift = 0.45; // Luminous saturation
+      viewerInstance.scene.skyAtmosphere.hueShift = -0.05; // Cool cyan/purple shift
     }
 
     // Configure globe atmospheric lighting
-    viewer.scene.globe.atmosphereBrightnessShift = 0.15;
-    viewer.scene.globe.atmosphereSaturationShift = 0.45;
-    viewer.scene.globe.atmosphereHueShift = -0.05;
-    viewer.scene.globe.lightingFadeOutDistance = 1e7;
-    viewer.scene.globe.lightingFadeInDistance = 2e7;
+    viewerInstance.scene.globe.atmosphereBrightnessShift = 0.15;
+    viewerInstance.scene.globe.atmosphereSaturationShift = 0.45;
+    viewerInstance.scene.globe.atmosphereHueShift = -0.05;
+    viewerInstance.scene.globe.lightingFadeOutDistance = 1e7;
+    viewerInstance.scene.globe.lightingFadeInDistance = 2e7;
 
 
     // --- Camera controller improvements (from WWV) ---
-    const sscc = viewer.scene.screenSpaceCameraController;
+    const sscc = viewerInstance.scene.screenSpaceCameraController;
     // Intuitive mapping: left-drag = rotate/orbit, right-drag = translate/pan, pinch = zoom/tilt
     // Keep a ctrl+left modifier available for tilt when desired.
     sscc.rotateEventTypes = [
@@ -187,9 +194,9 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     }
 
     // Ensure pointer interactions request a render when using requestRenderMode
-    canvas = viewer.scene.canvas as HTMLCanvasElement;
+    canvas = viewerInstance.scene.canvas as HTMLCanvasElement;
     requestRender = () => {
-      try { viewer.scene.requestRender(); } catch (err) { /* ignore */ }
+      try { viewerInstance.scene.requestRender(); } catch (err) { /* ignore */ }
     };
     pointerHandler = () => {
       if (requestRender) requestRender();
@@ -198,7 +205,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     canvas.addEventListener('pointerup', pointerHandler);
     canvas.addEventListener('pointermove', pointerHandler);
     canvas.addEventListener('wheel', pointerHandler, { passive: true } as AddEventListenerOptions);
-    const camera = viewer.camera as Cesium.Camera & { changed: Cesium.Event };
+    const camera = viewerInstance.camera as Cesium.Camera & { changed: Cesium.Event };
     if (camera.changed?.addEventListener) {
       try {
         camera.changed.addEventListener(requestRender);
@@ -206,17 +213,18 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     }
 
     // Load imagery asynchronously (never blocks viewer creation)
-    setupImagery(viewer)
+    setupImagery(viewerInstance)
       .catch((err) => console.warn('Imagery setup failed:', err))
       .finally(() => {
-        if (active && viewerRef.current && !viewer.isDestroyed()) {
+        if (active && !viewerInstance.isDestroyed()) {
+          setViewer(viewerInstance);
           setIsLoaded(true);
-          viewer.scene.requestRender();
+          viewerInstance.scene.requestRender();
         }
       });
 
     // Initial camera: wide Earth view at 20,000 km
-    viewer.camera.setView({
+    viewerInstance.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(0, 20, 20_000_000),
     });
 
@@ -230,19 +238,23 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
           canvas.removeEventListener('pointermove', pointerHandler);
           canvas.removeEventListener('wheel', pointerHandler as EventListenerOrEventListenerObject);
         }
-        const camera = viewer?.camera as Cesium.Camera & { changed: Cesium.Event };
+        const camera = viewerInstance?.camera as Cesium.Camera & { changed: Cesium.Event };
         if (camera?.changed?.removeEventListener && requestRender) {
           try { camera.changed.removeEventListener(requestRender); } catch (e) {}
         }
       } catch (e) {}
 
-      if (viewerRef.current) {
-        viewerRef.current.destroy();
-        viewerRef.current = null;
+      if (!viewerInstance.isDestroyed()) {
+        viewerInstance.destroy();
         (window as any).cesiumViewer = null;
       }
+      setViewer(null);
     };
-  }, [containerRef]);
+  }, [containerRef, config, configLoading, webglError]);
 
-  return { viewer: viewerRef.current, isLoaded, error };
+  return {
+    viewer,
+    isLoaded: webglError ? true : isLoaded,
+    error: webglError || error
+  };
 }

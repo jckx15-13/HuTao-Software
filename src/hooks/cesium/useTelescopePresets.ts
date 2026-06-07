@@ -120,68 +120,72 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
     }
   }, [viewer, interactionMode, hoveredEntityId]);
 
+// Helpers outside the hook to perform direct mutations on Cesium.Viewer without triggering React Compiler parameter mutation warnings
+function applyTelescopeGlobeMode(viewer: Cesium.Viewer, telescopeTarget: any) {
+  viewer.scene.globe.show = true;
+  if (viewer.scene.globe.translucency) {
+    viewer.scene.globe.translucency.enabled = true;
+    viewer.scene.globe.translucency.frontFaceAlpha = 0.25;
+    viewer.scene.globe.translucency.backFaceAlpha = 0.15;
+  }
+  viewer.scene.skyAtmosphere.show = false;
+
+  const preset = TELESCOPE_PRESETS.find((p) => p.name === telescopeTarget?.name) || TELESCOPE_PRESETS[0];
+
+  if (preset) {
+    const raRad = (preset.raHours * 15.0 * Math.PI) / 180.0;
+    const decRad = (preset.decDegrees * Math.PI) / 180.0;
+    const celestialRadius = 114378137;
+    const x = celestialRadius * Math.cos(decRad) * Math.cos(raRad);
+    const y = celestialRadius * Math.cos(decRad) * Math.sin(raRad);
+    const z = celestialRadius * Math.sin(decRad);
+    const targetPos = new Cesium.Cartesian3(x, y, z);
+
+    const direction = Cesium.Cartesian3.normalize(targetPos, new Cesium.Cartesian3());
+
+    viewer.trackedEntity = undefined;
+
+    viewer.camera.flyTo({
+      destination: new Cesium.Cartesian3(0, 0, 1),
+      orientation: {
+        direction: direction,
+        up: new Cesium.Cartesian3(0, 0, 1), // Align North
+      },
+      duration: 2.0,
+      easingFunction: Cesium.EasingFunction.QUINTIC_IN_OUT,
+    });
+  } else {
+    // Reset to default deep sky orientation looking North
+    viewer.trackedEntity = undefined;
+    viewer.camera.flyTo({
+      destination: new Cesium.Cartesian3(0, 0, 1),
+      orientation: {
+        direction: new Cesium.Cartesian3(0, 1, 0),
+        up: new Cesium.Cartesian3(0, 0, 1),
+      },
+      duration: 2.0,
+      easingFunction: Cesium.EasingFunction.QUINTIC_IN_OUT,
+    });
+  }
+}
+
+function restoreTelescopeGlobeMode(viewer: Cesium.Viewer) {
+  viewer.scene.globe.show = true;
+  if (viewer.scene.globe.translucency) {
+    viewer.scene.globe.translucency.enabled = false;
+  }
+  viewer.scene.skyAtmosphere.show = true;
+}
+
   // Handle Camera flights & Earth globe show/hide state transitions
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;
 
     try {
       if (interactionMode === 'telescope') {
-        // Enable globe translucency to see through the Earth
-        viewer.scene.globe.show = true;
-        if (viewer.scene.globe.translucency) {
-          viewer.scene.globe.translucency.enabled = true;
-          viewer.scene.globe.translucency.frontFaceAlpha = 0.25;
-          viewer.scene.globe.translucency.backFaceAlpha = 0.15;
-        }
-        viewer.scene.skyAtmosphere.show = false;
-
-        // Find targeted preset
-        const preset = TELESCOPE_PRESETS.find((p) => p.name === telescopeTarget?.name) || TELESCOPE_PRESETS[0];
-
-        if (preset) {
-          const raRad = (preset.raHours * 15.0 * Math.PI) / 180.0;
-          const decRad = (preset.decDegrees * Math.PI) / 180.0;
-          const celestialRadius = 114378137;
-          const x = celestialRadius * Math.cos(decRad) * Math.cos(raRad);
-          const y = celestialRadius * Math.cos(decRad) * Math.sin(raRad);
-          const z = celestialRadius * Math.sin(decRad);
-          const targetPos = new Cesium.Cartesian3(x, y, z);
-          
-          const direction = Cesium.Cartesian3.normalize(targetPos, new Cesium.Cartesian3());
-
-          // Release any active tracking to allow manual flight
-          viewer.trackedEntity = undefined;
-
-          // Position camera exactly at Earth's center pointing outward
-          viewer.camera.flyTo({
-            destination: new Cesium.Cartesian3(0, 0, 1),
-            orientation: {
-              direction: direction,
-              up: new Cesium.Cartesian3(0, 0, 1), // Align North
-            },
-            duration: 2.0,
-            easingFunction: Cesium.EasingFunction.QUINTIC_IN_OUT,
-          });
-        } else {
-          // Reset to default deep sky orientation looking North
-          viewer.trackedEntity = undefined;
-          viewer.camera.flyTo({
-            destination: new Cesium.Cartesian3(0, 0, 1),
-            orientation: {
-              direction: new Cesium.Cartesian3(0, 1, 0),
-              up: new Cesium.Cartesian3(0, 0, 1),
-            },
-            duration: 2.0,
-            easingFunction: Cesium.EasingFunction.QUINTIC_IN_OUT,
-          });
-        }
+        applyTelescopeGlobeMode(viewer, telescopeTarget);
       } else {
-        // Restore standard Earth globe and atmosphere layers
-        viewer.scene.globe.show = true;
-        if (viewer.scene.globe.translucency) {
-          viewer.scene.globe.translucency.enabled = false;
-        }
-        viewer.scene.skyAtmosphere.show = true;
+        restoreTelescopeGlobeMode(viewer);
       }
     } catch (err) {
       console.warn('[useTelescopePresets] Error during mode transition:', err);
@@ -191,11 +195,7 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
     return () => {
       if (viewer && !viewer.isDestroyed()) {
         try {
-          viewer.scene.globe.show = true;
-          if (viewer.scene.globe.translucency) {
-            viewer.scene.globe.translucency.enabled = false;
-          }
-          viewer.scene.skyAtmosphere.show = true;
+          restoreTelescopeGlobeMode(viewer);
         } catch (err) {
           console.warn('[useTelescopePresets] Error restoring globe state:', err);
         }

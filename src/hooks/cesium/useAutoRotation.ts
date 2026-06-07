@@ -5,19 +5,24 @@ import * as Cesium from 'cesium';
  * Auto-rotation hook — WWV pattern: use scene preUpdate listener (clock-synced)
  * instead of setInterval. Stops rotation immediately when user interacts.
  */
+// Helper function outside the hook to configure screen-space camera controller without triggering React Compiler mutation warnings
+function configureCameraController(viewer: Cesium.Viewer, interactive: boolean) {
+  const sscc = viewer.scene && viewer.scene.screenSpaceCameraController;
+  if (!sscc) return;
+  sscc.enableRotate = interactive;
+  sscc.enableTranslate = interactive;
+  sscc.enableZoom = interactive;
+  sscc.enableTilt = interactive;
+  sscc.enableLook = interactive;
+}
+
 export function useAutoRotation(viewer: Cesium.Viewer | null, interactive: boolean) {
   const userInteractingRef = useRef(false);
 
   // Toggle camera interaction controls
   useEffect(() => {
     if (!viewer || (viewer as any).isDestroyed && (viewer as any).isDestroyed()) return;
-    const sscc = viewer.scene && viewer.scene.screenSpaceCameraController;
-    if (!sscc) return;
-    sscc.enableRotate = interactive;
-    sscc.enableTranslate = interactive;
-    sscc.enableZoom = interactive;
-    sscc.enableTilt = interactive;
-    sscc.enableLook = interactive;
+    configureCameraController(viewer, interactive);
   }, [viewer, interactive]);
 
   // Auto-rotation via preUpdate listener (frame-synced, no setInterval drift)

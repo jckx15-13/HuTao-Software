@@ -11,7 +11,7 @@ class SatelliteService {
 
   start() {
     if (this.updateInterval) return;
-    
+
     // Initial fetch for all satellites with NORAD IDs
     this.fetchAllTles();
 
@@ -30,12 +30,12 @@ class SatelliteService {
 
   async fetchAllTles() {
     const satellitesWithNorad = SATELLITES.filter(s => s.noradId);
-    
+
     // Process in small batches to avoid rate limiting
     for (let i = 0; i < satellitesWithNorad.length; i += 3) {
       const batch = satellitesWithNorad.slice(i, i + 3);
       await Promise.all(batch.map(sat => this.fetchTle(sat.id, sat.noradId!)));
-      
+
       if (i + 3 < satellitesWithNorad.length) {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
@@ -54,14 +54,14 @@ class SatelliteService {
       // Check if we have valid, fresh TLE in store already
       const current = useUIStore.getState().satelliteData[id];
       const STALE_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours
-      
+
       if (current && (Date.now() - current.timestamp < STALE_THRESHOLD)) {
         return; // Data is still fresh
       }
 
       url = `https://celestrak.org/NORAD/elements/gp.php?CATNR=${noradId}&FORMAT=2line`;
       let text = '';
-      
+
       try {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -69,7 +69,7 @@ class SatelliteService {
       } catch (directErr) {
         console.warn(`[SatelliteService] Direct fetch failed for ${id}, trying proxy...`);
         // Try bridge proxy
-        const proxyUrl = `http://localhost:8001/api/camera/proxy?url=${encodeURIComponent(url)}`;
+        const proxyUrl = `http://127.0.0.1:8001/api/camera/proxy?url=${encodeURIComponent(url)}`;
         const proxyRes = await fetch(proxyUrl);
         if (!proxyRes.ok) throw new Error(`Proxy connection failed: ${proxyRes.status}`);
         const json = await proxyRes.json();
@@ -80,14 +80,14 @@ class SatelliteService {
       }
 
       const lines = text.trim().split('\n');
-      
+
       if (lines.length >= 2) {
         // Celestrak might return "No elements found" in plain text even with 200 OK
         if (lines[0].includes('No elements found')) return;
 
         const tle = [id.toUpperCase(), lines[0].trim(), lines[1].trim()];
         const data: SatelliteData = { tle, timestamp: Date.now() };
-        
+
         useUIStore.getState().setSatelliteData(id, data);
         useUIStore.getState().addChangeLog('SATELLITE', `TLE Uplinked: ${id} (Epoch Verified)`, 'success');
         // Reset failure state on success
