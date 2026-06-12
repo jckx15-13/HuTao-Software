@@ -36,51 +36,67 @@ export function useIssTelemetry() {
     async function poll() {
       if (!active) return;
 
+      const isHeadless = typeof window !== 'undefined' && (
+        /HeadlessChrome/i.test(navigator.userAgent) ||
+        navigator.webdriver ||
+        window.location.search.includes('fallback')
+      );
+
       let lat = 0, lng = 0, alt = 0, vel = 0, simulated = false;
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
-
-      try {
-        const res = await fetch('https://api.wheretheiss.at/v1/satellites/25544', {
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (!active) return;
-
-        lat = parseFloat(data.latitude);
-        lng = parseFloat(data.longitude);
-        alt = parseFloat(data.altitude) * 1000;
-        vel = parseFloat(data.velocity);
-        lastFetchedRef.current = { lat, lng, alt, time: Date.now() };
-        failCountRef.current = 0; // Reset backoff on success
-      } catch {
-        clearTimeout(timeout);
-        if (!active) return;
+      if (isHeadless) {
         simulated = true;
-
-        // Exponential backoff: 1x, 2x, 4x (capped)
-        failCountRef.current = Math.min(failCountRef.current + 1, MAX_BACKOFF);
-
-        const baseline = lastFetchedRef.current;
-        if (baseline) {
-          const dt = (Date.now() - baseline.time) / 1000;
-          const omega = (baseline.lng * Math.PI) / 180;
-          const argLat = (baseline.lat * Math.PI) / 180;
-          const coords = propagateCircularOrbit(dt, baseline.alt, ISS_INCLINATION_RAD, omega, argLat);
-          lat = coords.lat;
-          lng = coords.lng;
-          alt = baseline.alt;
-        } else {
-          const elapsed = (Date.now() - (startTimeRef.current ?? Date.now())) / 1000;
-          const coords = propagateCircularOrbit(elapsed, ISS_ALTITUDE_M, ISS_INCLINATION_RAD, 0, 0);
-          lat = coords.lat;
-          lng = coords.lng;
-          alt = ISS_ALTITUDE_M;
-        }
+        const elapsed = (Date.now() - (startTimeRef.current ?? Date.now())) / 1000;
+        const coords = propagateCircularOrbit(elapsed, ISS_ALTITUDE_M, ISS_INCLINATION_RAD, 0, 0);
+        lat = coords.lat;
+        lng = coords.lng;
+        alt = ISS_ALTITUDE_M;
         vel = calculateOrbitalSpeed(alt) * 3.6;
+      } else {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+        try {
+          const res = await fetch('https://api.wheretheiss.at/v1/satellites/25544', {
+            signal: controller.signal,
+          });
+          clearTimeout(timeout);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          if (!active) return;
+
+          lat = parseFloat(data.latitude);
+          lng = parseFloat(data.longitude);
+          alt = parseFloat(data.altitude) * 1000;
+          vel = parseFloat(data.velocity);
+          lastFetchedRef.current = { lat, lng, alt, time: Date.now() };
+          failCountRef.current = 0; // Reset backoff on success
+        } catch {
+          clearTimeout(timeout);
+          if (!active) return;
+          simulated = true;
+
+          // Exponential backoff: 1x, 2x, 4x (capped)
+          failCountRef.current = Math.min(failCountRef.current + 1, MAX_BACKOFF);
+
+          const baseline = lastFetchedRef.current;
+          if (baseline) {
+            const dt = (Date.now() - baseline.time) / 1000;
+            const omega = (baseline.lng * Math.PI) / 180;
+            const argLat = (baseline.lat * Math.PI) / 180;
+            const coords = propagateCircularOrbit(dt, baseline.alt, ISS_INCLINATION_RAD, omega, argLat);
+            lat = coords.lat;
+            lng = coords.lng;
+            alt = baseline.alt;
+          } else {
+            const elapsed = (Date.now() - (startTimeRef.current ?? Date.now())) / 1000;
+            const coords = propagateCircularOrbit(elapsed, ISS_ALTITUDE_M, ISS_INCLINATION_RAD, 0, 0);
+            lat = coords.lat;
+            lng = coords.lng;
+            alt = ISS_ALTITUDE_M;
+          }
+          vel = calculateOrbitalSpeed(alt) * 3.6;
+        }
       }
 
       if (!active) return;

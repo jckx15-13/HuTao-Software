@@ -27,6 +27,18 @@ class WeatherService {
   start() {
     if (this.updateInterval) return;
     
+    // Detect if running in headless test/fallback mode
+    const isHeadless = typeof window !== 'undefined' && (
+      /HeadlessChrome/i.test(navigator.userAgent) ||
+      navigator.webdriver ||
+      window.location.search.includes('fallback')
+    );
+
+    if (isHeadless) {
+      console.log('[WeatherService] Headless environment detected. Skipping live weather fetches.');
+      return;
+    }
+
     this.fetchWeather();
     
     // Refresh weather every 30 minutes

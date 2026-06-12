@@ -31,6 +31,15 @@ export async function fetchLocalEngineManifest(): Promise<string[] | null> {
   if (manifestFetched) return localManifest;
   manifestFetched = true;
 
+  const isHeadless = typeof window !== 'undefined' && (
+    /HeadlessChrome/i.test(navigator.userAgent) ||
+    navigator.webdriver ||
+    window.location.search.includes('fallback')
+  );
+  if (isHeadless) {
+    return null;
+  }
+
   try {
     const controller = new AbortController();
     // 500ms is more than enough for a localhost connection.

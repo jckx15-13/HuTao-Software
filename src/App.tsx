@@ -14,14 +14,17 @@ import { DockedLayout } from './components/layout/DockedLayout'; // Workspace st
 import { IconButton } from './components/common/IconButton'; // Standardized accessible button component with hover glow effects.
 import { ParticleOverlay } from './components/ParticleOverlay'; // Canvas element rendering floating background canvas shapes.
 import { CesiumBackground } from './components/background/CesiumBackground'; // Virtual Earth component rendered on a persistent background layer.
-import WorldWideTelescopeView from './components/learning/WorldWideTelescopeView';
 import { LauncherPage } from './components/launcher/LauncherPage'; // Welcome/Splash component shown when first loading the interface.
-import { SettingsPage } from './components/settings/SettingsPage'; // Configuration panel (lazy loaded to reduce initial bundle size).
 import { ErrorBoundary } from './components/ErrorBoundary'; // React error boundary: catches runtime crashes inside nested components without freezing the tab.
 import { CustomCursor } from './components/layout/CustomCursor'; // Custom pointer element that tracks client mouse moves.
 import { useThemeVariables } from './hooks/useThemeVariables'; // Computes current palette style objects and monitors CPU strain.
 import { useUIStore } from './store/uiStore'; // Shared state manager (Zustand) tracking navigation and user preferences.
 import { ConfigProvider } from './context/ConfigContext';
+
+// Lazy load SettingsPage configuration panel to reduce initial bundle size
+const SettingsPage = React.lazy(() =>
+  import('./components/settings/SettingsPage').then((m) => ({ default: m.SettingsPage }))
+);
 import { useDiagnosticsStore } from './store/diagnosticsStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
@@ -58,6 +61,8 @@ function TopAppBar() {
 // ----------------------------------------------------------------------------
 // 👑 Core Application Entrypoint
 // ----------------------------------------------------------------------------
+const WorldWideTelescopeView = React.lazy(() => import('./components/learning/WorldWideTelescopeView'));
+
 export default function App() {
   useKeyboardShortcuts();
   // Subscription selectors: only trigger re-renders when these specific properties change in the Zustand store.
@@ -140,7 +145,9 @@ export default function App() {
           {/* 1. Telescope Background Layer (WWT) at z-0 */}
           {(interactionMode === 'orbital' || interactionMode === 'telescope') && (!isHeadless || spaceInteractionTarget === 'telescope' || interactionMode === 'telescope') && (
             <div className="absolute inset-0 z-0">
-              <WorldWideTelescopeView bgOnly />
+              <Suspense fallback={null}>
+                <WorldWideTelescopeView bgOnly />
+              </Suspense>
             </div>
           )}
           
@@ -161,7 +168,7 @@ export default function App() {
       )}
 
       {/* 🕶️ BACKDROP SHADE: Semi-translucent screen layer. Fades the map so chat text contrast remains high. */}
-      {interactionMode !== 'orbital' && (
+      {interactionMode === 'chat' && (
         <div className="absolute inset-0 bg-[#06070a]/75 backdrop-blur-[2px] pointer-events-none z-0" />
       )}
 

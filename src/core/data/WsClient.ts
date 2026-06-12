@@ -63,6 +63,16 @@ class WebSocketClient {
   }
 
   private connectEngine(engineUrl: string) {
+    const isHeadless = typeof window !== 'undefined' && (
+      /HeadlessChrome/i.test(navigator.userAgent) ||
+      navigator.webdriver ||
+      window.location.search.includes('fallback')
+    );
+    if (isHeadless) {
+      console.debug(`[WSClient] Headless mode: skipping connection to ${engineUrl}`);
+      return;
+    }
+
     const engine = this.getOrCreateEngine(engineUrl);
 
     if (engine.ws && (engine.ws.readyState === WebSocket.CONNECTING || engine.ws.readyState === WebSocket.OPEN)) {

@@ -12,6 +12,18 @@ class SatelliteService {
   start() {
     if (this.updateInterval) return;
 
+    // Detect if running in headless test/fallback mode
+    const isHeadless = typeof window !== 'undefined' && (
+      /HeadlessChrome/i.test(navigator.userAgent) ||
+      navigator.webdriver ||
+      window.location.search.includes('fallback')
+    );
+
+    if (isHeadless) {
+      console.log('[SatelliteService] Headless environment detected. Skipping live TLE fetches.');
+      return;
+    }
+
     // Initial fetch for all satellites with NORAD IDs
     this.fetchAllTles();
 

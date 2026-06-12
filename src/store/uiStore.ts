@@ -290,6 +290,10 @@ export interface UIStore {
   systemMetrics: SystemMetrics;
   updateSystemMetrics: (m: Partial<SystemMetrics>) => void;
 
+  // Odysseus Engine
+  odysseusReady: boolean;
+  setOdysseusReady: (v: boolean) => void;
+
   // AI Sync
   syncStatus: 'idle' | 'syncing' | 'success' | 'error';
   lastSyncTime: number | null;
@@ -599,6 +603,10 @@ export const useUIStore = create<UIStore>()(
         },
         updateSystemMetrics: (m) =>
           set((s) => ({ systemMetrics: { ...s.systemMetrics, ...m } })),
+
+        // Odysseus Engine
+        odysseusReady: false,
+        setOdysseusReady: (odysseusReady) => set({ odysseusReady }),
 
         // AI Sync
         syncStatus: 'idle',

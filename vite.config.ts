@@ -35,10 +35,12 @@ export default defineConfig(({mode}) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            react: ['react', 'react-dom'],
             ai: ['@google/genai'],
             markdown: ['react-markdown', 'remark-gfm'],
             motion: ['motion'],
+            lucide: ['lucide-react'],
+            window: ['react-window', 'react-virtuoso'],
+            satellite: ['satellite.js'],
           },
         },
       },

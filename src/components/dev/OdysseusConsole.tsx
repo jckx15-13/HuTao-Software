@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useUIStore } from '@/store/uiStore';
 import {
   Activity,
   Database,
@@ -65,6 +66,8 @@ export function OdysseusConsole() {
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
+  const setOdysseusReady = useUIStore((s) => s.setOdysseusReady);
+
   const bridgeUrl = 'http://127.0.0.1:8001';
 
   const refreshAll = useCallback(async () => {
@@ -76,6 +79,7 @@ export function OdysseusConsole() {
       if (!statusRes.ok) throw new Error('Bridge unreachable');
       const statusData: ServerStatus = await statusRes.json();
       setStatus(statusData);
+      setOdysseusReady(statusData.ready === true);
 
       if (statusData.ready) {
         // 2. Fetch Models

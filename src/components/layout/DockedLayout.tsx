@@ -7,9 +7,10 @@
 // 3. Implements conditional width placeholders (aside panel width alignment).
 // ============================================================================
 
+import React, { Suspense } from 'react';
 import { CenterPanel } from '../panels/CenterPanel'; // Middle container coordinating workspace and telescope targets.
-import { LeftPanel } from '../panels/LeftPanel'; // Collapsible left panel showing local telemetry diagnostic logs.
-import { RightPanel } from '../panels/RightPanel'; // Collapsible right panel containing document viewer.
+const LeftPanel = React.lazy(() => import('../panels/LeftPanel').then(m => ({ default: m.LeftPanel })));
+const RightPanel = React.lazy(() => import('../panels/RightPanel').then(m => ({ default: m.RightPanel })));
 import { SystemMonitor } from '../SystemMonitor'; // Nested system metrics tracker widget.
 import { useUIStore } from '../../store/uiStore'; // Central state hook providing toggle flags for left/right columns.
 
@@ -24,7 +25,9 @@ export function DockedLayout() {
     // Flexbox row layout spanning full viewport width. Inherits transparency so Cesium canvas is visible behind panels.
     <div className="flex h-full w-full overflow-hidden bg-transparent">
       {/* COLUMN 1: Collapsible navigation bar. Self-manages responsive hide/show states internally. */}
-      <LeftPanel />
+      <Suspense fallback={null}>
+        <LeftPanel />
+      </Suspense>
 
       {/* COLUMN 2: Main center area. Sets flex-1 to occupy all remaining width.
           Uses pointer-events-none so mouse interaction drops down to Cesium 3D canvas layer. */}
@@ -37,7 +40,9 @@ export function DockedLayout() {
       {/* COLUMN 3: Right details panel or background telemetry panel. */}
       {rightPanelOpen ? (
         // Mode A: Shows standard Markdown context search & browser pages.
-        <RightPanel />
+        <Suspense fallback={null}>
+          <RightPanel />
+        </Suspense>
       ) : !hideSystemMonitor ? (
         // Mode B: Renders system telemetry inside a fixed-width aside bar (320px width).
         // Uses `xl:flex` to hide on smaller screens, appearing automatically once viewport exceeds 1280px wide.

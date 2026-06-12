@@ -38,10 +38,12 @@ export function RightPanel() {
   const [history, setHistory] = useState<string[]>([browserUrl]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  // Sync input when the global URL updates
-  useEffect(() => {
+  // Sync input when the global URL updates during render to avoid synchronous setState in effect
+  const [prevBrowserUrl, setPrevBrowserUrl] = useState(browserUrl);
+  if (browserUrl !== prevBrowserUrl) {
     setAddressInput(browserUrl);
-  }, [browserUrl]);
+    setPrevBrowserUrl(browserUrl);
+  }
 
   // Search/Wikipedia link auto-sync when a landmark or plugin entity is selected
   useEffect(() => {

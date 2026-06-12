@@ -3,8 +3,8 @@ import { MessageSquare, Globe2, Sparkles, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { ChatPanel } from '../ChatPanel';
 import { useAIChat } from '../../hooks/useAIChat';
-import GoogleEarthRemix from '../learning/GoogleEarthRemix';
-import WorldWideTelescopeView from '../learning/WorldWideTelescopeView';
+const GoogleEarthRemix = React.lazy(() => import('../learning/GoogleEarthRemix'));
+const WorldWideTelescopeView = React.lazy(() => import('../learning/WorldWideTelescopeView'));
 import { ErrorBoundary } from '../ErrorBoundary';
 
 
@@ -144,7 +144,9 @@ export function CenterPanel() {
                 fallbackMessage="Telescope Controls Error"
                 onError={handleTelescopeError}
               >
-                <WorldWideTelescopeView controlsOnly />
+                <Suspense fallback={null}>
+                  <WorldWideTelescopeView controlsOnly />
+                </Suspense>
               </ErrorBoundary>
             </div>
           )}
@@ -152,7 +154,9 @@ export function CenterPanel() {
           {/* GoogleEarthRemix overlay — pointer-events-none so globe underneath gets drags */}
           {isSpaceMode && (
             <div className="absolute inset-0 pointer-events-none z-10">
-              <GoogleEarthRemix />
+              <Suspense fallback={null}>
+                <GoogleEarthRemix />
+              </Suspense>
             </div>
           )}
         </div>

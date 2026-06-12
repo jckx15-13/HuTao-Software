@@ -8,6 +8,7 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const BASE_URL = 'http://127.0.0.1:3000/?fallback=true';
 
@@ -34,12 +35,61 @@ const warnings = [];
 const passed = [];
 
 let browser;
+let activePageInstance = null;
+let currentTestMode = 'orbital';
+
+async function revivePage(targetMode = 'orbital') {
+  console.log(`  🔄 [REVIVAL] Page/browser session crashed or detached — recreating session (targetMode: ${targetMode})...`);
+  try {
+    if (browser) {
+      await browser.close();
+      await sleep(1500);
+    }
+  } catch (_) {}
+
+  try {
+    browser = await puppeteer.launch(getLaunchOptions());
+    activePageInstance = await prepareWorkspacePage();
+
+    if (activePageInstance && targetMode) {
+      console.log(`  [TEST-DEBUG] Setting mode to ${targetMode} on revived page...`);
+      await sleep(2000);
+      await activePageInstance.evaluate((m) => {
+        if (window.useUIStore) {
+          if (m === 'telescope') {
+            window.useUIStore.getState().setInteractionMode?.('orbital');
+            window.useUIStore.getState().setSpaceInteractionTarget?.('telescope');
+          } else {
+            window.useUIStore.getState().setInteractionMode?.(m);
+            window.useUIStore.getState().setSpaceInteractionTarget?.('earth');
+          }
+        }
+      }, targetMode);
+      await sleep(1500);
+    }
+  } catch (err) {
+    console.error(`  ❌ [REVIVAL ERROR] Failed to revive page session: ${err.message}`);
+  }
+  return activePageInstance;
+}
 
 const BROWSER_ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
   '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--disable-software-rasterizer',
+  '--mute-audio',
 ];
+
+const getLaunchOptions = () => ({
+  headless: true,
+  executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  args: [...BROWSER_ARGS, '--user-data-dir=' + path.join(os.tmpdir(), 'puppeteer_chrome_profile_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7))],
+  protocolTimeout: 90000,
+  defaultViewport: { width: 1280, height: 800 },
+  dumpio: true,
+});
 
 /** Create a fresh page with standard setup */
 async function freshPage() {
@@ -54,11 +104,6 @@ async function freshPage() {
         style.type = 'text/css';
         style.innerHTML = `
           * {
-            transition: none !important;
-            transition-property: none !important;
-            transition-duration: 0s !important;
-            animation: none !important;
-            animation-duration: 0s !important;
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
             box-shadow: none !important;
@@ -75,7 +120,6 @@ async function freshPage() {
       inject();
     }
   });
-
   p.on('console', msg => {
     const text = msg.text();
     if (!text.includes('favicon') && !text.includes('404')) {
@@ -91,8 +135,24 @@ async function freshPage() {
   p.on('requestfailed', req => {
     console.log(`  [REQUEST FAILED] ${req.url()} - ${req.failure()?.errorText || 'unknown error'}`);
   });
+  p.on('framenavigated', frame => {
+    const isMain = frame.parentFrame() === null;
+    console.log(`  [BROWSER NAVIGATED] Frame '${frame.name() || 'unnamed'}' (${isMain ? 'MAIN' : 'SUB'}) navigated to: ${frame.url()}`);
+  });
+  p.on('frameattached', frame => {
+    const isMain = frame.parentFrame() === null;
+    console.log(`  [BROWSER ATTACHED] Frame '${frame.name() || 'unnamed'}' (${isMain ? 'MAIN' : 'SUB'}) attached. URL: ${frame.url()}`);
+  });
+  p.on('framedetached', frame => {
+    const isMain = frame.parentFrame() === null;
+    console.log(`  [BROWSER DETACHED] Frame '${frame.name() || 'unnamed'}' (${isMain ? 'MAIN' : 'SUB'}) detached. URL: ${frame.url()}`);
+  });
+  p.on('close', () => {
+    console.log(`  [BROWSER CLOSED] Page/Tab closed`);
+  });
   return p;
 }
+
 
 /**
  * Navigate to the app and skip boot.
@@ -105,15 +165,13 @@ async function prepareWorkspacePage() {
       // If browser was disconnected or closed due to crash, relaunch it
       if (!browser || !browser.connected) {
         console.log("  [TEST-DEBUG] Browser not connected. Relaunching browser...");
-        try { if (browser) await browser.close(); } catch (_) {}
-        browser = await puppeteer.launch({
-          headless: true,
-          executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-          args: BROWSER_ARGS,
-          protocolTimeout: 90000,
-          defaultViewport: { width: 1280, height: 800 },
-          dumpio: true,
-        });
+        try {
+          if (browser) {
+            await browser.close();
+            await sleep(1500);
+          }
+        } catch (_) {}
+        browser = await puppeteer.launch(getLaunchOptions());
       }
 
       p = await freshPage();
@@ -164,10 +222,10 @@ async function prepareWorkspacePage() {
           style.type = 'text/css';
           style.innerHTML = `
             * {
-              transition: none !important;
-              animation: none !important;
               backdrop-filter: none !important;
               -webkit-backdrop-filter: none !important;
+              filter: none !important;
+              box-shadow: none !important;
             }
           `;
           document.documentElement.appendChild(style);
@@ -206,6 +264,7 @@ async function prepareWorkspacePage() {
       await sleep(1500);
 
       console.log("  [TEST-DEBUG] prepareWorkspacePage succeeded!");
+      activePageInstance = p;
       return p;
     } catch (err) {
       console.warn(`  [TEST-DEBUG] prepareWorkspacePage attempt ${attempt} failed: ${err.message}`);
@@ -220,35 +279,41 @@ async function prepareWorkspacePage() {
 
 /** Ensures page is active, relaunching browser and reviving workspace if crashed */
 async function ensurePageActive(p, targetMode = 'orbital') {
-  let activePage = p;
-  try {
-    if (activePage) {
-      await activePage.evaluate(() => 1);
-    } else {
-      throw new Error("No page provided");
+  let usePage = activePageInstance || p;
+  currentTestMode = targetMode;
+  let isAlive = false;
+
+  if (usePage) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await usePage.evaluate(() => 1);
+        isAlive = true;
+        break;
+      } catch (err) {
+        const isDetached = err.message.includes('detached') ||
+                           err.message.includes('context') ||
+                           err.message.includes('destroyed') ||
+                           err.message.includes('Navigation');
+        if (isDetached && attempt < 3) {
+          console.warn(`  [TEST-DEBUG] ensurePageActive check attempt ${attempt} got: ${err.message}. Waiting 1.5s...`);
+          await sleep(1500);
+        } else {
+          break; // Real crash
+        }
+      }
     }
-  } catch (e) {
-    console.log(`  🔄 Page/browser crash detected — reviving session...`);
-    try { if (browser) await browser.close(); } catch (_) {}
-    browser = await puppeteer.launch({
-      headless: true,
-      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      args: BROWSER_ARGS,
-      protocolTimeout: 90000,
-      defaultViewport: { width: 1280, height: 800 },
-      dumpio: true,
-    });
-    activePage = await prepareWorkspacePage();
   }
 
-  if (activePage && targetMode) {
+  if (!isAlive) {
+    usePage = await revivePage(targetMode);
+  } else if (targetMode) {
     console.log(`  [TEST-DEBUG] Settle page before setting mode: ${targetMode}...`);
     await sleep(2000);
 
     let setSuccessful = false;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        await activePage.evaluate((m) => {
+        await usePage.evaluate((m) => {
           if (window.useUIStore) {
             if (m === 'telescope') {
               window.useUIStore.getState().setInteractionMode?.('orbital');
@@ -262,17 +327,18 @@ async function ensurePageActive(p, targetMode = 'orbital') {
         setSuccessful = true;
         break;
       } catch (err) {
-        console.warn(`  [TEST-DEBUG] Set mode attempt ${attempt} failed: ${err.message}. Waiting 2s...`);
-        await sleep(2000);
+        console.warn(`  [TEST-DEBUG] Set mode attempt ${attempt} failed: ${err.message}. Reviving session...`);
+        usePage = await revivePage(targetMode);
+        break;
       }
     }
 
     if (!setSuccessful) {
-      console.warn(`  [TEST-DEBUG] Failed to set mode to ${targetMode} after 3 attempts`);
+      console.warn(`  [TEST-DEBUG] Failed to set mode to ${targetMode}`);
     }
     await sleep(1500);
   }
-  return activePage;
+  return usePage;
 }
 
 async function shot(page, filename) {
@@ -288,55 +354,82 @@ async function shot(page, filename) {
   }
 }
 
-/** Evaluate with error tolerance */
-async function safeEval(page, fn, ...args) {
-  try {
-    return await page.evaluate(fn, ...args);
-  } catch (e) {
-    console.warn(`  ⚠ eval: ${e.message.substring(0, 60)}`);
-    return undefined;
-  }
-}
+/** Evaluate with error tolerance and auto-retry on frame detachments/navigation */
+async function safeEval(p, fn, ...args) {
+  let usePage = activePageInstance || p;
 
-async function clickBtn(page, text, exact = false) {
-  const result = await safeEval(page, (t, exact) => {
-    const btns = Array.from(document.querySelectorAll('button'));
-    const btn = btns.find(b => {
-      const txt = (b.textContent || '').trim();
-      return exact ? txt === t : txt.includes(t);
-    });
-    if (btn) {
-      btn.click();
-      return { success: true, text: (btn.textContent || '').trim() };
-    }
-    return { success: false, available: btns.map(b => (b.textContent || '').trim()).filter(Boolean) };
-  }, text, exact);
-
-  if (result && result.success) {
-    console.log(`  [TEST-DEBUG] Clicked button "${text}": success (got "${result.text}")`);
-    return true;
-  } else {
-    console.warn(`  [TEST-DEBUG] Clicked button "${text}": FAILED. Available buttons:`, result ? result.available : 'none');
-    return false;
-  }
-}
-
-async function hasText(page, text) {
-  try {
-    return await page.evaluate(t => document.body.textContent?.includes(t) ?? false, text);
-  } catch { return false; }
-}
-
-async function getMode(page) {
-  try {
-    return await page.evaluate(() => {
-      const state = window.useUIStore?.getState();
-      if (state?.interactionMode === 'orbital' && state?.spaceInteractionTarget === 'telescope') {
-        return 'telescope';
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      if (!usePage) {
+        usePage = await revivePage(currentTestMode);
       }
-      return state?.interactionMode;
-    });
-  } catch { return null; }
+      return await usePage.evaluate(fn, ...args);
+    } catch (e) {
+      const isDetached = e.message.includes('detached') ||
+                         e.message.includes('context') ||
+                         e.message.includes('Execution context') ||
+                         e.message.includes('Navigation');
+      if (isDetached && attempt < 4) {
+        console.warn(`  [TEST-DEBUG] safeEval attempt ${attempt} failed: ${e.message.substring(0, 70)}. Reviving session...`);
+        usePage = await revivePage(currentTestMode);
+        await sleep(1500);
+      } else {
+        console.warn(`  ⚠ safeEval failed permanently: ${e.message.substring(0, 70)}`);
+        return undefined;
+      }
+    }
+  }
+}
+
+async function clickBtn(p, text, exact = false) {
+  let usePage = activePageInstance || p;
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    usePage = activePageInstance || usePage;
+    const result = await safeEval(usePage, (t, exact) => {
+      const btns = Array.from(document.querySelectorAll('button'));
+      const btn = btns.find(b => {
+        const txt = (b.textContent || '').trim();
+        return exact ? txt === t : txt.includes(t);
+      });
+      if (btn) {
+        btn.click();
+        return { success: true, text: (btn.textContent || '').trim() };
+      }
+      return { success: false, available: btns.map(b => (b.textContent || '').trim()).filter(Boolean) };
+    }, text, exact);
+
+    if (result && result.success) {
+      console.log(`  [TEST-DEBUG] Clicked button "${text}": success (got "${result.text}")`);
+      return true;
+    }
+
+    if (attempt < 3) {
+      console.warn(`  [TEST-DEBUG] Button "${text}" not found. Retrying in 1.5s (attempt ${attempt}/3)...`);
+      await sleep(1500);
+    } else {
+      console.warn(`  [TEST-DEBUG] Clicked button "${text}": FAILED. Available buttons:`, result ? result.available : 'none');
+      return false;
+    }
+  }
+}
+
+async function hasText(p, text) {
+  let usePage = activePageInstance || p;
+  const result = await safeEval(usePage, t => document.body.textContent?.includes(t) ?? false, text);
+  return !!result;
+}
+
+async function getMode(p) {
+  let usePage = activePageInstance || p;
+  const mode = await safeEval(usePage, () => {
+    const state = window.useUIStore?.getState();
+    if (state?.interactionMode === 'orbital' && state?.spaceInteractionTarget === 'telescope') {
+      return 'telescope';
+    }
+    return state?.interactionMode;
+  });
+  return mode || null;
 }
 
 (async () => {
@@ -345,14 +438,7 @@ async function getMode(page) {
   console.log('╚══════════════════════════════════════════════════════════════╝\n');
 
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      args: BROWSER_ARGS,
-      protocolTimeout: 90000,
-      defaultViewport: { width: 1280, height: 800 },
-      dumpio: true,
-    });
+    browser = await puppeteer.launch(getLaunchOptions());
     console.log('✓ Browser launched\n');
 
     // ── STAGE 1: Boot screen + workspace ─────────────────────────────────────

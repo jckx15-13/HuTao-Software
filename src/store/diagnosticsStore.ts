@@ -80,14 +80,22 @@ export const useDiagnosticsStore = create<DiagnosticsState>((set, get) => ({
       suggestion: (entry as any).suggestion || null,
     };
 
-    // Asynchronously send to bridge for file logging
-    fetch('http://127.0.0.1:8001/log', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(full),
-    }).catch(() => {
-      /* ignore bridge logging failures */
-    });
+    const isHeadless = typeof window !== 'undefined' && (
+      /HeadlessChrome/i.test(navigator.userAgent) ||
+      navigator.webdriver ||
+      window.location.search.includes('fallback')
+    );
+
+    if (!isHeadless) {
+      // Asynchronously send to bridge for file logging
+      fetch('http://127.0.0.1:8001/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(full),
+      }).catch(() => {
+        /* ignore bridge logging failures */
+      });
+    }
 
     set((s) => ({ entries: [full, ...s.entries].slice(0, 500) }));
   },

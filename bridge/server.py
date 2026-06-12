@@ -63,7 +63,7 @@ def run_odysseus_setup():
     try:
         env = os.environ.copy()
         env["ODYSSEUS_SKIP_ADMIN_PROMPT"] = "1"
-        env["ODYSSEUS_ADMIN_PASSWORD"] = "admin_pass_123!"
+        env["ODYSSEUS_ADMIN_PASSWORD"] = os.getenv("ODYSSEUS_ADMIN_PASSWORD") or secrets.token_urlsafe(16)
         env["ODYSSEUS_INTERNAL_TOKEN"] = INTERNAL_TOOL_TOKEN
 
         py_exec = get_python_executable()
@@ -93,7 +93,7 @@ def start_odysseus_subprocess():
 
         py_exec = get_python_executable()
         odysseus_proc = subprocess.Popen(
-            [py_exec, "-m", "uvicorn", "app:app", "--host", "127.0.0.1", "--port", "7000"],
+            [py_exec, "-m", "uvicorn", "app:app", "--host", "127.0.0.1", "--port", "7000", "--loop", "asyncio"],
             cwd=str(BASE_DIR.parent / "odysseus"),
             env=env,
             stdout=subprocess.PIPE,
@@ -118,6 +118,21 @@ async def lifespan(app: FastAPI):
     run_odysseus_setup()
     # Start server
     start_odysseus_subprocess()
+    # Wait for Odysseus to become healthy (up to 30s)
+    odysseus_ready = False
+    async with httpx.AsyncClient(timeout=2.0) as health_client:
+        for attempt in range(30):
+            try:
+                resp = await health_client.get("http://127.0.0.1:7000/api/health")
+                if resp.status_code == 200:
+                    odysseus_ready = True
+                    print(f"Odysseus healthy after {attempt + 1}s")
+                    break
+            except Exception:
+                pass
+            await asyncio.sleep(1)
+    if not odysseus_ready:
+        print("WARNING: Odysseus did not become healthy within 30s. Bridge will start anyway.")
     yield
     # Terminate process on shutdown
     global odysseus_proc
@@ -461,4 +476,4 @@ async def proxy_to_odysseus(path: str, request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host=HOST, port=PORT)
+    uvicorn.run(app, host=HOST, port=PORT, loop="asyncio")

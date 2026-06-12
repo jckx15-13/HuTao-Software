@@ -63,8 +63,11 @@ export default function WorldWideTelescopeView({
 
   const setTelescopeTarget = useUIStore((s) => s.setTelescopeTarget);
   const setInteractionMode = useUIStore((s) => s.setInteractionMode);
+  const interactionMode = useUIStore((s) => s.interactionMode);
   const telescopeTelemetry = useUIStore((s) => s.telescopeTelemetry);
   const syncSource = useUIStore((s) => s.syncSource);
+  const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
+  const setLeftPanelOpen = useUIStore((s) => s.setLeftPanelOpen);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Resolve telescopeTarget to data-level TelescopePreset
@@ -94,6 +97,7 @@ export default function WorldWideTelescopeView({
   const [pos, setPos] = useState(getDefaultPos());
   const [isDragging, setIsDragging] = useState(false);
   const [windowSize, setWindowSize] = useState<'normal' | 'large' | 'minimized'>('normal');
+  const [defaultTime] = useState(() => Date.now());
 
   const dragStart = useRef({ x: 0, y: 0 });
   const windowStart = useRef({ x: 0, y: 0 });
@@ -145,6 +149,10 @@ export default function WorldWideTelescopeView({
 
   // Iframe loading / connection state
   const [iframeLoaded, setIframeLoaded] = useState(false);
+  const iframeLoadedRef = useRef(iframeLoaded);
+  useEffect(() => {
+    iframeLoadedRef.current = iframeLoaded;
+  }, [iframeLoaded]);
   const [iframeError, setIframeError] = useState(false);
   const watchdogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -343,8 +351,13 @@ export default function WorldWideTelescopeView({
     if (window.location.search.includes('fallback')) return;
     setIframeLoaded(false);
     setIframeError(false);
+
+    if (watchdogTimerRef.current) {
+      clearTimeout(watchdogTimerRef.current);
+    }
+
     watchdogTimerRef.current = setTimeout(() => {
-      if (!iframeLoaded) {
+      if (!iframeLoadedRef.current) {
         setIframeError(true);
         console.warn('[WorldWideTelescopeView] WWT iframe failed to load within 15 seconds');
         useUIStore.getState().addChangeLog('TELESCOPE', 'WWT connection timed out — showing degraded mode', 'warning');
@@ -404,7 +417,16 @@ export default function WorldWideTelescopeView({
     };
   }, [bgOnly, refreshKey, telescopeTarget]);
 
-  const iframeUrl = typeof telescopeTarget?.url === 'string' && telescopeTarget.url.length > 0 ? telescopeTarget.url : 'https://worldwidetelescope.org/webclient/';
+  const isHeadless = typeof window !== 'undefined' && (
+    /HeadlessChrome/i.test(navigator.userAgent) ||
+    navigator.webdriver ||
+    window.location.search.includes('fallback')
+  );
+  const iframeUrl = isHeadless
+    ? 'about:blank'
+    : (typeof telescopeTarget?.url === 'string' && telescopeTarget.url.length > 0
+      ? telescopeTarget.url
+      : 'https://worldwidetelescope.org/webclient/');
   const safeIframeUrl = isValidUrl(iframeUrl) ? iframeUrl : null;
 
   // Window size CSS styling mapping
@@ -430,14 +452,14 @@ export default function WorldWideTelescopeView({
   const timeStart = useMemo(() => {
     const s = parseDateSafe(timeRange?.start);
     if (s) return s.getTime();
-    return Date.now() - 86400000;
-  }, [timeRange]);
+    return defaultTime - 86400000;
+  }, [timeRange, defaultTime]);
 
   const timeEnd = useMemo(() => {
     const e = parseDateSafe(timeRange?.end);
     if (e) return e.getTime();
-    return Date.now();
-  }, [timeRange]);
+    return defaultTime;
+  }, [timeRange, defaultTime]);
 
   const totalMs = useMemo(() => {
     const diff = timeEnd - timeStart;
@@ -485,23 +507,25 @@ export default function WorldWideTelescopeView({
     if (window.location.search.includes('fallback')) {
       return (
         <div className="absolute inset-0 flex items-center justify-center bg-[#05070a] overflow-hidden">
-          {/* Simulated Starfield Background */}
-          <div className="absolute inset-0 opacity-20 pointer-events-none">
-            {[...Array(50)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute bg-white rounded-full animate-pulse"
-                style={{
-                  top: `${Math.random() * 100}%`,
-                  left: `${Math.random() * 100}%`,
-                  width: `${Math.random() * 2}px`,
-                  height: `${Math.random() * 2}px`,
-                  animationDelay: `${Math.random() * 3}s`,
-                  animationDuration: `${2 + Math.random() * 3}s`
-                }}
-              />
-            ))}
-          </div>
+          {/* Simulated Starfield Background - Skip in headless mode to prevent animations/crashes */}
+          {!isHeadless && (
+            <div className="absolute inset-0 opacity-20 pointer-events-none">
+              {[...Array(50)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute bg-white rounded-full animate-pulse"
+                  style={{
+                    top: `${Math.random() * 100}%`,
+                    left: `${Math.random() * 100}%`,
+                    width: `${Math.random() * 2}px`,
+                    height: `${Math.random() * 2}px`,
+                    animationDelay: `${Math.random() * 3}s`,
+                    animationDuration: `${2 + Math.random() * 3}s`
+                  }}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Constellation Schematic Overlay */}
           <div className="absolute inset-0 opacity-10 pointer-events-none flex items-center justify-center">
@@ -594,7 +618,33 @@ export default function WorldWideTelescopeView({
   const renderHUDAndTimeline = () => {
     return (
       <div className="absolute inset-0 w-full h-full flex overflow-hidden bg-transparent select-none pointer-events-none">
-        
+
+        {/* Spatial HUD Migration Notice & Refresh Button */}
+        <div className="absolute top-[80px] left-[20px] z-50 flex items-center gap-2 pointer-events-auto">
+          {!leftPanelOpen && (
+            <div className="glass-panel p-3 px-4 flex items-center gap-3 animate-fade-in shadow-lg">
+              <div className="flex items-center gap-2 text-white/80 text-xs font-mono">
+                <Compass className="w-4 h-4 text-primary animate-pulse" />
+                <span>Spatial HUD collapsed. Controls moved to sidebar.</span>
+              </div>
+              <button
+                onClick={() => setLeftPanelOpen(true)}
+                className="bg-primary/25 hover:bg-primary/45 text-primary border border-primary/30 px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer"
+              >
+                Open HUD
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() => setRefreshKey(k => k + 1)}
+            className="glass-panel p-3 px-4 hover:bg-white/10 text-white/80 hover:text-white transition-colors rounded shadow-lg flex items-center gap-2 text-xs font-bold font-mono cursor-pointer border border-primary/20"
+            title="Reload Telescope Client"
+          >
+            <RefreshCw className="w-4 h-4 animate-spin-slow" />
+            <span>Refresh WWT</span>
+          </button>
+        </div>
+
         {/* --- Real-time Telescope Telemetry Overlay --- */}
         {telescopeTelemetry && (
           <div className="absolute top-4 right-4 z-50 pointer-events-auto">
@@ -712,7 +762,7 @@ export default function WorldWideTelescopeView({
                               }}
                               className={`w-full text-left p-2.5 rounded-lg border flex items-start gap-2.5 transition-all cursor-pointer ${
                                 isActive
-                                  ? 'bg-primary/10 border-primary/40 shadow-[inset_0_0_12px_color-mix(in_srgb,var(--theme-primary)_10%,transparent)]'
+                                  ? 'bg-primary/10 border-primary/40 shadow-[inset_0_0_12px_rgba(255,255,255,0.05)]'
                                   : 'bg-black/25 border-white/5 hover:border-white/15'
                               }`}
                             >
@@ -1009,12 +1059,86 @@ export default function WorldWideTelescopeView({
 
           </div>
         </div>
+
+        {/* Draggable floating Picture-in-Picture window overlay */}
+        {(interactionMode === 'telescope' || spaceInteractionTarget === 'telescope') && (
+          <div
+            className="glass-panel border border-primary/20 flex flex-col overflow-hidden shadow-2xl pointer-events-auto absolute z-50 transition-all duration-300"
+            style={{
+              left: pos.x,
+              top: pos.y,
+              width: dim.width,
+              height: dim.height,
+            }}
+            onMouseDown={handleMouseDown}
+          >
+            {/* Window Drag Handle Header */}
+            <div className="pip-drag-handle flex h-10 items-center justify-between px-3 bg-black/60 border-b border-white/10 cursor-move select-none">
+              <div className="flex items-center gap-1.5 text-primary text-[10px] font-mono font-bold uppercase tracking-wider">
+                <Radio className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
+                <span>Stellar Telescope Feed</span>
+                {windowSize !== 'minimized' && (
+                  <span className="text-[8px] text-white/40 normal-case font-normal ml-2">
+                    {activePreset.name}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 pip-action-btn">
+                <button
+                  onClick={() => setWindowSize(windowSize === 'minimized' ? 'normal' : 'minimized')}
+                  className="text-white/40 hover:text-white/85 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
+                  title={windowSize === 'minimized' ? 'Expand' : 'Minimize'}
+                >
+                  {windowSize === 'minimized' ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+                </button>
+                <button
+                  onClick={() => setWindowSize(windowSize === 'large' ? 'normal' : 'large')}
+                  className="text-white/40 hover:text-white/85 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
+                  title={windowSize === 'large' ? 'Shrink' : 'Maximize'}
+                  disabled={windowSize === 'minimized'}
+                >
+                  {windowSize === 'large' ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                </button>
+                <button
+                  onClick={() => setRefreshKey(k => k + 1)}
+                  className="text-white/40 hover:text-white/85 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
+                  title="Reload Telescope Client"
+                  disabled={windowSize === 'minimized'}
+                >
+                  <RefreshCw size={12} />
+                </button>
+                <button
+                  onClick={() => {
+                    setInteractionMode('orbital');
+                    useUIStore.getState().setSpaceInteractionTarget('earth');
+                  }}
+                  className="text-white/40 hover:text-red-400 p-1 hover:bg-red-950/20 rounded cursor-pointer transition-colors"
+                  title="Close Telescope Feed"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            </div>
+
+            {/* Window Body (WWT iframe) */}
+            {windowSize !== 'minimized' && (
+              <div className="flex-1 w-full h-full relative overflow-hidden bg-black/85">
+                {renderIframe()}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
 
   // Branch return statements
   if (bgOnly) {
+    if (isHeadless) {
+      return (
+        <div className="absolute inset-0 w-full h-full bg-black select-none pointer-events-none" />
+      );
+    }
     return (
       <div className="absolute inset-0 w-full h-full bg-black select-none pointer-events-none">
         {typeof window !== 'undefined' && (window as any).__triggerTelescopeCrash && <CrashComponent />}
@@ -1030,12 +1154,5 @@ export default function WorldWideTelescopeView({
   }
 
   // Fallback: render both side-by-side / overlayed if no props passed (for safety)
-  return (
-    <div className="relative w-full h-full flex overflow-hidden bg-transparent select-none pointer-events-none">
-      <div className="absolute inset-0 z-0">
-        {renderIframe()}
-      </div>
-      {renderHUDAndTimeline()}
-    </div>
-  );
+  return renderHUDAndTimeline();
 }
