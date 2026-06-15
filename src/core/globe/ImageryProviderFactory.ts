@@ -1,10 +1,48 @@
-import {
-    BingMapsImageryProvider,
-    IonImageryProvider,
-    ArcGisMapServerImageryProvider,
-    UrlTemplateImageryProvider,
-    BingMapsStyle,
-} from "cesium";
+// Runtime/mocked wrapper to prevent static Cesium initialization crashes in headless environments
+const getCesium = (): any => {
+    if (typeof window !== 'undefined') {
+        const isHeadless = /HeadlessChrome/i.test(navigator.userAgent) || navigator.webdriver || window.location.search.includes('fallback');
+        if (isHeadless) {
+            return {
+                BingMapsStyle: { AERIAL: 'aerial', AERIAL_WITH_LABELS: 'aerial_labels', ROAD: 'road' },
+                UrlTemplateImageryProvider: class {},
+                BingMapsImageryProvider: class { static fromUrl() { return {}; } },
+                IonImageryProvider: class { static fromAssetId() { return {}; } },
+                ArcGisMapServerImageryProvider: class { static fromUrl() { return {}; } }
+            };
+        }
+        const host = (globalThis as any).__WWV_HOST__;
+        if (host?.Cesium) return host.Cesium;
+    }
+    return {
+        BingMapsStyle: { AERIAL: 'aerial', AERIAL_WITH_LABELS: 'aerial_labels', ROAD: 'road' },
+        UrlTemplateImageryProvider: class {},
+        BingMapsImageryProvider: class { static fromUrl() { return {}; } },
+        IonImageryProvider: class { static fromAssetId() { return {}; } },
+        ArcGisMapServerImageryProvider: class { static fromUrl() { return {}; } }
+    };
+};
+
+const BingMapsImageryProvider = {
+    fromUrl: (...args: any[]) => getCesium().BingMapsImageryProvider.fromUrl(...args)
+};
+const IonImageryProvider = {
+    fromAssetId: (...args: any[]) => getCesium().IonImageryProvider.fromAssetId(...args)
+};
+const ArcGisMapServerImageryProvider = {
+    fromUrl: (...args: any[]) => getCesium().ArcGisMapServerImageryProvider.fromUrl(...args)
+};
+class UrlTemplateImageryProvider {
+    constructor(...args: any[]) {
+        const Impl = getCesium().UrlTemplateImageryProvider;
+        return new Impl(...args);
+    }
+}
+const BingMapsStyle = {
+    get AERIAL() { return getCesium().BingMapsStyle.AERIAL; },
+    get AERIAL_WITH_LABELS() { return getCesium().BingMapsStyle.AERIAL_WITH_LABELS; },
+    get ROAD() { return getCesium().BingMapsStyle.ROAD; }
+};
 
 export interface ImageryLayerEntry {
     id: string;

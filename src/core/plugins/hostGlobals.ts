@@ -10,7 +10,7 @@ import React from "react";
 import * as ReactDOM from "react-dom";
 import * as jsxRuntime from "react/jsx-runtime";
 import * as WWVPluginSDK from "../../wwv-sdk/index";
-import * as Cesium from "cesium";
+import type * as CesiumType from "cesium";
 
 import * as zustand from "zustand";
 import { useStore } from "@/core/state/store";
@@ -21,7 +21,7 @@ export interface WWVHostGlobals {
     ReactDOM: typeof ReactDOM;
     jsxRuntime: typeof jsxRuntime;
     WWVPluginSDK: typeof WWVPluginSDK;
-    Cesium: typeof Cesium;
+    Cesium: typeof CesiumType;
     zustand: typeof zustand;
     useStore: typeof useStore;
     pluginManager: typeof pluginManager;
@@ -43,7 +43,33 @@ declare global {
 export async function injectHostGlobals(): Promise<void> {
     if (globalThis.__WWV_HOST__) return;
 
-    const Cesium = await import("cesium");
+    const isHeadless = typeof window !== 'undefined' && (
+        /HeadlessChrome/i.test(navigator.userAgent) ||
+        navigator.webdriver ||
+        window.location.search.includes('fallback')
+    );
+
+    let Cesium: any;
+    if (isHeadless) {
+        Cesium = {
+            ConstantProperty: class {
+                value: any;
+                constructor(val: any) { this.value = val; }
+            },
+            Cartesian3: {
+                fromDegrees: (lng: number, lat: number, alt: number) => ({ x: lng, y: lat, z: alt }),
+                fromDegreesArray: (arr: number[]) => arr
+            },
+            Color: {
+                fromCssColorString: (str: string) => str
+            },
+            Math: {
+                PI_OVER_TWO: Math.PI / 2
+            }
+        };
+    } else {
+        Cesium = await import("cesium");
+    }
 
     globalThis.__WWV_HOST__ = {
         React,

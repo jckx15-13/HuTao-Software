@@ -118,22 +118,25 @@ async def lifespan(app: FastAPI):
     run_odysseus_setup()
     # Start server
     start_odysseus_subprocess()
+    # Create shared http client
+    app.state.http_client = httpx.AsyncClient(timeout=180.0)
     # Wait for Odysseus to become healthy (up to 30s)
     odysseus_ready = False
-    async with httpx.AsyncClient(timeout=2.0) as health_client:
-        for attempt in range(30):
-            try:
-                resp = await health_client.get("http://127.0.0.1:7000/api/health")
-                if resp.status_code == 200:
-                    odysseus_ready = True
-                    print(f"Odysseus healthy after {attempt + 1}s")
-                    break
-            except Exception:
-                pass
-            await asyncio.sleep(1)
+    for attempt in range(30):
+        try:
+            resp = await app.state.http_client.get("http://127.0.0.1:7000/api/health", timeout=2.0)
+            if resp.status_code == 200:
+                odysseus_ready = True
+                print(f"Odysseus healthy after {attempt + 1}s")
+                break
+        except Exception:
+            pass
+        await asyncio.sleep(1)
     if not odysseus_ready:
         print("WARNING: Odysseus did not become healthy within 30s. Bridge will start anyway.")
     yield
+    # Clean up the shared client
+    await app.state.http_client.aclose()
     # Terminate process on shutdown
     global odysseus_proc
     if odysseus_proc:
@@ -232,13 +235,13 @@ async def log_diagnostic(entry: LogEntry):
 
 @app.get("/")
 @app.get("/status")
-async def get_status():
+async def get_status(request: Request):
     odysseus_healthy = False
     try:
-        async with httpx.AsyncClient(timeout=1.0) as client:
-            resp = await client.get("http://127.0.0.1:7000/api/health")
-            if resp.status_code == 200:
-                odysseus_healthy = True
+        client = request.app.state.http_client
+        resp = await client.get("http://127.0.0.1:7000/api/health", timeout=1.0)
+        if resp.status_code == 200:
+            odysseus_healthy = True
     except Exception:
         pass
 
@@ -271,82 +274,92 @@ async def sync(req: SyncRequest):
             raise HTTPException(status_code=500, detail="Unable to write sync file") from exc
 
 @app.post("/chat")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, request: Request):
     """Proxies the chat call from the frontend to the Odysseus backend chat endpoint."""
     headers = {
         "X-Odysseus-Internal-Token": INTERNAL_TOOL_TOKEN,
         "Content-Type": "application/json"
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
-        try:
-            # 1. Fetch sessions to find or create one
-            sessions_resp = await client.get("http://127.0.0.1:7000/api/sessions", headers=headers)
-            sessions = sessions_resp.json() if sessions_resp.status_code == 200 else []
+    client = request.app.state.http_client
+    try:
+        # 1. Fetch sessions to find or create one
+        sessions_resp = await client.get("http://127.0.0.1:7000/api/sessions", headers=headers)
+        sessions = sessions_resp.json() if sessions_resp.status_code == 200 else []
 
-            session_id = None
-            if isinstance(sessions, list) and len(sessions) > 0:
-                session_id = sessions[0]["id"]
-            else:
-                # Need to resolve a default model first
-                models_resp = await client.get("http://127.0.0.1:7000/api/models", headers=headers)
-                models_data = models_resp.json() if models_resp.status_code == 200 else {}
+        session_id = None
+        if isinstance(sessions, list) and len(sessions) > 0:
+            for s in sessions:
+                if s.get("id") and s.get("model") and s.get("endpoint_url"):
+                    session_id = s["id"]
+                    break
+        
+        if not session_id:
+            # Need to resolve a default model first
+            models_resp = await client.get("http://127.0.0.1:7000/api/models", headers=headers)
+            models_data = models_resp.json() if models_resp.status_code == 200 else {}
 
-                # Try to extract the first model ID
-                model_name = "mock-model"
-                endpoint_url = "http://127.0.0.1:7000/api"
-                if isinstance(models_data, dict) and "endpoints" in models_data:
-                    for ep in models_data["endpoints"]:
-                        if ep.get("models"):
-                            model_name = ep["models"][0]
-                            endpoint_url = ep.get("base_url", endpoint_url)
-                            break
-                elif isinstance(models_data, list) and len(models_data) > 0:
-                    model_name = models_data[0].get("id", model_name)
-                    endpoint_url = models_data[0].get("endpoint", endpoint_url)
+            # Try to extract the first model ID
+            model_name = "mock-model"
+            endpoint_url = "http://127.0.0.1:7000/api"
+            if isinstance(models_data, dict) and "items" in models_data:
+                for ep in models_data["items"]:
+                    if ep.get("models"):
+                        model_name = ep["models"][0]
+                        endpoint_url = ep.get("url", endpoint_url)
+                        break
+            elif isinstance(models_data, dict) and "endpoints" in models_data:
+                for ep in models_data["endpoints"]:
+                    if ep.get("models"):
+                        model_name = ep["models"][0]
+                        endpoint_url = ep.get("base_url", endpoint_url)
+                        break
+            elif isinstance(models_data, list) and len(models_data) > 0:
+                model_name = models_data[0].get("id", model_name)
+                endpoint_url = models_data[0].get("endpoint", endpoint_url)
 
-                # Create a session
-                create_data = {
-                    "name": "Silver Wolf Session",
-                    "endpoint_url": endpoint_url,
-                    "model": model_name,
-                    "rag": "false",
-                    "skip_validation": "true"
-                }
-                session_create_resp = await client.post(
-                    "http://127.0.0.1:7000/api/session",
-                    data=create_data,
-                    headers={"X-Odysseus-Internal-Token": INTERNAL_TOOL_TOKEN}
-                )
-                if session_create_resp.status_code == 200:
-                    session_id = session_create_resp.json().get("id")
-                else:
-                    raise Exception(f"Failed to create session in Odysseus: {session_create_resp.text}")
-
-            # Send message to /api/chat
-            chat_data = {
-                "message": req.message,
-                "session": session_id,
-                "use_web": False,
-                "use_research": False,
-                "preset_id": None
+            # Create a session
+            create_data = {
+                "name": "Silver Wolf Session",
+                "endpoint_url": endpoint_url,
+                "model": model_name,
+                "rag": "false",
+                "skip_validation": "true"
             }
-
-            chat_resp = await client.post(
-                "http://127.0.0.1:7000/api/chat",
-                json=chat_data,
-                headers=headers
+            session_create_resp = await client.post(
+                "http://127.0.0.1:7000/api/session",
+                data=create_data,
+                headers={"X-Odysseus-Internal-Token": INTERNAL_TOOL_TOKEN}
             )
-
-            if chat_resp.status_code == 200:
-                resp_json = chat_resp.json()
-                return {"response": resp_json.get("response", "No response generated.")}
+            if session_create_resp.status_code == 200:
+                session_id = session_create_resp.json().get("id")
             else:
-                return {"response": f"[Odysseus Error {chat_resp.status_code}] {chat_resp.text}"}
+                raise Exception(f"Failed to create session in Odysseus: {session_create_resp.text}")
 
-        except Exception as exc:
-            print(f"Proxy Chat Error: {exc}")
-            return {"response": f"Connection to Odysseus engine failed: {exc}"}
+        # Send message to /api/chat
+        chat_data = {
+            "message": req.message,
+            "session": session_id,
+            "use_web": False,
+            "use_research": False,
+            "preset_id": None
+        }
+
+        chat_resp = await client.post(
+            "http://127.0.0.1:7000/api/chat",
+            json=chat_data,
+            headers=headers
+        )
+
+        if chat_resp.status_code == 200:
+            resp_json = chat_resp.json()
+            return {"response": resp_json.get("response", "No response generated.")}
+        else:
+            return {"response": f"[Odysseus Error {chat_resp.status_code}] {chat_resp.text}"}
+
+    except Exception as exc:
+        print(f"Proxy Chat Error: {exc}")
+        return {"response": f"Connection to Odysseus engine failed: {exc}"}
 
 def is_safe_url(url: str) -> bool:
     try:
@@ -383,20 +396,20 @@ def is_safe_url(url: str) -> bool:
         return False
 
 @app.get("/api/camera/proxy")
-async def fetch_url_async(url: str) -> dict:
+async def fetch_url_async(url: str, request: Request) -> dict:
     if not is_safe_url(url):
         return {"status": 400, "error": "SSRF threat detected: URL accesses disallowed location.", "response": ""}
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(url, headers=headers)
-            text = response.text
-            try:
-                return {"status": response.status_code, "response": json.loads(text)}
-            except json.JSONDecodeError:
-                return {"status": response.status_code, "response": text}
+        client = request.app.state.http_client
+        response = await client.get(url, headers=headers, timeout=10.0)
+        text = response.text
+        try:
+            return {"status": response.status_code, "response": json.loads(text)}
+        except json.JSONDecodeError:
+            return {"status": response.status_code, "response": text}
     except httpx.HTTPStatusError as e:
         return {"status": e.response.status_code, "error": str(e), "response": ""}
     except Exception as e:
@@ -429,7 +442,7 @@ async def proxy_to_odysseus(path: str, request: Request):
     # Exclude our custom camera proxy
     if path == "camera/proxy":
         url = request.query_params.get("url")
-        return await fetch_url_async(url)
+        return await fetch_url_async(url, request)
 
     # Reject folder traversal attacks in proxy path
     if ".." in path or "\\" in path or "%5c" in path.lower() or "%2e" in path.lower():
@@ -452,24 +465,40 @@ async def proxy_to_odysseus(path: str, request: Request):
     body = await request.body()
 
     try:
-        client = httpx.AsyncClient(timeout=180.0)
-        req_headers = {k: v for k, v in headers.items() if k.lower() != 'content-length'}
+        hop_by_hop = {
+            "connection",
+            "keep-alive",
+            "proxy-authenticate",
+            "proxy-authorization",
+            "te",
+            "trailers",
+            "transfer-encoding",
+            "upgrade"
+        }
+        req_headers = {
+            k: v for k, v in headers.items()
+            if k.lower() != 'content-length' and k.lower() not in hop_by_hop
+        }
 
         if "chat_stream" in path or "stream" in path:
             async def stream_generator():
+                client = request.app.state.http_client
                 async with client.stream(method, target_url, headers=req_headers, content=body) as response:
                     async for chunk in response.aiter_bytes():
                         yield chunk
-                await client.aclose()
             return StreamingResponse(stream_generator(), media_type="text/event-stream")
         else:
+            client = request.app.state.http_client
             response = await client.request(method, target_url, headers=req_headers, content=body)
+            resp_headers = {
+                k: v for k, v in response.headers.items()
+                if k.lower() not in hop_by_hop
+            }
             resp = Response(
                 content=response.content,
                 status_code=response.status_code,
-                headers=dict(response.headers)
+                headers=resp_headers
             )
-            await client.aclose()
             return resp
     except Exception as e:
         return JSONResponse(status_code=502, content={"error": f"Odysseus backend unreachable: {e}"})

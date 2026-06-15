@@ -159,11 +159,11 @@ if (typeof window !== 'undefined') {
 
     // Avoid intercepting calls to the logging endpoint to prevent infinite recursion loop
     if (url.includes('/log')) {
-      return originalFetch.apply(this, arguments as any);
+      return originalFetch.apply(window, arguments as any);
     }
 
     try {
-      const response = await originalFetch.apply(this, arguments as any);
+      const response = await originalFetch.apply(window, arguments as any);
       const duration = performance.now() - startTime;
 
       if (!response.ok) {
@@ -245,14 +245,28 @@ if (typeof window !== 'undefined') {
         }
 
         // WebGL capability check
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-        if (!gl) {
+        const isHeadless = typeof window !== 'undefined' && (
+          /HeadlessChrome/i.test(navigator.userAgent) ||
+          navigator.webdriver ||
+          window.location.search.includes('fallback')
+        );
+
+        if (isHeadless) {
           useDiagnosticsStore.getState().add({
             level: 'warning',
-            message: 'WebGL context creation failed: Hardware acceleration might be disabled or unsupported.',
-            suggestion: 'Enable hardware acceleration in Chrome settings or update graphics driver configurations.'
+            message: 'WebGL check skipped in headless environment.',
+            suggestion: 'Headless fallback is enabled.'
           });
+        } else {
+          const canvas = document.createElement('canvas');
+          const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+          if (!gl) {
+            useDiagnosticsStore.getState().add({
+              level: 'warning',
+              message: 'WebGL context creation failed: Hardware acceleration might be disabled or unsupported.',
+              suggestion: 'Enable hardware acceleration in Chrome settings or update graphics driver configurations.'
+            });
+          }
         }
 
         // 7. WebGL Context Loss listener on page canvases

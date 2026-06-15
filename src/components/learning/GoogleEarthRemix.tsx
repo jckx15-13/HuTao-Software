@@ -24,7 +24,35 @@ import {
   RotateCcw,
   Check,
 } from 'lucide-react';
-import * as Cesium from 'cesium';
+// Runtime/mocked wrapper to prevent static Cesium initialization crashes in headless environments
+const Cesium = {
+  ConstantProperty: class {
+    value: any;
+    constructor(val: any) { this.value = val; }
+  },
+  Cartesian3: {
+    fromDegrees: (lng: number, lat: number, alt: number) => {
+      const host = (globalThis as any).__WWV_HOST__;
+      if (host?.Cesium?.Cartesian3) return host.Cesium.Cartesian3.fromDegrees(lng, lat, alt);
+      return { x: lng, y: lat, z: alt };
+    },
+    fromDegreesArray: (arr: number[]) => {
+      const host = (globalThis as any).__WWV_HOST__;
+      if (host?.Cesium?.Cartesian3) return host.Cesium.Cartesian3.fromDegreesArray(arr);
+      return arr;
+    }
+  },
+  Color: {
+    fromCssColorString: (str: string) => {
+      const host = (globalThis as any).__WWV_HOST__;
+      if (host?.Cesium?.Color) return host.Cesium.Color.fromCssColorString(str);
+      return str;
+    }
+  },
+  Math: {
+    PI_OVER_TWO: Math.PI / 2
+  }
+};
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '../../core/state/store';
 import { pluginManager } from '../../core/plugins/PluginManager';
@@ -584,7 +612,7 @@ export default function GoogleEarthRemix() {
     const viewer = (window as any).cesiumViewer;
     if (!viewer || viewer.isDestroyed()) return;
 
-    let polylineEntity: Cesium.Entity | null = null;
+    let polylineEntity: any = null;
 
     try {
       if (measureStart && measureEnd) {

@@ -2,21 +2,42 @@
 
 ## 1. Feature Preservation & Regression Prevention
 When implementing new architectural patterns (like replacing old UIs with new React components or integrating plugins), you MUST NOT blindly delete, overwrite, or "lose" micro-interactions and aesthetic features.
-- Specifically: **Do not lose custom UI features like custom cursor movements, animations, or styling.** 
+- **Do not lose custom UI features** like custom cursor movements, animations, or styling.
 - Always audit the existing code you are replacing for unique behaviors (e.g., custom `mousemove` trackers, glowing effects, specific easing functions) and port them over to the new implementation.
 
 ## 2. Aesthetics & Theming
-- The app uses a highly customized "Honkai Star Rail" space opera theme. The primary aesthetic color is Silver Wolf Purple/Magenta (`#8A5BC7`). 
+- The app uses a highly customized "Honkai Star Rail" space opera theme. The primary aesthetic color is Silver Wolf Purple/Magenta (`#8A5BC7`).
 - Do not default to generic UI frameworks or plain colors. Maintain the glassmorphism panels, blurry backgrounds, and high-tech typography (`JetBrains Mono`, `Outfit`).
-- Always check `src/data/palettes.json` and `src/index.css` before hardcoding colors.
+- Always check `src/lib/themeEngine.ts` and `src/index.css` before hardcoding colors. Custom styling must read from CSS variables (e.g., `var(--theme-primary)`) to support dynamic live-theming.
 
-## 3. Cesium & 3D Integration
+## 3. React 19 & TypeScript Standards
+- **React 19 Compatibility:** Follow React 19 patterns.
+  - Refs can be passed directly as props (no need for `forwardRef`).
+  - Use modern hook/state hooks where appropriate, and ensure TypeScript definitions match React 19 types (e.g. `React.JSX.Element` instead of `JSX.Element`).
+  - Use clean hooks and separate UI markup from side-effects and business logic.
+- **TypeScript Strictness:** Maintain strict typing. Avoid using `any`. Write proper interface definitions for all component props, stores, and hooks.
+
+## 4. Tailwind CSS v4 & Styling Integration
+- The project integrates Tailwind CSS v4 via `@import "tailwindcss"` in `src/index.css` alongside `@theme` variables.
+- Direct tailwind utilities can be used, but always reference the themed variables (e.g. `bg-primary`, `text-text-main`, `border-panel-border`) defined in `@theme` to ensure theme changes are respected.
+- Do not bypass the dynamic CSS theme variables mapped to the document element.
+
+## 5. Zustand State & Local Chat Storage Integrity
+- **Zustand Store (`src/store/uiStore.ts`):** Global settings (e.g., active palette, UI opacity, motion enabled, sound effects, high load throttling status) must be read from and written to the Zustand store.
+- **Chat Persistence:** Local history is managed by `src/hooks/useChatPersistence.ts` and stored under `silverWolf.chatHistory`. Any changes to the message schema MUST include fallback or migration logic to prevent crashes for existing users.
+
+## 6. Simulated Telemetry & High-Load Throttling System
+- **Load Scaling:** The app features a performance self-regulation system (e.g., turning off particles, canvas effects, and heavy transitions when CPU/load exceeds threshold).
+- **High-Load Flag:** Always respect `isHighLoad` state and check for `prefers-reduced-motion` media queries/toggles.
+- Do not remove or break the telemetry data hooks or component throttling logic.
+
+## 7. Cesium & 3D Integration
 - The 3D globe relies on `CesiumJS`. You must strictly maintain the single-mounted persistent `viewer` architecture to prevent WebGL context loss and slow loading.
 - High-resolution textures (e.g., ArcGIS World Imagery) must be preserved in the fallback chain in `src/lib/imageryFactory.ts`.
 
-## 4. Modern UI Interactions (Cursor Movement)
-- The app utilizes a custom, modernized cursor movement approach (fluid trailing dot/glow effects). 
-- Ensure that any new overlay components or interactive elements correctly interact with the global custom cursor (e.g., triggering hover states or expanding the cursor footprint). Do not apply `cursor-default` randomly if it overrides the custom implementation.
+## 8. Custom Cursor Movement
+- The app utilizes a custom cursor movement approach (fluid trailing dot/glow effects).
+- Ensure that any new overlay components or interactive elements correctly interact with the global custom cursor. Do not apply `cursor-default` randomly if it overrides the custom implementation.
 
-## 5. Working on the Right Panel / Timeline
-- When making modifications to `RightPanel.tsx` or related files, ensure the Context, Browser, and Changes tabs retain their state and fluid transitions.
+## 9. No Placeholder Images
+- Never reference generic placeholders like `/placeholder.png` or `https://via.placeholder.com`. If an image asset is required, request image generation or use a high-quality, relevant illustration.
