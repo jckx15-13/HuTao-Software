@@ -67,6 +67,20 @@ Design concerns to keep watching:
 - The app has a strong purple/cyan signature. When adding new palettes, check contrast and avoid making all states feel like color variants of the same accent.
 - The telemetry panel is attractive but decorative. If it remains simulated, keep it visually secondary so it does not imply real system diagnostics.
 
+## Security Resolution Log
+
+### 2026-06-20 Dependency Audit Remediation
+
+Resolved the Dependabot/pnpm audit findings reported against `pnpm-lock.yaml`:
+- `vite` was updated from `6.4.2` to `6.4.3` to address GHSA-fx2h-pf6j-xcff and GHSA-v6wh-96g9-6wx3.
+- `cesium` was updated from `1.141.0` to `1.142.0`, which resolves its transitive `dompurify` from `3.4.7` to `3.4.11` and its transitive `protobufjs` from `8.5.0` to `8.6.4`.
+- `@google/genai` was updated from `1.29.0` to `1.52.0`; `pnpm-workspace.yaml` also pins the transitive `protobufjs@<8` line to `7.6.3`.
+- `pnpm-workspace.yaml` now includes overrides for `vite`, `dompurify`, and both affected `protobufjs` major-version ranges so future lockfile regeneration keeps the patched versions.
+
+Validation:
+- `pnpm audit --json` reports zero vulnerabilities.
+- `pnpm-lock.yaml` resolves `vite@6.4.3`, `dompurify@3.4.11`, `protobufjs@7.6.3`, and `protobufjs@8.6.4`.
+
 ## Verification
 
 - `npm run lint` passes.

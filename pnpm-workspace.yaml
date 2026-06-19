@@ -3,3 +3,9 @@ allowBuilds:
   esbuild: set this to true or false
   protobufjs: set this to true or false
   puppeteer: set this to true or false
+
+overrides:
+  vite: 6.4.3
+  dompurify: 3.4.11
+  protobufjs@<8: 7.6.3
+  protobufjs@>=8.0.0 <=8.5.0: 8.6.4
