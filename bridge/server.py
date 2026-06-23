@@ -47,6 +47,12 @@ raw_origins = os.getenv(
     "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3005,http://127.0.0.1:3005,http://localhost:4173,http://127.0.0.1:4173,http://localhost:4174,http://127.0.0.1:4174",
 )
 allowed_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+allowed_origin_regex = os.getenv(
+    "BRIDGE_CORS_ORIGIN_REGEX",
+    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+)
+FRONTEND_ORIGIN = os.getenv("BRIDGE_FRONTEND_ORIGIN", "http://127.0.0.1:3005")
+FRONTEND_REQUEST_TIMEOUT = float(os.getenv("BRIDGE_FRONTEND_REQUEST_TIMEOUT", "7.0"))
 
 def get_python_executable() -> str:
     """Returns the path to the virtual environment python if it exists, fallback to sys.executable."""
@@ -157,6 +163,7 @@ app = FastAPI(title="Silver Wolf Bridge & Odysseus Proxy", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=allowed_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -236,7 +243,6 @@ async def log_diagnostic(entry: LogEntry):
             print(f"Failed to write log: {exc}")
             raise HTTPException(status_code=500, detail="Internal logging failure")
 
-@app.get("/")
 @app.get("/status")
 async def get_status(request: Request):
     odysseus_healthy = False
@@ -255,6 +261,77 @@ async def get_status(request: Request):
         "host": HOST,
         "odysseus_health": "healthy" if odysseus_healthy else "offline"
     }
+
+
+async def _proxy_to_frontend(path: str, request: Request):
+    if not FRONTEND_ORIGIN:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "frontend_unavailable",
+                "message": "BRIDGE_FRONTEND_ORIGIN is not configured",
+            },
+        )
+
+    target = f"{FRONTEND_ORIGIN.rstrip('/')}/{path.lstrip('/')}"
+    if request.url.query:
+        target = f"{target}?{request.url.query}"
+
+    try:
+        client = request.app.state.http_client
+        response = await client.get(
+            target,
+            headers={"Accept": request.headers.get("accept", "*/*")},
+            timeout=FRONTEND_REQUEST_TIMEOUT,
+        )
+
+        hop_by_hop = {
+            "connection",
+            "keep-alive",
+            "proxy-authenticate",
+            "proxy-authorization",
+            "te",
+            "trailers",
+            "transfer-encoding",
+            "upgrade",
+        }
+        filtered_headers = {
+            key: value
+            for key, value in response.headers.items()
+            if key.lower() not in hop_by_hop
+        }
+
+        return Response(
+            content=response.content,
+            status_code=response.status_code,
+            headers=filtered_headers,
+        )
+    except Exception as exc:
+        return JSONResponse(
+            status_code=502,
+            content={
+                "status": "frontend_unavailable",
+                "message": f"Unable to reach frontend at {FRONTEND_ORIGIN}: {exc}",
+            },
+        )
+
+
+@app.get("/{path:path}", include_in_schema=False)
+async def frontend_proxy(path: str, request: Request):
+    reserved = {
+        "status",
+        "sync",
+        "chat",
+        "log",
+        "openapi.json",
+        "docs",
+        "redoc",
+    }
+
+    if path.startswith("api/") or path in reserved:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    return await _proxy_to_frontend(path, request)
 
 def compact_sync_file() -> None:
     if not SYNC_FILE.exists() or SYNC_FILE.stat().st_size <= MAX_SYNC_BYTES:

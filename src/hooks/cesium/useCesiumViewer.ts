@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import * as Cesium from 'cesium';
-import { setupImagery } from '../../lib/imageryFactory';
 import { useConfig } from '../../context/ConfigContext';
 import { useUIStore } from '../../store/uiStore';
 
@@ -28,9 +27,6 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { config, isLoading: configLoading } = useConfig();
-
-  // Stable error setter for child components
-  const onError = useCallback((msg: string) => setError(msg), []);
 
   // WebGL availability check derived lazily
   const [webglError] = useState<string | null>(() => {
@@ -104,6 +100,10 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
 
         // Hide Cesium credits in a detached element
         creditContainer: document.createElement('div'),
+
+        // useImageryManager owns all imagery. Starting with no implicit base
+        // layer avoids duplicate tile requests and startup layer flicker.
+        baseLayer: false,
       });
 
       (window as any).cesiumViewer = activeViewer;
@@ -211,21 +211,15 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
       } catch (e) {}
     }
 
-    // Load imagery asynchronously (never blocks viewer creation)
-    setupImagery(viewerInstance)
-      .catch((err) => console.warn('Imagery setup failed:', err))
-      .finally(() => {
-        if (active && !viewerInstance.isDestroyed()) {
-          setViewer(viewerInstance);
-          setIsLoaded(true);
-          viewerInstance.scene.requestRender();
-        }
-      });
-
     // Initial camera: wide Earth view at 20,000 km
     viewerInstance.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(0, 20, 20_000_000),
     });
+    if (active && !viewerInstance.isDestroyed()) {
+      setViewer(viewerInstance);
+      setIsLoaded(true);
+      viewerInstance.scene.requestRender();
+    }
 
     return () => {
       active = false;

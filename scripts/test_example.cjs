@@ -35,7 +35,7 @@ const path = require('path');
     console.log('Took 02_test_workspace.png');
 
     const bodyText = await page.evaluate(() => document.body.textContent);
-    console.log('Body contains Neural Interface active:', bodyText.includes('Neural Interface active'));
+    console.log('Body contains Chat interface ready:', bodyText.includes('Chat interface ready'));
 
   } catch (e) {
     console.error('Failed:', e);

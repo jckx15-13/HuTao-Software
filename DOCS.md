@@ -1,6 +1,6 @@
 # Silver Wolf VI Architecture Notes
 
-Silver Wolf VI is a Vite + React chat and astronomy workspace with adaptive theming, local chat persistence, simulated system telemetry, local diagnostic AI responses, optional Gemini responses, optional Odysseus bridge responses, ArcGIS/OSM globe imagery, and Keplerian planet targeting. The app now favors small modules with clear ownership instead of large component files that mix rendering, state, side effects, and design copy.
+Silver Wolf VI is a Vite + React chat and astronomy workspace with adaptive theming, local chat persistence, simulated system telemetry, local diagnostic AI responses, optional Gemini responses, optional Odysseus bridge responses, ArcGIS/OSM globe imagery, and light-time-corrected Keplerian planet targeting. The app now favors small modules with clear ownership instead of large component files that mix rendering, state, side effects, and design copy.
 
 ## Current Module Map
 
@@ -22,7 +22,7 @@ Silver Wolf VI is a Vite + React chat and astronomy workspace with adaptive them
 - `src/lib/messages.ts` centralizes message types, IDs, storage key, and default/reset message factories.
 - `src/lib/ai.ts` owns provider routing. The local diagnostic assistant works without external keys, Gemini requires `GEMINI_API_KEY`, and the Odysseus route requires the configured local bridge, defaulting to `http://127.0.0.1:8001`.
 - `src/lib/bridgeConfig.ts` centralizes bridge URL normalization so chat, diagnostics, memory push, satellite proxy fallback, launcher checks, and the Odysseus console use the same endpoint.
-- `bridge/server.py` allows the local dev and Vite preview origins by default; set `BRIDGE_CORS_ORIGINS` for any different hosted origin.
+- `bridge/server.py` allows the local dev and Vite preview origins by default through explicit origins plus `BRIDGE_CORS_ORIGIN_REGEX`; set `BRIDGE_CORS_ORIGINS` or `BRIDGE_CORS_ORIGIN_REGEX` for any different hosted origin.
 - `public/config.json` provides a non-secret browser config endpoint so production preview does not warn before falling back to env vars.
 - `src/store/uiStore.ts` stores active chat messages explicitly and synchronizes them with the active chat session so the composer, message feed, and AI dispatcher observe the same current state.
 
@@ -37,10 +37,12 @@ Silver Wolf VI is a Vite + React chat and astronomy workspace with adaptive them
 - `src/hooks/useAudioFeedback.ts` owns Web Audio click/blip feedback.
 
 ### Globe, Imagery, and Astronomy
-- `src/core/globe/ImageryProviderFactory.ts` owns imagery provider selection. `arcgis-world` is the default satellite imagery path, with OSM-style sources available as fallbacks.
-- `src/lib/astronomy.ts` computes low-cost Keplerian apparent planet coordinates for Mars, Jupiter, Saturn, and Neptune instead of relying on static demo positions.
+- `src/hooks/cesium/useCesiumViewer.ts` starts Cesium with `baseLayer: false`, and `src/core/globe/useImageryManager.ts` is the single runtime owner that attaches selected imagery layers.
+- `src/core/globe/ImageryProviderFactory.ts` owns imagery provider selection. It lazy-loads real Cesium provider constructors at runtime instead of returning browser-automation mocks; `arcgis-world` is the default satellite imagery path, with OSM-style sources available as fallbacks.
+- `src/lib/astronomy.ts` computes low-precision Keplerian apparent planet coordinates for Mercury, Venus, Mars, Jupiter, Saturn, Uranus, and Neptune. It applies iterative light-time correction and exposes geometric coordinates for tests, but it is not a JPL DE ephemeris.
 - `src/data/telescopePresets.ts` resolves planet presets dynamically and leaves deep-sky presets on fixed catalog coordinates.
-- `src/hooks/cesium/useConstellations.ts` applies sidereal-time rotation so constellation overlays are tied to the current Earth orientation.
+- `src/lib/coordinateTransforms.ts` precesses fixed J2000 star coordinates to the requested observation date before rendering.
+- `src/hooks/cesium/useConstellations.ts` applies J2000-to-date precession and sidereal-time rotation so constellation overlays are tied to the current Earth orientation.
 
 ### Shared UI
 - `src/components/common/IconButton.tsx` standardizes icon-only and icon+label buttons.
@@ -101,6 +103,14 @@ Validation:
 - Current 2026-06-23 validation: `npm run build` passes with the entry chunk reduced to about 498 kB, below Vite's 500 kB warning threshold.
 - Current 2026-06-23 browser smoke: `http://127.0.0.1:3005/?fallback=true` accepts input in the chat composer, appends a separate local AI response, defaults to `arcgis-world`, keeps particles and side panels off, and reports no major first-viewport region overlaps at 1366x768.
 - Current 2026-06-23 production-preview smoke: temporary Vite preview at `http://127.0.0.1:4174/?fallback=true` produced the same separate user/local-AI message flow; screenshot evidence is `C:\Users\jaron\AppData\Local\Temp\silver-wolf-chat-layout-1366-preview.png`.
+- Current 2026-06-24 mobile production-preview smoke: temporary Vite preview at `http://127.0.0.1:4178/?fallback=true` accepted a mobile chat prompt, cleared the composer, appended a compact local assistant response that did not echo the prompt text, and reported no visible control overlaps in the 390x844 viewport scan.
+- Current 2026-06-24 imagery source contract: Cesium viewer startup now disables implicit world imagery and the integration test verifies that `useImageryManager` is the only selected imagery attachment path.
+- Current 2026-06-24 real-route production-preview smoke: temporary Vite preview at `http://127.0.0.1:4180/` launched the workspace, rendered the Cesium canvas/container, showed no fresh `tileXYToRectangle` imagery error after the provider-factory fix, accepted a chat prompt, cleared the composer, and appended the compact non-echo local assistant response.
+- Current 2026-06-24 astronomy contract: the runtime test verifies every supported planet preset resolves to finite RA/Dec, AU distance, and positive light-time metadata; Mars apparent coordinates differ from same-time geometric coordinates, proving light-time correction is active.
+- Current 2026-06-24 compact spatial HUD smoke: temporary Vite preview at `http://127.0.0.1:4182/?fallback=true` in Space mode rendered the collapsed HUD opener as one 44x44 icon-only button with `aria-label="Open spatial HUD sidebar"`; the old bulky text `Spatial HUD collapsed. Controls moved to sidebar.` and `Open HUD` text button were absent, and the browser reported no fresh relevant console warnings.
+- Current 2026-06-24 constellation contract: the runtime test verifies fixed catalog star coordinates remain unchanged at J2000 but precess away from their J2000 RA/Dec by 2026; integration tests verify both Cesium and WWT constellation renderers call the shared precession transform.
+- Current 2026-06-24 visual-readability contract: integration tests verify default CSS panel opacity/blur match the readable runtime defaults, large telescope HUD panels use stronger opaque glass, and the cursor engine restores the native cursor during high-load fallback.
+- Current 2026-06-24 bottom telemetry contract: the WWT timeline has a centered top icon button that collapses the full telemetry/timeline panel into a slim bottom bar and expands it again; integration tests verify the labels and collapsed-state guard.
 - Previous dependency pass: `pnpm audit --json` reported zero vulnerabilities after the 2026-06-20 remediation.
 
 ---
@@ -120,21 +130,22 @@ This section lists the current, source-backed wiring. It intentionally avoids cl
 
 1. `ChatComposer.tsx` captures text and calls `ChatPanel.tsx`.
 2. `useAIChat.ts` writes the user message to the active Zustand chat session, sets processing state, and routes the request.
-3. `src/lib/ai.ts` returns a deterministic local assistant response by default. Gemini requires `GEMINI_API_KEY`; Odysseus requires the configured local bridge.
+3. `src/lib/ai.ts` returns a deterministic local assistant response by default without echoing the prompt text. Gemini requires `GEMINI_API_KEY`; Odysseus requires the configured local bridge.
 4. The response is appended as a separate assistant message, which is what the browser and runtime tests verify.
 
 ## Bridge And Companion Repositories
 
 1. `src/lib/bridgeConfig.ts` resolves the bridge URL from Developer Settings, `VITE_BRIDGE_URL`, or the local default.
-2. `bridge/server.py` exposes the local status, chat, sync, diagnostics, camera proxy, git status, and generic Odysseus proxy routes.
-3. `scripts/test_integration_contracts.cjs` verifies that mapped WorldWideView assets, copied Odysseus documentation assets, Odysseus source-module references, and bridge routes still exist.
+2. `bridge/server.py` exposes the local status, chat, sync, diagnostics, camera proxy, git status, and generic Odysseus proxy routes. Localhost and `127.0.0.1` frontend ports are allowed through the default CORS regex so preview ports do not silently break bridge status checks.
+3. `scripts/test_integration_contracts.cjs` verifies that mapped WorldWideView assets, copied Odysseus documentation assets, Odysseus source-module references, bridge routes, and bridge CORS defaults still exist.
 4. The integration is conditional, not 100% complete: WorldWideView and Odysseus still have their own runtime requirements.
 
 ## Performance And Visual Load
 
 1. `App.tsx` lazy-loads the workspace layout, globe background, launcher, particle overlay, custom cursor, settings, diagnostics, and telescope views.
 2. Particle effects and the custom cursor are off by default; enabling particle effects opt-ins to the custom cursor.
-3. `useThemeVariables.ts` computes the simulated load state that can reduce effects and keep text input responsive.
-4. `npm run build` currently verifies that the production entry chunk stays below Vite's 500 kB warning threshold.
+3. The cursor engine restores the native cursor when high-load mode disables the custom reticle, avoiding hidden or lagging cursor feedback.
+4. `useThemeVariables.ts` clamps normal-mode panels to readable opacity and blur, and `index.css` uses the same fallback defaults before React hydrates.
+5. `npm run build` currently verifies that the production entry chunk stays below Vite's 500 kB warning threshold.
 
 

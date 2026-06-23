@@ -168,7 +168,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
     // Verify UI is in Chat mode by default
     const isChatMode = await safeEvaluate(() => {
-      return document.body.textContent.includes('Neural Interface active') || document.body.textContent.includes('SILVER WOLF');
+      return document.body.textContent.includes('Chat interface ready') || document.body.textContent.includes('SILVER WOLF');
     });
     console.log(`Is initial workspace loaded? ${isChatMode}`);
 

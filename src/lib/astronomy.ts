@@ -1,9 +1,12 @@
-export type PlanetId = 'mars' | 'jupiter' | 'saturn' | 'neptune';
+export type PlanetId = 'mercury' | 'venus' | 'mars' | 'jupiter' | 'saturn' | 'uranus' | 'neptune';
+
+export const PLANET_IDS: PlanetId[] = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'];
 
 export interface EquatorialCoordinates {
   raHours: number;
   decDegrees: number;
   distanceAu: number;
+  lightTimeMinutes: number;
 }
 
 type OrbitalElements = {
@@ -23,6 +26,8 @@ type OrbitalElements = {
 
 const DAY_MS = 86_400_000;
 const J2000_UNIX_MS = Date.UTC(2000, 0, 1, 12, 0, 0);
+const LIGHT_DAYS_PER_AU = 0.00577551833109;
+const LIGHT_MINUTES_PER_AU = LIGHT_DAYS_PER_AU * 24 * 60;
 
 const EARTH_ELEMENTS: OrbitalElements = {
   nodeDeg: 0,
@@ -40,6 +45,34 @@ const EARTH_ELEMENTS: OrbitalElements = {
 };
 
 const PLANET_ELEMENTS: Record<PlanetId, OrbitalElements> = {
+  mercury: {
+    nodeDeg: 48.3313,
+    nodeRateDegPerDay: 3.24587e-5,
+    inclinationDeg: 7.0047,
+    inclinationRateDegPerDay: 5e-8,
+    perihelionDeg: 29.1241,
+    perihelionRateDegPerDay: 1.01444e-5,
+    semiMajorAxisAu: 0.387098,
+    semiMajorAxisRateAuPerDay: 0,
+    eccentricity: 0.205635,
+    eccentricityRatePerDay: 5.59e-10,
+    meanAnomalyDeg: 168.6562,
+    meanAnomalyRateDegPerDay: 4.0923344368,
+  },
+  venus: {
+    nodeDeg: 76.6799,
+    nodeRateDegPerDay: 2.46590e-5,
+    inclinationDeg: 3.3946,
+    inclinationRateDegPerDay: 2.75e-8,
+    perihelionDeg: 54.8910,
+    perihelionRateDegPerDay: 1.38374e-5,
+    semiMajorAxisAu: 0.723330,
+    semiMajorAxisRateAuPerDay: 0,
+    eccentricity: 0.006773,
+    eccentricityRatePerDay: -1.302e-9,
+    meanAnomalyDeg: 48.0052,
+    meanAnomalyRateDegPerDay: 1.6021302244,
+  },
   mars: {
     nodeDeg: 49.5574,
     nodeRateDegPerDay: 2.11081e-5,
@@ -81,6 +114,20 @@ const PLANET_ELEMENTS: Record<PlanetId, OrbitalElements> = {
     eccentricityRatePerDay: -9.499e-9,
     meanAnomalyDeg: 316.9670,
     meanAnomalyRateDegPerDay: 0.0334442282,
+  },
+  uranus: {
+    nodeDeg: 74.0005,
+    nodeRateDegPerDay: 1.3978e-5,
+    inclinationDeg: 0.7733,
+    inclinationRateDegPerDay: 1.9e-8,
+    perihelionDeg: 96.6612,
+    perihelionRateDegPerDay: 3.0565e-5,
+    semiMajorAxisAu: 19.18171,
+    semiMajorAxisRateAuPerDay: -1.55e-8,
+    eccentricity: 0.047318,
+    eccentricityRatePerDay: 7.45e-9,
+    meanAnomalyDeg: 142.5905,
+    meanAnomalyRateDegPerDay: 0.011725806,
   },
   neptune: {
     nodeDeg: 131.7806,
@@ -145,15 +192,14 @@ function heliocentricEcliptic(elements: OrbitalElements, days: number) {
   };
 }
 
-export function apparentPlanetEquatorialCoordinates(planet: PlanetId, date: Date = new Date()): EquatorialCoordinates {
-  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
-  const days = daysSinceJ2000(safeDate);
-  const planetPos = heliocentricEcliptic(PLANET_ELEMENTS[planet], days);
-  const earthPos = heliocentricEcliptic(EARTH_ELEMENTS, days);
+function geocentricEquatorialCoordinates(planet: PlanetId, earthDays: number, planetEmissionDays: number): EquatorialCoordinates {
+  const planetPos = heliocentricEcliptic(PLANET_ELEMENTS[planet], planetEmissionDays);
+  const earthPos = heliocentricEcliptic(EARTH_ELEMENTS, earthDays);
   const xg = planetPos.x - earthPos.x;
   const yg = planetPos.y - earthPos.y;
   const zg = planetPos.z - earthPos.z;
-  const obliquity = toRadians(23.4393 - 3.563e-7 * days);
+  const distanceAu = Math.hypot(xg, yg, zg);
+  const obliquity = toRadians(23.4393 - 3.563e-7 * earthDays);
   const xe = xg;
   const ye = yg * Math.cos(obliquity) - zg * Math.sin(obliquity);
   const ze = yg * Math.sin(obliquity) + zg * Math.cos(obliquity);
@@ -163,25 +209,46 @@ export function apparentPlanetEquatorialCoordinates(planet: PlanetId, date: Date
   return {
     raHours: raDegrees / 15,
     decDegrees,
-    distanceAu: Math.hypot(xg, yg, zg),
+    distanceAu,
+    lightTimeMinutes: distanceAu * LIGHT_MINUTES_PER_AU,
   };
+}
+
+export function geometricPlanetEquatorialCoordinates(planet: PlanetId, date: Date = new Date()): EquatorialCoordinates {
+  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+  const days = daysSinceJ2000(safeDate);
+  return geocentricEquatorialCoordinates(planet, days, days);
+}
+
+export function apparentPlanetEquatorialCoordinates(planet: PlanetId, date: Date = new Date()): EquatorialCoordinates {
+  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+  const earthDays = daysSinceJ2000(safeDate);
+  let planetEmissionDays = earthDays;
+  let coordinates = geocentricEquatorialCoordinates(planet, earthDays, planetEmissionDays);
+
+  for (let i = 0; i < 2; i += 1) {
+    planetEmissionDays = earthDays - coordinates.distanceAu * LIGHT_DAYS_PER_AU;
+    coordinates = geocentricEquatorialCoordinates(planet, earthDays, planetEmissionDays);
+  }
+
+  return coordinates;
 }
 
 export function formatRaHours(raHours: number): string {
   const normalized = ((raHours % 24) + 24) % 24;
-  const hours = Math.floor(normalized);
-  const minutesFloat = (normalized - hours) * 60;
-  const minutes = Math.floor(minutesFloat);
-  const seconds = Math.round((minutesFloat - minutes) * 60);
+  const totalSeconds = Math.round(normalized * 3600) % 86_400;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
   return `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
 }
 
 export function formatDecDegrees(decDegrees: number): string {
   const sign = decDegrees >= 0 ? '+' : '-';
   const absolute = Math.abs(decDegrees);
-  const degrees = Math.floor(absolute);
-  const minutesFloat = (absolute - degrees) * 60;
-  const minutes = Math.floor(minutesFloat);
-  const seconds = Math.round((minutesFloat - minutes) * 60);
+  const totalSeconds = Math.min(Math.round(absolute * 3600), 90 * 3600);
+  const degrees = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
   return `${sign}${String(degrees).padStart(2, '0')}° ${String(minutes).padStart(2, '0')}' ${String(seconds).padStart(2, '0')}"`;
 }

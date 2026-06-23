@@ -521,7 +521,14 @@ export class CursorEngine implements CursorEngineLifecycle {
   };
 
   private setDocumentCursor(): void {
-    if (!this.config.enabled || this.overTextInput || !this.pointerInsideViewport || !this.documentVisible || this.modality === "touch") {
+    if (
+      !this.config.enabled ||
+      this.config.appHighLoad ||
+      this.overTextInput ||
+      !this.pointerInsideViewport ||
+      !this.documentVisible ||
+      this.modality === "touch"
+    ) {
       this.restoreDocumentCursor();
       return;
     }

@@ -24,9 +24,9 @@
   --theme-primary-glow: color-mix(in srgb, var(--theme-primary) 50%, transparent);
 
   /* UI personalisation — set by JS from store */
-  --theme-ui-opacity: 0.75;
-  --theme-ui-blur: 16px;
-  --theme-ui-radius: 12px;
+  --theme-ui-opacity: 0.92;
+  --theme-ui-blur: 8px;
+  --theme-ui-radius: 8px;
   --theme-ui-shadow-intensity: 0.5;
   --theme-ui-animation-speed: 1;
   --theme-ui-font-scale: 1;
@@ -103,10 +103,10 @@ body {
 }
 
 .panel-glass {
-  background: rgba(15, 17, 26, var(--theme-ui-opacity, 0.75));
-  backdrop-filter: blur(var(--theme-ui-blur, 16px));
-  -webkit-backdrop-filter: blur(var(--theme-ui-blur, 16px));
-  border-radius: calc(var(--theme-ui-radius, 12px) * 1px);
+  background: rgba(15, 17, 26, var(--theme-ui-opacity, 0.92));
+  backdrop-filter: blur(var(--theme-ui-blur, 8px));
+  -webkit-backdrop-filter: blur(var(--theme-ui-blur, 8px));
+  border-radius: calc(var(--theme-ui-radius, 8px) * 1px);
   border: 1px solid rgba(255, 255, 255, var(--theme-ui-border-opacity, 0.08));
   box-shadow:
     0 8px 32px rgba(0, 0, 0, calc(var(--theme-ui-shadow-intensity, 0.5) * 0.6)),
@@ -114,10 +114,10 @@ body {
 }
 
 .glass-panel {
-  background: rgba(15, 17, 26, var(--theme-ui-opacity, 0.75)) !important;
-  backdrop-filter: blur(var(--theme-ui-blur, 16px)) !important;
-  -webkit-backdrop-filter: blur(var(--theme-ui-blur, 16px)) !important;
-  border-radius: calc(var(--theme-ui-radius, 12px) * 1px);
+  background: rgba(15, 17, 26, var(--theme-ui-opacity, 0.92)) !important;
+  backdrop-filter: blur(var(--theme-ui-blur, 8px)) !important;
+  -webkit-backdrop-filter: blur(var(--theme-ui-blur, 8px)) !important;
+  border-radius: calc(var(--theme-ui-radius, 8px) * 1px);
   border: 1px solid rgba(255, 255, 255, var(--theme-ui-border-opacity, 0.08)) !important;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, calc(var(--theme-ui-shadow-intensity, 0.5) * 0.6)),
@@ -125,18 +125,18 @@ body {
 }
 
 .glass-panel-subtle {
-  background: rgba(15, 17, 26, calc(var(--theme-ui-opacity, 0.75) * 0.5));
-  backdrop-filter: blur(calc(var(--theme-ui-blur, 16px) * 0.5));
-  -webkit-backdrop-filter: blur(calc(var(--theme-ui-blur, 16px) * 0.5));
-  border-radius: calc(var(--theme-ui-radius, 12px) * 1px);
+  background: rgba(15, 17, 26, calc(var(--theme-ui-opacity, 0.92) * 0.5));
+  backdrop-filter: blur(calc(var(--theme-ui-blur, 8px) * 0.5));
+  -webkit-backdrop-filter: blur(calc(var(--theme-ui-blur, 8px) * 0.5));
+  border-radius: calc(var(--theme-ui-radius, 8px) * 1px);
   border: 1px solid rgba(255, 255, 255, calc(var(--theme-ui-border-opacity, 0.08) * 0.5));
 }
 
 .glass-panel-strong {
-  background: rgba(15, 17, 26, min(0.98, calc(var(--theme-ui-opacity, 0.75) * 1.08)));
-  backdrop-filter: blur(calc(var(--theme-ui-blur, 16px) * 1.5));
-  -webkit-backdrop-filter: blur(calc(var(--theme-ui-blur, 16px) * 1.5));
-  border-radius: calc(var(--theme-ui-radius, 12px) * 1px);
+  background: rgba(15, 17, 26, min(0.98, calc(var(--theme-ui-opacity, 0.92) * 1.08)));
+  backdrop-filter: blur(calc(var(--theme-ui-blur, 8px) * 1.5));
+  -webkit-backdrop-filter: blur(calc(var(--theme-ui-blur, 8px) * 1.5));
+  border-radius: calc(var(--theme-ui-radius, 8px) * 1px);
   border: 1px solid rgba(255, 255, 255, var(--theme-ui-border-opacity, 0.08));
   box-shadow:
     0 16px 48px rgba(0, 0, 0, calc(var(--theme-ui-shadow-intensity, 0.5) * 0.8)),

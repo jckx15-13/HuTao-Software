@@ -78,7 +78,7 @@ const path = require('path');
 
     // Verify UI is in Chat mode by default
     const isChatMode = await page.evaluate(() => {
-      return document.body.textContent.includes('Neural Interface active');
+      return document.body.textContent.includes('Chat interface ready');
     });
     console.log(`Is initial workspace in Chat mode? ${isChatMode}`);
 

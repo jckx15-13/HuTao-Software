@@ -40,7 +40,14 @@ const {
 } = require("../src/lib/earthObserverProjection");
 const {
   apparentPlanetEquatorialCoordinates,
+  formatDecDegrees,
+  formatRaHours,
+  geometricPlanetEquatorialCoordinates,
+  PLANET_IDS,
 } = require("../src/lib/astronomy");
+const {
+  precessEquatorialJ2000ToDate,
+} = require("../src/lib/coordinateTransforms");
 const {
   TELESCOPE_PRESETS,
   resolveTelescopePresetCoordinates,
@@ -92,25 +99,62 @@ async function run() {
   assert.ok(Math.abs(zenith.longitudeDegrees) < 1e-9);
   assert.equal(zenith.latitudeDegrees, 0);
 
+  const siriusJ2000 = { ra: 6.752477, dec: -16.716116 };
+  const siriusAtJ2000 = precessEquatorialJ2000ToDate(siriusJ2000, j2000);
+  const siriusAt2026 = precessEquatorialJ2000ToDate(siriusJ2000, new Date(Date.UTC(2026, 0, 1, 0, 0, 0)));
+  assert.ok(Math.abs(siriusAtJ2000.ra - siriusJ2000.ra) < 1e-9);
+  assert.ok(Math.abs(siriusAtJ2000.dec - siriusJ2000.dec) < 1e-9);
+  assert.ok(
+    Math.abs(siriusAt2026.ra - siriusJ2000.ra) > 0.001 ||
+      Math.abs(siriusAt2026.dec - siriusJ2000.dec) > 0.001,
+    "constellation star coordinates should precess away from their J2000 catalog positions by 2026"
+  );
+
   const marsNow = apparentPlanetEquatorialCoordinates("mars", j2000);
+  const marsGeometricNow = geometricPlanetEquatorialCoordinates("mars", j2000);
   const marsLater = apparentPlanetEquatorialCoordinates("mars", new Date(Date.UTC(2000, 1, 1, 12, 0, 0)));
   assert.ok(marsNow.raHours >= 0 && marsNow.raHours < 24);
   assert.ok(marsNow.decDegrees >= -90 && marsNow.decDegrees <= 90);
   assert.ok(marsNow.distanceAu > 0.3);
+  assert.ok(marsNow.lightTimeMinutes > 2, `unexpected Mars light time ${marsNow.lightTimeMinutes}`);
+  assert.ok(
+    Math.abs(marsNow.raHours - marsGeometricNow.raHours) > 0.000001 ||
+      Math.abs(marsNow.decDegrees - marsGeometricNow.decDegrees) > 0.000001,
+    "apparent Mars coordinates should include non-zero light-time correction"
+  );
   assert.notEqual(marsNow.raHours.toFixed(3), marsLater.raHours.toFixed(3));
+
+  assert.equal(formatRaHours(23.9999999), "00h 00m 00s");
+  assert.equal(formatDecDegrees(-12.9999999), "-13° 00' 00\"");
+
+  const planetPresets = TELESCOPE_PRESETS.filter((preset) => preset.planetId);
+  assert.equal(planetPresets.length, PLANET_IDS.length);
+  for (const planetId of PLANET_IDS) {
+    const preset = TELESCOPE_PRESETS.find((item) => item.planetId === planetId);
+    assert.ok(preset, `${planetId} telescope preset missing`);
+    const coordinates = apparentPlanetEquatorialCoordinates(planetId, j2000);
+    assert.ok(coordinates.raHours >= 0 && coordinates.raHours < 24, `${planetId} RA out of range`);
+    assert.ok(coordinates.decDegrees >= -90 && coordinates.decDegrees <= 90, `${planetId} Dec out of range`);
+    assert.ok(coordinates.distanceAu > 0, `${planetId} distance missing`);
+    assert.ok(coordinates.lightTimeMinutes > 0, `${planetId} light time missing`);
+  }
 
   const marsPreset = TELESCOPE_PRESETS.find((preset) => preset.id === "mars");
   assert.ok(marsPreset, "Mars preset missing");
   const marsPresetNow = resolveTelescopePresetCoordinates(marsPreset, j2000);
   const marsPresetLater = resolveTelescopePresetCoordinates(marsPreset, new Date(Date.UTC(2000, 1, 1, 12, 0, 0)));
   assert.equal(marsPresetNow.source, "kepler-planet");
+  assert.ok(marsPresetNow.lightTimeMinutes > 2);
   assert.notEqual(marsPresetNow.ra, marsPresetLater.ra);
 
   const localText = createLocalAssistantResponse("Confirm chat works");
-  assert.match(localText, /chat loop is working locally/i);
+  assert.match(localText, /chat loop verified/i);
+  assert.match(localText, /without echoing the prompt text/i);
+  assert.doesNotMatch(localText, /Confirm chat works/);
 
   const localResponse = await aiChat("local-assistant", "Confirm chat works");
-  assert.match(localResponse.text, /I received/i);
+  assert.match(localResponse.text, /without echoing the prompt text/i);
+  assert.doesNotMatch(localResponse.text, /Confirm chat works/);
   assert.equal(localResponse.error, undefined);
 
   const store = useUIStore.getState();
@@ -154,7 +198,7 @@ async function run() {
   assert.equal(chatMessages[0].sender, "user");
   assert.equal(chatMessages[0].content, "Runtime smoke ping");
   assert.equal(chatMessages[1].sender, "ai");
-  assert.match(chatMessages[1].content, /chat loop is working locally/i);
+  assert.match(chatMessages[1].content, /chat loop verified/i);
 
   console.log("Physics, astronomy, imagery, UI defaults, and local AI runtime tests passed.");
 }

@@ -1,48 +1,23 @@
-// Runtime/mocked wrapper to prevent static Cesium initialization crashes in headless environments
-const getCesium = (): any => {
-    if (typeof window !== 'undefined') {
-        const isHeadless = /HeadlessChrome/i.test(navigator.userAgent) || navigator.webdriver || window.location.search.includes('fallback');
-        if (isHeadless) {
-            return {
-                BingMapsStyle: { AERIAL: 'aerial', AERIAL_WITH_LABELS: 'aerial_labels', ROAD: 'road' },
-                UrlTemplateImageryProvider: class {},
-                BingMapsImageryProvider: class { static fromUrl() { return {}; } },
-                IonImageryProvider: class { static fromAssetId() { return {}; } },
-                ArcGisMapServerImageryProvider: class { static fromUrl() { return {}; } }
-            };
-        }
-        const host = (globalThis as any).__WWV_HOST__;
-        if (host?.Cesium) return host.Cesium;
-    }
-    return {
-        BingMapsStyle: { AERIAL: 'aerial', AERIAL_WITH_LABELS: 'aerial_labels', ROAD: 'road' },
-        UrlTemplateImageryProvider: class {},
-        BingMapsImageryProvider: class { static fromUrl() { return {}; } },
-        IonImageryProvider: class { static fromAssetId() { return {}; } },
-        ArcGisMapServerImageryProvider: class { static fromUrl() { return {}; } }
-    };
-};
+type CesiumImageryApi = Pick<
+    typeof import("cesium"),
+    | "ArcGisMapServerImageryProvider"
+    | "BingMapsImageryProvider"
+    | "BingMapsStyle"
+    | "IonImageryProvider"
+    | "UrlTemplateImageryProvider"
+>;
 
-const BingMapsImageryProvider = {
-    fromUrl: (...args: any[]) => getCesium().BingMapsImageryProvider.fromUrl(...args)
-};
-const IonImageryProvider = {
-    fromAssetId: (...args: any[]) => getCesium().IonImageryProvider.fromAssetId(...args)
-};
-const ArcGisMapServerImageryProvider = {
-    fromUrl: (...args: any[]) => getCesium().ArcGisMapServerImageryProvider.fromUrl(...args)
-};
-class UrlTemplateImageryProvider {
-    constructor(...args: any[]) {
-        const Impl = getCesium().UrlTemplateImageryProvider;
-        return new Impl(...args);
+let cesiumImageryApiPromise: Promise<CesiumImageryApi> | null = null;
+
+async function loadCesiumImageryApi(): Promise<CesiumImageryApi> {
+    const hostCesium = (globalThis as { __WWV_HOST__?: { Cesium?: CesiumImageryApi } }).__WWV_HOST__?.Cesium;
+    if (hostCesium?.UrlTemplateImageryProvider && hostCesium.ArcGisMapServerImageryProvider) {
+        return hostCesium;
     }
+
+    cesiumImageryApiPromise ??= import("cesium");
+    return cesiumImageryApiPromise;
 }
-const BingMapsStyle = {
-    get AERIAL() { return getCesium().BingMapsStyle.AERIAL; },
-    get AERIAL_WITH_LABELS() { return getCesium().BingMapsStyle.AERIAL_WITH_LABELS; },
-    get ROAD() { return getCesium().BingMapsStyle.ROAD; }
-};
 
 export interface ImageryLayerEntry {
     id: string;
@@ -119,14 +94,16 @@ export const IMAGERY_LAYERS: ImageryLayerEntry[] = [
 ];
 
 
-export function createOsmProvider() {
+export async function createOsmProvider() {
+    const { UrlTemplateImageryProvider } = await loadCesiumImageryApi();
     return new UrlTemplateImageryProvider({
         url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
         subdomains: ["a", "b", "c"]
     });
 }
 
-function createGoogleProvider(lyrs: string) {
+async function createGoogleProvider(lyrs: string) {
+    const { UrlTemplateImageryProvider } = await loadCesiumImageryApi();
     return new UrlTemplateImageryProvider({
         url: `https://mt{s}.google.com/vt/lyrs=${lyrs}&x={x}&y={y}&z={z}`,
         subdomains: ["0", "1", "2", "3"]
@@ -136,24 +113,30 @@ function createGoogleProvider(lyrs: string) {
 async function tieredFallback(ionAssetId: number, googleLyrs: string) {
     // 1. Try Google XYZ tiles
     try {
-        return createGoogleProvider(googleLyrs);
+        return await createGoogleProvider(googleLyrs);
     } catch (googleErr) {
         console.warn("[ImageryProvider] Google tiles failed, trying Bing via Ion:", googleErr);
     }
 
     // 2. Try Bing via Cesium Ion (free shared token)
     try {
+        const { IonImageryProvider } = await loadCesiumImageryApi();
         return await IonImageryProvider.fromAssetId(ionAssetId);
     } catch (ionErr) {
         console.warn("[ImageryProvider] Ion/Bing failed, falling back to OSM:", ionErr);
     }
 
     // 3. OSM as last resort
-    return createOsmProvider();
+    return await createOsmProvider();
 }
 
 export async function createImageryProvider(layerId: string) {
     const bingKey = import.meta.env.VITE_BING_MAPS_KEY;
+    const {
+        ArcGisMapServerImageryProvider,
+        BingMapsImageryProvider,
+        BingMapsStyle,
+    } = await loadCesiumImageryApi();
 
     switch (layerId) {
         case "cesium":
@@ -191,17 +174,17 @@ export async function createImageryProvider(layerId: string) {
             return await tieredFallback(4, "m");
 
         case "google-satellite":
-            return createGoogleProvider("s");
+            return await createGoogleProvider("s");
         case "google-street":
-            return createGoogleProvider("m");
+            return await createGoogleProvider("m");
 
         case "osm":
-            return createOsmProvider();
+            return await createOsmProvider();
 
         case "blue-marble":
             return await tieredFallback(3845, "s");
 
         default:
-            return createOsmProvider();
+            return await createOsmProvider();
     }
 }

@@ -4,6 +4,7 @@ import { useUIStore } from '@/store/uiStore';
 import { useStore } from '@/core/state/store';
 import { constellations } from '@/data/constellations';
 import { getGreenwichMeanSiderealDegrees } from '@/lib/earthObserverProjection';
+import { precessEquatorialJ2000ToDate } from '@/lib/coordinateTransforms';
 
 /**
  * A custom hook to render astronomical constellations around the Earth globe in Cesium.
@@ -27,9 +28,10 @@ export function useConstellations(viewer: Cesium.Viewer | null) {
 
       constellations.forEach((constellation) => {
         const starPositions = constellation.stars.map((star) => {
-          const earthFixedRaDegrees = (star.ra * 15.0) - gmstDegrees;
+          const precessed = precessEquatorialJ2000ToDate({ ra: star.ra, dec: star.dec }, projectionDate);
+          const earthFixedRaDegrees = (precessed.ra * 15.0) - gmstDegrees;
           const raRad = (earthFixedRaDegrees * Math.PI) / 180.0;
-          const decRad = (star.dec * Math.PI) / 180.0;
+          const decRad = (precessed.dec * Math.PI) / 180.0;
           const x = celestialRadius * Math.cos(decRad) * Math.cos(raRad);
           const y = celestialRadius * Math.cos(decRad) * Math.sin(raRad);
           const z = celestialRadius * Math.sin(decRad);

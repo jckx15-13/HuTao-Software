@@ -977,18 +977,15 @@ export default function GoogleEarthRemix() {
 
           {/* Spatial HUD Migration Notice */}
           {!leftPanelOpen && (
-            <div className="absolute top-[80px] left-[20px] z-50 glass-panel p-3 px-4 flex items-center gap-3 animate-fade-in pointer-events-auto">
-              <div className="flex items-center gap-2 text-white/80 text-xs font-mono">
-                <Compass className="w-4 h-4 text-primary animate-pulse" />
-                <span>Spatial HUD collapsed. Controls moved to sidebar.</span>
-              </div>
-              <button
-                onClick={() => setLeftPanelOpen(true)}
-                className="bg-primary/25 hover:bg-primary/45 text-primary border border-primary/30 px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer"
-              >
-                Open HUD
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setLeftPanelOpen(true)}
+              aria-label="Open spatial HUD sidebar"
+              title="Open spatial HUD sidebar"
+              className="absolute top-[80px] left-[20px] z-50 glass-panel inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-primary/25 bg-black/35 text-primary shadow-lg transition-colors hover:bg-primary/15 hover:text-white pointer-events-auto"
+            >
+              <Compass className="w-4 h-4" aria-hidden="true" />
+            </button>
           )}
           {/* Fallback 2D Sphere Globe when Cesium has not loaded */}
           {!hasCesium && (

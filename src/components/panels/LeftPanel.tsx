@@ -412,6 +412,7 @@ export function LeftPanel() {
       dec: coordinates.dec,
       source: coordinates.source,
       distanceAu: coordinates.distanceAu,
+      lightTimeMinutes: coordinates.lightTimeMinutes,
     };
   }, [activePreset, currentTime]);
 
@@ -1284,8 +1285,9 @@ export function LeftPanel() {
                     <div className="col-span-2 border-t border-white/5 pt-1.5 mt-1.5">
                       <span className="text-white/20 block text-xs uppercase">Coordinate Source</span>
                       <span className="text-white/70 font-bold">
-                        {earthFrame.source === 'kepler-planet' ? 'Keplerian planet ephemeris' : 'Fixed catalog coordinate'}
+                        {earthFrame.source === 'kepler-planet' ? 'Light-time Keplerian ephemeris' : 'Fixed catalog coordinate'}
                         {earthFrame.distanceAu ? ` · ${earthFrame.distanceAu.toFixed(2)} AU` : ''}
+                        {earthFrame.lightTimeMinutes ? ` · LT ${earthFrame.lightTimeMinutes.toFixed(1)} min` : ''}
                       </span>
                     </div>
                   </div>

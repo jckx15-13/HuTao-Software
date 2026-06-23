@@ -6,6 +6,8 @@
 
 const J2000 = new Date('2000-01-01T12:00:00Z').getTime();
 const MS_PER_DAY = 86400000;
+const JULIAN_CENTURY_DAYS = 36525;
+const ARCSECONDS_TO_RADIANS = Math.PI / (180 * 3600);
 
 export interface CelestialCoords {
   ra: number;    // Right Ascension in decimal hours (0 to 24)
@@ -25,6 +27,66 @@ export function raHoursToDegrees(hours: number): number {
 
 export function raDegreesToHours(degrees: number): number {
   return (((degrees % 360) + 360) % 360) / 15;
+}
+
+function normalizeRadians(radians: number): number {
+  const fullTurn = 2 * Math.PI;
+  const normalized = radians % fullTurn;
+  return normalized < 0 ? normalized + fullTurn : normalized;
+}
+
+function clampDegrees(degrees: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, degrees));
+}
+
+/**
+ * Precesses J2000 equatorial coordinates into the requested observation date.
+ *
+ * The app's fixed star catalog is stored as J2000 RA/Dec. Rendering those
+ * values directly makes constellations slowly drift out of the Earth-fixed
+ * frame as users scrub time. This uses the standard IAU 1976 precession
+ * angles from Meeus to move catalog coordinates into the date epoch before
+ * sidereal rotation is applied.
+ */
+export function precessEquatorialJ2000ToDate(
+  coords: Omit<CelestialCoords, 'roll'>,
+  date: Date = new Date()
+): Omit<CelestialCoords, 'roll'> {
+  const safeDate = date instanceof Date && Number.isFinite(date.getTime()) ? date : new Date(J2000);
+  const raHours = Number.isFinite(coords.ra) ? coords.ra : 0;
+  const decDegrees = Number.isFinite(coords.dec) ? coords.dec : 0;
+  const clampedDec = clampDegrees(decDegrees, -90, 90);
+  const centuries = (safeDate.getTime() - J2000) / (MS_PER_DAY * JULIAN_CENTURY_DAYS);
+
+  if (Math.abs(centuries) < 1e-12) {
+    return {
+      ra: raDegreesToHours(raHoursToDegrees(raHours)),
+      dec: clampedDec,
+    };
+  }
+
+  const t2 = centuries * centuries;
+  const t3 = t2 * centuries;
+  const zeta = (2306.2181 * centuries + 0.30188 * t2 + 0.017998 * t3) * ARCSECONDS_TO_RADIANS;
+  const z = (2306.2181 * centuries + 1.09468 * t2 + 0.018203 * t3) * ARCSECONDS_TO_RADIANS;
+  const theta = (2004.3109 * centuries - 0.42665 * t2 - 0.041833 * t3) * ARCSECONDS_TO_RADIANS;
+
+  const raRad = (raHoursToDegrees(raHours) * Math.PI) / 180;
+  const decRad = (clampedDec * Math.PI) / 180;
+  const cosDec = Math.cos(decRad);
+  const sinDec = Math.sin(decRad);
+  const raPlusZeta = raRad + zeta;
+  const cosTheta = Math.cos(theta);
+  const sinTheta = Math.sin(theta);
+
+  const a = cosDec * Math.sin(raPlusZeta);
+  const b = cosTheta * cosDec * Math.cos(raPlusZeta) - sinTheta * sinDec;
+  const c = sinTheta * cosDec * Math.cos(raPlusZeta) + cosTheta * sinDec;
+
+  return {
+    ra: raDegreesToHours((normalizeRadians(Math.atan2(a, b) + z) * 180) / Math.PI),
+    dec: (Math.asin(Math.max(-1, Math.min(1, c))) * 180) / Math.PI,
+  };
 }
 
 /**

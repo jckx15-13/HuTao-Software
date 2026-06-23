@@ -136,7 +136,7 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
                     }
 
                     if (!provider) {
-                        provider = createOsmProvider();
+                        provider = await createOsmProvider();
                         console.warn('[useImageryManager] Using OSM fallback imagery');
                     }
                 }

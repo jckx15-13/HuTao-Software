@@ -115,6 +115,23 @@ function testPolicyDegradation() {
   assert.equal(policy.particlesEnabled, false);
   assert.equal(policy.lockAssistEnabled, false);
   assert.ok(policy.recoilStrength <= 0.12);
+
+  const highLoadPolicy = deriveRuntimePolicy(
+    {
+      enabled: true,
+      cursorDesign: "reticle-v1",
+      reducedMotion: false,
+      appHighLoad: true,
+      animationIntensity: 1,
+      particleEffects: true,
+    },
+    CURSOR_PROFILES.tactical,
+    16,
+    true
+  );
+  assert.equal(highLoadPolicy.disabledReason, "app high-load mode");
+  assert.equal(highLoadPolicy.trailsEnabled, false);
+  assert.equal(highLoadPolicy.lockAssistEnabled, false);
 }
 
 function testDiagnostics() {

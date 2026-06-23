@@ -20,6 +20,7 @@ export interface ResolvedTelescopeCoordinates {
   ra: string;
   dec: string;
   distanceAu?: number;
+  lightTimeMinutes?: number;
   source: 'fixed-catalog' | 'kepler-planet';
 }
 
@@ -108,6 +109,32 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     color: '#FFAA00',
   },
   {
+    id: 'mercury',
+    name: 'Planet Mercury',
+    url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Mercury',
+    ra: '00h 00m 00s',
+    dec: '00° 00\' 00"',
+    fov: '60.00°',
+    description: 'Fast inner planet target resolved from light-time-corrected Keplerian ephemeris.',
+    raHours: 0,
+    decDegrees: 0,
+    color: '#B8B1A6',
+    planetId: 'mercury',
+  },
+  {
+    id: 'venus',
+    name: 'Planet Venus',
+    url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Venus',
+    ra: '00h 00m 00s',
+    dec: '00° 00\' 00"',
+    fov: '60.00°',
+    description: 'Bright inner planet target resolved from light-time-corrected Keplerian ephemeris.',
+    raHours: 0,
+    decDegrees: 0,
+    color: '#F6DFA8',
+    planetId: 'venus',
+  },
+  {
     id: 'mars',
     name: 'Planet Mars',
     url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Mars',
@@ -146,6 +173,20 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     color: '#F4E3B1',
     lookAt: 'Saturn',
     planetId: 'saturn',
+  },
+  {
+    id: 'uranus',
+    name: 'Planet Uranus',
+    url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Uranus',
+    ra: '00h 00m 00s',
+    dec: '00° 00\' 00"',
+    fov: '60.00°',
+    description: 'Ice giant target resolved from light-time-corrected Keplerian ephemeris.',
+    raHours: 0,
+    decDegrees: 0,
+    color: '#8FD8D8',
+    lookAt: 'Uranus',
+    planetId: 'uranus',
   },
   {
     id: 'neptune',

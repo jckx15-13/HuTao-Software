@@ -2,26 +2,18 @@ import { bridgeUrl, getBridgeBaseUrl } from './bridgeConfig';
 
 type AIChatResult = { text: string; error?: string };
 
-function summarizePrompt(text: string): string {
-  const normalized = text.replace(/\s+/g, ' ').trim();
-  if (!normalized) return 'empty prompt';
-  return normalized.length > 180 ? `${normalized.slice(0, 177)}...` : normalized;
-}
-
 export function createLocalAssistantResponse(text: string, systemInstruction?: string): string {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  const promptLength = normalized.length;
   const instructionNote = systemInstruction?.trim()
-    ? 'System instructions are loaded for configured provider calls.'
-    : 'No custom system instructions are set.';
+    ? 'System instructions loaded.'
+    : 'No custom system instructions set.';
 
   return [
     'Local diagnostic assistant response.',
-    '',
-    `I received: "${summarizePrompt(text)}"`,
-    '',
-    'The chat loop is working locally: your message was stored, the composer cleared after submit, processing completed, and this AI response was appended separately from your input.',
-    instructionNote,
-    '',
-    'Remote Gemini or Odysseus responses will replace this local response when their key/service is configured and reachable.',
+    `Input accepted without echoing the prompt text. Prompt length: ${promptLength} character${promptLength === 1 ? '' : 's'}.`,
+    'Chat loop verified: user turn stored, composer cleared, processing completed, and assistant turn appended separately.',
+    `${instructionNote} Gemini or Odysseus require configured credentials or a reachable bridge.`,
   ].join('\n');
 }
 
