@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useUIStore } from '../../store/uiStore';
-
-const bridge = 'http://127.0.0.1:8001';
+import { bridgeUrl } from '../../lib/bridgeConfig';
 
 /**
  * useMemoryPush Hook
@@ -25,7 +24,7 @@ export function useMemoryPush() {
       await new Promise(resolve => setTimeout(resolve, 800));
 
       // 2. Call the Odysseus memory push API via the secure bridge proxy
-      const res = await fetch(`${bridge}/api/memory/push`, {
+      const res = await fetch(bridgeUrl('/api/memory/push'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -44,12 +43,12 @@ export function useMemoryPush() {
       }
 
       setIsPushed(true);
-      addChangeLog('MEMORY', `Neural link established: Concept stored in local ChromaDB.`, 'success');
+      addChangeLog('MEMORY', `Memory push complete: message stored through the local bridge.`, 'success');
       
     } catch (err: any) {
       console.error('Memory Push Failed:', err);
       setError(err.message);
-      addChangeLog('MEMORY', `Neural sync failed: ${err.message}`, 'error');
+      addChangeLog('MEMORY', `Memory push failed: ${err.message}`, 'error');
     } finally {
       setIsPushing(false);
     }

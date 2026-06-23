@@ -1,11 +1,12 @@
 # Silver Wolf VI Architecture Notes
 
-Silver Wolf VI is a Vite + React chat interface with adaptive theming, local chat persistence, simulated system telemetry, and Gemini-backed responses. The app now favors small modules with clear ownership instead of large component files that mix rendering, state, side effects, and design copy.
+Silver Wolf VI is a Vite + React chat and astronomy workspace with adaptive theming, local chat persistence, simulated system telemetry, local diagnostic AI responses, optional Gemini responses, optional Odysseus bridge responses, ArcGIS/OSM globe imagery, and Keplerian planet targeting. The app now favors small modules with clear ownership instead of large component files that mix rendering, state, side effects, and design copy.
 
 ## Current Module Map
 
 ### App Shell
 - `src/App.tsx` owns the high-level shell: top app bar, layout, settings window, particle overlay, and theme wrapper.
+- `src/App.tsx` lazy-loads the workspace layout, globe background, launcher, particle overlay, and custom cursor so first paint is not blocked by closed or opt-in surfaces.
 - `src/hooks/useThemeVariables.ts` merges the active palette with any extracted wallpaper theme and applies CSS variables to the document.
 - `src/components/layout/DockedLayout.tsx` composes the main workspace, responsive side navigation, chat surface, and telemetry panel.
 - `src/components/layout/SessionSidebar.tsx` owns the left navigation/session actions.
@@ -19,6 +20,11 @@ Silver Wolf VI is a Vite + React chat interface with adaptive theming, local cha
 - `src/hooks/useChatPersistence.ts` loads/saves chat history in `localStorage`.
 - `src/hooks/useAutoScroll.ts` handles scroll-to-bottom behavior and streaming content mutations.
 - `src/lib/messages.ts` centralizes message types, IDs, storage key, and default/reset message factories.
+- `src/lib/ai.ts` owns provider routing. The local diagnostic assistant works without external keys, Gemini requires `GEMINI_API_KEY`, and the Odysseus route requires the configured local bridge, defaulting to `http://127.0.0.1:8001`.
+- `src/lib/bridgeConfig.ts` centralizes bridge URL normalization so chat, diagnostics, memory push, satellite proxy fallback, launcher checks, and the Odysseus console use the same endpoint.
+- `bridge/server.py` allows the local dev and Vite preview origins by default; set `BRIDGE_CORS_ORIGINS` for any different hosted origin.
+- `public/config.json` provides a non-secret browser config endpoint so production preview does not warn before falling back to env vars.
+- `src/store/uiStore.ts` stores active chat messages explicitly and synchronizes them with the active chat session so the composer, message feed, and AI dispatcher observe the same current state.
 
 ### Settings and Theming
 - `src/components/SettingsWindow.tsx` owns draggable/docked window behavior.
@@ -29,6 +35,12 @@ Silver Wolf VI is a Vite + React chat interface with adaptive theming, local cha
 - `src/components/SystemMonitor.tsx` renders simulated RAM, network, CPU, battery, storage, and shield state.
 - `src/components/ParticleOverlay.tsx` renders the ambient canvas effect and respects the user's motion toggle.
 - `src/hooks/useAudioFeedback.ts` owns Web Audio click/blip feedback.
+
+### Globe, Imagery, and Astronomy
+- `src/core/globe/ImageryProviderFactory.ts` owns imagery provider selection. `arcgis-world` is the default satellite imagery path, with OSM-style sources available as fallbacks.
+- `src/lib/astronomy.ts` computes low-cost Keplerian apparent planet coordinates for Mars, Jupiter, Saturn, and Neptune instead of relying on static demo positions.
+- `src/data/telescopePresets.ts` resolves planet presets dynamically and leaves deep-sky presets on fixed catalog coordinates.
+- `src/hooks/cesium/useConstellations.ts` applies sidereal-time rotation so constellation overlays are tied to the current Earth orientation.
 
 ### Shared UI
 - `src/components/common/IconButton.tsx` standardizes icon-only and icon+label buttons.
@@ -47,10 +59,11 @@ What improved:
 
 Remaining risks:
 - The telemetry system is simulated in multiple places. If it becomes real data, move all metric updates into one telemetry service/hook.
-- System instructions are currently prepended to each prompt. A production Gemini integration should use the provider's structured system instruction field once model/API behavior is confirmed.
+- Gemini and Odysseus behavior depends on external configuration. The app now gives a local diagnostic AI response when those providers are unavailable so chat can still be tested.
 - Chat history is local-only and not versioned. If the message schema changes, add migration logic around `silverWolf.chatHistory`.
 - Wallpaper object URLs are cleaned up when replaced/removed, but uploaded wallpaper is not persisted across reloads.
-- The model selector changes runtime state but does not validate model availability. Keep options aligned with the deployed Gemini account.
+- The model selector exposes only currently wired routes. Keep it aligned with deployed providers instead of listing aspirational models.
+- Browser-level Cesium/WWT validation is still sensitive to local WebGL automation stability, so source/build tests are necessary but not a substitute for normal-device smoke testing.
 
 ## Design Critique
 
@@ -83,52 +96,45 @@ Validation:
 
 ## Verification
 
-- `npm run lint` passes.
-- `npm run build` passes.
-- `npm audit --omit=dev` reports 0 vulnerabilities.
-- Production chunks are split by React, Gemini AI, Markdown, Motion, and app code.
+- Current 2026-06-23 validation: `npm run lint` passes.
+- Current 2026-06-23 validation: `npm test` passes the cursor contract test, physics/astronomy/local-AI runtime test, bridge URL normalization checks, and repository integration contract test.
+- Current 2026-06-23 validation: `npm run build` passes with the entry chunk reduced to about 498 kB, below Vite's 500 kB warning threshold.
+- Current 2026-06-23 browser smoke: `http://127.0.0.1:3005/?fallback=true` accepts input in the chat composer, appends a separate local AI response, defaults to `arcgis-world`, keeps particles and side panels off, and reports no major first-viewport region overlaps at 1366x768.
+- Current 2026-06-23 production-preview smoke: temporary Vite preview at `http://127.0.0.1:4174/?fallback=true` produced the same separate user/local-AI message flow; screenshot evidence is `C:\Users\jaron\AppData\Local\Temp\silver-wolf-chat-layout-1366-preview.png`.
+- Previous dependency pass: `pnpm audit --json` reported zero vulnerabilities after the 2026-06-20 remediation.
 
 ---
 
-# 🍼 The Toddler's Guide to Silver Wolf VI (How the Toys Connect & Support Each Other!)
+# Runtime Connection Map
 
-Hello, tiny friend! We added comments inside each code file telling you exactly what each line is doing. But how do the files talk to each other? Let's trace the secret pathways that connect all our toys so they work as a team!
+This section lists the current, source-backed wiring. It intentionally avoids claims about security, telemetry, or integrations that are not active in the root app.
 
----
+## Settings To Theme
 
-## 🔗 Connection 1: How Settings Change the Paint Colors (Store ➔ Hook ➔ HTML)
+1. `SettingsPage.tsx` and the settings sub-panels write user choices into `src/store/uiStore.ts`.
+2. `src/hooks/useThemeVariables.ts` reads the active palette and personalization values.
+3. The hook writes CSS custom properties onto `document.documentElement`.
+4. Components consume those CSS variables through Tailwind/CSS classes. Uploaded wallpapers are used for the current session only unless persistence is added later.
 
-Imagine you have a **Brain Store** ([uiStore.ts](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/store/uiStore.ts)) that remembers your favorite paint color. But the store is just a memory—it doesn't have hands to paint the screen!
+## Chat To AI Route
 
-1. You click a new theme in the settings screen.
-2. The **Brain Store** updates its note (e.g. `activePalette` changes).
-3. The **Color Hook** ([useThemeVariables.ts](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/hooks/useThemeVariables.ts)) is watching that note. As soon as it changes, the hook grabs the hex codes (like `#ff00ff`) from the **Color Palette Book** (`themeEngine.ts`).
-4. The hook reaches out to the raw web browser and writes those colors directly onto the browser's skin (`document.documentElement.style.setProperty`).
-5. Every single button and text box on the page reads these properties to paint themselves neon, holographic, or matrix green!
+1. `ChatComposer.tsx` captures text and calls `ChatPanel.tsx`.
+2. `useAIChat.ts` writes the user message to the active Zustand chat session, sets processing state, and routes the request.
+3. `src/lib/ai.ts` returns a deterministic local assistant response by default. Gemini requires `GEMINI_API_KEY`; Odysseus requires the configured local bridge.
+4. The response is appended as a separate assistant message, which is what the browser and runtime tests verify.
 
----
+## Bridge And Companion Repositories
 
-## 🔗 Connection 2: How a Message Triggers Motion and Sound (Composer ➔ Panel ➔ Sound & Animation)
+1. `src/lib/bridgeConfig.ts` resolves the bridge URL from Developer Settings, `VITE_BRIDGE_URL`, or the local default.
+2. `bridge/server.py` exposes the local status, chat, sync, diagnostics, camera proxy, git status, and generic Odysseus proxy routes.
+3. `scripts/test_integration_contracts.cjs` verifies that mapped WorldWideView assets, copied Odysseus documentation assets, Odysseus source-module references, and bridge routes still exist.
+4. The integration is conditional, not 100% complete: WorldWideView and Odysseus still have their own runtime requirements.
 
-When you press the Send button, it starts a chain reaction across three different files to make the app feel alive:
+## Performance And Visual Load
 
-1. **The Writer** (`ChatComposer.tsx`) captures your typed keys and triggers a submission callback.
-2. **The Panel** ([ChatPanel.tsx](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/components/ChatPanel.tsx)) catches this callback and does two things immediately:
-   - It wiggles its container by triggering spring physical motion coordinates.
-   - It calls the **Sound Blaster Hook** ([useAudioFeedback.ts](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/hooks/useAudioFeedback.ts)) to synthesize an arcade keypress sound.
-3. Concurrently, **The Talker** ([useAIChat.ts](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/hooks/useAIChat.ts)) sends your message out to the Gemini AI server on the internet.
-4. When the answer lands, **The Panel** detects the new text bubble and instructs the **Sound Blaster Hook** to play a "blip!" notifying you that the robot finished thinking.
-
----
-
-## 🔗 Connection 3: How the App Cools Down if the Computer gets Sweaty (Load Factor Throttling)
-
-If your computer gets hot or has too many tasks running, we have a safety system that coordinates a cool-down across the entire workspace:
-
-1. The simulated CPU metric goes above 80% (`isHighLoad` is true).
-2. The **Main Box** ([App.tsx](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/App.tsx)) turns off the floaty firefly dots (`ParticleOverlay`) and standardizes your custom cursor pointer back to default.
-3. The **Chat Panel** ([ChatPanel.tsx](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/components/ChatPanel.tsx)) dampens its spring recoil motion.
-4. The **Workspace Organizer** ([DockedLayout.tsx](file:///c:/Users/jaron/OneDrive%20-%20Ministry%20of%20Education%20%28M365%20T&L%29/Documents/silver-wolf-vi/src/components/layout/DockedLayout.tsx)) hides the complex System Monitor gauge, replacing it with a simple passive block.
-5. Once load factor drops, all layout pieces smoothly restore their animations and canvas dots together!
+1. `App.tsx` lazy-loads the workspace layout, globe background, launcher, particle overlay, custom cursor, settings, diagnostics, and telescope views.
+2. Particle effects and the custom cursor are off by default; enabling particle effects opt-ins to the custom cursor.
+3. `useThemeVariables.ts` computes the simulated load state that can reduce effects and keep text input responsive.
+4. `npm run build` currently verifies that the production entry chunk stays below Vite's 500 kB warning threshold.
 
 

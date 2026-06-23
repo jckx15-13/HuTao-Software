@@ -34,7 +34,7 @@ import { useStore } from '@/core/state/store';
 import { locations } from '@/data/locations';
 import { tours } from '@/data/tours';
 import { pluginManager } from '@/core/plugins/PluginManager';
-import { TELESCOPE_PRESETS as presets } from '@/data/telescopePresets';
+import { TELESCOPE_PRESETS as presets, resolveTelescopePresetCoordinates } from '@/data/telescopePresets';
 import { projectTelescopeTargetToEarth } from '@/lib/earthObserverProjection';
 // Runtime/mocked wrapper to prevent static Cesium initialization crashes in headless environments
 const Cesium = {
@@ -395,10 +395,12 @@ export function LeftPanel() {
 
   const earthFrame = useMemo(() => {
     const parsedTime = currentTime instanceof Date ? currentTime : new Date(currentTime ?? Date.now());
+    const projectionDate = Number.isNaN(parsedTime.getTime()) ? new Date() : parsedTime;
+    const coordinates = resolveTelescopePresetCoordinates(activePreset, projectionDate);
     const projection = projectTelescopeTargetToEarth(
-      Number(activePreset.raHours ?? 0),
-      Number(activePreset.decDegrees ?? 0),
-      Number.isNaN(parsedTime.getTime()) ? new Date() : parsedTime
+      coordinates.raHours,
+      coordinates.decDegrees,
+      projectionDate
     );
 
     return {
@@ -406,6 +408,10 @@ export function LeftPanel() {
       latitude: projection.latitudeLabel,
       latitudeBand: projection.relation,
       gmstHours: projection.gmstHours,
+      ra: coordinates.ra,
+      dec: coordinates.dec,
+      source: coordinates.source,
+      distanceAu: coordinates.distanceAu,
     };
   }, [activePreset, currentTime]);
 
@@ -618,7 +624,7 @@ export function LeftPanel() {
 
             {/* Tools Section */}
             <div className="space-y-1">
-              <FileTreeSection title="Neural Library" icon={FolderOpen} defaultOpen={true}>
+              <FileTreeSection title="Local Library" icon={FolderOpen} defaultOpen={true}>
                 <TreeItem label="Media Assets" icon={Image} badge={0} />
                 <TreeItem label="Uploaded Documents" icon={FileText} badge={0} />
                 <TreeItem label="Saved Snippets" icon={Bookmark} badge={0} />
@@ -1265,15 +1271,22 @@ export function LeftPanel() {
                   <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-black/25 p-2 rounded border border-white/5 text-white/50">
                     <div>
                       <span className="text-white/20 block text-xs uppercase">Right Ascension</span>
-                      <span className="text-primary font-bold">{telescopeTarget.ra}</span>
+                      <span className="text-primary font-bold">{earthFrame.ra}</span>
                     </div>
                     <div>
                       <span className="text-white/20 block text-xs uppercase">Declination</span>
-                      <span className="text-primary font-bold">{telescopeTarget.dec}</span>
+                      <span className="text-primary font-bold">{earthFrame.dec}</span>
                     </div>
                     <div className="col-span-2 border-t border-white/5 pt-1.5 mt-1.5">
                       <span className="text-white/20 block text-xs uppercase">Field of View</span>
                       <span className="text-white/80 font-bold">{telescopeTarget.fov}</span>
+                    </div>
+                    <div className="col-span-2 border-t border-white/5 pt-1.5 mt-1.5">
+                      <span className="text-white/20 block text-xs uppercase">Coordinate Source</span>
+                      <span className="text-white/70 font-bold">
+                        {earthFrame.source === 'kepler-planet' ? 'Keplerian planet ephemeris' : 'Fixed catalog coordinate'}
+                        {earthFrame.distanceAu ? ` · ${earthFrame.distanceAu.toFixed(2)} AU` : ''}
+                      </span>
                     </div>
                   </div>
                 </CollapsibleSection>
@@ -1305,7 +1318,7 @@ export function LeftPanel() {
             </div>
             <div className="flex flex-col font-mono">
               <span className="text-xs font-bold text-white/80 leading-none">OPERATOR</span>
-              <span className="text-xs text-white/30 uppercase mt-0.5">Level 6 Sec</span>
+              <span className="text-xs text-white/30 uppercase mt-0.5">Local session</span>
             </div>
           </div>
 

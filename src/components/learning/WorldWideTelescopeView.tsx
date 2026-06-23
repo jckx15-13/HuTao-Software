@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '@/core/state/store';
-import { TELESCOPE_PRESETS as presets } from '@/data/telescopePresets';
+import { TELESCOPE_PRESETS as presets, resolveTelescopePresetCoordinates } from '@/data/telescopePresets';
 import { constellations } from '@/data/constellations';
 import TimelineLanes from './TimelineLanes';
 import { pluginManager } from '@/core/plugins/PluginManager';
@@ -142,12 +142,16 @@ export default function WorldWideTelescopeView({
   // Safe derived values
   const [defaultTime] = useState(() => Date.now());
   const safeCurrentTime = useMemo(() => parseDateSafe(currentTime) || null, [currentTime]);
+  const coordinateDate = useMemo(() => safeCurrentTime || new Date(defaultTime), [defaultTime, safeCurrentTime]);
+  const activePresetCoordinates = useMemo(
+    () => resolveTelescopePresetCoordinates(activePreset, coordinateDate),
+    [activePreset, coordinateDate],
+  );
   const earthReferenceFrame = useMemo(() => {
-    const time = safeCurrentTime || new Date(defaultTime);
     const projection = projectTelescopeTargetToEarth(
-      Number(activePreset.raHours ?? 0),
-      Number(activePreset.decDegrees ?? 0),
-      time
+      activePresetCoordinates.raHours,
+      activePresetCoordinates.decDegrees,
+      coordinateDate
     );
 
     return {
@@ -155,8 +159,9 @@ export default function WorldWideTelescopeView({
       longitude: projection.longitudeLabel,
       latitude: projection.latitudeLabel,
       frameLabel: spaceInteractionTarget === 'telescope' ? 'Telescope focus' : 'Earth focus',
+      coordinateSource: activePresetCoordinates.source,
     };
-  }, [activePreset, defaultTime, safeCurrentTime, spaceInteractionTarget]);
+  }, [activePresetCoordinates, coordinateDate, spaceInteractionTarget]);
 
   const [viewportSize, setViewportSize] = useState(() => ({
     width: typeof window !== 'undefined' ? window.innerWidth : 1440,
@@ -363,14 +368,14 @@ export default function WorldWideTelescopeView({
       // WWT coordinates: ra (decimal hours), dec (decimal degrees)
       postToWWT({
         event: 'center_on_coordinates',
-        ra: raHoursToDegrees(activePreset.raHours),
-        dec: activePreset.decDegrees,
+        ra: raHoursToDegrees(activePresetCoordinates.raHours),
+        dec: activePresetCoordinates.decDegrees,
         fov: parseFloat(activePreset.fov) || 1.0,
         instant: false
       });
-      useUIStore.getState().addChangeLog('TELESCOPE', `Telescope panned to ${activePreset.name} (RA: ${activePreset.ra}, DEC: ${activePreset.dec})`, 'success');
+      useUIStore.getState().addChangeLog('TELESCOPE', `Telescope panned to ${activePreset.name} (RA: ${activePresetCoordinates.ra}, DEC: ${activePresetCoordinates.dec})`, 'success');
     }
-  }, [activePreset, refreshKey]);
+  }, [activePreset, activePresetCoordinates, refreshKey]);
 
   // Sync datetime on currentTime change (defensive)
   useEffect(() => {
@@ -691,14 +696,14 @@ export default function WorldWideTelescopeView({
   }, [activePreset, earthReferenceFrame]);
 
   const projectedPresetTargets = useMemo(() => {
-    const projectionDate = safeCurrentTime || new Date(defaultTime);
     return presets.map((preset) => {
+      const coordinates = resolveTelescopePresetCoordinates(preset, coordinateDate);
       const observerProjection = projectTelescopeTargetToObserverView(
-        Number(activePreset.raHours ?? 0),
-        Number(activePreset.decDegrees ?? 0),
-        Number(preset.raHours ?? 0),
-        Number(preset.decDegrees ?? 0),
-        projectionDate
+        activePresetCoordinates.raHours,
+        activePresetCoordinates.decDegrees,
+        coordinates.raHours,
+        coordinates.decDegrees,
+        coordinateDate
       );
       return {
         id: preset.id,
@@ -716,7 +721,7 @@ export default function WorldWideTelescopeView({
         isActive: preset.name === activePreset.name,
       };
     });
-  }, [activePreset, defaultTime, safeCurrentTime]);
+  }, [activePreset.name, activePresetCoordinates, coordinateDate]);
 
   const projectedPresetSummary = useMemo(() => {
     const nearSide = projectedPresetTargets.filter((target) => target.visibleHemisphere).length;
@@ -730,18 +735,17 @@ export default function WorldWideTelescopeView({
   }, [projectedPresetTargets]);
 
   const projectedConstellationOverlays = useMemo<ProjectedConstellationOverlay[]>(() => {
-    const projectionDate = safeCurrentTime || new Date(defaultTime);
     const activePresetId = String(activePreset.id || '').toLowerCase();
     const activePresetName = String(activePreset.name || '').toLowerCase();
 
     return constellations.map((constellation) => {
       const stars = constellation.stars.map((star) => {
         const projection = projectTelescopeTargetToObserverView(
-          Number(activePreset.raHours ?? 0),
-          Number(activePreset.decDegrees ?? 0),
+          activePresetCoordinates.raHours,
+          activePresetCoordinates.decDegrees,
           star.ra,
           star.dec,
-          projectionDate
+          coordinateDate
         );
 
         return {
@@ -773,7 +777,7 @@ export default function WorldWideTelescopeView({
           activePresetName.includes(normalizedConstellationName.split(' ')[0]),
       };
     });
-  }, [activePreset, defaultTime, safeCurrentTime]);
+  }, [activePreset, activePresetCoordinates, coordinateDate]);
 
   const projectedConstellationSummary = useMemo(() => ({
     visibleConstellations: projectedConstellationOverlays.filter((constellation) => constellation.visibleStarCount > 0).length,
@@ -1084,6 +1088,9 @@ export default function WorldWideTelescopeView({
                 <span className="text-amber-300">{wwtRuntimeState}</span>
               </div>
             </div>
+            <div className="mt-2 border-t border-white/10 pt-2 text-[7px] leading-relaxed text-white/45">
+              Coordinate source: {earthReferenceFrame.coordinateSource === 'kepler-planet' ? 'Keplerian planet ephemeris' : 'fixed catalog coordinates'}.
+            </div>
             <div className="mt-2 border-t border-white/10 pt-2 text-[7px] leading-relaxed text-white/40">
               WWT iframe unavailable in this audit mode. This Earth-facing fallback projects WWT preset coordinates onto a local observer frame: center means zenith above the subpoint, solid objects are near-side, and dashed objects are beyond the Earth limb. It is not live WWT imagery.
             </div>
@@ -1380,7 +1387,7 @@ export default function WorldWideTelescopeView({
                           <span className="text-white/40">{earthReferenceFrame.longitude}</span>
                         </div>
                         <div className="mt-1 flex items-center justify-between gap-2 text-white/45">
-                          <span>{activePreset.ra} / {activePreset.dec}</span>
+                          <span>{activePresetCoordinates.ra} / {activePresetCoordinates.dec}</span>
                           <span className="text-white/60">{earthReferenceFrame.relation}</span>
                         </div>
                       </div>

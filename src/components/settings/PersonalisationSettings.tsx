@@ -1,6 +1,6 @@
-import { type ChangeEvent, useState } from 'react';
+import { type ChangeEvent, useRef, useState } from 'react';
 import { ImageIcon, Loader2, Check, Sparkles, Layout, Type, Palette, Globe, Satellite, Map, ToggleLeft, ToggleRight } from 'lucide-react';
-import { useUIStore } from '@/store/uiStore';
+import { useUIStore, type Personalisation } from '@/store/uiStore';
 import { useStore } from '@/core/state/store';
 import { palettes, type PaletteKey, formatPaletteName } from '../../lib/themeEngine';
 import { extractThemeFromImage } from '../../lib/imageTheme';
@@ -8,32 +8,62 @@ import { IMAGERY_LAYERS } from '../../core/globe/ImageryProviderFactory';
 import CURSOR_DESIGNS from '@/components/layout/cursorDesigns';
 import { resolveCursorProfile, validateCursorProfile } from '@/core/cursor';
 
+const STANDARD_PRESET: Personalisation = {
+  accentColor: '',
+  panelOpacity: 0.92,
+  blurIntensity: 8,
+  cornerRadius: 12,
+  shadowIntensity: 0.5,
+  borderStyle: 'subtle',
+  uiDensity: 'comfortable',
+  chatBubbleStyle: 'glass',
+  iconStyle: 'outlined',
+  panelTransitionStyle: 'slide',
+  fontScale: 1.0,
+  fontFamily: 'Outfit',
+  animationIntensity: 0.7,
+  motionReduced: false,
+  minimalMode: false,
+};
+
+const MINIMAL_PRESET: Personalisation = {
+  accentColor: '',
+  panelOpacity: 0.5,
+  blurIntensity: 3,
+  cornerRadius: 2,
+  shadowIntensity: 0.15,
+  borderStyle: 'none',
+  uiDensity: 'compact',
+  chatBubbleStyle: 'minimal',
+  iconStyle: 'outlined',
+  panelTransitionStyle: 'fade',
+  fontScale: 1.0,
+  fontFamily: 'Outfit',
+  animationIntensity: 0.2,
+  motionReduced: true,
+  minimalMode: true,
+};
+
 export function PersonalisationSettings() {
-  const personalisation = useUIStore((s) => s.personalisation) || {
-    accentColor: '',
-    panelOpacity: 0.75,
-    blurIntensity: 16,
-    cornerRadius: 12,
-    shadowIntensity: 0.5,
-    borderStyle: 'subtle',
-    uiDensity: 'comfortable',
-    chatBubbleStyle: 'glass',
-    iconStyle: 'outlined',
-    panelTransitionStyle: 'slide',
-    fontScale: 1.0,
-    fontFamily: 'Outfit',
-    animationIntensity: 0.7,
-    motionReduced: false,
-  };
+  const personalisation = useUIStore((s) => s.personalisation) || STANDARD_PRESET;
   const updatePersonalisation = useUIStore((s) => s.updatePersonalisation);
   const activePalette = useUIStore((s) => s.activePalette);
   const updateSettings = useUIStore((s) => s.updateSettings);
   const scanlineOverlay = useUIStore((s) => s.scanlineOverlay);
+  const particleEffects = useUIStore((s) => s.particleEffects);
   const setScanlineOverlay = useUIStore((s) => s.setScanlineOverlay);
+  const setParticleEffects = useUIStore((s) => s.setParticleEffects);
   const cameraSensitivity = useUIStore((s) => s.cameraSensitivity ?? 1.0);
   const setCameraSensitivity = useUIStore((s) => s.setCameraSensitivity);
+  const setShowBorders = useUIStore((s) => s.setShowBorders);
+  const showBorders = useUIStore((s) => s.showBorders);
   
   const [uploadLoading, setUploadLoading] = useState(false);
+  const minimalRestoreState = useRef<{
+    particleEffects: boolean;
+    scanlineOverlay: boolean;
+    showBorders: boolean;
+  } | null>(null);
 
   // Background atmosphere extractor
   const onUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -50,6 +80,46 @@ export function PersonalisationSettings() {
     } finally {
       setUploadLoading(false);
     }
+  };
+
+  const applyMinimalPreset = () => {
+    if (!minimalRestoreState.current) {
+      minimalRestoreState.current = {
+        particleEffects,
+        scanlineOverlay,
+        showBorders,
+      };
+    }
+
+    updatePersonalisation({
+      ...MINIMAL_PRESET,
+      accentColor: personalisation.accentColor,
+      fontScale: personalisation.fontScale,
+      fontFamily: personalisation.fontFamily,
+    });
+    setShowBorders(false);
+    setParticleEffects(false);
+    setScanlineOverlay(false);
+  };
+
+  const resetMinimalPreset = () => {
+    const restore = minimalRestoreState.current;
+    const restoreState = restore ?? {
+      particleEffects: true,
+      scanlineOverlay: false,
+      showBorders: true,
+    };
+
+    updatePersonalisation({
+      ...STANDARD_PRESET,
+      accentColor: personalisation.accentColor,
+      fontScale: personalisation.fontScale,
+      fontFamily: personalisation.fontFamily,
+    });
+    setShowBorders(restoreState.showBorders);
+    setParticleEffects(restoreState.particleEffects);
+    setScanlineOverlay(restoreState.scanlineOverlay);
+    minimalRestoreState.current = null;
   };
 
   return (
@@ -192,8 +262,8 @@ export function PersonalisationSettings() {
               id="personalisation-panel-transparency"
               name="personalisation-panel-transparency"
               type="range"
-              min={10}
-              max={100}
+              min={personalisation.minimalMode ? 45 : 88}
+              max={personalisation.minimalMode ? 80 : 100}
               value={personalisation.panelOpacity * 100}
               onChange={(e) => updatePersonalisation({ panelOpacity: parseFloat(e.target.value) / 100 })}
               className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
@@ -211,7 +281,7 @@ export function PersonalisationSettings() {
               name="personalisation-background-blur"
               type="range"
               min={0}
-              max={40}
+              max={personalisation.minimalMode ? 6 : 10}
               value={personalisation.blurIntensity}
               onChange={(e) => updatePersonalisation({ blurIntensity: parseInt(e.target.value) })}
               className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
@@ -296,7 +366,7 @@ export function PersonalisationSettings() {
           <div className="space-y-2">
             <label className="text-[10px] font-mono uppercase text-white/40 block">Chat Bubble Appearance</label>
             <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 gap-1 text-[9px] font-mono">
-              {['glass', 'solid', 'minimal'].map((style) => (
+              {['solid', 'minimal'].map((style) => (
                 <button
                   key={style}
                   type="button"
@@ -473,6 +543,35 @@ export function PersonalisationSettings() {
               onChange={(e) => setScanlineOverlay(e.target.checked)}
               className="h-4 w-4 accent-primary cursor-pointer"
             />
+          </div>
+
+          <button
+            type="button"
+            onClick={applyMinimalPreset}
+            className="col-span-1 md:col-span-2 inline-flex min-h-11 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-[9px] font-mono uppercase tracking-wider text-primary hover:bg-primary/15"
+          >
+            Apply Minimal Performance Preset
+          </button>
+          <div className="col-span-1 md:col-span-2 flex items-center justify-between rounded-lg bg-white/5 border border-white/10 p-2.5 text-[9px] font-mono">
+            <div className="space-y-0.5">
+              <div className="text-white/80 uppercase font-bold">Minimal Mode</div>
+              <div className="text-white/35">
+                {personalisation.minimalMode
+                  ? 'Minimal preset is active. Manual edits can still override individual values.'
+                  : 'Minimal mode is not enabled.'}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={personalisation.minimalMode ? resetMinimalPreset : applyMinimalPreset}
+              className={`inline-flex min-h-11 items-center rounded-lg px-3 py-2 text-[9px] font-mono uppercase tracking-wider transition-colors ${
+                personalisation.minimalMode
+                  ? 'border border-white/10 bg-white/8 text-white/60 hover:bg-white/15'
+                  : 'border border-primary/20 bg-primary/10 text-primary hover:bg-primary/15'
+              }`}
+            >
+              {personalisation.minimalMode ? 'Exit minimal mode' : 'Enable minimal mode'}
+            </button>
           </div>
         </div>
       </div>

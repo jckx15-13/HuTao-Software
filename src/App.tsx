@@ -10,22 +10,33 @@
 import { AnimatePresence, MotionConfig } from 'motion/react'; // Handles exit transitions: keeps components in the DOM until their fade/slide animations finish.
 import { Settings } from 'lucide-react'; // Lucide SVG icon definition for the gear button.
 import React, { Suspense } from 'react'; // React default + Suspense for lazy imports.
-import { DockedLayout } from './components/layout/DockedLayout'; // Workspace structure defining Left, Center, and Right panels.
 import { IconButton } from './components/common/IconButton'; // Standardized accessible button component with hover glow effects.
-import { ParticleOverlay } from './components/ParticleOverlay'; // Canvas element rendering floating background canvas shapes.
-import { CesiumBackground } from './components/background/CesiumBackground'; // Virtual Earth component rendered on a persistent background layer.
-import { LauncherPage } from './components/launcher/LauncherPage'; // Welcome/Splash component shown when first loading the interface.
 import { ErrorBoundary } from './components/ErrorBoundary'; // React error boundary: catches runtime crashes inside nested components without freezing the tab.
-import { CustomCursor } from './components/layout/CustomCursor'; // Custom pointer element that tracks client mouse moves.
 import { useThemeVariables } from './hooks/useThemeVariables'; // Computes current palette style objects and monitors CPU strain.
 import { useUIStore } from './store/uiStore'; // Shared state manager (Zustand) tracking navigation and user preferences.
 import { ConfigProvider } from './context/ConfigContext';
+import { useDiagnosticsStore } from './store/diagnosticsStore';
+
+const DockedLayout = React.lazy(() =>
+  import('./components/layout/DockedLayout').then((m) => ({ default: m.DockedLayout }))
+);
+const CesiumBackground = React.lazy(() =>
+  import('./components/background/CesiumBackground').then((m) => ({ default: m.CesiumBackground }))
+);
+const LauncherPage = React.lazy(() =>
+  import('./components/launcher/LauncherPage').then((m) => ({ default: m.LauncherPage }))
+);
+const ParticleOverlay = React.lazy(() =>
+  import('./components/ParticleOverlay').then((m) => ({ default: m.ParticleOverlay }))
+);
+const CustomCursor = React.lazy(() =>
+  import('./components/layout/CustomCursor').then((m) => ({ default: m.CustomCursor }))
+);
 
 // Lazy load SettingsPage configuration panel to reduce initial bundle size
 const SettingsPage = React.lazy(() =>
   import('./components/settings/SettingsPage').then((m) => ({ default: m.SettingsPage }))
 );
-import { useDiagnosticsStore } from './store/diagnosticsStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 // Dev-only harness: lazy-load to avoid impacting production bundles
@@ -38,15 +49,31 @@ const DiagnosticPanel = React.lazy(() => import('./components/dev/DiagnosticPane
 function TopAppBar() {
   // Read target page states from the Zustand memory store to set toggled visibility.
   const currentPage = useUIStore((state) => state.currentPage);
+  const minimalMode = useUIStore((state) => state.personalisation.minimalMode);
   const setCurrentPage = useUIStore((state) => state.setCurrentPage);
+  const barClass = minimalMode
+    ? 'h-10 border-b border-panel-border/40 bg-panel/85'
+    : 'h-12 border-b border-panel-border bg-panel/50';
+  const titleClass = minimalMode
+    ? 'flex items-center gap-2 font-mono text-[11px] font-semibold tracking-wide text-text-main'
+    : 'flex items-center gap-3 font-mono text-xs font-bold uppercase tracking-widest text-primary';
 
   return (
     // Uses absolute positioning to stay at the top and z-index 20 to sit above background map canvas.
-    <div className="absolute left-0 top-0 z-20 flex h-12 w-full items-center justify-between border-b border-panel-border bg-panel/50 px-4 panel-glass">
-      <div className="flex items-center gap-3 font-mono text-xs font-bold uppercase tracking-widest text-primary">
+    <div className={`absolute left-0 top-0 z-20 flex w-full items-center justify-between px-4 ${barClass} ${minimalMode ? '' : 'panel-glass'}`}>
+      <div className={titleClass}>
         {/* Glow indicator: styled using a box shadow colored by the primary theme variable */}
-        <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_8px_var(--theme-primary)]" />
-        <span className="glitch-target hover-glitch cursor-pointer" data-text="Silver Wolf VI">Silver Wolf VI</span>
+        {minimalMode ? (
+          <span className="h-1.5 w-1.5 rounded-full bg-text-main" />
+        ) : (
+          <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_8px_var(--theme-primary)]" />
+        )}
+        <span
+          className={minimalMode ? '' : 'glitch-target hover-glitch cursor-pointer'}
+          data-text={minimalMode ? undefined : 'Silver Wolf VI'}
+        >
+          {minimalMode ? 'Silver Wolf VI' : 'Silver Wolf VI'}
+        </span>
       </div>
       {/* settings icon: clicking updates Zustand page string, triggering main App page re-render */}
       <IconButton
@@ -67,9 +94,11 @@ export default function App() {
   useKeyboardShortcuts();
   // Subscription selectors: only trigger re-renders when these specific properties change in the Zustand store.
   const currentPage = useUIStore((state) => state.currentPage);
+  const launcherDismissed = useUIStore((state) => state.launcherDismissed);
   const interactionMode = useUIStore((state) => state.interactionMode);
   const customWallpaper = useUIStore((state) => state.customWallpaper);
   const scanlineOverlay = useUIStore((state) => state.scanlineOverlay);
+  const particleEffects = useUIStore((state) => state.particleEffects);
   const spaceBlendOpacity = useUIStore((state) => state.spaceBlendOpacity);
   const spaceInteractionTarget = useUIStore((state) => state.spaceInteractionTarget);
   
@@ -84,6 +113,7 @@ export default function App() {
   const showDiagnostics = typeof window !== 'undefined' && window.location.search.includes('diagnostics');
   const setCurrentPage = useUIStore((state) => state.setCurrentPage);
   const isSpatialInteraction = interactionMode === 'orbital' || interactionMode === 'telescope';
+  const showLauncher = currentPage === 'launcher' && !launcherDismissed;
 
   // If audit/dev toggles are present, force the app into workspace so overlays render.
   React.useEffect(() => {
@@ -93,6 +123,12 @@ export default function App() {
       }
     } catch (e) {}
   }, [isHeadless, showHarness, showDiagnostics, setCurrentPage]);
+
+  React.useEffect(() => {
+    if (launcherDismissed && currentPage === 'launcher') {
+      setCurrentPage('workspace');
+    }
+  }, [currentPage, launcherDismissed, setCurrentPage]);
 
   // Sync is-headless class to html/body for portal styling overrides
   React.useEffect(() => {
@@ -108,14 +144,13 @@ export default function App() {
   }, [isHeadless]);
 
   React.useEffect(() => {
-    // Report holistic upgrade status to the new diagnostic engine
     useDiagnosticsStore.getState().add({
       level: 'info',
-      message: 'Silver Wolf VI Holistic Upgrade Complete.',
+      message: 'Silver Wolf VI runtime diagnostics initialized.',
       metadata: {
         version: 'v6.2.0-stable',
         diagnosticEngine: 'active',
-        bridgeProxy: 'active',
+        bridgeProxy: 'configurable',
         standardizedTheme: 'active'
       }
     });
@@ -171,7 +206,9 @@ export default function App() {
               pointerEvents: (interactionMode === 'orbital' || interactionMode === 'telescope') && (spaceInteractionTarget === 'earth' && interactionMode !== 'telescope') ? 'auto' : 'none'
             }}
           >
-            <CesiumBackground interactive={(interactionMode === 'orbital' || interactionMode === 'telescope') && (spaceInteractionTarget === 'earth' && interactionMode !== 'telescope')} />
+            <Suspense fallback={null}>
+              <CesiumBackground interactive={(interactionMode === 'orbital' || interactionMode === 'telescope') && (spaceInteractionTarget === 'earth' && interactionMode !== 'telescope')} />
+            </Suspense>
           </div>
         </div>
       )}
@@ -187,14 +224,20 @@ export default function App() {
       )}
 
       {/* ROUTING CONTROLLER: Swaps pages by comparing active page string */}
-      {currentPage === 'launcher' ? (
-        <LauncherPage />
+      {showLauncher ? (
+        <Suspense fallback={null}>
+          <LauncherPage />
+        </Suspense>
       ) : (
         <>
           <div className="contents" {...workspaceIsolationProps}>
           {/* Performance Optimization: Turn off floaty dots and custom cursor tracks if CPU is struggling. */}
-          {!isHighLoad && <ParticleOverlay />}
-          {!isHighLoad && <CustomCursor appHighLoad={isHighLoad} />}
+          {!isHighLoad && particleEffects && (
+            <Suspense fallback={null}>
+              <ParticleOverlay />
+              <CustomCursor appHighLoad={isHighLoad} />
+            </Suspense>
+          )}
           
           {/* Cyberpunk flicker screen overlay */}
           {scanlineOverlay && <div className="hologram-overlay" />}
@@ -203,7 +246,9 @@ export default function App() {
 
           {/* Core viewport layouts: pt-12 leaves space for the 12-unit top app bar, cleared in spatial modes for full-screen floating HUD */}
           <div className={`relative z-10 flex h-full w-full pointer-events-none transition-all duration-300 ${isSpatialInteraction ? 'pt-0' : 'pt-12'}`}>
-            <DockedLayout />
+            <Suspense fallback={null}>
+              <DockedLayout />
+            </Suspense>
           </div>
 
           {/* Dev harness overlay (rendered when ?mountharness is present) */}

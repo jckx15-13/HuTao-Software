@@ -42,7 +42,10 @@ log_lock = Lock()
 INTERNAL_TOOL_TOKEN = os.getenv("ODYSSEUS_INTERNAL_TOKEN") or secrets.token_hex(32)
 odysseus_proc = None
 
-raw_origins = os.getenv("BRIDGE_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3005,http://127.0.0.1:3005")
+raw_origins = os.getenv(
+    "BRIDGE_CORS_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3005,http://127.0.0.1:3005,http://localhost:4173,http://127.0.0.1:4173,http://localhost:4174,http://127.0.0.1:4174",
+)
 allowed_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
 def get_python_executable() -> str:

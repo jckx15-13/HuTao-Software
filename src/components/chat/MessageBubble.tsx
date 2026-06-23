@@ -3,16 +3,14 @@ import { motion } from 'motion/react';
 import { useUIStore } from '../../store/uiStore';
 import type { Message } from '../../lib/messages';
 import { MarkdownMessage } from '../MarkdownMessage';
-import { TypewriterText } from './TypewriterText';
 import { useMemoryPush } from '../../hooks/ai/useMemoryPush';
 
 interface MessageBubbleProps {
   message: Message;
-  isHighLoad: boolean;
   fontSize: number;
 }
 
-export function MessageBubble({ message, isHighLoad, fontSize }: MessageBubbleProps) {
+export function MessageBubble({ message, fontSize }: MessageBubbleProps) {
   const isUser = message.sender === 'user';
   const isSystem = message.sender === 'system';
   const { pushToMemory, isPushing, isPushed } = useMemoryPush();
@@ -33,7 +31,7 @@ export function MessageBubble({ message, isHighLoad, fontSize }: MessageBubblePr
   // Bubble styling based on chatBubbleStyle and sender
   let bubbleClass = 'relative min-w-0 max-w-[calc(100%-5rem)] px-4 py-2.5 text-xs leading-relaxed transition-all ';
   if (isSystem) {
-    bubbleClass = 'relative w-full max-w-full rounded-lg border border-danger/40 bg-danger/20 p-4 font-mono text-xs text-danger shadow-sm ';
+    bubbleClass = 'relative min-w-0 max-w-[calc(100%-5rem)] rounded-lg border border-white/10 bg-panel/85 px-3 py-2 font-mono text-[11px] leading-relaxed text-text-muted shadow-sm ';
   } else if (chatBubbleStyle === 'glass') {
     bubbleClass += isUser
       ? 'bg-primary/10 border border-primary/25 text-white/90 backdrop-blur-md shadow-lg shadow-primary/5 rounded-2xl rounded-tr-sm'
@@ -63,7 +61,7 @@ export function MessageBubble({ message, isHighLoad, fontSize }: MessageBubblePr
 
       <div className={bubbleClass} style={{ fontSize: isSystem ? undefined : fontSize }}>
         {isUser && <div className="whitespace-pre-wrap">{message.content}</div>}
-        {isSystem && <TypewriterText content={message.content} isFast={isHighLoad} />}
+        {isSystem && <div className="whitespace-pre-wrap">{message.content}</div>}
         {!isUser && !isSystem && (
           <div className="ai-markdown-content space-y-4 text-text-main">
             <MarkdownMessage content={message.content} />
@@ -88,7 +86,7 @@ export function MessageBubble({ message, isHighLoad, fontSize }: MessageBubblePr
                 ? 'bg-green-500/20 border-green-500/40 text-green-400' 
                 : 'bg-white/5 border-white/10 text-white/30 hover:text-white/60 hover:bg-white/10'
             }`}
-            title={isPushed ? "Knowledge Secure" : "Push to Neural Memory"}
+            title={isPushed ? "Stored in local memory" : "Push to local memory"}
           >
             {isPushing ? (
               <RefreshCw size={11} className="animate-spin" />

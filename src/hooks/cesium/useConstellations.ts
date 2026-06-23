@@ -3,6 +3,7 @@ import * as Cesium from 'cesium';
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '@/core/state/store';
 import { constellations } from '@/data/constellations';
+import { getGreenwichMeanSiderealDegrees } from '@/lib/earthObserverProjection';
 
 /**
  * A custom hook to render astronomical constellations around the Earth globe in Cesium.
@@ -11,6 +12,7 @@ import { constellations } from '@/data/constellations';
 export function useConstellations(viewer: Cesium.Viewer | null) {
   const interactionMode = useUIStore((s) => s.interactionMode);
   const hoveredEntityId = useStore((s) => s.hoveredEntity?.id ?? null);
+  const currentTime = useStore((s) => s.currentTime);
 
   useEffect(() => {
     if (!viewer || (viewer as any).isDestroyed?.()) return;
@@ -20,10 +22,13 @@ export function useConstellations(viewer: Cesium.Viewer | null) {
 
     if (active) {
       const celestialRadius = 106378137; // Earth radius (6,378,137m) + 100,000,000m
+      const projectionDate = currentTime instanceof Date ? currentTime : new Date((currentTime as any) ?? Date.now());
+      const gmstDegrees = getGreenwichMeanSiderealDegrees(Number.isNaN(projectionDate.getTime()) ? new Date() : projectionDate);
 
       constellations.forEach((constellation) => {
         const starPositions = constellation.stars.map((star) => {
-          const raRad = (star.ra * 15.0 * Math.PI) / 180.0;
+          const earthFixedRaDegrees = (star.ra * 15.0) - gmstDegrees;
+          const raRad = (earthFixedRaDegrees * Math.PI) / 180.0;
           const decRad = (star.dec * Math.PI) / 180.0;
           const x = celestialRadius * Math.cos(decRad) * Math.cos(raRad);
           const y = celestialRadius * Math.cos(decRad) * Math.sin(raRad);
@@ -88,7 +93,7 @@ export function useConstellations(viewer: Cesium.Viewer | null) {
         }
       } catch (_) {}
     };
-  }, [viewer, interactionMode]);
+  }, [viewer, interactionMode, currentTime]);
 
   useEffect(() => {
     if (!viewer || (viewer as any).isDestroyed?.()) return;

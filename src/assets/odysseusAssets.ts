@@ -14,7 +14,7 @@ export type OdysseusFeatureMapItem = {
   sourceModules: string[];
   silverWolfSurface: string;
   integrationState: 'Bridge-backed' | 'Source-mapped' | 'Asset-copied' | 'Not integrated';
-  userPromise: string;
+  currentScope: string;
   securityBoundary: string;
 };
 
@@ -259,25 +259,25 @@ export const ODYSSEUS_FEATURE_MAP: OdysseusFeatureMapItem[] = [
     sourceModules: ['odysseus/static/js/chat.js', 'odysseus/src/agent_loop.py', 'odysseus/src/tool_schemas.py'],
     silverWolfSurface: 'Bridge status and model endpoint tabs',
     integrationState: 'Source-mapped',
-    userPromise: 'Local or API model chat plus agent tool orchestration.',
+    currentScope: 'Local or API model chat plus agent tool orchestration when the bridge exposes those routes.',
     securityBoundary: 'Do not execute upstream browser scripts inside Silver Wolf; route through the local authenticated bridge.',
   },
   {
     id: 'models-cookbook',
     label: 'Model discovery and serving',
     sourceModules: ['odysseus/static/js/models.js', 'odysseus/src/tool_schemas.py'],
-    silverWolfSurface: 'Models tab reads /api/models from 127.0.0.1:8001',
+    silverWolfSurface: 'Models tab reads /api/models from the configured Silver Wolf bridge',
     integrationState: 'Bridge-backed',
-    userPromise: 'List configured endpoints and models when the Odysseus bridge is reachable.',
+    currentScope: 'List configured endpoints and models when the Odysseus bridge is reachable.',
     securityBoundary: 'Model serving/download actions remain outside this UI until explicit admin-gated actions are wired.',
   },
   {
     id: 'memory-rag',
     label: 'Memory and RAG',
     sourceModules: ['odysseus/static/js/memory.js', 'odysseus/static/js/rag.js', 'odysseus/src/tool_schemas.py'],
-    silverWolfSurface: 'Memory tab reads DB/RAG stats from 127.0.0.1:8001',
+    silverWolfSurface: 'Memory tab reads DB/RAG stats from the configured Silver Wolf bridge',
     integrationState: 'Bridge-backed',
-    userPromise: 'Show local memory/vector-store availability without exposing raw memory contents.',
+    currentScope: 'Show local memory/vector-store availability without exposing raw memory contents.',
     securityBoundary: 'No memory mutation or document ingestion is performed by this Silver Wolf panel.',
   },
   {
@@ -286,7 +286,7 @@ export const ODYSSEUS_FEATURE_MAP: OdysseusFeatureMapItem[] = [
     sourceModules: ['odysseus/static/js/tasks.js', 'odysseus/src/tool_schemas.py'],
     silverWolfSurface: 'Tasks tab lists and controls bridge-provided tasks',
     integrationState: 'Bridge-backed',
-    userPromise: 'List, run, pause, and resume tasks when the bridge exposes them.',
+    currentScope: 'List, run, pause, and resume tasks when the bridge exposes them.',
     securityBoundary: 'Actions post only to the local bridge endpoint already used by the console.',
   },
   {
@@ -300,7 +300,7 @@ export const ODYSSEUS_FEATURE_MAP: OdysseusFeatureMapItem[] = [
     ],
     silverWolfSurface: 'Source map and copied demo assets only',
     integrationState: 'Asset-copied',
-    userPromise: 'These workflows are documented as upstream capabilities but are not yet fully user-accessible inside Silver Wolf.',
+    currentScope: 'These workflows are documented as upstream capabilities but are not yet fully user-accessible inside Silver Wolf.',
     securityBoundary: 'Needs route-by-route bridge integration before it can be presented as functional.',
   },
 ];

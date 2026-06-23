@@ -1,8 +1,7 @@
-import React, { Suspense, useState, useEffect, useCallback } from 'react';
+import React, { Suspense, useEffect, useCallback } from 'react';
 import { MessageSquare, Globe2, Sparkles, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { ChatPanel } from '../ChatPanel';
-import { useAIChat } from '../../hooks/useAIChat';
 const GoogleEarthRemix = React.lazy(() => import('../learning/GoogleEarthRemix'));
 const WorldWideTelescopeView = React.lazy(() => import('../learning/WorldWideTelescopeView'));
 import { ErrorBoundary } from '../ErrorBoundary';
@@ -37,9 +36,6 @@ export function CenterPanel() {
   const setInteractionMode = useUIStore((s) => s.setInteractionMode);
   const spaceInteractionTarget = useUIStore((s) => s.spaceInteractionTarget);
   const setSpaceInteractionTarget = useUIStore((s) => s.setSpaceInteractionTarget);
-  const isProcessing = useUIStore((s) => s.isProcessing);
-  
-  const { sendMessage } = useAIChat();
 
   // Track WWT error state for change log reporting
   const handleTelescopeError = useCallback((error: Error) => {
@@ -105,13 +101,13 @@ export function CenterPanel() {
       <div className="flex-1 w-full relative overflow-hidden">
         {/* Chat View Container */}
         {interactionMode === 'chat' && (
-          <div className="absolute inset-0 z-10 flex flex-col pt-12 opacity-100 pointer-events-auto">
-            <div className="flex-1 w-full flex flex-col justify-between overflow-hidden">
-              {/* Header Neural Indicator */}
-              <div className="flex h-8 shrink-0 items-center justify-between px-6 border-b border-white/5 bg-black/10">
+          <div className="absolute inset-0 z-10 flex flex-col px-3 pb-4 pt-24 opacity-100 pointer-events-auto sm:px-6">
+            <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col justify-between overflow-hidden border-x border-white/10 bg-[#07090f]/95 shadow-2xl">
+              {/* Header status indicator */}
+              <div className="flex h-8 shrink-0 items-center justify-between border-b border-white/10 bg-black/55 px-6">
                 <div className="flex items-center gap-2 text-primary">
                   <Sparkles className="h-3.5 w-3.5 glow-pulse" />
-                  <span className="text-[9px] font-mono font-bold uppercase tracking-[0.25em]">Neural Interface active</span>
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-[0.25em]">Chat interface ready</span>
                 </div>
               </div>
 

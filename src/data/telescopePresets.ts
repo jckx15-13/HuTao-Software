@@ -1,10 +1,49 @@
 import type { TelescopePreset as UITelescopePreset } from '@/store/uiStore';
+import {
+  apparentPlanetEquatorialCoordinates,
+  formatDecDegrees,
+  formatRaHours,
+  type PlanetId,
+} from '@/lib/astronomy';
 
 export interface TelescopePreset extends UITelescopePreset {
   id: string;
   raHours: number;
   decDegrees: number;
   color: string;
+  planetId?: PlanetId;
+}
+
+export interface ResolvedTelescopeCoordinates {
+  raHours: number;
+  decDegrees: number;
+  ra: string;
+  dec: string;
+  distanceAu?: number;
+  source: 'fixed-catalog' | 'kepler-planet';
+}
+
+export function resolveTelescopePresetCoordinates(
+  preset: TelescopePreset,
+  date: Date = new Date(),
+): ResolvedTelescopeCoordinates {
+  if (preset.planetId) {
+    const resolved = apparentPlanetEquatorialCoordinates(preset.planetId, date);
+    return {
+      ...resolved,
+      ra: formatRaHours(resolved.raHours),
+      dec: formatDecDegrees(resolved.decDegrees),
+      source: 'kepler-planet',
+    };
+  }
+
+  return {
+    raHours: preset.raHours,
+    decDegrees: preset.decDegrees,
+    ra: preset.ra,
+    dec: preset.dec,
+    source: 'fixed-catalog',
+  };
 }
 
 export const TELESCOPE_PRESETS: TelescopePreset[] = [
@@ -79,6 +118,7 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     raHours: 9.3,
     decDegrees: 15.6,
     color: '#FF3333',
+    planetId: 'mars',
   },
   {
     id: 'jupiter',
@@ -91,6 +131,7 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     raHours: 13.8,
     decDegrees: -8.4,
     color: '#EAA67B',
+    planetId: 'jupiter',
   },
   {
     id: 'saturn',
@@ -103,7 +144,8 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     raHours: 15.3,
     decDegrees: -16.5,
     color: '#F4E3B1',
-    lookAt: 'Saturn'
+    lookAt: 'Saturn',
+    planetId: 'saturn',
   },
   {
     id: 'neptune',
@@ -116,7 +158,8 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     raHours: 23.5,
     decDegrees: -4.5,
     color: '#4B70DD',
-    lookAt: 'Neptune'
+    lookAt: 'Neptune',
+    planetId: 'neptune',
   },
   {
     id: 'ring-nebula',

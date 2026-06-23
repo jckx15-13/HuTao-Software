@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import * as Cesium from 'cesium';
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '@/core/state/store';
-import { TELESCOPE_PRESETS } from '@/data/telescopePresets';
+import { TELESCOPE_PRESETS, resolveTelescopePresetCoordinates } from '@/data/telescopePresets';
 import type { TelescopePreset } from '@/data/telescopePresets';
 import { projectTelescopeTargetToEarth } from '@/lib/earthObserverProjection';
 
@@ -17,7 +17,8 @@ function parseProjectionDate(value: unknown): Date {
 }
 
 function getPresetDirection(preset: TelescopePreset, date: Date): Cesium.Cartesian3 {
-  const projection = projectTelescopeTargetToEarth(preset.raHours, preset.decDegrees, date);
+  const coordinates = resolveTelescopePresetCoordinates(preset, date);
+  const projection = projectTelescopeTargetToEarth(coordinates.raHours, coordinates.decDegrees, date);
   const lonRad = Cesium.Math.toRadians(projection.longitudeDegrees);
   const latRad = Cesium.Math.toRadians(projection.latitudeDegrees);
   const raw = new Cesium.Cartesian3(

@@ -25,10 +25,20 @@ export function useThemeVariables(): AppliedTheme {
       document.body.style.setProperty(key, value);
     });
 
+    // Keep panels readable over the moving globe even when older persisted
+    // settings try to make them highly transparent.
+    const isMinimalMode = personalisation.minimalMode;
+    const panelOpacity = isMinimalMode
+      ? Math.max(0.45, Math.min(0.8, personalisation.panelOpacity))
+      : Math.max(0.88, Math.min(0.98, personalisation.panelOpacity));
+    const blurIntensity = isMinimalMode
+      ? Math.max(0, Math.min(6, personalisation.blurIntensity))
+      : Math.max(0, Math.min(10, personalisation.blurIntensity));
+
     // Apply personalisation tokens
     const root = document.documentElement;
-    root.style.setProperty('--theme-ui-opacity', personalisation.panelOpacity.toString());
-    root.style.setProperty('--theme-ui-blur', `${personalisation.blurIntensity}px`);
+    root.style.setProperty('--theme-ui-opacity', panelOpacity.toString());
+    root.style.setProperty('--theme-ui-blur', `${blurIntensity}px`);
     root.style.setProperty('--theme-ui-radius', personalisation.cornerRadius.toString());
     root.style.setProperty('--theme-ui-shadow-intensity', personalisation.shadowIntensity.toString());
     root.style.setProperty('--theme-ui-animation-speed', personalisation.animationIntensity.toString());
@@ -47,6 +57,11 @@ export function useThemeVariables(): AppliedTheme {
     // Apply global border style class
     document.body.classList.remove('border-style-subtle', 'border-style-glow', 'border-style-solid', 'border-style-none');
     document.body.classList.add(`border-style-${personalisation.borderStyle}`);
+    if (personalisation.minimalMode) {
+      document.body.classList.add('is-minimal-ui');
+    } else {
+      document.body.classList.remove('is-minimal-ui');
+    }
   }, [currentPalette, personalisation]);
 
   const appStyle = useMemo<CSSProperties>(() => {

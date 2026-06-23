@@ -69,7 +69,6 @@ export function ChatPanel() {
       <ChatFeed
         messages={messages}
         isProcessing={isProcessing}
-        isHighLoad={isHighLoad}
         fontSize={terminalFontSize}
       />
       <ChatComposer disabled={isProcessing} fontSize={terminalFontSize} onSubmit={handleSend} />

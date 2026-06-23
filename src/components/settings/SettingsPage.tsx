@@ -18,10 +18,10 @@ export function SettingsPage() {
     { key: 'personalisation', label: 'Personalisation', icon: Palette },
     { key: 'ai', label: 'AI Configuration', icon: Brain },
     { key: 'connections', label: 'Notion Sync', icon: Link2 },
-    { key: 'feedback', label: 'Tactile Feedback', icon: Sparkles },
+    { key: 'feedback', label: 'Feedback', icon: Sparkles },
     { key: 'developer' as SettingsCategory, label: 'Developer Panel', icon: Code },
     { key: 'map' as SettingsCategory, label: 'Map & Imagery', icon: MapIcon },
-    { key: 'about', label: 'System Codex', icon: Info },
+    { key: 'about', label: 'About', icon: Info },
 
   ];
 
@@ -110,21 +110,21 @@ function AboutSection() {
       <div className="glass-panel p-4 border border-white/5 space-y-3 rounded-xl">
         <h3 className="text-primary font-bold uppercase tracking-wider text-xs">SILVER WOLF CORE</h3>
         <p className="text-white/40 leading-relaxed uppercase">
-          Autonomous geo-spatial intelligence workspace and neural bridge shell. Developed under Sector-6 protocol specs.
+          Chat, map, and astronomy workspace with local fallback AI, optional Gemini and Odysseus bridge routes, ArcGIS imagery, and source-mapped integration panels.
         </p>
 
         <div className="border-t border-white/5 pt-3 space-y-2 text-[9px]">
           <div className="flex justify-between">
             <span className="text-white/30 uppercase">Build Version</span>
-            <span className="text-white/80 font-bold">v6.5.0-PRIME</span>
+            <span className="text-white/80 font-bold">v6.5.0</span>
           </div>
           <div className="flex justify-between">
             <span className="text-white/30 uppercase">Cesium engine</span>
-            <span className="text-white/80 font-bold">v1.141.0</span>
+            <span className="text-white/80 font-bold">v1.142.0</span>
           </div>
           <div className="flex justify-between">
             <span className="text-white/30 uppercase">Vite runtime</span>
-            <span className="text-white/80 font-bold">v6.2.3</span>
+            <span className="text-white/80 font-bold">v6.4.3</span>
           </div>
           <div className="flex justify-between">
             <span className="text-white/30 uppercase">Zustand state</span>
@@ -134,8 +134,8 @@ function AboutSection() {
       </div>
 
       <div className="glass-panel p-4 border border-white/5 space-y-2 rounded-xl text-[9px] uppercase leading-relaxed text-white/40">
-        <div>System security classification: LEVEL 6 DEEP CODES</div>
-        <div>Warning: All interactions are logged on neural bridge.</div>
+        <div>Security note: this browser stores app state locally unless a configured bridge route is used.</div>
+        <div>Bridge note: Odysseus memory, task, and model data require the local bridge service to be running.</div>
       </div>
     </div>
   );

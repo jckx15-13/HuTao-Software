@@ -7,9 +7,14 @@ import { formatPaletteName, palettes, type PaletteKey, type ThemeVars } from '..
 import { useUIStore, type AiModel } from '../store/uiStore';
 
 const modelOptions: Array<{ label: string; value: AiModel }> = [
+  { label: 'Local Diagnostic Assistant', value: 'local-assistant' },
+  { label: 'Odysseus Local Bridge', value: 'odysseus-local' },
+  { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash' },
   { label: 'Gemini 3.1 Pro Preview', value: 'gemini-3.1-pro-preview' },
-  { label: 'Gemini 1.5 Pro', value: 'gemini-1.5-pro' },
-  { label: 'Gemini 1.5 Flash', value: 'gemini-1.5-flash' },
+  { label: 'Gemini 3.1 Flash-Lite', value: 'gemini-3.1-flash-lite' },
+  { label: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview' },
+  { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
+  { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
 ];
 
 const paletteSwatches: Array<keyof ThemeVars> = [
@@ -238,7 +243,7 @@ export function SettingsPane() {
                   id="panel-opacity"
                   name="panel-opacity"
                   type="range"
-                  min="0.1"
+                  min="0.88"
                   max="1"
                   step="0.05"
                   value={personalisation.panelOpacity}
@@ -255,7 +260,7 @@ export function SettingsPane() {
                   name="blur-intensity"
                   type="range"
                   min="0"
-                  max="40"
+                  max="10"
                   value={personalisation.blurIntensity}
                   onChange={(event) => updatePersonalisation({ blurIntensity: Number(event.target.value) })}
                   className="w-36 accent-[var(--theme-primary)]"
@@ -436,7 +441,7 @@ export function SettingsPane() {
         <section>
           <SectionHeader title="AI" eyebrow="Agent" />
           <div className="flex flex-col gap-3">
-            <SettingCard icon={Globe} title="Model" description="Choose the Gemini model used for chat responses">
+            <SettingCard icon={Globe} title="Model" description="Choose the local, bridge, or configured Gemini chat route">
               <select
                 id="ai-model-select"
                 name="ai-model-select"

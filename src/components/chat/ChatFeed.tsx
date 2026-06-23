@@ -6,11 +6,10 @@ import { MessageBubble } from './MessageBubble';
 interface ChatFeedProps {
   messages: Message[];
   isProcessing: boolean;
-  isHighLoad: boolean;
   fontSize: number;
 }
 
-export function ChatFeed({ messages, isProcessing, isHighLoad, fontSize }: ChatFeedProps) {
+export function ChatFeed({ messages, isProcessing, fontSize }: ChatFeedProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   // Auto-scroll logic handled by Virtuoso's followOutput prop, 
@@ -33,7 +32,7 @@ export function ChatFeed({ messages, isProcessing, isHighLoad, fontSize }: ChatF
         className="scroller h-full"
         itemContent={(_index, message) => (
           <div className="px-4 py-3 sm:px-6">
-            <MessageBubble message={message} isHighLoad={isHighLoad} fontSize={fontSize} />
+            <MessageBubble message={message} fontSize={fontSize} />
           </div>
         )}
         components={{

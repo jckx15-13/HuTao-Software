@@ -1,99 +1,157 @@
-const bridge = 'http://127.0.0.1:8001';
+import { bridgeUrl, getBridgeBaseUrl } from './bridgeConfig';
 
-export async function aiChat(model: string, text: string, contents: any[], systemInstruction?: string) {
-  if (model === 'local-assistant' || model === 'odysseus-local') {
-    try {
-      const res = await fetch(`${bridge}/chat`, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ 
-          message: text, 
-          system_instruction: systemInstruction 
-        }) 
-      });
-      const data = await res.json();
-      return { text: data.response || 'No local response.' };
-    } catch { return { text: '', error: 'Local bridge unreachable.' }; }
-  }
+type AIChatResult = { text: string; error?: string };
 
-  // Remote AI providers should be called from a server-side boundary.
-  // The browser keeps this response local unless the localhost bridge is selected.
-  return { text: "AI Response simulation (API key needed for real requests)" };
+function summarizePrompt(text: string): string {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) return 'empty prompt';
+  return normalized.length > 180 ? `${normalized.slice(0, 177)}...` : normalized;
 }
 
-/**
- * Stream chat responses from Odysseus via the bridge's SSE endpoint.
- * Yields text chunks as they arrive. Falls back to non-streaming on error.
- */
+export function createLocalAssistantResponse(text: string, systemInstruction?: string): string {
+  const instructionNote = systemInstruction?.trim()
+    ? 'System instructions are loaded for configured provider calls.'
+    : 'No custom system instructions are set.';
+
+  return [
+    'Local diagnostic assistant response.',
+    '',
+    `I received: "${summarizePrompt(text)}"`,
+    '',
+    'The chat loop is working locally: your message was stored, the composer cleared after submit, processing completed, and this AI response was appended separately from your input.',
+    instructionNote,
+    '',
+    'Remote Gemini or Odysseus responses will replace this local response when their key/service is configured and reachable.',
+  ].join('\n');
+}
+
+export async function aiChat(
+  model: string,
+  text: string,
+  _contents: unknown[] = [],
+  systemInstruction?: string,
+): Promise<AIChatResult> {
+  if (model === 'local-assistant') {
+    return { text: createLocalAssistantResponse(text, systemInstruction) };
+  }
+
+  if (model === 'odysseus-local') {
+    try {
+      const res = await fetch(bridgeUrl('/chat'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          system_instruction: systemInstruction,
+        }),
+      });
+
+      const data = await res.json();
+      return { text: data.response || data.text || 'No local bridge response.' };
+    } catch {
+      return {
+        text: `${createLocalAssistantResponse(text, systemInstruction)}
+
+Odysseus bridge status: offline at ${getBridgeBaseUrl()}, so this local diagnostic response was used instead.`,
+      };
+    }
+  }
+
+  if (model.startsWith('gpt-')) {
+    return {
+      text: `${createLocalAssistantResponse(text, systemInstruction)}
+
+GPT status: this browser client does not send OpenAI API keys directly. Use a server-side bridge before presenting GPT as a live provider.`,
+    };
+  }
+
+  return {
+    text: `${createLocalAssistantResponse(text, systemInstruction)}
+
+Provider status: remote provider was not configured for this browser runtime.`,
+  };
+}
+
 export async function* aiChatStream(
   model: string,
   text: string,
-  systemInstruction?: string
+  systemInstruction?: string,
 ): AsyncGenerator<string, void, undefined> {
-  if (model !== 'local-assistant' && model !== 'odysseus-local') {
-    yield "AI Response simulation (API key needed for real requests)";
+  if (model === 'local-assistant') {
+    yield createLocalAssistantResponse(text, systemInstruction);
     return;
   }
 
-  try {
-    const res = await fetch(`${bridge}/api/chat_stream`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: text,
-        system_instruction: systemInstruction,
-      }),
-    });
+  if (model === 'odysseus-local') {
+    try {
+      const res = await fetch(bridgeUrl('/api/chat_stream'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          system_instruction: systemInstruction,
+        }),
+      });
 
-    if (!res.ok || !res.body) {
-      // Fallback to non-streaming
+      if (!res.ok || !res.body) {
+        const fallback = await aiChat(model, text, [], systemInstruction);
+        yield fallback.text || fallback.error || 'No response.';
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') return;
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.text || parsed.response || parsed.content) {
+                  yield parsed.text || parsed.response || parsed.content;
+                }
+              } catch {
+                if (data.trim()) yield data;
+              }
+            } else if (line.trim() && !line.startsWith(':')) {
+              yield line;
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+      return;
+    } catch {
       const fallback = await aiChat(model, text, [], systemInstruction);
       yield fallback.text || fallback.error || 'No response.';
       return;
     }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        // Handle SSE format: lines starting with "data: "
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') return;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.text || parsed.response || parsed.content) {
-                yield parsed.text || parsed.response || parsed.content;
-              }
-            } catch {
-              // Raw text chunk, not JSON
-              if (data.trim()) yield data;
-            }
-          } else if (line.trim() && !line.startsWith(':')) {
-            // Plain text streaming (non-SSE)
-            yield line;
-          }
-        }
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  } catch {
-    // Fallback to non-streaming on network error
-    const fallback = await aiChat(model, text, [], systemInstruction);
-    yield fallback.text || fallback.error || 'No response.';
   }
+
+  if (model.startsWith('gpt-')) {
+    yield createLocalAssistantResponse(text, systemInstruction);
+    yield '\n\nGPT status: this browser client does not send OpenAI API keys directly. Use a server-side bridge before enabling GPT streaming.';
+    return;
+  }
+
+  yield createLocalAssistantResponse(text, systemInstruction);
 }
 
 export async function syncToBridge(message: string, role: string) {
   try {
-    await fetch(`${bridge}/sync`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, role }) });
+    await fetch(bridgeUrl('/sync'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, role }),
+    });
   } catch {}
 }

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { bridgeUrl, getBridgeBaseUrl } from '../lib/bridgeConfig';
 
 export type DiagnosticLevel = 'error' | 'warning' | 'info' | 'debug';
 
@@ -102,7 +103,7 @@ export const useDiagnosticsStore = create<DiagnosticsState>((set, get) => ({
 
     if (!isHeadless) {
       // Asynchronously send to bridge for file logging
-      fetch('http://127.0.0.1:8001/log', {
+      fetch(bridgeUrl('/log'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(full),
@@ -321,7 +322,7 @@ if (typeof window !== 'undefined') {
         let lastBridgeState = 'unknown';
         const checkBridgeHealth = async () => {
           try {
-            const res = await originalFetch('http://127.0.0.1:8001/status');
+            const res = await originalFetch(bridgeUrl('/status'));
             const data = await res.json();
             if (data.ready) {
               if (lastBridgeState !== 'ready') {
@@ -346,8 +347,8 @@ if (typeof window !== 'undefined') {
             if (lastBridgeState !== 'offline') {
               useDiagnosticsStore.getState().add({
                 level: 'error',
-                message: 'FastAPI bridge server is offline or unreachable on port 8001.',
-                suggestion: 'Restart services via "node launch.js" and ensure port 8001 is not blocked.'
+                message: `FastAPI bridge server is offline or unreachable at ${getBridgeBaseUrl()}.`,
+                suggestion: 'Restart services via "node launch.js" or update the bridge URL override in Developer Settings.'
               });
               lastBridgeState = 'offline';
             }

@@ -25,8 +25,8 @@ import {
   getOdysseusAssetSummary,
   getOdysseusSourceAssetSummary,
 } from '@/assets/odysseusAssets';
+import { bridgeUrl, getBridgeBaseUrl, getOdysseusCoreBaseUrl } from '@/lib/bridgeConfig';
 
-const BRIDGE_URL = 'http://127.0.0.1:8001';
 const BRIDGE_TIMEOUT_MS = 4500;
 const STATIC_ODYSSEUS_ASSETS = ODYSSEUS_ASSETS.filter((asset) => asset.type === 'image');
 const MOTION_ODYSSEUS_ASSETS = ODYSSEUS_ASSETS.filter((asset) => asset.type === 'motion-demo');
@@ -94,6 +94,9 @@ export function OdysseusConsole() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const setOdysseusReady = useUIStore((s) => s.setOdysseusReady);
+  const engineUrlOverride = useUIStore((s) => s.engineUrlOverride);
+  const bridgeBaseUrl = getBridgeBaseUrl();
+  const odysseusCoreUrl = getOdysseusCoreBaseUrl();
 
   const refreshAll = useCallback(async () => {
     setLoading(true);
@@ -111,7 +114,7 @@ export function OdysseusConsole() {
 
     try {
       // 1. Fetch Server Status
-      const statusRes = await fetchWithTimeout(`${BRIDGE_URL}/status`);
+      const statusRes = await fetchWithTimeout(bridgeUrl('/status'));
       if (!statusRes.ok) throw new Error('Bridge unreachable');
       const statusData: ServerStatus = await statusRes.json();
       setStatus(statusData);
@@ -119,27 +122,27 @@ export function OdysseusConsole() {
 
       if (statusData.ready) {
         // 2. Fetch Models
-        const modelsRes = await fetchWithTimeout(`${BRIDGE_URL}/api/models`);
+        const modelsRes = await fetchWithTimeout(bridgeUrl('/api/models'));
         if (modelsRes.ok) {
           const modelsData = await modelsRes.json();
           setModels(modelsData);
         }
 
         // 3. Fetch Tasks
-        const tasksRes = await fetchWithTimeout(`${BRIDGE_URL}/api/tasks`);
+        const tasksRes = await fetchWithTimeout(bridgeUrl('/api/tasks'));
         if (tasksRes.ok) {
           const tasksData = await tasksRes.json();
           setTasks(Array.isArray(tasksData) ? tasksData : []);
         }
 
         // 4. Fetch DB Stats
-        const dbRes = await fetchWithTimeout(`${BRIDGE_URL}/api/db/stats`);
+        const dbRes = await fetchWithTimeout(bridgeUrl('/api/db/stats'));
         if (dbRes.ok) {
           const dbData = await dbRes.json();
           setDbStats(dbData);
         } else {
           // Fallback to rag stats if db stats fails
-          const ragRes = await fetchWithTimeout(`${BRIDGE_URL}/api/rag/stats`);
+          const ragRes = await fetchWithTimeout(bridgeUrl('/api/rag/stats'));
           if (ragRes.ok) {
             const ragData = await ragRes.json();
             setDbStats({ rag_documents: ragData.total_documents || 0 });
@@ -158,12 +161,12 @@ export function OdysseusConsole() {
       setOdysseusReady(false);
       const message = err?.name === 'AbortError'
         ? 'The Odysseus bridge did not answer within 4.5 seconds.'
-        : 'The Odysseus bridge is not reachable at 127.0.0.1:8001.';
+        : `The Odysseus bridge is not reachable at ${bridgeBaseUrl}.`;
       setError(`${message} Bridge-backed models, tasks, and memory data are unavailable. Copied source assets remain available in the Source tab, and no task or memory data was changed.`);
     } finally {
       setLoading(false);
     }
-  }, [isFallbackRuntime, setOdysseusReady]);
+  }, [bridgeBaseUrl, engineUrlOverride, isFallbackRuntime, setOdysseusReady]);
 
   // Poll status on mount
   useEffect(() => {
@@ -176,7 +179,7 @@ export function OdysseusConsole() {
   const handleTaskAction = async (taskId: string, action: 'run' | 'pause' | 'resume') => {
     setActionMessage(null);
     try {
-      const res = await fetchWithTimeout(`${BRIDGE_URL}/api/tasks/${taskId}/${action}`, {
+      const res = await fetchWithTimeout(bridgeUrl(`/api/tasks/${taskId}/${action}`), {
         method: 'POST',
       });
       if (res.ok) {
@@ -278,11 +281,11 @@ export function OdysseusConsole() {
               <div className="grid grid-cols-2 gap-2 text-[9px]">
                 <div className="p-2 bg-black/30 border border-white/5 rounded">
                   <span className="text-white/30 block uppercase">Bridge Proxy</span>
-                  <span className="text-cyan-400 font-bold">127.0.0.1:8001</span>
+                  <span className="break-all text-cyan-400 font-bold">{bridgeBaseUrl.replace(/^https?:\/\//, '')}</span>
                 </div>
                 <div className="p-2 bg-black/30 border border-white/5 rounded">
                   <span className="text-white/30 block uppercase">Odysseus core</span>
-                  <span className="text-cyan-400 font-bold">127.0.0.1:7000</span>
+                  <span className="break-all text-cyan-400 font-bold">{odysseusCoreUrl.replace(/^https?:\/\//, '')}</span>
                 </div>
                 <div className="p-2 bg-black/30 border border-white/5 rounded">
                   <span className="text-white/30 block uppercase">Sync File State</span>
@@ -302,7 +305,7 @@ export function OdysseusConsole() {
             <div className="glass-panel p-3 border border-white/5 bg-black/20 space-y-2 rounded-xl">
               <div className="text-[9px] text-white/30 uppercase tracking-wider font-bold mb-1">BRIDGE CONTEXT LOGS</div>
               <div className="bg-black/40 border border-white/5 rounded p-2 text-[8px] font-mono text-white/60 min-h-[80px] max-h-[150px] overflow-y-auto scroller">
-                <div>[SYSTEM] Bridge Server active on: http://127.0.0.1:8001</div>
+                <div>[SYSTEM] Bridge Server target: {bridgeBaseUrl}</div>
                 <div>[SYSTEM] Admin Authorization Token Generated.</div>
                 {isOnline ? (
                   <>
@@ -714,7 +717,7 @@ export function OdysseusConsole() {
                   </div>
 
                   <div className="rounded border border-white/5 bg-black/25 p-2 text-[8px] leading-relaxed text-white/55">
-                    <span className="font-bold text-white/70">Promise: </span>{item.userPromise}
+                    <span className="font-bold text-white/70">Current scope: </span>{item.currentScope}
                   </div>
 
                   <div className="space-y-1">

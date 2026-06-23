@@ -10,6 +10,8 @@ export default defineConfig(({mode}) => {
     plugins: [react(), tailwindcss(), cesium()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      __SILVER_WOLF_BRIDGE_URL__: JSON.stringify(env.VITE_BRIDGE_URL || ''),
+      __SILVER_WOLF_ODYSSEUS_CORE_URL__: JSON.stringify(env.VITE_ODYSSEUS_CORE_URL || ''),
     },
     resolve: {
       alias: {

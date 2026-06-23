@@ -16,10 +16,11 @@ import { useUIStore } from '../../store/uiStore'; // Central state hook providin
 
 export function DockedLayout() {
   // Read open status of panels directly from the Zustand global store.
-  const { setShowSettings, settingsDocked, showSettings, rightPanelOpen } = useUIStore();
+  const { settingsDocked, showSettings, rightPanelOpen, interactionMode } = useUIStore();
   
   // Design logic: Hide the performance meter dashboard if the settings page is docked onto the side layout.
   const hideSystemMonitor = showSettings && settingsDocked;
+  const showPassiveTelemetry = interactionMode !== 'chat' && !hideSystemMonitor;
 
   return (
     // Flexbox row layout spanning full viewport width. Inherits transparency so Cesium canvas is visible behind panels.
@@ -43,16 +44,16 @@ export function DockedLayout() {
         <Suspense fallback={null}>
           <RightPanel />
         </Suspense>
-      ) : !hideSystemMonitor ? (
+      ) : showPassiveTelemetry ? (
         // Mode B: Renders system telemetry inside a fixed-width aside bar (320px width).
         // Uses `xl:flex` to hide on smaller screens, appearing automatically once viewport exceeds 1280px wide.
         <aside className="relative z-20 hidden w-80 shrink-0 flex-col border-l border-panel-border bg-panel panel-glass ambient-glow transition-opacity duration-300 xl:flex">
           <SystemMonitor />
         </aside>
-      ) : (
+      ) : hideSystemMonitor ? (
         // Mode C: Renders a passive width offset (400px) on extra-large screens to balance the layout.
         <div className="hidden w-[400px] shrink-0 xl:block" />
-      )}
+      ) : null}
     </div>
   );
 }

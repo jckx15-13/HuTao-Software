@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
 import { Hexagon, Terminal, ChevronDown, ChevronUp, Cpu, Wifi, Battery, Database, ArrowRight, AlertTriangle } from 'lucide-react';
+import { bridgeUrl, getBridgeBaseUrl } from '@/lib/bridgeConfig';
 
 export function LauncherPage() {
   const setLauncherDismissed = useUIStore((s) => s.setLauncherDismissed);
@@ -8,6 +9,8 @@ export function LauncherPage() {
   const diagnostics = useUIStore((s) => s.diagnostics);
   const addDiagnostic = useUIStore((s) => s.addDiagnostic);
   const clearDiagnostics = useUIStore((s) => s.clearDiagnostics);
+  const engineUrlOverride = useUIStore((s) => s.engineUrlOverride);
+  const bridgeBaseUrl = getBridgeBaseUrl();
 
   const [bridgeStatus, setBridgeStatus] = useState<'checking' | 'active' | 'offline'>('checking');
   const [gitStatus, setGitStatus] = useState<{ has_changes: boolean, count: number }>({ has_changes: false, count: 0 });
@@ -20,13 +23,13 @@ export function LauncherPage() {
     addDiagnostic({ source: 'STORE', level: 'success', message: 'State hydration complete.' });
     addDiagnostic({ source: 'THEME', level: 'success', message: 'Visual profile themes and dynamic theme engine initialised.' });
     addDiagnostic({ source: '3D-MAP', level: 'info', message: 'Cesium map engine bound to canvas background.' });
-    addDiagnostic({ source: 'BRIDGE', level: 'info', message: 'Pinging Assistant Bridge on port 8001...' });
+    addDiagnostic({ source: 'BRIDGE', level: 'info', message: `Pinging Assistant Bridge at ${bridgeBaseUrl}...` });
 
     let active = true;
 
     async function checkGit() {
       try {
-        const response = await fetch('http://127.0.0.1:8001/git/status');
+        const response = await fetch(bridgeUrl('/git/status'));
         const data = await response.json();
         if (data.has_changes && active) {
           setGitStatus({ has_changes: true, count: data.change_count });
@@ -41,7 +44,7 @@ export function LauncherPage() {
         const timeoutId = setTimeout(() => controller.abort(), 2000);
 
         // Simple ping to bridge health or root
-        const response = await fetch('http://127.0.0.1:8001/chat', {
+        const response = await fetch(bridgeUrl('/chat'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: 'ping_test_diagnostics' }),
@@ -53,7 +56,7 @@ export function LauncherPage() {
 
         if (response.ok || response.status === 422 || response.status === 400) {
           setBridgeStatus('active');
-          addDiagnostic({ source: 'BRIDGE', level: 'success', message: 'Assistant Bridge verified active on port 8001.' });
+          addDiagnostic({ source: 'BRIDGE', level: 'success', message: `Assistant Bridge verified active at ${bridgeBaseUrl}.` });
           checkGit();
         } else {
           setBridgeStatus('offline');
@@ -62,7 +65,7 @@ export function LauncherPage() {
       } catch (err) {
         if (!active) return;
         setBridgeStatus('offline');
-        addDiagnostic({ source: 'BRIDGE', level: 'error', message: 'Connection to port 8001 failed. Bridge offline (Port Collision or not running).' });
+        addDiagnostic({ source: 'BRIDGE', level: 'error', message: `Connection to ${bridgeBaseUrl} failed. Bridge offline or not reachable.` });
       }
     }
 
@@ -71,7 +74,7 @@ export function LauncherPage() {
     return () => {
       active = false;
     };
-  }, [addDiagnostic, clearDiagnostics]);
+  }, [addDiagnostic, bridgeBaseUrl, clearDiagnostics, engineUrlOverride]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 bg-[#0a0b10] text-white">
@@ -90,7 +93,7 @@ export function LauncherPage() {
               SILVER WOLF VI
             </h1>
             <p className="text-[9px] font-mono uppercase tracking-[0.25em] text-white/40">
-              Orbital Geo-Spatial Intelligence Platform
+              Chat, Map, and Astronomy Workspace
             </p>
           </div>
         </div>
@@ -145,8 +148,8 @@ export function LauncherPage() {
             <div className="flex items-center gap-2">
               <Wifi className="h-4 w-4 text-white/30" />
               <div className="flex flex-col">
-                <span className="text-white/40 uppercase text-[8px]">Neural Bridge</span>
-                <span className="text-white/80 font-bold">FastAPI :8001</span>
+                <span className="text-white/40 uppercase text-[8px]">Assistant Bridge</span>
+                <span className="text-white/80 font-bold truncate max-w-[120px]">{bridgeBaseUrl.replace(/^https?:\/\//, '')}</span>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -166,7 +169,7 @@ export function LauncherPage() {
             <div className="flex items-center gap-2">
               <Battery className="h-4 w-4 text-white/30" />
               <div className="flex flex-col">
-                <span className="text-white/40 uppercase text-[8px]">Default Agent</span>
+                <span className="text-white/40 uppercase text-[8px]">AI Route</span>
                 <span className="text-white/80 font-bold truncate max-w-[120px]">{aiModel}</span>
               </div>
             </div>
@@ -182,7 +185,7 @@ export function LauncherPage() {
                 <span className="text-white/80 font-bold">IndexedDB</span>
               </div>
             </div>
-            <span className="text-green-500 font-bold uppercase text-[8px]">SECURED</span>
+            <span className="text-green-500 font-bold uppercase text-[8px]">LOCAL</span>
           </div>
         </div>
 

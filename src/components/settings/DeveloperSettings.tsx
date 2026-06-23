@@ -101,7 +101,7 @@ export function DeveloperSettings() {
                 type="text"
                 value={engineUrlOverride}
                 onChange={(e) => setEngineUrlOverride(e.target.value)}
-                placeholder="http://127.0.0.1:8001 (empty for defaults)"
+                placeholder="http://127.0.0.1:8001 or ws://127.0.0.1:5000/stream"
                 className="flex-1 rounded-lg bg-black/30 border border-white/5 px-3 py-2 text-xs text-text-main focus:outline-none focus:ring-1 focus:ring-primary/35 font-mono"
               />
               {engineUrlOverride && (
@@ -115,7 +115,7 @@ export function DeveloperSettings() {
               )}
             </div>
             <span className="text-[8px] text-white/20 block font-mono">
-              Overrides both REST and WS connections. Default: wss://dataenginev2.worldwideview.dev/stream
+              Overrides both bridge REST calls and plugin WS streams. Empty uses VITE_BRIDGE_URL for REST and the WorldWideView data-engine default for plugin streams.
             </span>
           </div>
 

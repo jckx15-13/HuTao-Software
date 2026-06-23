@@ -1,6 +1,7 @@
 import { useUIStore, type SatelliteData } from '../store/uiStore';
 import { useDiagnosticsStore } from '../store/diagnosticsStore';
 import { SATELLITES } from '../core/satellites/satelliteData';
+import { bridgeUrl } from '../lib/bridgeConfig';
 
 type FailureState = { count: number; nextAttempt: number };
 const failureState: Record<string, FailureState> = {};
@@ -107,7 +108,7 @@ class SatelliteService {
         text = await response.text();
       } catch (directErr) {
         // Try bridge proxy
-        const proxyUrl = `http://127.0.0.1:8001/api/camera/proxy?url=${encodeURIComponent(url)}`;
+        const proxyUrl = bridgeUrl(`/api/camera/proxy?url=${encodeURIComponent(url)}`);
         const proxyRes = await fetch(proxyUrl);
         if (!proxyRes.ok) throw new Error(`Proxy connection failed: ${proxyRes.status}`);
         const json = await proxyRes.json();

@@ -54,6 +54,13 @@ export interface ImageryLayerEntry {
 
 export const IMAGERY_LAYERS: ImageryLayerEntry[] = [
     {
+        id: "arcgis-world",
+        name: "ArcGIS World Imagery",
+        description: "Esri public satellite imagery",
+        thumbnail: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/0/0/0",
+        type: "imagery",
+    },
+    {
         id: "google-3d",
         name: "Google Maps 3D",
         description: "High-fidelity photorealistic 3D",
@@ -62,8 +69,8 @@ export const IMAGERY_LAYERS: ImageryLayerEntry[] = [
     },
     {
         id: "cesium",
-        name: "Cesium Ion Default",
-        description: "Standard sentinel-2 imagery",
+        name: "Cesium Compatible Default",
+        description: "ArcGIS imagery through the Cesium imagery stack",
         thumbnail: "https://cesium.com/downloads/ion-imagery-preview.png",
         type: "imagery",
     },
@@ -100,13 +107,6 @@ export const IMAGERY_LAYERS: ImageryLayerEntry[] = [
         name: "OpenStreetMap",
         description: "Community-driven map data",
         thumbnail: "https://a.tile.openstreetmap.org/0/0/0.png",
-        type: "imagery",
-    },
-    {
-        id: "arcgis-world",
-        name: "ArcGIS World Imagery",
-        description: "Esri high-detail satellite",
-        thumbnail: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/0/0/0",
         type: "imagery",
     },
     {
@@ -156,6 +156,13 @@ export async function createImageryProvider(layerId: string) {
     const bingKey = import.meta.env.VITE_BING_MAPS_KEY;
 
     switch (layerId) {
+        case "cesium":
+        case "arcgis-world":
+            return await ArcGisMapServerImageryProvider.fromUrl(
+                "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"
+            );
+
+        case "bing-sat":
         case "bing-aerial":
             if (bingKey) {
                 return await BingMapsImageryProvider.fromUrl("https://dev.virtualearth.net", {
@@ -190,11 +197,6 @@ export async function createImageryProvider(layerId: string) {
 
         case "osm":
             return createOsmProvider();
-
-        case "arcgis-world":
-            return await ArcGisMapServerImageryProvider.fromUrl(
-                "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"
-            );
 
         case "blue-marble":
             return await tieredFallback(3845, "s");

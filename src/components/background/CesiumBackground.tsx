@@ -9,7 +9,7 @@ import {
 } from '../../lib/globeProjection';
 import { SATELLITES } from '../../data/satellites';
 import { propagateCircularOrbit, propagateCircularOrbitInto, propagateSatelliteTleInto } from '../../lib/simulation';
-import { TELESCOPE_PRESETS } from '@/data/telescopePresets';
+import { TELESCOPE_PRESETS, resolveTelescopePresetCoordinates } from '@/data/telescopePresets';
 import {
   projectTelescopeTargetToEarth,
   projectTelescopeTargetToObserverView,
@@ -61,22 +61,27 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
     return TELESCOPE_PRESETS[0];
   }, [telescopeTarget]);
   const activeTelescopeProjection = useMemo(() => {
+    const coordinates = resolveTelescopePresetCoordinates(activeTelescopePreset, new Date());
     return projectTelescopeTargetToEarth(
-      activeTelescopePreset.raHours,
-      activeTelescopePreset.decDegrees,
+      coordinates.raHours,
+      coordinates.decDegrees,
       new Date()
     );
   }, [activeTelescopePreset]);
   const activeObserverFrameSummary = useMemo(() => {
     const projectionDate = new Date();
+    const activeCoordinates = resolveTelescopePresetCoordinates(activeTelescopePreset, projectionDate);
     const nearSide = TELESCOPE_PRESETS.filter((preset) => (
-      projectTelescopeTargetToObserverView(
-        activeTelescopePreset.raHours,
-        activeTelescopePreset.decDegrees,
-        preset.raHours,
-        preset.decDegrees,
-        projectionDate
-      ).visibleHemisphere
+      (() => {
+        const coordinates = resolveTelescopePresetCoordinates(preset, projectionDate);
+        return projectTelescopeTargetToObserverView(
+          activeCoordinates.raHours,
+          activeCoordinates.decDegrees,
+          coordinates.raHours,
+          coordinates.decDegrees,
+          projectionDate
+        ).visibleHemisphere;
+      })()
     )).length;
 
     return {
@@ -415,13 +420,15 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
         : '';
       const activeObserverPreset = TELESCOPE_PRESETS.find((preset) => preset.name === activeTelescopeName) || TELESCOPE_PRESETS[0];
       const projectionDate = new Date(currentTime);
+      const activeObserverCoordinates = resolveTelescopePresetCoordinates(activeObserverPreset, projectionDate);
       for (let i = 0; i < TELESCOPE_PRESETS.length; i++) {
         const preset = TELESCOPE_PRESETS[i];
+        const presetCoordinates = resolveTelescopePresetCoordinates(preset, projectionDate);
         const observerProjection = projectTelescopeTargetToObserverView(
-          activeObserverPreset.raHours,
-          activeObserverPreset.decDegrees,
-          preset.raHours,
-          preset.decDegrees,
+          activeObserverCoordinates.raHours,
+          activeObserverCoordinates.decDegrees,
+          presetCoordinates.raHours,
+          presetCoordinates.decDegrees,
           projectionDate
         );
         const isActiveTelescope = activeTelescopeName === preset.name || (!activeTelescopeName && i === 0);

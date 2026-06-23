@@ -6,7 +6,15 @@ import { type LocationData } from '../data/locations';
 import { type Tour } from '../data/tours';
 import { type WeatherData } from '../services/weatherService';
 
-export type AiModel = 'gemini-3-flash' | 'gemini-3-pro' | 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-2.0-flash' | 'local-assistant' | 'gemini-3.1-pro-preview' | 'gemini-1.5-pro' | 'gemini-1.5-flash' | 'odysseus-local';
+export type AiModel =
+  | 'gemini-3.5-flash'
+  | 'gemini-3.1-pro-preview'
+  | 'gemini-3.1-flash-lite'
+  | 'gemini-3-flash-preview'
+  | 'gemini-2.5-flash'
+  | 'gemini-2.5-pro'
+  | 'local-assistant'
+  | 'odysseus-local';
 
 export interface SystemMetrics {
   ramUsage: number;
@@ -24,6 +32,7 @@ export interface Personalisation {
   borderStyle: 'subtle' | 'glow' | 'solid' | 'none';
   shadowIntensity: number;
   chatBubbleStyle: 'glass' | 'solid' | 'minimal';
+  minimalMode: boolean;
   iconStyle: 'outlined' | 'filled';
   uiDensity: 'comfortable' | 'compact' | 'spacious';
   fontScale: number;
@@ -86,14 +95,15 @@ export type RightPanelTab = 'context' | 'browser' | 'changes' | 'diagnostics' | 
 export type SettingsCategory = 'personalisation' | 'ai' | 'connections' | 'feedback' | 'developer' | 'about' | 'map' | 'plugins';
 
 const defaultPersonalisation: Personalisation = {
-  panelOpacity: 0.75,
-  blurIntensity: 16,
-  animationIntensity: 0.7,
+  panelOpacity: 0.92,
+  blurIntensity: 8,
+  animationIntensity: 0.45,
   motionReduced: false,
-  cornerRadius: 12,
+  cornerRadius: 8,
   borderStyle: 'subtle',
-  shadowIntensity: 0.5,
-  chatBubbleStyle: 'glass',
+  shadowIntensity: 0.35,
+  chatBubbleStyle: 'solid',
+  minimalMode: false,
   iconStyle: 'outlined',
   uiDensity: 'comfortable',
   fontScale: 1.0,
@@ -101,6 +111,43 @@ const defaultPersonalisation: Personalisation = {
   fontFamily: 'Outfit',
   panelTransitionStyle: 'slide',
 };
+
+const activeAiModels = new Set<AiModel>([
+  'local-assistant',
+  'odysseus-local',
+  'gemini-3.5-flash',
+  'gemini-3.1-pro-preview',
+  'gemini-3.1-flash-lite',
+  'gemini-3-flash-preview',
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
+]);
+
+function normalizeAiModel(model: unknown): AiModel {
+  if (typeof model !== 'string') return 'local-assistant';
+
+  if (model === 'gemini-3-flash') return 'gemini-3-flash-preview';
+  if (model === 'gemini-3-pro') return 'gemini-3.1-pro-preview';
+  if (model.startsWith('gpt-')) return 'local-assistant';
+
+  return activeAiModels.has(model as AiModel) ? (model as AiModel) : 'local-assistant';
+}
+
+function normalizePersonalisation(personalisation?: Partial<Personalisation> | null): Personalisation {
+  const merged = { ...defaultPersonalisation, ...(personalisation || {}) };
+  const isMinimal = merged.minimalMode === true;
+  const panelRange = isMinimal ? { min: 0.45, max: 0.8 } : { min: 0.88, max: 0.98 };
+  const blurRange = isMinimal ? { min: 0, max: 6 } : { min: 0, max: 10 };
+
+  return {
+    ...merged,
+    panelOpacity: Math.max(panelRange.min, Math.min(panelRange.max, merged.panelOpacity ?? defaultPersonalisation.panelOpacity)),
+    blurIntensity: Math.max(blurRange.min, Math.min(blurRange.max, merged.blurIntensity ?? defaultPersonalisation.blurIntensity)),
+    chatBubbleStyle: merged.chatBubbleStyle === 'glass'
+      ? 'solid'
+      : (merged.chatBubbleStyle || defaultPersonalisation.chatBubbleStyle),
+  };
+}
 
 function createGlobalChat(): ChatSession {
   const now = Date.now();
@@ -334,6 +381,7 @@ export const useUIStore = create<UIStore>()(
         // Chat Sessions
         chatSessions: [globalChat],
         activeChatId: globalChat.id,
+        messages: globalChat.messages,
         addChatSession: (name, type, projectName) => {
           const id = generateSessionId();
           const now = Date.now();
@@ -351,6 +399,7 @@ export const useUIStore = create<UIStore>()(
           set((s) => ({
             chatSessions: [...s.chatSessions, newSession],
             activeChatId: id,
+            messages: newSession.messages,
           }));
         },
         removeChatSession: (id) => {
@@ -358,41 +407,54 @@ export const useUIStore = create<UIStore>()(
           set((s) => {
             const sessions = s.chatSessions.filter((cs) => cs.id !== id);
             const newActive = s.activeChatId === id ? 'global-main' : s.activeChatId;
-            return { chatSessions: sessions, activeChatId: newActive };
+            const activeSession = sessions.find((cs) => cs.id === newActive);
+            return { chatSessions: sessions, activeChatId: newActive, messages: activeSession?.messages ?? [] };
           });
         },
-        setActiveChatId: (activeChatId) => set({ activeChatId }),
+        setActiveChatId: (activeChatId) => set((s) => {
+          const activeSession = s.chatSessions.find((session) => session.id === activeChatId);
+          return { activeChatId, messages: activeSession?.messages ?? [] };
+        }),
 
-        // Active chat messages — computed from active session
-        get messages() {
-          const state = get();
-          const session = state.chatSessions.find((s) => s.id === state.activeChatId);
-          return session?.messages ?? [];
-        },
+        // Active chat messages are stored explicitly so Zustand selectors update reliably.
         isProcessing: false,
         addMessage: (msg) =>
-          set((s) => ({
-            chatSessions: s.chatSessions.map((cs) =>
-              cs.id === s.activeChatId
-                ? { ...cs, messages: [...cs.messages, msg], lastActive: Date.now() }
-                : cs,
-            ),
-          })),
+          set((s) => {
+            const now = Date.now();
+            const messages = [...s.messages, msg];
+            return {
+              messages,
+              chatSessions: s.chatSessions.map((cs) =>
+                cs.id === s.activeChatId
+                  ? { ...cs, messages, lastActive: now }
+                  : cs,
+              ),
+            };
+          }),
         clearMessages: () =>
-          set((s) => ({
-            chatSessions: s.chatSessions.map((cs) =>
-              cs.id === s.activeChatId
-                ? { ...cs, messages: createResetMessages(), lastActive: Date.now() }
-                : cs,
-            ),
-          })),
+          set((s) => {
+            const messages = createResetMessages();
+            const now = Date.now();
+            return {
+              messages,
+              chatSessions: s.chatSessions.map((cs) =>
+                cs.id === s.activeChatId
+                  ? { ...cs, messages, lastActive: now }
+                  : cs,
+              ),
+            };
+          }),
         setIsProcessing: (isProcessing) => set({ isProcessing }),
         setMessages: (messages) =>
-          set((s) => ({
-            chatSessions: s.chatSessions.map((cs) =>
-              cs.id === s.activeChatId ? { ...cs, messages, lastActive: Date.now() } : cs
-            ),
-          })),
+          set((s) => {
+            const now = Date.now();
+            return {
+              messages,
+              chatSessions: s.chatSessions.map((cs) =>
+                cs.id === s.activeChatId ? { ...cs, messages, lastActive: now } : cs
+              ),
+            };
+          }),
 
         // Theme / Appearance
         activePalette: 'holographic' as PaletteKey,
@@ -403,24 +465,24 @@ export const useUIStore = create<UIStore>()(
         setDynamicTheme: (dynamicTheme) => set({ dynamicTheme }),
 
         // Personalisation
-        personalisation: { ...defaultPersonalisation },
+        personalisation: normalizePersonalisation(defaultPersonalisation),
         updatePersonalisation: (p) =>
-          set((s) => ({ personalisation: { ...s.personalisation, ...p } })),
+          set((s) => ({ personalisation: normalizePersonalisation({ ...s.personalisation, ...p }) })),
 
         // Custom cursor design
         cursorDesign: 'reticle-v1',
         setCursorDesign: (cursorDesign) => set({ cursorDesign }),
 
         // AI Config
-        aiModel: 'gemini-2.5-flash',
-        setAiModel: (aiModel) => set({ aiModel }),
+        aiModel: 'local-assistant',
+        setAiModel: (aiModel) => set({ aiModel: normalizeAiModel(aiModel) }),
         systemInstructions: 'You are Silver Wolf VI, a cyberpunk AI companion.',
         setSystemInstructions: (systemInstructions) => set({ systemInstructions }),
 
         // Sensory
         audioFeedback: false,
         setAudioFeedback: (audioFeedback) => set({ audioFeedback }),
-        particleEffects: true,
+        particleEffects: false,
         setParticleEffects: (particleEffects) => set({ particleEffects }),
         terminalFontSize: 15,
         setTerminalFontSize: (terminalFontSize) => set({ terminalFontSize }),
@@ -557,7 +619,7 @@ export const useUIStore = create<UIStore>()(
         setForceFallback: (forceFallback) => set({ forceFallback }),
         engineUrlOverride: '',
         setEngineUrlOverride: (engineUrlOverride) => set({ engineUrlOverride }),
-        imageryProvider: 'cesium',
+        imageryProvider: 'arcgis-world',
         setImageryProvider: (imageryProvider) => set({ imageryProvider }),
         spaceBlendOpacity: 0.35,
         setSpaceBlendOpacity: (spaceBlendOpacity) => set({ spaceBlendOpacity }),
@@ -566,9 +628,9 @@ export const useUIStore = create<UIStore>()(
 
 
         // Panel State
-        leftPanelOpen: true,
+        leftPanelOpen: false,
         setLeftPanelOpen: (leftPanelOpen) => set({ leftPanelOpen }),
-        rightPanelOpen: true,
+        rightPanelOpen: false,
         setRightPanelOpen: (rightPanelOpen) => set({ rightPanelOpen }),
         rightPanelTab: 'context',
         setRightPanelTab: (rightPanelTab) => set({ rightPanelTab }),
@@ -640,18 +702,33 @@ export const useUIStore = create<UIStore>()(
         setSettingsDocked: (settingsDocked) => set({ settingsDocked }),
 
         // Generic updater
-        updateSettings: (settings) => set((s) => ({ ...s, ...settings })),
+        updateSettings: (settings) =>
+          set((s) => ({
+            ...s,
+            ...settings,
+            aiModel: settings.aiModel ? normalizeAiModel(settings.aiModel) : s.aiModel,
+            personalisation: settings.personalisation
+              ? normalizePersonalisation(settings.personalisation)
+              : s.personalisation,
+          })),
       };
     },
     {
       name: 'silver-wolf-v6-core',
-      version: 3,
+      version: 5,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') return persistedState;
         const { notionApiKey: _notionApiKey, ...safeState } = persistedState as Partial<UIStore> & {
           notionApiKey?: string;
         };
-        return safeState;
+        const migrated = { ...safeState };
+        migrated.aiModel = normalizeAiModel(migrated.aiModel);
+        migrated.particleEffects = false;
+        migrated.leftPanelOpen = false;
+        migrated.rightPanelOpen = false;
+        migrated.imageryProvider = migrated.imageryProvider === 'cesium' ? 'arcgis-world' : (migrated.imageryProvider || 'arcgis-world');
+        migrated.personalisation = normalizePersonalisation(migrated.personalisation);
+        return migrated;
       },
       partialize: (s) => ({
         activePalette: s.activePalette,
