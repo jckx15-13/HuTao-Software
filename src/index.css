@@ -143,6 +143,23 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+.range-hit-target {
+  min-height: 2.75rem;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 4px;
+}
+
+.range-hit-target::-webkit-slider-thumb {
+  min-height: 1.5rem;
+  min-width: 1.5rem;
+}
+
+.range-hit-target::-moz-range-thumb {
+  min-height: 1.5rem;
+  min-width: 1.5rem;
+}
+
 @layer base {
   body {
     @apply bg-base text-text-main font-sans overflow-hidden transition-colors duration-300;

@@ -44,9 +44,9 @@ export default function MountUnmountHarness() {
   return (
     <div className="p-4 text-white">
       <div className="mb-2 flex gap-2">
-        <button onClick={() => setMounted(true)} className="bg-primary/20 px-3 py-1 rounded">Mount</button>
-        <button onClick={() => setMounted(false)} className="bg-amber-700/10 px-3 py-1 rounded">Unmount</button>
-        <button onClick={startCycles} className="bg-cyan-700/10 px-3 py-1 rounded">Run cycles (50)</button>
+        <button type="button" onClick={() => setMounted(true)} className="min-h-11 rounded bg-primary/20 px-3 py-1">Mount</button>
+        <button type="button" onClick={() => setMounted(false)} className="min-h-11 rounded bg-amber-700/10 px-3 py-1">Unmount</button>
+        <button type="button" onClick={startCycles} className="min-h-11 rounded bg-cyan-700/10 px-3 py-1">Run cycles (50)</button>
       </div>
       <div className="border rounded p-2 h-96 overflow-hidden bg-black/10">
         {mounted ? <WorldWideTelescopeView /> : <div className="text-white/40">Unmounted</div>}

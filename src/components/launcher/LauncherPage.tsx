@@ -191,7 +191,8 @@ export function LauncherPage() {
           <button
             type="button"
             onClick={() => setLogsExpanded(!logsExpanded)}
-            className="flex items-center justify-between w-full px-3 py-2 rounded-lg bg-white/5 border border-white/5 text-[9px] font-mono text-white/40 hover:text-white/80 transition-colors uppercase tracking-widest font-bold cursor-pointer"
+            className="flex min-h-11 w-full items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-widest text-white/40 transition-colors hover:text-white/80 cursor-pointer"
+            aria-expanded={logsExpanded}
           >
             <div className="flex items-center gap-2">
               <Terminal className="h-3.5 w-3.5" />
@@ -219,7 +220,7 @@ export function LauncherPage() {
         <button
           type="button"
           onClick={() => setLauncherDismissed(true)}
-          className="absolute bottom-6 right-6 font-mono text-[9px] tracking-wider text-white/25 hover:text-white/50 transition-colors cursor-pointer"
+          className="absolute bottom-6 right-6 flex min-h-11 items-center rounded px-3 font-mono text-[9px] tracking-wider text-white/25 transition-colors hover:bg-white/5 hover:text-white/50 cursor-pointer"
         >
           SKIP BOOT INTERFACE →
         </button>

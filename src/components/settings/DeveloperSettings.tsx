@@ -173,8 +173,9 @@ export function DeveloperSettings() {
           <span>DataBus Live Event Stream Log</span>
           <button 
             onClick={() => setRefreshKey(k => k + 1)}
-            className="hover:bg-white/5 p-1 rounded transition-colors text-white/40 hover:text-white cursor-pointer"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/40 transition-colors hover:bg-white/5 hover:text-white cursor-pointer"
             title="Refresh stream log history"
+            aria-label="Refresh DataBus stream log history"
           >
             <RefreshCw size={12} className="animate-spin-slow" />
           </button>
@@ -232,7 +233,8 @@ export function DeveloperSettings() {
           <button
             type="button"
             onClick={handleCopyState}
-            className="flex items-center gap-1.5 px-3 py-2 bg-primary/20 border border-primary/20 hover:bg-primary-hover hover:text-white rounded-lg text-[9px] font-mono uppercase text-primary transition-all cursor-pointer"
+            className="flex min-h-11 items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/20 px-3 py-2 font-mono text-[9px] uppercase text-primary transition-all cursor-pointer hover:bg-primary-hover hover:text-white"
+            aria-label="Copy local Zustand state dump"
           >
             {copied ? (
               <>

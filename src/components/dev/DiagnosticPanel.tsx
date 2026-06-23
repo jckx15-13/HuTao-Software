@@ -16,8 +16,20 @@ export default function DiagnosticPanel() {
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm font-mono font-bold">Diagnostics</div>
         <div className="flex items-center gap-2">
-          <button onClick={() => { navigator.clipboard?.writeText(exp()); }} className="px-2 py-1 rounded bg-white/5">Copy JSON</button>
-          <button onClick={() => clear()} className="px-2 py-1 rounded bg-amber-700/10">Clear</button>
+          <button
+            type="button"
+            onClick={() => { navigator.clipboard?.writeText(exp()); }}
+            className="min-h-11 rounded bg-white/5 px-3 py-1"
+          >
+            Copy JSON
+          </button>
+          <button
+            type="button"
+            onClick={() => clear()}
+            className="min-h-11 rounded bg-amber-700/10 px-3 py-1"
+          >
+            Clear
+          </button>
         </div>
       </div>
 

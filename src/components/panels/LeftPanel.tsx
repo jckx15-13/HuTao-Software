@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   Hexagon,
   ChevronLeft,
@@ -35,13 +35,13 @@ import { locations } from '@/data/locations';
 import { tours } from '@/data/tours';
 import { pluginManager } from '@/core/plugins/PluginManager';
 import { TELESCOPE_PRESETS as presets } from '@/data/telescopePresets';
+import { projectTelescopeTargetToEarth } from '@/lib/earthObserverProjection';
 // Runtime/mocked wrapper to prevent static Cesium initialization crashes in headless environments
 const Cesium = {
   Cartesian3: {
     fromDegrees: (lng: number, lat: number, alt: number) => {
       const isHeadless = typeof window !== 'undefined' && (
         /HeadlessChrome/i.test(navigator.userAgent) ||
-        navigator.webdriver ||
         window.location.search.includes('fallback')
       );
       if (isHeadless) {
@@ -57,6 +57,7 @@ const Cesium = {
 };
 import { IMAGERY_LAYERS } from '@/core/globe/ImageryProviderFactory';
 import { SATELLITES } from '@/data/satellites';
+import { WWV_ORBITAL_ASSET_BY_CATEGORY } from '@/assets/wwvVisualAssets';
 
 // ============================================================================
 // CONSOLIDATED SUB-COMPONENTS
@@ -78,7 +79,7 @@ export function FileTreeSection({ title, icon: Icon, defaultOpen = false, itemCo
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-7 w-full items-center justify-between px-2 text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors text-xs font-mono uppercase tracking-widest font-bold"
+        className="flex min-h-11 w-full items-center justify-between px-2 text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors text-xs font-mono uppercase tracking-widest font-bold"
       >
         <div className="flex items-center gap-1.5">
           {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
@@ -113,7 +114,7 @@ export function TreeItem({ label, icon: Icon, depth = 0, selected = false, onCli
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-7 w-full items-center justify-between rounded px-2 text-sm font-mono text-white/60 hover:bg-white/5 hover:text-white/90 transition-all select-none cursor-pointer ${
+      className={`flex min-h-11 w-full items-center justify-between rounded px-2 text-sm font-mono text-white/60 hover:bg-white/5 hover:text-white/90 transition-all select-none cursor-pointer ${
         selected ? 'bg-primary/15 text-primary border-l-2 border-primary font-bold' : ''
       }`}
       style={{ paddingLeft: `${depth * 8 + 8}px` }}
@@ -158,7 +159,7 @@ export function ChatSessionList() {
               key={chat.id}
               type="button"
               onClick={() => setActiveChatId(chat.id)}
-              className={`group flex h-8 w-full items-center justify-between rounded px-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white/95 transition-all select-none cursor-pointer border-l-2 ${
+              className={`group flex min-h-11 w-full items-center justify-between rounded px-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white/95 transition-all select-none cursor-pointer border-l-2 ${
                 isActive ? 'border-primary bg-primary/10 text-primary font-bold' : 'border-transparent'
               }`}
             >
@@ -177,7 +178,7 @@ export function ChatSessionList() {
         <button
           type="button"
           onClick={handleCreateProjectChat}
-          className="rounded p-0.5 hover:bg-white/5 text-white/40 hover:text-white/80 transition-colors"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded hover:bg-white/5 text-white/40 hover:text-white/80 transition-colors"
           title="New Project Chat"
         >
           <Plus className="h-3 w-3" />
@@ -193,7 +194,7 @@ export function ChatSessionList() {
             return (
               <div
                 key={chat.id}
-                className={`group flex h-8 w-full items-center justify-between rounded px-2.5 text-sm text-white/70 hover:bg-white/5 transition-all ${
+                className={`group flex min-h-11 w-full items-center justify-between rounded px-2.5 text-sm text-white/70 hover:bg-white/5 transition-all ${
                   isActive ? 'bg-primary/10 text-primary font-bold' : ''
                 }`}
               >
@@ -213,7 +214,7 @@ export function ChatSessionList() {
                       removeChatSession(chat.id);
                     }
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-white/30 hover:text-red-400 transition-all"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center opacity-0 group-hover:opacity-100 rounded hover:bg-white/10 text-white/30 hover:text-red-400 transition-all"
                   title="Delete workspace"
                 >
                   <Trash2 className="h-3 w-3" />
@@ -252,21 +253,22 @@ interface CollapsibleSectionProps {
 
 function CollapsibleSection({ title, icon: Icon, isOpen, onToggle, children }: CollapsibleSectionProps) {
   return (
-    <div className="border-b border-white/5 last:border-0">
+    <div className="relative z-0 border-b border-white/5 last:border-0 overflow-hidden">
       <button
         type="button"
         onClick={onToggle}
         title={title}
-        className="flex w-full items-center justify-between py-2.5 px-3 hover:bg-white/5 text-white/60 hover:text-white transition-all text-xs font-mono select-none"
+        aria-expanded={isOpen}
+        className="flex min-h-11 w-full items-center justify-between gap-2 py-2.5 px-3 hover:bg-white/5 text-white/60 hover:text-white transition-all text-xs font-mono select-none"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
-          <span className="font-bold uppercase tracking-wider">{title}</span>
+          <span className="truncate font-bold uppercase tracking-wider">{title}</span>
         </div>
-        {isOpen ? <ChevronUp className="h-3 w-3 text-white/30" /> : <ChevronDown className="h-3 w-3 text-white/30" />}
+        {isOpen ? <ChevronUp className="h-3 w-3 shrink-0 text-white/30" /> : <ChevronDown className="h-3 w-3 shrink-0 text-white/30" />}
       </button>
       {isOpen && (
-        <div className="p-3 bg-black/15 border-t border-white/5 space-y-3 animate-fade-in">
+        <div className="relative z-0 p-3 bg-black/15 border-t border-white/5 space-y-3 overflow-hidden animate-fade-in">
           {children}
         </div>
       )}
@@ -275,6 +277,7 @@ function CollapsibleSection({ title, icon: Icon, isOpen, onToggle, children }: C
 }
 
 export function LeftPanel() {
+  const contentScrollRef = useRef<HTMLDivElement>(null);
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
   const setLeftPanelOpen = useUIStore((s) => s.setLeftPanelOpen);
   const setCurrentPage = useUIStore((s) => s.setCurrentPage);
@@ -313,26 +316,59 @@ export function LeftPanel() {
   const mapConfig = useStore((s) => s.mapConfig);
   const updateMapConfig = useStore((s) => s.updateMapConfig);
   const layers = useStore((s) => s.layers);
+  const currentTime = useStore((s) => s.currentTime);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [orbitalSearchQuery, setOrbitalSearchQuery] = useState('');
   const [satelliteSearchQuery, setSatelliteSearchQuery] = useState('');
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    search: true,
+    search: false,
     places: false,
     voyager: false,
     style: false,
     measure: false,
     satellites: false,
     plugins: false,
-    presets: true,
-    telemetry: true,
-    synopsis: true,
+    presets: false,
+    telemetry: false,
+    synopsis: false,
   });
 
   const toggleSection = (key: string) => {
-    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+    let scrollTarget: 'top' | 'bottom' | null = null;
+    setExpanded((prev) => {
+      const nextOpen = !prev[key];
+      const next = { ...prev, [key]: nextOpen };
+
+      if ((interactionMode === 'orbital' || interactionMode === 'telescope') && nextOpen) {
+        if (key !== 'search') next.search = false;
+        if (key === 'presets') next.search = false;
+        if (key === 'search') next.presets = false;
+        if (['presets', 'telemetry', 'synopsis'].includes(key)) {
+          next.presets = key === 'presets';
+          next.telemetry = key === 'telemetry';
+          next.synopsis = key === 'synopsis';
+        }
+        if (key === 'search') scrollTarget = 'top';
+        if (['presets', 'telemetry', 'synopsis'].includes(key)) scrollTarget = 'bottom';
+      }
+
+      return next;
+    });
+
+    if (scrollTarget) {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          const node = contentScrollRef.current;
+          if (!node) return;
+          node.scrollTo({
+            top: scrollTarget === 'bottom' ? node.scrollHeight : 0,
+            behavior: 'auto',
+          });
+        });
+      });
+    }
   };
 
   const activeSatelliteId = useUIStore((s) => s.activeSatelliteId);
@@ -353,6 +389,26 @@ export function LeftPanel() {
     other: { label: 'Other', color: '#94A3B8' },
   };
 
+  const activePreset = useMemo(() => {
+    return presets.find((preset) => preset.name === telescopeTarget.name) || presets[0];
+  }, [telescopeTarget]);
+
+  const earthFrame = useMemo(() => {
+    const parsedTime = currentTime instanceof Date ? currentTime : new Date(currentTime ?? Date.now());
+    const projection = projectTelescopeTargetToEarth(
+      Number(activePreset.raHours ?? 0),
+      Number(activePreset.decDegrees ?? 0),
+      Number.isNaN(parsedTime.getTime()) ? new Date() : parsedTime
+    );
+
+    return {
+      longitude: projection.longitudeLabel,
+      latitude: projection.latitudeLabel,
+      latitudeBand: projection.relation,
+      gmstHours: projection.gmstHours,
+    };
+  }, [activePreset, currentTime]);
+
   const filteredSatellites = useMemo(() => {
     return SATELLITES.filter((sat) => {
       const matchesSearch = sat.name.toLowerCase().includes(satelliteSearchQuery.toLowerCase()) || 
@@ -365,12 +421,30 @@ export function LeftPanel() {
   const handleSelectSatellite = (id: string, altitudeM: number) => {
     setActiveSatelliteId(id);
     useUIStore.getState().addChangeLog('TRACKER', `Locked satellite: ${id.toUpperCase()}`, 'success');
+
+    const entityId = `sat-${id}`;
+    const selectedSatellite = useStore.getState().entitiesByPlugin.satellites?.find((entity) => entity.id === entityId);
+    if (selectedSatellite) {
+      useStore.getState().setSelectedEntity(selectedSatellite);
+      setActiveLocation(null);
+      useUIStore.getState().setRightPanelTab('context');
+      useUIStore.getState().setRightPanelOpen(true);
+    }
     
     const viewer = (window as { cesiumViewer?: any }).cesiumViewer;
     if (viewer) {
-      const ent = viewer.entities.getById(id);
+      const ent = viewer.entities.getById(entityId) || viewer.entities.getById(id);
       if (ent) {
         viewer.trackedEntity = ent;
+      } else if (selectedSatellite) {
+        viewer.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(
+            selectedSatellite.longitude,
+            selectedSatellite.latitude,
+            Math.max((selectedSatellite.altitude || altitudeM) * 2.5 + 200000, 900000)
+          ),
+          duration: 2.0
+        });
       } else {
         viewer.camera.flyTo({
           destination: Cesium.Cartesian3.fromDegrees(0, 0, altitudeM * 2.5 + 200000),
@@ -378,6 +452,8 @@ export function LeftPanel() {
         });
       }
     }
+
+    setExpanded((prev) => ({ ...prev, satellites: false }));
   };
 
   // Distance computation
@@ -427,11 +503,11 @@ export function LeftPanel() {
     }
 
     const allItems = [...staticMatches, ...pluginMatches];
-    if (!term) return allItems.slice(0, 5);
+    if (!term) return allItems.slice(0, 2);
 
     return allItems.filter((item) =>
       `${item.name} ${item.country} ${item.category}`.toLowerCase().includes(term)
-    );
+    ).slice(0, 3);
   }, [orbitalSearchQuery, layers]);
 
   const applyGraphicsPreset = (preset: 'low' | 'high') => {
@@ -484,15 +560,15 @@ export function LeftPanel() {
     useUIStore.getState().addChangeLog('VOYAGER', `Started Guided Tour: ${tour.title}`, 'success');
   };
 
-  if (!leftPanelOpen) return null;
+  const isSpatialMode = interactionMode === 'orbital' || interactionMode === 'telescope';
 
-  const isSpatialMode = interactionMode === 'orbital';
+  if (!leftPanelOpen) return null;
 
   return (
     <aside 
       className={`glass-panel flex flex-col select-none pointer-events-auto transition-all duration-300 ${
         isSpatialMode 
-          ? 'fixed top-[68px] left-[12px] bottom-[52px] w-[280px] rounded-xl border border-white/10 shadow-2xl z-20 h-auto' 
+          ? 'fixed top-[72px] left-[14px] bottom-[8px] w-[304px] max-w-[calc(100vw-28px)] rounded-xl border border-white/10 shadow-2xl z-20 h-auto min-h-0'
           : 'h-full w-[260px] border-r border-white/5'
       }`} 
       style={!isSpatialMode ? { borderRadius: 0 } : undefined}
@@ -511,7 +587,7 @@ export function LeftPanel() {
         <button
           type="button"
           onClick={() => setLeftPanelOpen(false)}
-          className="rounded p-1 text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors cursor-pointer"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors cursor-pointer"
           title="Collapse Sidebar"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -519,7 +595,10 @@ export function LeftPanel() {
       </div>
 
       {/* Main scrolling content area */}
-      <div className="flex-1 overflow-y-auto scroller">
+      <div
+        ref={contentScrollRef}
+        className={`min-h-0 flex-1 overflow-y-auto overscroll-contain scroller ${isSpatialMode ? 'pb-40' : ''}`}
+      >
         {!isSpatialMode ? (
           // STANDARD CHAT MODE VIEW
           <div className="p-3 space-y-4">
@@ -533,7 +612,7 @@ export function LeftPanel() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search workspaces..."
-                className="w-full rounded-lg bg-white/5 py-2 pl-8 pr-3 text-xs text-text-main focus:outline-none focus:ring-1 focus:ring-primary/35 placeholder:text-white/20 transition-all font-mono border border-transparent"
+                className="min-h-11 w-full rounded-lg bg-white/5 py-2 pl-8 pr-3 text-xs text-text-main focus:outline-none focus:ring-1 focus:ring-primary/35 placeholder:text-white/20 transition-all font-mono border border-transparent"
               />
             </div>
 
@@ -573,6 +652,44 @@ export function LeftPanel() {
               <span>Orbital Controls</span>
             </div>
 
+            <div className="m-2.5 rounded-lg border border-primary/15 bg-black/25 p-2.5 font-mono text-xs">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="font-bold uppercase tracking-wider text-primary">Telescope Quick Targets</span>
+                <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary">
+                  {spaceInteractionTarget === 'telescope' ? 'Telescope' : 'Earth'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {presets.slice(0, 4).map((preset) => {
+                  const isActive = activePreset.id === preset.id;
+                  return (
+                    <button
+                      key={`quick-${preset.id}`}
+                      type="button"
+                      onClick={() => {
+                        setTelescopeTarget(preset);
+                        setInteractionMode('orbital');
+                        setSpaceInteractionTarget('telescope');
+                        setSpaceBlendOpacity(0.0);
+                        useUIStore.getState().addChangeLog('TELESCOPE', `Telescope target pointed: ${preset.name}`, 'success');
+                      }}
+                      className={`min-h-11 rounded border px-2 py-1.5 text-left transition-all cursor-pointer ${
+                        isActive
+                          ? 'border-primary/30 bg-primary/20 text-primary font-bold'
+                          : 'border-white/5 bg-black/30 text-white/65 hover:border-primary/25 hover:text-white'
+                      }`}
+                    >
+                      <span className="block truncate text-[10px] uppercase">{preset.name}</span>
+                      <span className="block truncate text-[8px] text-white/35">{preset.fov}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 border-t border-white/5 pt-2 text-[9px] leading-relaxed text-white/40">
+                Selecting a target switches to the Earth-facing telescope frame and shows its projection overlay.
+              </p>
+            </div>
+
             {/* 1. Search & Explore */}
             <CollapsibleSection
               title="Search & Explore"
@@ -581,7 +698,7 @@ export function LeftPanel() {
               onToggle={() => toggleSection('search')}
             >
               <div className="relative">
-                <Search className="absolute left-2 top-2 h-3 w-3 text-white/30" />
+                <Search className="absolute left-2 top-4 h-3 w-3 text-white/30" />
                 <input
                   id="orbital-search"
                   name="orbital-search"
@@ -589,10 +706,10 @@ export function LeftPanel() {
                   value={orbitalSearchQuery}
                   onChange={(e) => setOrbitalSearchQuery(e.target.value)}
                   placeholder="Search landmarks, entities..."
-                  className="w-full rounded bg-white/5 py-1.5 pl-7 pr-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary/30 font-mono border border-white/5"
+                  className="min-h-11 w-full rounded bg-white/5 py-2 pl-7 pr-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary/30 font-mono border border-white/5"
                 />
               </div>
-              <div className="space-y-1 max-h-[140px] overflow-y-auto scroller font-mono text-xs">
+              <div className="space-y-1 overflow-y-auto scroller font-mono text-xs" style={{ maxHeight: 132 }}>
                 {filteredOrbitalResults.map((result) => {
                   const isSelected = result.type === 'landmark'
                     ? activeLocation && result.id === activeLocation.id
@@ -611,6 +728,8 @@ export function LeftPanel() {
                         } else {
                           useStore.getState().setSelectedEntity(result.raw);
                           setActiveLocation(null);
+                          useUIStore.getState().setRightPanelTab('context');
+                          useUIStore.getState().setRightPanelOpen(true);
                           const viewer = (window as { cesiumViewer?: any }).cesiumViewer;
                           if (viewer) {
                             viewer.camera.flyTo({
@@ -620,7 +739,7 @@ export function LeftPanel() {
                           }
                         }
                       }}
-                      className={`w-full text-left p-1.5 rounded transition-all cursor-pointer block border border-transparent ${
+                      className={`min-h-11 w-full text-left p-2 rounded transition-all cursor-pointer block border border-transparent ${
                         isSelected ? 'bg-primary/20 text-primary font-bold border-primary/20' : 'hover:bg-white/5 text-white/60'
                       }`}
                     >
@@ -651,7 +770,7 @@ export function LeftPanel() {
                         setSpaceBlendOpacity(1.0);
                         setActiveLocation(loc);
                       }}
-                      className={`earth-result-item w-full text-left p-1.5 rounded transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`earth-result-item flex min-h-11 w-full items-center gap-1.5 rounded p-1.5 text-left transition-all cursor-pointer ${
                         isSelected ? 'bg-primary/20 text-primary font-bold' : 'hover:bg-white/5 text-white/60'
                       }`}
                     >
@@ -678,7 +797,7 @@ export function LeftPanel() {
                     <button
                       type="button"
                       onClick={() => handleStartTour(tour)}
-                      className="w-full text-center py-1 rounded bg-primary/20 hover:bg-primary/30 text-primary font-mono text-xs uppercase tracking-wider font-bold transition-all cursor-pointer"
+                      className="min-h-11 w-full rounded bg-primary/20 py-1 text-center font-mono text-xs font-bold uppercase tracking-wider text-primary transition-all cursor-pointer hover:bg-primary/30"
                     >
                       Start Tour
                     </button>
@@ -694,12 +813,12 @@ export function LeftPanel() {
               isOpen={expanded.style}
               onToggle={() => toggleSection('style')}
             >
-              <div className="space-y-3 font-mono text-xs text-white/70">
+              <div className="space-y-2 font-mono text-xs text-white/70">
                 <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded border border-white/5 bg-black/30 text-xs text-center">
                   <button
                     type="button"
                     onClick={() => applyGraphicsPreset('low')}
-                    className={`py-1 rounded transition-all cursor-pointer ${
+                    className={`min-h-11 py-1.5 rounded transition-all cursor-pointer ${
                       mapConfig.resolutionScale < 0.85 ? 'bg-primary text-white font-bold' : 'text-white/40 hover:text-white/70'
                     }`}
                   >
@@ -708,7 +827,7 @@ export function LeftPanel() {
                   <button
                     type="button"
                     onClick={() => applyGraphicsPreset('high')}
-                    className={`py-1 rounded transition-all cursor-pointer ${
+                    className={`min-h-11 py-1.5 rounded transition-all cursor-pointer ${
                       mapConfig.resolutionScale >= 0.85 ? 'bg-primary text-white font-bold' : 'text-white/40 hover:text-white/70'
                     }`}
                   >
@@ -723,7 +842,7 @@ export function LeftPanel() {
                     name="imagery-source"
                     value={mapConfig.baseLayerId}
                     onChange={(e) => updateMapConfig({ baseLayerId: e.target.value })}
-                    className="w-full bg-[#111217] border border-white/5 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-primary cursor-pointer"
+                    className="min-h-11 w-full bg-[#111217] border border-white/5 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-primary cursor-pointer"
                   >
                     {IMAGERY_LAYERS.map((layer) => (
                       <option key={layer.id} value={layer.id}>
@@ -734,36 +853,39 @@ export function LeftPanel() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <label className="flex min-h-11 items-center gap-2 cursor-pointer rounded px-1 hover:bg-white/5 hover:text-white transition-colors">
                     <input
                       id="show-borders"
                       name="show-borders"
                       type="checkbox"
                       checked={showBorders}
                       onChange={(e) => setShowBorders(e.target.checked)}
-                      className="accent-primary"
+                      className="h-11 w-11 accent-primary"
                     />
-                    <span>Labels and Borders</span>
+                    <span>WWV Static Borders</span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <p className="pl-10 text-[8px] uppercase leading-relaxed text-white/35">
+                    Copied WorldWideView country borders; political status and labels are static dataset records.
+                  </p>
+                  <label className="flex min-h-11 items-center gap-2 cursor-pointer rounded px-1 hover:bg-white/5 hover:text-white transition-colors">
                     <input
                       id="show-terrain"
                       name="show-terrain"
                       type="checkbox"
                       checked={showTerrain}
                       onChange={(e) => setShowTerrain(e.target.checked)}
-                      className="accent-primary"
+                      className="h-11 w-11 accent-primary"
                     />
                     <span>3D Terrain Tiles</span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <label className="flex min-h-11 items-center gap-2 cursor-pointer rounded px-1 hover:bg-white/5 hover:text-white transition-colors">
                     <input
                       id="show-roads"
                       name="show-roads"
                       type="checkbox"
                       checked={showRoads}
                       onChange={(e) => setShowRoads(e.target.checked)}
-                      className="accent-primary"
+                      className="h-11 w-11 accent-primary"
                     />
                     <span>Atmospheric Shadows</span>
                   </label>
@@ -783,12 +905,12 @@ export function LeftPanel() {
                     step="0.1"
                     value={mapConfig.resolutionScale}
                     onChange={(e) => updateMapConfig({ resolutionScale: parseFloat(e.target.value) })}
-                    className="w-full accent-primary h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                    className="w-full range-hit-target accent-primary bg-white/10 rounded-lg appearance-none cursor-pointer"
                   />
                 </div>
 
                 {/* Viewport Blend Controls (Space Mode only) */}
-                {interactionMode === 'orbital' && (
+                {isSpatialMode && (
                   <div className="border-t border-white/5 pt-3 space-y-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-primary block">Viewport Blend</span>
                     
@@ -806,7 +928,7 @@ export function LeftPanel() {
                         step="1"
                         value={spaceBlendOpacity * 100}
                         onChange={(e) => setSpaceBlendOpacity(parseFloat(e.target.value) / 100)}
-                        className="w-full accent-primary h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                        className="w-full range-hit-target accent-primary bg-white/10 rounded-lg appearance-none cursor-pointer"
                       />
                     </div>
 
@@ -816,7 +938,7 @@ export function LeftPanel() {
                         <button
                           type="button"
                           onClick={() => setSpaceInteractionTarget('earth')}
-                          className={`py-1 rounded transition-all cursor-pointer font-bold ${
+                          className={`min-h-11 rounded py-1 font-bold transition-all cursor-pointer ${
                             spaceInteractionTarget === 'earth' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'
                           }`}
                         >
@@ -825,7 +947,7 @@ export function LeftPanel() {
                         <button
                           type="button"
                           onClick={() => setSpaceInteractionTarget('telescope')}
-                          className={`py-1 rounded transition-all cursor-pointer font-bold ${
+                          className={`min-h-11 rounded py-1 font-bold transition-all cursor-pointer ${
                             spaceInteractionTarget === 'telescope' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'
                           }`}
                         >
@@ -856,7 +978,7 @@ export function LeftPanel() {
                       const loc = locations.find((l) => l.id === e.target.value);
                       setMeasureStart(loc || null);
                     }}
-                    className="earth-measure-select w-full bg-[#111217] border border-white/5 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-primary"
+                    className="earth-measure-select min-h-11 w-full rounded border border-white/5 bg-[#111217] px-2 py-1 text-xs text-white focus:outline-none focus:border-primary"
                   >
                     <option value="">-- Select Point A --</option>
                     {locations.map((l) => (
@@ -875,7 +997,7 @@ export function LeftPanel() {
                       const loc = locations.find((l) => l.id === e.target.value);
                       setMeasureEnd(loc || null);
                     }}
-                    className="earth-measure-select w-full bg-[#111217] border border-white/5 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-primary"
+                    className="earth-measure-select min-h-11 w-full rounded border border-white/5 bg-[#111217] px-2 py-1 text-xs text-white focus:outline-none focus:border-primary"
                   >
                     <option value="">-- Select Point B --</option>
                     {locations.map((l) => (
@@ -898,7 +1020,15 @@ export function LeftPanel() {
               title="Satellite Tracker"
               icon={Radio}
               isOpen={expanded.satellites}
-              onToggle={() => toggleSection('satellites')}
+              onToggle={() => {
+                const willOpen = !expanded.satellites;
+                toggleSection('satellites');
+                if (willOpen) {
+                  window.setTimeout(() => {
+                    document.getElementById('satellite-list')?.scrollIntoView({ block: 'nearest' });
+                  }, 0);
+                }
+              }}
             >
               <div className="space-y-3 font-mono text-xs text-white/70">
                 {/* Search */}
@@ -911,25 +1041,23 @@ export function LeftPanel() {
                     value={satelliteSearchQuery}
                     onChange={(e) => setSatelliteSearchQuery(e.target.value)}
                     placeholder="Search satellites..."
-                    className="w-full rounded bg-[#0a0b10] border border-white/5 py-1.5 pl-7 pr-2 text-xs text-white focus:outline-none focus:border-primary/50 font-mono"
+                    className="min-h-11 w-full rounded bg-[#0a0b10] border border-white/5 py-1.5 pl-7 pr-2 text-xs text-white focus:outline-none focus:border-primary/50 font-mono"
                   />
                 </div>
 
                 {/* Category Toggles (Grid) */}
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-xs uppercase tracking-wider">Categories</label>
-                  <div className="grid grid-cols-2 gap-1 text-xs">
+                  <label className="text-white/40 block text-[10px] uppercase tracking-wider">Categories</label>
+                  <div className="grid grid-cols-4 gap-1 text-[10px]">
                     {Object.entries(SATELLITE_CATEGORIES_METADATA).map(([key, meta]) => {
                       const isToggled = satelliteCategories[key] !== false;
-                      const count = key === 'spaceStations' 
-                        ? SATELLITES.filter(s => s.category === key).length + (satelliteCategories['spaceStations'] !== false ? 1 : 0)
-                        : SATELLITES.filter(s => s.category === key).length;
+                      const count = SATELLITES.filter(s => s.category === key).length;
                       return (
                         <button
                           key={key}
                           type="button"
                           onClick={() => toggleSatelliteCategory(key)}
-                          className={`flex items-center justify-between px-1.5 py-1 rounded border transition-colors cursor-pointer text-left ${
+                          className={`flex min-h-11 items-center justify-between gap-1 px-1.5 py-1 rounded border transition-colors cursor-pointer text-left ${
                             isToggled 
                               ? 'bg-white/5 text-white border-white/10' 
                               : 'bg-transparent text-white/30 border-white/5 hover:border-white/10'
@@ -940,9 +1068,9 @@ export function LeftPanel() {
                               className="h-1.5 w-1.5 rounded-full shrink-0 animate-pulse" 
                               style={{ backgroundColor: isToggled ? meta.color : 'rgba(255,255,255,0.1)' }} 
                             />
-                            <span className="truncate max-w-[65px] uppercase font-bold text-xs">{meta.label}</span>
+                            <span className="truncate max-w-[42px] uppercase font-bold">{meta.label}</span>
                           </div>
-                          <span className="text-xs text-white/30 font-bold shrink-0">({count})</span>
+                          <span className="text-[9px] text-white/30 font-bold shrink-0">{count}</span>
                         </button>
                       );
                     })}
@@ -950,60 +1078,59 @@ export function LeftPanel() {
                 </div>
 
                 {/* Controls (Trails) */}
-                <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-white/5 text-xs font-bold">
-                  <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
+                <div className="grid grid-cols-2 gap-1 pt-1 border-t border-white/5 text-xs font-bold">
+                  <label className="flex min-h-11 items-center gap-2 cursor-pointer rounded px-1 hover:bg-white/5 hover:text-white transition-colors">
                     <input
                       id="satellite-show-trails"
                       name="satellite-show-trails"
                       type="checkbox"
                       checked={satelliteSettings?.showTrails !== false}
                       onChange={(e) => updateSatelliteSettings({ showTrails: e.target.checked })}
-                      className="accent-primary cursor-pointer"
+                      className="h-11 w-11 shrink-0 accent-primary cursor-pointer"
                     />
                     <span>Selected Trail</span>
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
+                  <label className="flex min-h-11 items-center gap-2 cursor-pointer rounded px-1 hover:bg-white/5 hover:text-white transition-colors">
                     <input
                       id="satellite-show-all-trails"
                       name="satellite-show-all-trails"
                       type="checkbox"
                       checked={satelliteSettings?.showAllTrails === true}
                       onChange={(e) => updateSatelliteSettings({ showAllTrails: e.target.checked })}
-                      className="accent-primary cursor-pointer"
+                      className="h-11 w-11 shrink-0 accent-primary cursor-pointer"
                     />
                     <span>All Trails</span>
                   </label>
                 </div>
 
                 {/* Satellite List */}
-                <div className="space-y-0.5 max-h-[145px] overflow-y-auto scroller border-t border-white/5 pt-1.5">
-                  {/* ISS Item */}
-                  {satelliteCategories['spaceStations'] !== false && 'iss'.includes(satelliteSearchQuery.toLowerCase()) && (
-                    <button
-                      type="button"
-                      onClick={() => handleSelectSatellite('iss', 420000)}
-                      className={`w-full text-left p-1 rounded transition-all cursor-pointer flex items-center justify-between border border-transparent ${
-                        activeSatelliteId === 'iss' ? 'bg-primary/20 text-primary font-bold border-primary/20' : 'hover:bg-white/5 text-white/60'
-                      }`}
-                    >
-                      <span className="truncate uppercase font-bold text-xs">🛰️ ISS (LIVE FEED)</span>
-                      <span className="text-xs text-white/30 shrink-0">420KM</span>
-                    </button>
-                  )}
-
-                  {/* Curated list */}
+                <div id="satellite-list" className="space-y-1 max-h-[172px] overflow-y-auto scroller border-t border-white/5 pt-1.5">
                   {filteredSatellites.map((sat) => {
                     const isSelected = activeSatelliteId === sat.id;
+                    const visualAssetUrl = WWV_ORBITAL_ASSET_BY_CATEGORY[sat.category] || WWV_ORBITAL_ASSET_BY_CATEGORY.other;
                     return (
                       <button
                         key={sat.id}
                         type="button"
                         onClick={() => handleSelectSatellite(sat.id, sat.altitudeM)}
-                        className={`w-full text-left p-1 rounded transition-all cursor-pointer flex items-center justify-between border border-transparent ${
+                        className={`flex min-h-11 w-full items-center justify-between gap-2 rounded border border-transparent px-2 py-1 text-left transition-all cursor-pointer ${
                           isSelected ? 'bg-primary/20 text-primary font-bold border-primary/20' : 'hover:bg-white/5 text-white/60'
                         }`}
                       >
-                        <span className="truncate uppercase font-bold text-xs">{sat.name}</span>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <img
+                            src={visualAssetUrl}
+                            alt=""
+                            className="h-7 w-7 shrink-0 rounded border border-white/10 bg-black/40 p-0.5"
+                            loading="lazy"
+                          />
+                          <span className="min-w-0">
+                            <span className="block truncate uppercase font-bold text-xs">{sat.name}</span>
+                            <span className="block truncate text-[7px] uppercase tracking-wider text-white/30">
+                              Derived orbital marker
+                            </span>
+                          </span>
+                        </span>
                         <span className="text-xs text-white/30 shrink-0">{Math.round(sat.altitudeM / 1000)}KM</span>
                       </button>
                     );
@@ -1025,7 +1152,7 @@ export function LeftPanel() {
                   const layerState = layers[pId] || { enabled: false, entityCount: 0, loading: false };
                   const Icon = managed.plugin.icon || FolderKanban;
                   return (
-                    <div key={pId} className="p-2 rounded border border-white/5 bg-black/30 font-mono text-xs space-y-1.5">
+                    <div key={pId} className="p-1.5 rounded border border-white/5 bg-black/30 font-mono text-xs space-y-1">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -1034,18 +1161,19 @@ export function LeftPanel() {
                         <button
                           type="button"
                           onClick={() => pluginManager.togglePlugin(pId)}
-                          className={`relative inline-flex h-3.5 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          aria-label={`${layerState.enabled ? 'Disable' : 'Enable'} ${managed.plugin.name}`}
+                          className={`relative inline-flex h-11 w-16 shrink-0 cursor-pointer items-center rounded-full border border-transparent px-1 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-primary/50 ${
                             layerState.enabled ? 'bg-primary' : 'bg-white/10'
                           }`}
                         >
                           <span
-                            className={`pointer-events-none inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
-                              layerState.enabled ? 'translate-x-3.5' : 'translate-x-0'
+                            className={`pointer-events-none inline-block h-8 w-8 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
+                              layerState.enabled ? 'translate-x-6' : 'translate-x-0'
                             }`}
                           />
                         </button>
                       </div>
-                      <p className="text-[7.5px] text-white/40 leading-relaxed uppercase">{managed.plugin.description}</p>
+                      <p className="truncate text-[7.5px] text-white/40 leading-relaxed uppercase">{managed.plugin.description}</p>
                     </div>
                   );
                 })}
@@ -1054,11 +1182,41 @@ export function LeftPanel() {
 
 
             {/* --- COSMIC TELESCOPE HUB --- */}
-            {interactionMode === 'orbital' && (
-              <div className="mt-4 flex flex-col">
-                <div className="p-2.5 border-t border-b border-white/5 bg-primary/5 text-xs font-mono uppercase tracking-[0.2em] font-bold text-primary flex items-center gap-1.5">
+            {isSpatialMode && (
+              <div className="mt-1 flex min-h-0 flex-col">
+                <div className="flex items-center gap-1.5 border-t border-b border-white/5 bg-primary/5 px-2 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-primary">
                   <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
                   <span>Telescope Array</span>
+                </div>
+
+                <div className="mx-2 my-1.5 rounded-lg border border-primary/15 bg-black/25 p-1.5 font-mono text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold uppercase tracking-wider text-primary">Earth Observer Frame</span>
+                    <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary">
+                      {spaceInteractionTarget === 'telescope' ? 'Telescope' : 'Earth'}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 space-y-0.5 text-white/55">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-white/30 uppercase">Target</span>
+                      <span className="truncate text-right font-bold text-white/80">{activePreset.name}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-white/30 uppercase">Projection</span>
+                      <span className="text-right text-primary">{earthFrame.latitude}, {earthFrame.longitude}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-white/30 uppercase">Relation</span>
+                      <span className="text-right text-white/70">{earthFrame.latitudeBand}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-white/30 uppercase">Sidereal</span>
+                      <span className="text-right text-white/70">{earthFrame.gmstHours.toFixed(2)}h GMST</span>
+                    </div>
+                  </div>
+                  <p className="mt-1 line-clamp-1 border-t border-white/5 pt-1 text-[8px] leading-relaxed text-white/40">
+                    Earth anchor and WWT projection shell shown; live imagery depends on the embedded telescope frame.
+                  </p>
                 </div>
 
                 {/* 1. Star Array Presets */}
@@ -1068,7 +1226,7 @@ export function LeftPanel() {
                   isOpen={expanded.presets}
                   onToggle={() => toggleSection('presets')}
                 >
-                  <div className="space-y-1 max-h-[140px] overflow-y-auto scroller font-mono text-xs">
+                  <div aria-label="Star array preset targets" className="space-y-1 font-mono text-xs">
                     {presets.map((preset) => {
                       const isActive = telescopeTarget.name === preset.name;
                       return (
@@ -1082,7 +1240,7 @@ export function LeftPanel() {
                             setSpaceBlendOpacity(0.0);
                             useUIStore.getState().addChangeLog('TELESCOPE', `Telescope target pointed: ${preset.name}`, 'success');
                           }}
-                          className={`w-full text-left p-1.5 rounded transition-all cursor-pointer flex items-center justify-between gap-1.5 border border-transparent ${
+                          className={`w-full min-h-11 text-left p-2 rounded transition-all cursor-pointer flex items-center justify-between gap-1.5 border border-transparent ${
                             isActive ? 'bg-primary/20 text-primary font-bold border-primary/20' : 'hover:bg-white/5 text-white/60'
                           }`}
                         >
@@ -1139,26 +1297,28 @@ export function LeftPanel() {
       </div>
 
       {/* Bottom Profile and Settings bar */}
-      <div className="mt-auto flex h-14 items-center justify-between border-t border-white/5 px-4 bg-black/10 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
-            <User className="h-4 w-4 text-primary" />
+      {!isSpatialMode && (
+        <div className="mt-auto flex h-14 items-center justify-between border-t border-white/5 px-4 bg-black/10 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
+              <User className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex flex-col font-mono">
+              <span className="text-xs font-bold text-white/80 leading-none">OPERATOR</span>
+              <span className="text-xs text-white/30 uppercase mt-0.5">Level 6 Sec</span>
+            </div>
           </div>
-          <div className="flex flex-col font-mono">
-            <span className="text-xs font-bold text-white/80 leading-none">OPERATOR</span>
-            <span className="text-xs text-white/30 uppercase mt-0.5">Level 6 Sec</span>
-          </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={() => setCurrentPage('settings')}
-          className="rounded-lg p-2 text-white/40 hover:bg-white/5 hover:text-white/80 transition-all cursor-pointer"
-          title="Open Settings"
-        >
-          <Settings className="h-4.5 w-4.5" />
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => setCurrentPage('settings')}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-white/40 hover:bg-white/5 hover:text-white/80 transition-all cursor-pointer"
+            title="Open Settings"
+          >
+            <Settings className="h-4.5 w-4.5" />
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

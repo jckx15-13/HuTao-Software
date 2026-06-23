@@ -77,7 +77,8 @@ export function useModelRendering(
             for (const [id, item] of animatables.entries()) {
                 if (item.options.type !== "model" || !item.options.modelUrl) continue;
                 const dist = Cartesian3.distance(camPos, item.posRef);
-                if (dist < MODEL_DISTANCE_M) {
+                const modelDistance = item.options.modelPromotionDistance ?? MODEL_DISTANCE_M;
+                if (dist < modelDistance) {
                     candidates.push({ id, item, distance: dist });
                 }
             }

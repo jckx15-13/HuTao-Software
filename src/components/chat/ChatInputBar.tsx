@@ -40,8 +40,9 @@ export function ChatInputBar({ onSend, disabled, placeholder = 'Ask Silver Wolf 
         {/* Attachment button */}
         <button
           type="button"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/30 hover:bg-white/5 hover:text-white/60 transition-colors"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/30 transition-colors hover:bg-white/5 hover:text-white/60"
           title="Upload file"
+          aria-label="Upload file"
           disabled={disabled}
         >
           <Paperclip className="h-4 w-4" />
@@ -64,8 +65,9 @@ export function ChatInputBar({ onSend, disabled, placeholder = 'Ask Silver Wolf 
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-white/30 hover:bg-white/5 hover:text-white/60 transition-colors"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-white/30 transition-colors hover:bg-white/5 hover:text-white/60"
             title="Voice input"
+            aria-label="Start voice input"
             disabled={disabled}
           >
             <Mic className="h-4 w-4" />
@@ -75,8 +77,9 @@ export function ChatInputBar({ onSend, disabled, placeholder = 'Ask Silver Wolf 
             type="button"
             onClick={handleSend}
             disabled={disabled || !value.trim()}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white hover:bg-primary-hover disabled:bg-white/5 disabled:text-white/20 transition-all cursor-pointer"
+            className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-white transition-all cursor-pointer hover:bg-primary-hover disabled:bg-white/5 disabled:text-white/20"
             title="Send message"
+            aria-label="Send message"
           >
             <Send className="h-3.5 w-3.5" />
           </button>

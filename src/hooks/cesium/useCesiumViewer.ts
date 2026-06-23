@@ -38,7 +38,6 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
       if (typeof window === 'undefined') return null;
       if (
         /HeadlessChrome/i.test(navigator.userAgent) ||
-        navigator.webdriver ||
         window.location.search.includes('fallback')
       ) {
         return 'WebGL disabled in headless browser environment';

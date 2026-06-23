@@ -76,7 +76,6 @@ export default function App() {
   // Detect if running in headless test/fallback mode
   const isHeadless = typeof window !== 'undefined' && (
     /HeadlessChrome/i.test(navigator.userAgent) ||
-    navigator.webdriver ||
     window.location.search.includes('fallback')
   );
 
@@ -84,15 +83,16 @@ export default function App() {
   const showHarness = typeof window !== 'undefined' && window.location.search.includes('mountharness');
   const showDiagnostics = typeof window !== 'undefined' && window.location.search.includes('diagnostics');
   const setCurrentPage = useUIStore((state) => state.setCurrentPage);
+  const isSpatialInteraction = interactionMode === 'orbital' || interactionMode === 'telescope';
 
-  // If dev toggles are present, force the app into workspace so overlays render
+  // If audit/dev toggles are present, force the app into workspace so overlays render.
   React.useEffect(() => {
     try {
-      if (showHarness || showDiagnostics) {
+      if (isHeadless || showHarness || showDiagnostics) {
         setCurrentPage('workspace');
       }
     } catch (e) {}
-  }, [showHarness, showDiagnostics, setCurrentPage]);
+  }, [isHeadless, showHarness, showDiagnostics, setCurrentPage]);
 
   // Sync is-headless class to html/body for portal styling overrides
   React.useEffect(() => {
@@ -128,6 +128,9 @@ export default function App() {
   const backgroundStyle = customWallpaper
     ? { backgroundImage: `url(${customWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : undefined;
+  const workspaceIsolationProps = currentPage === 'settings'
+    ? { inert: true, 'aria-hidden': true }
+    : {};
 
   return (
     <ConfigProvider>
@@ -144,7 +147,13 @@ export default function App() {
         <div className="absolute inset-0 z-0">
           {/* 1. Telescope Background Layer (WWT) at z-0 */}
           {(interactionMode === 'orbital' || interactionMode === 'telescope') && (!isHeadless || spaceInteractionTarget === 'telescope' || interactionMode === 'telescope') && (
-            <div className="absolute inset-0 z-0">
+            <div
+              className="absolute inset-0 z-0 transition-opacity duration-500"
+              style={{
+                opacity: spaceInteractionTarget === 'telescope' || interactionMode === 'telescope' ? 0.26 : 1,
+                mixBlendMode: spaceInteractionTarget === 'telescope' || interactionMode === 'telescope' ? 'screen' : 'normal'
+              }}
+            >
               <Suspense fallback={null}>
                 <WorldWideTelescopeView bgOnly />
               </Suspense>
@@ -157,7 +166,7 @@ export default function App() {
             style={{
               zIndex: 10,
               opacity: (interactionMode === 'orbital' || interactionMode === 'telescope')
-                ? ((spaceInteractionTarget === 'telescope' || interactionMode === 'telescope') ? spaceBlendOpacity : 1.0) 
+                ? ((spaceInteractionTarget === 'telescope' || interactionMode === 'telescope') ? Math.max(0.92, spaceBlendOpacity) : 1.0)
                 : 1.0,
               pointerEvents: (interactionMode === 'orbital' || interactionMode === 'telescope') && (spaceInteractionTarget === 'earth' && interactionMode !== 'telescope') ? 'auto' : 'none'
             }}
@@ -182,6 +191,7 @@ export default function App() {
         <LauncherPage />
       ) : (
         <>
+          <div className="contents" {...workspaceIsolationProps}>
           {/* Performance Optimization: Turn off floaty dots and custom cursor tracks if CPU is struggling. */}
           {!isHighLoad && <ParticleOverlay />}
           {!isHighLoad && <CustomCursor appHighLoad={isHighLoad} />}
@@ -189,10 +199,10 @@ export default function App() {
           {/* Cyberpunk flicker screen overlay */}
           {scanlineOverlay && <div className="hologram-overlay" />}
           
-          {interactionMode !== 'orbital' && <TopAppBar />}
+          {!isSpatialInteraction && <TopAppBar />}
 
           {/* Core viewport layouts: pt-12 leaves space for the 12-unit top app bar, cleared in spatial modes for full-screen floating HUD */}
-          <div className={`relative z-10 flex h-full w-full pointer-events-none transition-all duration-300 ${interactionMode === 'orbital' ? 'pt-0' : 'pt-12'}`}>
+          <div className={`relative z-10 flex h-full w-full pointer-events-none transition-all duration-300 ${isSpatialInteraction ? 'pt-0' : 'pt-12'}`}>
             <DockedLayout />
           </div>
 
@@ -209,6 +219,7 @@ export default function App() {
               <DiagnosticPanel />
             </Suspense>
           )}
+          </div>
 
           {/* AnimatePresence monitors settings page component mounting. When currentPage !== 'settings', it plays slide-out fade before removal. */}
           <AnimatePresence>

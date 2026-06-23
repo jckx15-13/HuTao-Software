@@ -1,5 +1,44 @@
 import { useEffect, useRef } from 'react';
 import { useUIStore } from '../store/uiStore';
+import { TELESCOPE_PRESETS } from '@/data/telescopePresets';
+import { raDegreesToHours } from '@/lib/coordinateTransforms';
+
+const WWT_RESEARCH_APP_ORIGIN = 'https://web.wwtassets.org';
+
+const WWT_ALLOWED_MESSAGE_ORIGINS = new Set(
+  [
+    WWT_RESEARCH_APP_ORIGIN,
+    ...TELESCOPE_PRESETS.map((preset) => {
+      try {
+        return new URL(preset.url).origin;
+      } catch (err) {
+        return null;
+      }
+    })
+  ]
+    .filter((origin): origin is string => Boolean(origin))
+);
+
+function isTrustedWwtOrigin(origin: string): boolean {
+  return WWT_ALLOWED_MESSAGE_ORIGINS.has(origin);
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const parsed = typeof value === 'string' ? Number.parseFloat(value) : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeWwtViewState(data: any) {
+  const rawRa = toFiniteNumber(data?.ra ?? data?.RA);
+  const dec = toFiniteNumber(data?.dec ?? data?.Dec);
+  const roll = toFiniteNumber(data?.roll ?? data?.Roll ?? 0);
+
+  if (rawRa === null || dec === null || roll === null) return null;
+  if (rawRa < 0 || rawRa > 360 || dec < -90 || dec > 90) return null;
+
+  const ra = rawRa > 24 ? raDegreesToHours(rawRa) : rawRa;
+  return { ra, dec, roll };
+}
 
 /**
  * useWWTListener Hook
@@ -15,6 +54,10 @@ export function useWWTListener() {
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      if (!isTrustedWwtOrigin(event.origin)) {
+        return;
+      }
+
       const data = event.data;
       
       // Filter for WWT specific messages
@@ -29,18 +72,9 @@ export function useWWTListener() {
           setSyncSource('wwt');
         }
 
-        // Extract coordinates
-        // Note: property names may vary depending on WWT version/wrapper
-        const ra = data.ra ?? data.RA;
-        const dec = data.dec ?? data.Dec;
-        const roll = data.roll ?? data.Roll ?? 0;
-
-        if (ra !== undefined && dec !== undefined) {
-          setTelescopeTelemetry({
-            ra: typeof ra === 'string' ? parseFloat(ra) : ra,
-            dec: typeof dec === 'string' ? parseFloat(dec) : dec,
-            roll: typeof roll === 'string' ? parseFloat(roll) : roll,
-          });
+        const viewState = normalizeWwtViewState(data);
+        if (viewState) {
+          setTelescopeTelemetry(viewState);
         }
 
         // Debounced reset of syncSource to allow Cesium to take over if user stops dragging WWT

@@ -21,10 +21,11 @@ function SidebarTrigger() {
     <button
       type="button"
       onClick={() => setLeftPanelOpen(true)}
-      className={`absolute top-1/2 left-0 -translate-y-1/2 z-20 flex h-14 w-5 items-center justify-center rounded-r-lg bg-black/40 hover:bg-black/60 border-y border-r border-white/10 hover:border-white/20 text-white/40 hover:text-white/80 cursor-pointer group shadow-lg transition-all duration-300 ease-out pointer-events-auto ${
+      className={`absolute top-1/2 left-0 -translate-y-1/2 z-20 flex h-14 w-11 items-center justify-center rounded-r-lg bg-black/40 hover:bg-black/60 border-y border-r border-white/10 hover:border-white/20 text-white/40 hover:text-white/80 cursor-pointer group shadow-lg transition-all duration-300 ease-out pointer-events-auto ${
         isOrbital ? 'opacity-0 pointer-events-none -translate-x-full' : 'opacity-100 translate-x-0'
       }`}
       title="Expand Sidebar"
+      aria-label="Expand left sidebar"
     >
       <ChevronRight className="h-4.5 w-4.5 transition-transform group-hover:translate-x-0.5" />
     </button>
@@ -80,7 +81,7 @@ export function CenterPanel() {
           <button
             type="button"
             onClick={() => setInteractionMode('chat')}
-            className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-mono font-bold uppercase rounded-full tracking-wider transition-all cursor-pointer ${
+            className={`flex min-h-11 items-center gap-1.5 px-4 py-1.5 text-[10px] font-mono font-bold uppercase rounded-full tracking-wider transition-all cursor-pointer ${
               interactionMode === 'chat' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -90,7 +91,7 @@ export function CenterPanel() {
           <button
             type="button"
             onClick={() => setInteractionMode('orbital')}
-            className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-mono font-bold uppercase rounded-full tracking-wider transition-all cursor-pointer ${
+            className={`flex min-h-11 items-center gap-1.5 px-4 py-1.5 text-[10px] font-mono font-bold uppercase rounded-full tracking-wider transition-all cursor-pointer ${
               interactionMode === 'orbital' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -103,38 +104,33 @@ export function CenterPanel() {
       {/* Center Panel Content with Slide Transitions */}
       <div className="flex-1 w-full relative overflow-hidden">
         {/* Chat View Container */}
-        <div 
-          className={`absolute inset-0 flex flex-col pt-12 transition-all duration-300 ease-out ${
-            interactionMode === 'chat' 
-              ? 'translate-x-0 opacity-100 pointer-events-auto z-10' 
-              : '-translate-x-full opacity-0 pointer-events-none z-0'
-          }`}
-        >
-          <div className="flex-1 w-full flex flex-col justify-between overflow-hidden">
-            {/* Header Neural Indicator */}
-            <div className="flex h-8 shrink-0 items-center justify-between px-6 border-b border-white/5 bg-black/10">
-              <div className="flex items-center gap-2 text-primary">
-                <Sparkles className="h-3.5 w-3.5 glow-pulse" />
-                <span className="text-[9px] font-mono font-bold uppercase tracking-[0.25em]">Neural Interface active</span>
+        {interactionMode === 'chat' && (
+          <div className="absolute inset-0 z-10 flex flex-col pt-12 opacity-100 pointer-events-auto">
+            <div className="flex-1 w-full flex flex-col justify-between overflow-hidden">
+              {/* Header Neural Indicator */}
+              <div className="flex h-8 shrink-0 items-center justify-between px-6 border-b border-white/5 bg-black/10">
+                <div className="flex items-center gap-2 text-primary">
+                  <Sparkles className="h-3.5 w-3.5 glow-pulse" />
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-[0.25em]">Neural Interface active</span>
+                </div>
               </div>
-            </div>
 
-            {/* Scrollable messages */}
-            <div className="flex-1 overflow-hidden">
-              <ChatPanel />
-            </div>
+              {/* Scrollable messages */}
+              <div className="flex-1 overflow-hidden">
+                <ChatPanel />
+              </div>
 
-            {/* Input bar removed to prevent duplication (ChatPanel manages its own) */}
+              {/* Input bar removed to prevent duplication (ChatPanel manages its own) */}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Combined Space & Telescope Viewport Container */}
         <div 
-          className={`absolute inset-0 transition-all duration-300 ease-out ${
-            isSpaceMode
-              ? 'translate-x-0 opacity-100 z-10' 
-              : 'translate-x-full opacity-0 pointer-events-none z-0'
+          className={`absolute inset-0 ${
+            isSpaceMode ? 'z-10' : 'hidden pointer-events-none z-0'
           }`}
+          aria-hidden={!isSpaceMode}
         >
           {/* WorldWide Telescope controls overlay — wrapped in inline ErrorBoundary for graceful degradation */}
           {isSpaceMode && (

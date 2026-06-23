@@ -19,6 +19,14 @@ export interface Vector3 {
   z: number;
 }
 
+export function raHoursToDegrees(hours: number): number {
+  return (((hours % 24) + 24) % 24) * 15;
+}
+
+export function raDegreesToHours(degrees: number): number {
+  return (((degrees % 360) + 360) % 360) / 15;
+}
+
 /**
  * Calculates the Earth Rotation Angle (ERA) for a given date.
  * Based on IAU 2000 model.

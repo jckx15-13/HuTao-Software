@@ -26,6 +26,16 @@ function findEntityAtPosition(viewer: CesiumViewer, position: { x: number; y: nu
     return null;
 }
 
+function syncSatelliteTrackerSelection(entity: GeoEntity | null): void {
+    if (entity?.pluginId === "satellites" && entity.id.startsWith("sat-")) {
+        useUIStore.getState().setActiveSatelliteId(entity.id.slice(4));
+        return;
+    }
+    if (!entity || entity.pluginId !== "satellites") {
+        useUIStore.getState().setActiveSatelliteId(null);
+    }
+}
+
 /**
  * Sets up click and hover handlers on the viewer canvas.
  * Returns a cleanup function that destroys the handler and resets the cursor.
@@ -63,13 +73,16 @@ export function setupInteractionHandlers(
                         }
                         expandedStackId = stack.id;
                         useStore.getState().setSelectedEntity(entity);
+                        syncSatelliteTrackerSelection(entity);
                     } else {
                         // Stack is already expanded, user clicked a leaf node -> select it
                         useStore.getState().setSelectedEntity(entity);
+                        syncSatelliteTrackerSelection(entity);
                     }
                 } else {
                     // Clicked a standalone entity -> select it and close any open stack
                     useStore.getState().setSelectedEntity(entity);
+                    syncSatelliteTrackerSelection(entity);
                     if (expandedStackId) {
                         collapseStack(expandedStackId);
                         expandedStackId = null;
@@ -83,6 +96,7 @@ export function setupInteractionHandlers(
             } else {
                 // Clicked empty space -> clear selection and close any open stack
                 useStore.getState().setSelectedEntity(null);
+                syncSatelliteTrackerSelection(null);
                 if (expandedStackId) {
                     collapseStack(expandedStackId);
                     expandedStackId = null;

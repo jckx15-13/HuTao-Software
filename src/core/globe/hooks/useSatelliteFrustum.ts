@@ -6,6 +6,7 @@ import type { GeoEntity } from "@/core/plugins/PluginTypes";
 import type { AnimatableItem } from "../EntityRenderer";
 
 const FOV_ANGLE_DEG = 60;
+const SATELLITE_PLUGIN_IDS = new Set(["satellites", "satellite", "surveillance-satellites"]);
 
 /**
  * Renders a downward-pointing cone (sensor footprint) when a satellite is selected.
@@ -27,8 +28,9 @@ export function useSatelliteFrustum(
             frustumEntityRef.current = null;
         }
 
-        // Only render for satellites
-        if (!selectedEntity || (selectedEntity.pluginId !== "satellite" && selectedEntity.pluginId !== "surveillance-satellites")) return;
+        // Only render for satellite-family plugins. "satellites" is the active WWV plugin id;
+        // the other ids are kept for older plugin compatibility.
+        if (!selectedEntity || !SATELLITE_PLUGIN_IDS.has(selectedEntity.pluginId)) return;
 
         // Ensure we have altitude (fallback to 400km if missing)
         const altitude = selectedEntity.altitude || 400000;
@@ -36,6 +38,12 @@ export function useSatelliteFrustum(
         // Calculate the bottom radius based on FOV and altitude
         // tan(FOV/2) = radius / altitude  =>  radius = tan(FOV/2) * altitude
         const radius = Math.tan(CesiumMath.toRadians(FOV_ANGLE_DEG / 2)) * altitude;
+
+        const color = typeof selectedEntity.properties.color === "string"
+            ? selectedEntity.properties.color
+            : selectedEntity.pluginId === "surveillance-satellites"
+                ? "#ef4444"
+                : "#00fff7";
 
         frustumEntityRef.current = viewer.entities.add({
             id: `satellite-frustum-${selectedEntity.id}`,
@@ -85,9 +93,9 @@ export function useSatelliteFrustum(
                 length: altitude,
                 topRadius: 0.0,
                 bottomRadius: radius,
-                material: Color.fromCssColorString(selectedEntity.pluginId === "surveillance-satellites" ? "#ef4444" : "#00fff7").withAlpha(0.15),
+                material: Color.fromCssColorString(color).withAlpha(0.15),
                 outline: true,
-                outlineColor: Color.fromCssColorString(selectedEntity.pluginId === "surveillance-satellites" ? "#ef4444" : "#00fff7").withAlpha(0.4),
+                outlineColor: Color.fromCssColorString(color).withAlpha(0.4),
                 // Number of slices around the circular base for performance
                 slices: 32,
             }

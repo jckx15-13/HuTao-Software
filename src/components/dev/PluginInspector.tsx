@@ -37,14 +37,17 @@ export default function PluginInspector() {
         {/* Plugin List */}
         <div className="space-y-2 max-h-[400px] overflow-y-auto scroller pr-2">
           {plugins.map((p) => (
-            <div 
+            <button
               key={p.plugin.id}
+              type="button"
               onClick={() => setSelectedPluginId(p.plugin.id)}
-              className={`p-3 rounded border cursor-pointer transition-all ${
+              className={`min-h-11 w-full rounded border p-3 text-left transition-all cursor-pointer ${
                 selectedPluginId === p.plugin.id 
                   ? 'border-primary bg-primary/10' 
                   : 'border-white/5 bg-black/20 hover:border-white/20'
               }`}
+              aria-pressed={selectedPluginId === p.plugin.id}
+              aria-label={`Inspect ${p.plugin.name} plugin telemetry`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -60,7 +63,7 @@ export default function PluginInspector() {
                 </div>
                 <span>ID: {p.plugin.id}</span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 
@@ -73,8 +76,10 @@ export default function PluginInspector() {
             </div>
             {selectedPluginId && (
               <button 
+                type="button"
                 onClick={() => setTick(t => t + 1)}
-                className="p-1 hover:bg-white/10 rounded transition-colors text-white/40"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/40 transition-colors hover:bg-white/10"
+                aria-label="Refresh selected plugin telemetry"
               >
                 <RefreshCw size={12} />
               </button>
@@ -94,9 +99,12 @@ export default function PluginInspector() {
             ) : (
               entities.map((entity) => (
                 <div key={entity.id} className="border border-white/5 bg-black/20 rounded overflow-hidden">
-                  <div 
+                  <button
+                    type="button"
                     onClick={() => setExpandedEntityId(expandedEntityId === entity.id ? null : entity.id)}
-                    className="flex items-center justify-between p-2 cursor-pointer hover:bg-white/5 transition-colors"
+                    className="flex min-h-11 w-full items-center justify-between p-2 text-left transition-colors cursor-pointer hover:bg-white/5"
+                    aria-expanded={expandedEntityId === entity.id}
+                    aria-label={`Toggle telemetry details for ${entity.label || entity.id}`}
                   >
                     <div className="flex items-center gap-2">
                       {expandedEntityId === entity.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -105,7 +113,7 @@ export default function PluginInspector() {
                     <span className="text-[9px] text-white/30">
                       {entity.latitude.toFixed(4)}, {entity.longitude.toFixed(4)}
                     </span>
-                  </div>
+                  </button>
                   
                   {expandedEntityId === entity.id && (
                     <div className="p-2 border-t border-white/5 bg-black/40">

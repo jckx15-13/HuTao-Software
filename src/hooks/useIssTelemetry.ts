@@ -106,7 +106,7 @@ export function useIssTelemetry() {
         longitude: lng,
         altitude: alt / 1000,
         velocity: vel,
-        timestamp: Date.now() / 1000,
+        timestamp: Date.now(),
         simulated,
       });
 

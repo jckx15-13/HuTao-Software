@@ -16,6 +16,32 @@ import {
   HelpCircle,
   ExternalLink
 } from 'lucide-react';
+import {
+  ODYSSEUS_ASSET_ROOT,
+  ODYSSEUS_ASSET_AUDIT,
+  ODYSSEUS_ASSETS,
+  ODYSSEUS_FEATURE_MAP,
+  ODYSSEUS_SOURCE_DOC_ASSETS,
+  getOdysseusAssetSummary,
+  getOdysseusSourceAssetSummary,
+} from '@/assets/odysseusAssets';
+
+const BRIDGE_URL = 'http://127.0.0.1:8001';
+const BRIDGE_TIMEOUT_MS = 4500;
+const STATIC_ODYSSEUS_ASSETS = ODYSSEUS_ASSETS.filter((asset) => asset.type === 'image');
+const MOTION_ODYSSEUS_ASSETS = ODYSSEUS_ASSETS.filter((asset) => asset.type === 'motion-demo');
+const A11Y_ODYSSEUS_ASSETS = ODYSSEUS_SOURCE_DOC_ASSETS.filter((asset) => asset.kind === 'a11y-screenshot');
+
+async function fetchWithTimeout(url: string, init?: RequestInit) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), BRIDGE_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
 
 interface ServerStatus {
   status: string;
@@ -56,7 +82,8 @@ interface DBStats {
 }
 
 export function OdysseusConsole() {
-  const [activeSubTab, setActiveSubTab] = useState<'status' | 'models' | 'tasks' | 'memory'>('status');
+  const isFallbackRuntime = typeof window !== 'undefined' && window.location.search.includes('fallback');
+  const [activeSubTab, setActiveSubTab] = useState<'status' | 'models' | 'tasks' | 'memory' | 'source'>('status');
   const [status, setStatus] = useState<ServerStatus | null>(null);
   const [models, setModels] = useState<any>(null);
   const [tasks, setTasks] = useState<OdysseusTask[]>([]);
@@ -68,14 +95,23 @@ export function OdysseusConsole() {
 
   const setOdysseusReady = useUIStore((s) => s.setOdysseusReady);
 
-  const bridgeUrl = 'http://127.0.0.1:8001';
-
   const refreshAll = useCallback(async () => {
     setLoading(true);
     setError(null);
+    if (isFallbackRuntime) {
+      setStatus(null);
+      setModels(null);
+      setTasks([]);
+      setDbStats(null);
+      setOdysseusReady(false);
+      setError('Odysseus bridge polling is paused in fallback audit mode. Bridge-backed models, tasks, and memory data are unavailable; copied source assets remain available in the Source tab, and no task or memory data was changed.');
+      setLoading(false);
+      return;
+    }
+
     try {
       // 1. Fetch Server Status
-      const statusRes = await fetch(`${bridgeUrl}/status`);
+      const statusRes = await fetchWithTimeout(`${BRIDGE_URL}/status`);
       if (!statusRes.ok) throw new Error('Bridge unreachable');
       const statusData: ServerStatus = await statusRes.json();
       setStatus(statusData);
@@ -83,27 +119,27 @@ export function OdysseusConsole() {
 
       if (statusData.ready) {
         // 2. Fetch Models
-        const modelsRes = await fetch(`${bridgeUrl}/api/models`);
+        const modelsRes = await fetchWithTimeout(`${BRIDGE_URL}/api/models`);
         if (modelsRes.ok) {
           const modelsData = await modelsRes.json();
           setModels(modelsData);
         }
 
         // 3. Fetch Tasks
-        const tasksRes = await fetch(`${bridgeUrl}/api/tasks`);
+        const tasksRes = await fetchWithTimeout(`${BRIDGE_URL}/api/tasks`);
         if (tasksRes.ok) {
           const tasksData = await tasksRes.json();
           setTasks(Array.isArray(tasksData) ? tasksData : []);
         }
 
         // 4. Fetch DB Stats
-        const dbRes = await fetch(`${bridgeUrl}/api/db/stats`);
+        const dbRes = await fetchWithTimeout(`${BRIDGE_URL}/api/db/stats`);
         if (dbRes.ok) {
           const dbData = await dbRes.json();
           setDbStats(dbData);
         } else {
           // Fallback to rag stats if db stats fails
-          const ragRes = await fetch(`${bridgeUrl}/api/rag/stats`);
+          const ragRes = await fetchWithTimeout(`${BRIDGE_URL}/api/rag/stats`);
           if (ragRes.ok) {
             const ragData = await ragRes.json();
             setDbStats({ rag_documents: ragData.total_documents || 0 });
@@ -115,24 +151,32 @@ export function OdysseusConsole() {
         setDbStats(null);
       }
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Failed to fetch Odysseus stats');
+      setStatus(null);
+      setModels(null);
+      setTasks([]);
+      setDbStats(null);
+      setOdysseusReady(false);
+      const message = err?.name === 'AbortError'
+        ? 'The Odysseus bridge did not answer within 4.5 seconds.'
+        : 'The Odysseus bridge is not reachable at 127.0.0.1:8001.';
+      setError(`${message} Bridge-backed models, tasks, and memory data are unavailable. Copied source assets remain available in the Source tab, and no task or memory data was changed.`);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isFallbackRuntime, setOdysseusReady]);
 
   // Poll status on mount
   useEffect(() => {
     refreshAll();
+    if (isFallbackRuntime) return;
     const interval = setInterval(refreshAll, 10000);
     return () => clearInterval(interval);
-  }, [refreshAll]);
+  }, [refreshAll, isFallbackRuntime]);
 
   const handleTaskAction = async (taskId: string, action: 'run' | 'pause' | 'resume') => {
     setActionMessage(null);
     try {
-      const res = await fetch(`${bridgeUrl}/api/tasks/${taskId}/${action}`, {
+      const res = await fetchWithTimeout(`${BRIDGE_URL}/api/tasks/${taskId}/${action}`, {
         method: 'POST',
       });
       if (res.ok) {
@@ -145,7 +189,10 @@ export function OdysseusConsole() {
         setError(`Failed to ${action} task: ${errorText}`);
       }
     } catch (err: any) {
-      setError(`Error executing task action: ${err.message}`);
+      const message = err?.name === 'AbortError'
+        ? 'The task request timed out before the Odysseus bridge answered.'
+        : `The task request could not be sent: ${err.message}`;
+      setError(`${message} Please confirm the bridge is running before retrying. No local task state was changed by Silver Wolf.`);
     }
   };
 
@@ -171,7 +218,8 @@ export function OdysseusConsole() {
           <button
             onClick={refreshAll}
             disabled={loading}
-            className="p-1 rounded bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors disabled:opacity-50"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 text-white/50 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+            aria-label="Force Odysseus telemetry sync"
             title="Force Telemetry Sync"
           >
             <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
@@ -180,12 +228,15 @@ export function OdysseusConsole() {
       </div>
 
       {/* Odysseus Internal Tabs */}
-      <div className="flex border-b border-white/5 bg-black/10 rounded-lg p-0.5 mb-3">
-        {(['status', 'models', 'tasks', 'memory'] as const).map((tab) => (
+      <div className="flex border-b border-white/5 bg-black/10 rounded-lg p-0.5 mb-3" role="tablist" aria-label="Odysseus console sections">
+        {(['status', 'models', 'tasks', 'memory', 'source'] as const).map((tab) => (
           <button
             key={tab}
+            type="button"
+            role="tab"
+            aria-selected={activeSubTab === tab}
             onClick={() => setActiveSubTab(tab)}
-            className={`flex-1 py-1 rounded text-center uppercase text-[8px] font-bold tracking-wider transition-all duration-150 ${
+            className={`min-h-11 flex-1 rounded px-1 py-1 text-center text-[8px] font-bold uppercase tracking-wider transition-all duration-150 ${
               activeSubTab === tab
                 ? 'bg-primary/20 text-primary font-bold shadow'
                 : 'text-white/40 hover:text-white/70'
@@ -198,9 +249,16 @@ export function OdysseusConsole() {
 
       {/* Status Messages */}
       {error && (
-        <div className="p-2 mb-3 rounded bg-red-950/20 border border-red-500/30 text-red-400/80 leading-relaxed text-[9px] relative">
-          <button onClick={() => setError(null)} className="absolute top-1 right-2 text-white/30 hover:text-white/70">×</button>
-          <span className="font-bold mr-1">CRIT:</span> {error}
+        <div className="relative mb-3 rounded border border-red-500/30 bg-red-950/20 p-2 pr-14 text-[9px] leading-relaxed text-red-400/80">
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="absolute right-2 top-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/30 hover:bg-white/5 hover:text-white/70"
+            aria-label="Dismiss Odysseus error message"
+          >
+            ×
+          </button>
+          <span className="font-bold mr-1">Needs attention:</span> {error}
         </div>
       )}
 
@@ -312,9 +370,12 @@ export function OdysseusConsole() {
                 )}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-10 text-white/20">
-                <Cpu size={24} className="mb-2 opacity-15" />
-                <span>NO MODELS LOADED</span>
+                <div className="flex flex-col items-center justify-center py-10 text-white/20">
+                  <Cpu size={24} className="mb-2 opacity-15" />
+                <span>No bridge-backed models available</span>
+                <span className="mt-1 max-w-[220px] text-center text-[8px] leading-relaxed text-white/35">
+                  Start the Odysseus bridge, then refresh this panel. Source assets can still be reviewed without the bridge.
+                </span>
               </div>
             )}
           </div>
@@ -367,7 +428,8 @@ export function OdysseusConsole() {
                     <div className="flex gap-1.5 pt-1.5 border-t border-white/5">
                       <button
                         onClick={() => handleTaskAction(task.id, 'run')}
-                        className="flex-1 py-1 rounded bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-[8px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition-all duration-150"
+                        className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded border border-primary/20 bg-primary/10 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-primary transition-all duration-150 hover:bg-primary/20"
+                        aria-label={`Run Odysseus task ${task.name}`}
                       >
                         <Play size={10} />
                         <span>Run Now</span>
@@ -376,7 +438,8 @@ export function OdysseusConsole() {
                       {task.status === 'active' ? (
                         <button
                           onClick={() => handleTaskAction(task.id, 'pause')}
-                          className="flex-1 py-1 rounded bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/20 text-[8px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition-all duration-150"
+                          className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded border border-yellow-500/20 bg-yellow-500/10 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-yellow-500 transition-all duration-150 hover:bg-yellow-500/20"
+                          aria-label={`Pause Odysseus task ${task.name}`}
                         >
                           <Pause size={10} />
                           <span>Pause</span>
@@ -384,7 +447,8 @@ export function OdysseusConsole() {
                       ) : (
                         <button
                           onClick={() => handleTaskAction(task.id, 'resume')}
-                          className="flex-1 py-1 rounded bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 text-[8px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition-all duration-150"
+                          className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded border border-green-500/20 bg-green-500/10 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-green-500 transition-all duration-150 hover:bg-green-500/20"
+                          aria-label={`Resume Odysseus task ${task.name}`}
                         >
                           <Play size={10} />
                           <span>Resume</span>
@@ -397,7 +461,10 @@ export function OdysseusConsole() {
             ) : (
               <div className="flex flex-col items-center justify-center py-10 text-white/20">
                 <Clock size={24} className="mb-2 opacity-15" />
-                <span>NO SCHEDULER TASKS</span>
+                <span>No bridge-backed tasks available</span>
+                <span className="mt-1 max-w-[220px] text-center text-[8px] leading-relaxed text-white/35">
+                  This may mean the bridge is offline or there are no scheduled tasks to show.
+                </span>
               </div>
             )}
           </div>
@@ -468,9 +535,266 @@ export function OdysseusConsole() {
             ) : (
               <div className="flex flex-col items-center justify-center py-10 text-white/20">
                 <Database size={24} className="mb-2 opacity-15" />
-                <span>NO DATA FOUND</span>
+                <span>No bridge-backed memory data available</span>
+                <span className="mt-1 max-w-[220px] text-center text-[8px] leading-relaxed text-white/35">
+                  Silver Wolf is not reading local memory contents unless the Odysseus bridge provides aggregate stats.
+                </span>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tab 5: Source-backed integration map */}
+        {activeSubTab === 'source' && (
+          <div className="space-y-3">
+            <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-black/30">
+              <img
+                src={`${ODYSSEUS_ASSET_ROOT}/docs/odysseus.jpg`}
+                alt="Odysseus source project artwork"
+                className="h-24 w-full object-cover opacity-80"
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3">
+                <div className="text-[9px] font-bold uppercase tracking-wider text-primary">Copied Source Assets</div>
+                <div className="mt-0.5 text-[8px] leading-relaxed text-white/55">
+                  {getOdysseusAssetSummary()}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-3 text-[8px] leading-relaxed text-yellow-200/80">
+              Odysseus source modules and demo assets are mapped here for provenance. Motion demo clips are copied but not autoplayed. Upstream static scripts are not executed inside Silver Wolf; functional actions must go through the local bridge.
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-cyan-400/15 bg-cyan-400/5 p-3">
+              <div className="flex items-center justify-between gap-2 text-[9px] font-bold uppercase tracking-wider text-cyan-200/80">
+                <span>Accessibility Evidence</span>
+                <span>{A11Y_ODYSSEUS_ASSETS.length} source screenshots</span>
+              </div>
+              <div className="text-[8px] leading-relaxed text-cyan-100/65">
+                Copied Odysseus accessibility screenshots are visual evidence only. They do not certify Silver Wolf accessibility; use them to compare focus and login patterns before bridge-backed workflows are presented as complete.
+              </div>
+              <div className="grid gap-2 lg:grid-cols-2">
+                {A11Y_ODYSSEUS_ASSETS.map((asset) => (
+                  <figure key={asset.path} className="overflow-hidden rounded-xl border border-white/5 bg-black/25">
+                    <a
+                      href={asset.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="block min-h-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
+                      aria-label={`Open Odysseus accessibility source screenshot ${asset.path}`}
+                      title={`Open ${asset.path}`}
+                    >
+                      <img
+                        src={asset.url}
+                        alt={`Copied Odysseus accessibility source screenshot ${asset.path}`}
+                        className="h-28 w-full bg-black/30 object-contain"
+                        loading="eager"
+                        decoding="async"
+                      />
+                    </a>
+                    <figcaption className="space-y-1 p-2">
+                      <div className="truncate text-[8.5px] font-bold text-white/80">{asset.path}</div>
+                      <div className="text-[7.5px] leading-relaxed text-white/45">
+                        Source-only comparison artifact; keyboard, screen-reader, and Silver Wolf workflow accessibility remain unverified here.
+                      </div>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                <span>Desktop Asset Inspection</span>
+                <span>{STATIC_ODYSSEUS_ASSETS.length} static previews</span>
+              </div>
+              <div className="grid gap-2">
+                {STATIC_ODYSSEUS_ASSETS.map((asset) => (
+                  <figure key={asset.id} className="overflow-hidden rounded-xl border border-white/5 bg-black/20">
+                    <img
+                      src={asset.url}
+                      alt={asset.label}
+                      className="h-28 w-full object-cover"
+                      loading="eager"
+                      decoding="async"
+                    />
+                    <figcaption className="space-y-1 p-2">
+                      <div className="truncate text-[9px] font-bold text-white/80">{asset.label}</div>
+                      <div className="text-[7.5px] leading-relaxed text-white/45">{asset.intendedUse}</div>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-amber-400/15 bg-amber-400/5 p-3">
+              <div className="flex items-center justify-between gap-2 text-[9px] font-bold uppercase tracking-wider text-amber-200/80">
+                <span>Motion Demos</span>
+                <span>{MOTION_ODYSSEUS_ASSETS.length} link-only</span>
+              </div>
+              <div className="text-[8px] leading-relaxed text-amber-100/65">
+                Motion demos are copied from Odysseus but not embedded or autoplayed here, so they do not surprise users with movement or execute upstream app logic.
+              </div>
+              <div className="space-y-1">
+                {MOTION_ODYSSEUS_ASSETS.map((asset) => (
+                  <div key={asset.id} className="flex items-center justify-between gap-2 rounded border border-white/5 bg-black/20 px-2 py-1.5">
+                    <div className="min-w-0">
+                      <div className="truncate text-[8.5px] font-bold text-white/70">{asset.label}</div>
+                      <div className="truncate text-[7px] text-white/35">{asset.sourcePath}</div>
+                    </div>
+                    <a
+                      href={asset.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/80"
+                      aria-label={`Open motion demo ${asset.label}`}
+                      title={`Open motion demo ${asset.label}`}
+                    >
+                      <ExternalLink size={12} />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-2 md:grid-cols-3">
+              <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+                <div className="text-[7.5px] font-bold uppercase tracking-wider text-white/35">Source Mirror</div>
+                <div className="mt-1 text-[10px] font-bold text-white/85">{ODYSSEUS_ASSET_AUDIT.copiedFileCount} files copied</div>
+                <div className="mt-0.5 break-all text-[7.5px] text-white/40">{ODYSSEUS_ASSET_AUDIT.copiedRoot}</div>
+              </div>
+              <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+                <div className="text-[7.5px] font-bold uppercase tracking-wider text-white/35">Media Coverage</div>
+                <div className="mt-1 text-[10px] font-bold text-white/85">{ODYSSEUS_ASSET_AUDIT.copiedMediaFileCount} media/a11y assets</div>
+                <div className="mt-0.5 text-[7.5px] text-white/40">{getOdysseusSourceAssetSummary()}</div>
+              </div>
+              <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+                <div className="text-[7.5px] font-bold uppercase tracking-wider text-white/35">Execution Boundary</div>
+                <div className="mt-1 text-[10px] font-bold text-amber-200">Provenance only</div>
+                <div className="mt-0.5 text-[7.5px] leading-relaxed text-white/40">{ODYSSEUS_ASSET_AUDIT.executionBoundary}</div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                <span>Feature Integration Map</span>
+                <span>{ODYSSEUS_FEATURE_MAP.length} source groups</span>
+              </div>
+              {ODYSSEUS_FEATURE_MAP.map((item) => (
+                <div key={item.id} className="rounded-xl border border-white/5 bg-black/20 p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-[10px] font-bold text-white/85">{item.label}</div>
+                      <div className="mt-0.5 text-[8px] text-white/40">{item.silverWolfSurface}</div>
+                    </div>
+                    <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[7.5px] font-bold uppercase ${
+                      item.integrationState === 'Bridge-backed'
+                        ? 'border-green-500/25 bg-green-500/10 text-green-300'
+                        : item.integrationState === 'Asset-copied'
+                          ? 'border-yellow-500/25 bg-yellow-500/10 text-yellow-300'
+                          : 'border-cyan-500/25 bg-cyan-500/10 text-cyan-300'
+                    }`}>
+                      {item.integrationState}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5 text-[7.5px] font-bold uppercase">
+                    <span className="rounded border border-white/5 bg-black/25 px-1.5 py-1 text-white/45">
+                      UI: {item.integrationState === 'Not integrated' ? 'Unavailable' : 'Exposed'}
+                    </span>
+                    <span className={`rounded border px-1.5 py-1 ${
+                      item.integrationState === 'Bridge-backed' && isOnline
+                        ? 'border-green-500/20 bg-green-500/10 text-green-300'
+                        : item.integrationState === 'Asset-copied'
+                          ? 'border-yellow-500/20 bg-yellow-500/10 text-yellow-300'
+                          : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
+                    }`}>
+                      State: {item.integrationState === 'Bridge-backed' ? (isOnline ? 'Live bridge' : 'Bridge offline') : item.integrationState === 'Asset-copied' ? 'Static fallback' : 'Unverified'}
+                    </span>
+                  </div>
+
+                  <div className="rounded border border-white/5 bg-black/25 p-2 text-[8px] leading-relaxed text-white/55">
+                    <span className="font-bold text-white/70">Promise: </span>{item.userPromise}
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="text-[7.5px] font-bold uppercase tracking-wider text-white/30">Source Modules</div>
+                    <div className="flex flex-wrap gap-1">
+                      {item.sourceModules.map((source) => (
+                        <span key={source} className="rounded bg-white/5 px-1.5 py-0.5 text-[7.5px] text-white/50">
+                          {source}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded border border-primary/10 bg-primary/5 p-2 text-[8px] leading-relaxed text-white/45">
+                    <span className="font-bold text-primary">Boundary: </span>{item.securityBoundary}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-[9px] font-bold uppercase tracking-wider text-white/35">Copied Asset Ledger</div>
+              {ODYSSEUS_ASSETS.map((asset) => (
+                <div key={asset.id} className="flex items-start justify-between gap-2 rounded-lg border border-white/5 bg-black/20 p-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-[9px] font-bold text-white/80">{asset.label}</div>
+                    <div className="mt-0.5 break-all text-[7.5px] text-white/35">{asset.sourcePath}</div>
+                    <div className="mt-1 text-[7.5px] leading-relaxed text-white/45">{asset.intendedUse}</div>
+                  </div>
+                  <a
+                    href={asset.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/80"
+                    aria-label={`Open ${asset.label}`}
+                    title={`Open ${asset.label}`}
+                  >
+                    <ExternalLink size={12} />
+                  </a>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                <span>Full Source Mirror Ledger</span>
+                <span>{ODYSSEUS_SOURCE_DOC_ASSETS.length} files</span>
+              </div>
+              <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+                {ODYSSEUS_SOURCE_DOC_ASSETS.map((asset) => (
+                  <div key={asset.path} className="flex items-center justify-between gap-2 rounded border border-white/5 bg-black/20 px-2 py-1.5">
+                    <div className="min-w-0">
+                      <div className="truncate text-[8px] font-bold text-white/70">{asset.path}</div>
+                      <div className="mt-0.5 break-all text-[7px] text-white/35">{asset.sourcePath}</div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span className={`rounded border px-1.5 py-0.5 text-[7px] font-bold uppercase ${
+                        asset.kind === 'motion-demo'
+                          ? 'border-amber-500/25 bg-amber-500/10 text-amber-300'
+                          : asset.kind === 'a11y-screenshot'
+                            ? 'border-cyan-500/25 bg-cyan-500/10 text-cyan-300'
+                            : 'border-white/10 bg-white/5 text-white/50'
+                      }`}>
+                        {asset.kind}
+                      </span>
+                      <a
+                        href={asset.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/80"
+                        aria-label={`Open copied source asset ${asset.path}`}
+                        title={`Open copied source asset ${asset.path}`}
+                      >
+                        <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>

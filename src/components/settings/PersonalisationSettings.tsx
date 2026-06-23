@@ -74,7 +74,7 @@ export function PersonalisationSettings() {
                     key={pk}
                     type="button"
                     onClick={() => updateSettings({ activePalette: pk })}
-                    className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-[9px] font-mono uppercase tracking-wider transition-all cursor-pointer ${
+                    className={`flex min-h-11 items-center justify-between px-3 py-2.5 rounded-lg border text-[9px] font-mono uppercase tracking-wider transition-all cursor-pointer ${
                       isSelected
                         ? 'border-primary bg-primary/10 text-primary font-bold'
                         : 'border-white/5 bg-white/5 text-white/50 hover:border-white/10 hover:text-white/80'
@@ -104,7 +104,7 @@ export function PersonalisationSettings() {
                 type="color"
                 value={personalisation.accentColor || palettes[activePalette]['--theme-primary']}
                 onChange={(e) => updatePersonalisation({ accentColor: e.target.value })}
-                className="h-9 w-9 rounded-lg bg-white/5 border border-white/10 p-1 cursor-pointer"
+                className="h-11 w-11 rounded-lg bg-white/5 border border-white/10 p-1 cursor-pointer"
               />
               <input
                 id="accent-color-text"
@@ -113,13 +113,13 @@ export function PersonalisationSettings() {
                 value={personalisation.accentColor}
                 onChange={(e) => updatePersonalisation({ accentColor: e.target.value })}
                 placeholder="Hex override (e.g. #00ffff)"
-                className="flex-1 rounded-lg bg-white/5 border border-white/5 px-3 text-xs text-text-main focus:outline-none focus:ring-1 focus:ring-primary/35 font-mono"
+                className="min-h-11 flex-1 rounded-lg bg-white/5 border border-white/5 px-3 text-xs text-text-main focus:outline-none focus:ring-1 focus:ring-primary/35 font-mono"
               />
               {personalisation.accentColor && (
                 <button
                   type="button"
                   onClick={() => updatePersonalisation({ accentColor: '' })}
-                  className="px-2.5 py-2 text-[9px] font-mono uppercase rounded bg-white/5 text-white/40 hover:bg-white/10"
+                  className="min-h-11 px-2.5 py-2 text-[9px] font-mono uppercase rounded bg-white/5 text-white/40 hover:bg-white/10"
                 >
                   Reset
                 </button>
@@ -135,7 +135,7 @@ export function PersonalisationSettings() {
               name="theme-profile-select"
               value={activePalette}
               onChange={(e) => updateSettings({ activePalette: e.target.value as PaletteKey })}
-              className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-xs font-mono text-white/70 focus:outline-none focus:ring-1 focus:ring-primary/35 cursor-pointer"
+              className="min-h-11 w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-xs font-mono text-white/70 focus:outline-none focus:ring-1 focus:ring-primary/35 cursor-pointer"
             >
               <option value="holographic" className="bg-neutral-900">Holographic (Silver Wolf)</option>
               <option value="coreHacker" className="bg-neutral-900">Core Hacker</option>
@@ -161,12 +161,12 @@ export function PersonalisationSettings() {
               <button
                 type="button"
                 onClick={() => updateSettings({ customWallpaper: null, dynamicTheme: null })}
-                className="text-[9px] font-mono px-3 py-1.5 border border-white/5 rounded-lg uppercase bg-white/5 text-red-400 hover:bg-red-950/20"
+                className="inline-flex min-h-11 items-center px-3 py-1.5 text-[9px] font-mono border border-white/5 rounded-lg uppercase bg-white/5 text-red-400 hover:bg-red-950/20"
               >
                 Clear
               </button>
             )}
-            <label className="text-[9px] font-mono px-3 py-1.5 bg-primary/20 border border-primary/20 text-primary hover:bg-primary-hover hover:text-white rounded-lg uppercase cursor-pointer transition-all">
+            <label className="inline-flex min-h-11 items-center px-3 py-1.5 text-[9px] font-mono bg-primary/20 border border-primary/20 text-primary hover:bg-primary-hover hover:text-white rounded-lg uppercase cursor-pointer transition-all">
               Upload
               <input id="personalisation-wallpaper-upload" name="personalisation-wallpaper-upload" type="file" hidden onChange={onUpload} />
             </label>
@@ -196,7 +196,7 @@ export function PersonalisationSettings() {
               max={100}
               value={personalisation.panelOpacity * 100}
               onChange={(e) => updatePersonalisation({ panelOpacity: parseFloat(e.target.value) / 100 })}
-              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+              className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
             />
           </div>
 
@@ -214,7 +214,7 @@ export function PersonalisationSettings() {
               max={40}
               value={personalisation.blurIntensity}
               onChange={(e) => updatePersonalisation({ blurIntensity: parseInt(e.target.value) })}
-              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+              className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
             />
           </div>
 
@@ -232,7 +232,7 @@ export function PersonalisationSettings() {
               max={24}
               value={personalisation.cornerRadius}
               onChange={(e) => updatePersonalisation({ cornerRadius: parseInt(e.target.value) })}
-              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+              className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
             />
           </div>
 
@@ -250,7 +250,7 @@ export function PersonalisationSettings() {
               max={100}
               value={personalisation.shadowIntensity * 100}
               onChange={(e) => updatePersonalisation({ shadowIntensity: parseFloat(e.target.value) / 100 })}
-              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+              className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
             />
           </div>
 
@@ -263,7 +263,7 @@ export function PersonalisationSettings() {
                   key={style}
                   type="button"
                   onClick={() => updatePersonalisation({ borderStyle: style as any })}
-                  className={`flex-1 py-1 rounded transition-colors uppercase cursor-pointer ${
+                  className={`flex-1 min-h-11 px-2 py-1 rounded transition-colors uppercase cursor-pointer ${
                     personalisation.borderStyle === style ? 'bg-primary text-white font-bold' : 'text-white/40 hover:text-white/70'
                   }`}
                 >
@@ -282,7 +282,7 @@ export function PersonalisationSettings() {
                   key={density}
                   type="button"
                   onClick={() => updatePersonalisation({ uiDensity: density as any })}
-                  className={`flex-1 py-1 rounded transition-colors uppercase cursor-pointer ${
+                  className={`flex-1 min-h-11 px-2 py-1 rounded transition-colors uppercase cursor-pointer ${
                     personalisation.uiDensity === density ? 'bg-primary text-white font-bold' : 'text-white/40 hover:text-white/70'
                   }`}
                 >
@@ -301,7 +301,7 @@ export function PersonalisationSettings() {
                   key={style}
                   type="button"
                   onClick={() => updatePersonalisation({ chatBubbleStyle: style as any })}
-                  className={`flex-1 py-1 rounded transition-colors uppercase cursor-pointer ${
+                  className={`flex-1 min-h-11 px-2 py-1 rounded transition-colors uppercase cursor-pointer ${
                     personalisation.chatBubbleStyle === style ? 'bg-primary text-white font-bold' : 'text-white/40 hover:text-white/70'
                   }`}
                 >
@@ -320,7 +320,7 @@ export function PersonalisationSettings() {
                   key={style}
                   type="button"
                   onClick={() => updatePersonalisation({ iconStyle: style as any })}
-                  className={`flex-1 py-1 rounded transition-colors uppercase cursor-pointer ${
+                  className={`flex-1 min-h-11 px-2 py-1 rounded transition-colors uppercase cursor-pointer ${
                     personalisation.iconStyle === style ? 'bg-primary text-white font-bold' : 'text-white/40 hover:text-white/70'
                   }`}
                 >
@@ -343,7 +343,7 @@ export function PersonalisationSettings() {
                   key={style.key}
                   type="button"
                   onClick={() => updatePersonalisation({ panelTransitionStyle: style.key as any })}
-                  className={`flex-1 py-1 rounded transition-colors uppercase cursor-pointer ${
+                  className={`flex-1 min-h-11 px-2 py-1 rounded transition-colors uppercase cursor-pointer ${
                     personalisation.panelTransitionStyle === style.key ? 'bg-primary text-white font-bold' : 'text-white/40 hover:text-white/70'
                   }`}
                 >
@@ -377,7 +377,7 @@ export function PersonalisationSettings() {
               max={140}
               value={personalisation.fontScale * 100}
               onChange={(e) => updatePersonalisation({ fontScale: parseFloat(e.target.value) / 100 })}
-              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+              className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
             />
           </div>
 
@@ -421,7 +421,7 @@ export function PersonalisationSettings() {
               max={100}
               value={personalisation.animationIntensity * 100}
               onChange={(e) => updatePersonalisation({ animationIntensity: parseFloat(e.target.value) / 100 })}
-              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+              className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
             />
           </div>
 
@@ -439,7 +439,7 @@ export function PersonalisationSettings() {
               max={200}
               value={cameraSensitivity * 100}
               onChange={(e) => setCameraSensitivity(parseFloat(e.target.value) / 100)}
-              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+              className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
             />
           </div>
 
@@ -635,14 +635,14 @@ function SatelliteTrackerSettings() {
   const updateSatelliteSettings = useUIStore((s) => s.updateSatelliteSettings);
 
   const categories = [
-    { key: 'spaceStations', label: 'Space Stations', icon: '🏠', color: '#00FFF7' },
-    { key: 'brightest', label: 'Brightest', icon: '✨', color: '#F0ABFC' },
-    { key: 'weather', label: 'Weather', icon: '🌤️', color: '#A78BFA' },
-    { key: 'gps', label: 'GPS / GNSS', icon: '📡', color: '#22C55E' },
-    { key: 'earthObs', label: 'Earth Observation', icon: '🌍', color: '#F97316' },
-    { key: 'starlink', label: 'Starlink', icon: '📶', color: '#FFFFFF' },
-    { key: 'military', label: 'Military', icon: '🛡️', color: '#3B82F6' },
-    { key: 'other', label: 'Other', icon: '🛰️', color: '#94A3B8' },
+    { key: 'spaceStations', label: 'Space Stations', color: '#00FFF7' },
+    { key: 'brightest', label: 'Brightest', color: '#F0ABFC' },
+    { key: 'weather', label: 'Weather', color: '#A78BFA' },
+    { key: 'gps', label: 'GPS / GNSS', color: '#22C55E' },
+    { key: 'earthObs', label: 'Earth Observation', color: '#F97316' },
+    { key: 'starlink', label: 'Starlink', color: '#FFFFFF' },
+    { key: 'military', label: 'Military', color: '#3B82F6' },
+    { key: 'other', label: 'Other', color: '#94A3B8' },
   ];
 
   return (
@@ -657,21 +657,28 @@ function SatelliteTrackerSettings() {
 
       {/* Category grid */}
       <div className="grid grid-cols-2 gap-2">
-        {categories.map(({ key, label, icon, color }) => {
+        {categories.map(({ key, label, color }) => {
           const isActive = satelliteCategories[key] !== false;
           return (
             <button
               key={key}
               type="button"
               onClick={() => toggleSatelliteCategory(key)}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+              className={`flex min-h-11 items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-all cursor-pointer ${
                 isActive
                   ? 'border-white/10 bg-white/8'
                   : 'border-white/5 bg-white/3 opacity-50'
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="text-xs">{icon}</span>
+                <span
+                  aria-hidden="true"
+                  className="h-3 w-3 shrink-0 rounded-sm border border-white/15"
+                  style={{
+                    backgroundColor: isActive ? color : 'transparent',
+                    boxShadow: isActive ? `0 0 6px ${color}60` : 'none',
+                  }}
+                />
                 <span className={`text-[9px] font-mono font-bold uppercase tracking-wider ${
                   isActive ? 'text-white/80' : 'text-white/30'
                 }`}>
@@ -698,16 +705,18 @@ function SatelliteTrackerSettings() {
             <span className="text-[10px] font-mono uppercase text-white/80 font-bold">Show Selected Trail</span>
             <span className="text-[8px] text-white/30 font-mono mt-0.5">Display orbital path trail for the selected satellite</span>
           </div>
-          <div
+          <button
+            type="button"
             onClick={() => updateSatelliteSettings({ showTrails: !satelliteSettings.showTrails })}
-            className="cursor-pointer"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/60 transition-colors hover:bg-white/5 hover:text-white"
+            aria-label={`${satelliteSettings.showTrails ? 'Disable' : 'Enable'} selected satellite trail`}
           >
             {satelliteSettings.showTrails ? (
               <ToggleRight className="h-5 w-5 text-primary" />
             ) : (
               <ToggleLeft className="h-5 w-5 text-white/20" />
             )}
-          </div>
+          </button>
         </div>
 
         <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5 border border-white/5">
@@ -715,16 +724,18 @@ function SatelliteTrackerSettings() {
             <span className="text-[10px] font-mono uppercase text-white/80 font-bold">Show All Trails</span>
             <span className="text-[8px] text-white/30 font-mono mt-0.5">Display trails for all visible satellites simultaneously</span>
           </div>
-          <div
+          <button
+            type="button"
             onClick={() => updateSatelliteSettings({ showAllTrails: !satelliteSettings.showAllTrails })}
-            className="cursor-pointer"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/60 transition-colors hover:bg-white/5 hover:text-white"
+            aria-label={`${satelliteSettings.showAllTrails ? 'Disable' : 'Enable'} all satellite trails`}
           >
             {satelliteSettings.showAllTrails ? (
               <ToggleRight className="h-5 w-5 text-primary" />
             ) : (
               <ToggleLeft className="h-5 w-5 text-white/20" />
             )}
-          </div>
+          </button>
         </div>
       </div>
     </div>

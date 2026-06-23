@@ -31,7 +31,7 @@ export function MessageBubble({ message, isHighLoad, fontSize }: MessageBubblePr
   }`;
 
   // Bubble styling based on chatBubbleStyle and sender
-  let bubbleClass = 'relative w-full max-w-[85%] px-4 py-2.5 text-xs leading-relaxed transition-all ';
+  let bubbleClass = 'relative min-w-0 max-w-[calc(100%-5rem)] px-4 py-2.5 text-xs leading-relaxed transition-all ';
   if (isSystem) {
     bubbleClass = 'relative w-full max-w-full rounded-lg border border-danger/40 bg-danger/20 p-4 font-mono text-xs text-danger shadow-sm ';
   } else if (chatBubbleStyle === 'glass') {
@@ -76,14 +76,14 @@ export function MessageBubble({ message, isHighLoad, fontSize }: MessageBubblePr
         <motion.div 
           initial={{ opacity: 0, x: isUser ? 5 : -5 }}
           whileInView={{ opacity: 1, x: 0 }}
-          className={`flex flex-col gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity ${isUser ? 'mr-1' : 'ml-1'}`}
+          className={`mt-1 flex shrink-0 flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100 ${isUser ? 'mr-1' : 'ml-1'}`}
         >
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => pushToMemory(message.content, message.sender)}
             disabled={isPushing || isPushed}
-            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+            className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg border transition-all ${
               isPushed 
                 ? 'bg-green-500/20 border-green-500/40 text-green-400' 
                 : 'bg-white/5 border-white/10 text-white/30 hover:text-white/60 hover:bg-white/10'

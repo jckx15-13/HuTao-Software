@@ -24,7 +24,7 @@ export default function GlassOpacitySettings() {
           max={100}
           value={panelOpacity * 100}
           onChange={handleChange}
-          className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+          className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
         />
       </div>
     </div>

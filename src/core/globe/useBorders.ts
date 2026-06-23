@@ -24,6 +24,9 @@ import {
 } from "cesium";
 import type { Viewer as CesiumViewer } from "cesium";
 
+const WWV_BORDERS_DATASET_URL = "/wwv-assets/source-public/borders.geojson";
+const LEGACY_BORDERS_DATASET_URL = "/borders.geojson";
+
 /**
  * Hook that manages physical 3D borders and labels.
  *
@@ -97,8 +100,26 @@ export function useBorders(
 
             try {
                 console.time("[useBorders] 1. GeoJSON parse");
-                const dataSource = new GeoJsonDataSource("borders_temp");
-                await dataSource.load("/borders.geojson");
+                let dataSource: GeoJsonDataSource | null = null;
+                let loadedDatasetUrl = "";
+                let lastLoadError: unknown;
+
+                for (const datasetUrl of [WWV_BORDERS_DATASET_URL, LEGACY_BORDERS_DATASET_URL]) {
+                    try {
+                        const candidate = new GeoJsonDataSource(`borders_temp_${datasetUrl.includes("wwv-assets") ? "wwv" : "legacy"}`);
+                        await candidate.load(datasetUrl);
+                        dataSource = candidate;
+                        loadedDatasetUrl = datasetUrl;
+                        break;
+                    } catch (err) {
+                        lastLoadError = err;
+                    }
+                }
+
+                if (!dataSource) {
+                    throw lastLoadError instanceof Error ? lastLoadError : new Error("Unable to load WWV borders dataset");
+                }
+                console.info(`[useBorders] Loaded static borders dataset from ${loadedDatasetUrl}`);
                 console.timeEnd("[useBorders] 1. GeoJSON parse");
 
                 if (viewer!.isDestroyed() || cancelled) {

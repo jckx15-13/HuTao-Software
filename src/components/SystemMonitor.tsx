@@ -93,7 +93,7 @@ export function SystemMonitor() {
           min="0" max="1" step="0.01" 
           value={cpuLoad}
           onChange={(e) => setCpuLoad(Number(e.target.value))}
-          className="w-full h-1 bg-primary/20 rounded-lg appearance-none cursor-pointer"
+          className="w-full range-hit-target bg-primary/20 rounded-lg appearance-none cursor-pointer"
           style={{ accentColor: cpuLoad > 0.8 ? 'var(--theme-danger)' : 'var(--theme-primary)' }}
         />
         <div className="flex justify-between text-[8px] text-text-muted mt-2 uppercase tracking-widest">

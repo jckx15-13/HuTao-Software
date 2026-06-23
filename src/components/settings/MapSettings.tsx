@@ -121,7 +121,7 @@ export function MapSettings() {
               step="0.01"
               value={spaceBlendOpacity}
               onChange={(e) => setSpaceBlendOpacity(parseFloat(e.target.value))}
-              className="w-full h-1 bg-black/40 rounded-lg appearance-none cursor-pointer accent-primary"
+              className="w-full range-hit-target bg-black/40 rounded-lg appearance-none cursor-pointer accent-primary"
             />
             <p className="text-[8px] text-white/30 font-mono">
               Adjust the translucency of the Earth globe when in Telescope mode. 

@@ -33,9 +33,11 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           className="w-full bg-transparent p-3 pr-12 text-sm text-white/90 outline-none resize-none min-h-[48px] max-h-32 placeholder:text-white/20" 
         />
         <button 
+          type="button"
           onClick={handleSend} 
           disabled={!input.trim() || disabled}
-          className="absolute right-3 bottom-3 p-2 rounded-xl bg-primary/80 text-white disabled:opacity-10 transition-all hover:bg-primary hover:scale-105 active:scale-95 shadow-lg shadow-primary/20"
+          className="absolute bottom-3 right-3 flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-primary/80 p-2 text-white shadow-lg shadow-primary/20 transition-all hover:scale-105 hover:bg-primary active:scale-95 disabled:opacity-10"
+          aria-label="Send chat message"
         >
           <Send size={16} />
         </button>

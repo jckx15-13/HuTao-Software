@@ -50,7 +50,7 @@ export function ChatComposer({ disabled, fontSize, onSubmit }: ChatComposerProps
             disabled={!canSend}
             aria-label="Send message"
             title="Send message"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/40 bg-primary/20 text-primary shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] transition-colors hover:bg-primary hover:text-primary-text disabled:pointer-events-none disabled:opacity-30"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-primary/40 bg-primary/20 text-primary shadow-[0_0_10px_color-mix(in_srgb,var(--theme-primary)_20%,transparent)] transition-colors hover:bg-primary hover:text-primary-text disabled:pointer-events-none disabled:opacity-30"
           >
             <Send className="h-4 w-4" />
           </motion.button>

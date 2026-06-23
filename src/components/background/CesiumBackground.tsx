@@ -9,6 +9,12 @@ import {
 } from '../../lib/globeProjection';
 import { SATELLITES } from '../../data/satellites';
 import { propagateCircularOrbit, propagateCircularOrbitInto, propagateSatelliteTleInto } from '../../lib/simulation';
+import { TELESCOPE_PRESETS } from '@/data/telescopePresets';
+import {
+  projectTelescopeTargetToEarth,
+  projectTelescopeTargetToObserverView,
+} from '@/lib/earthObserverProjection';
+import { WWV_ORBITAL_ASSET_BY_CATEGORY } from '@/assets/wwvVisualAssets';
 
 const CesiumBackground3D = React.lazy(() => import('./CesiumBackground3D'));
 
@@ -33,17 +39,6 @@ export function CesiumBackground({ interactive }: { interactive: boolean }) {
   // Unconditional hook call for background telemetry synchronization
   useIssTelemetry();
 
-  // Check if we are running in a headless environment to prevent WebGL/Canvas and CSS blur rendering crashes
-  const isHeadless = typeof window !== 'undefined' && (
-    /HeadlessChrome/i.test(navigator.userAgent) ||
-    navigator.webdriver ||
-    window.location.search.includes('fallback')
-  );
-
-  if (isHeadless) {
-    return <div className="absolute inset-0 h-full w-full bg-[#05060b]" />;
-  }
-
   return <CesiumBackgroundReal interactive={interactive} />;
 }
 
@@ -54,6 +49,41 @@ interface CesiumBackgroundRealProps {
 function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
   // Scanline/CRT overlay toggle
   const scanlineOverlay = useUIStore((s) => s.scanlineOverlay);
+  const telescopeTarget = useUIStore((s) => s.telescopeTarget);
+  const isFallbackRuntime = typeof window !== 'undefined' && (
+    /HeadlessChrome/i.test(navigator.userAgent) ||
+    window.location.search.includes('fallback')
+  );
+  const activeTelescopePreset = useMemo(() => {
+    if (typeof telescopeTarget === 'object' && telescopeTarget?.name) {
+      return TELESCOPE_PRESETS.find((preset) => preset.name === telescopeTarget.name) || TELESCOPE_PRESETS[0];
+    }
+    return TELESCOPE_PRESETS[0];
+  }, [telescopeTarget]);
+  const activeTelescopeProjection = useMemo(() => {
+    return projectTelescopeTargetToEarth(
+      activeTelescopePreset.raHours,
+      activeTelescopePreset.decDegrees,
+      new Date()
+    );
+  }, [activeTelescopePreset]);
+  const activeObserverFrameSummary = useMemo(() => {
+    const projectionDate = new Date();
+    const nearSide = TELESCOPE_PRESETS.filter((preset) => (
+      projectTelescopeTargetToObserverView(
+        activeTelescopePreset.raHours,
+        activeTelescopePreset.decDegrees,
+        preset.raHours,
+        preset.decDegrees,
+        projectionDate
+      ).visibleHemisphere
+    )).length;
+
+    return {
+      nearSide,
+      farSide: TELESCOPE_PRESETS.length - nearSide,
+    };
+  }, [activeTelescopePreset]);
 
   const wwvWorker = useMemo(() => {
     if (typeof window === 'undefined') return null;
@@ -69,6 +99,9 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
   const [webglError] = useState<string | null>(() => {
     try {
       if (typeof window === 'undefined') return null;
+      if (isFallbackRuntime) {
+        return 'Static fallback runtime';
+      }
       const canvas = document.createElement('canvas');
       const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
       if (!gl) {
@@ -111,7 +144,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
 
     let active = true;
     let lastFrameTime = 0;
-    const isHeadless = /HeadlessChrome/i.test(navigator.userAgent) || navigator.webdriver || window.location.search.includes('fallback');
+    const isHeadless = /HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback');
     const FRAME_INTERVAL = isHeadless ? 2000 : (1000 / 30); // Throttled in headless mode to prevent crashes
 
     const canvas = canvasRef.current;
@@ -136,7 +169,20 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
     const pointOut = new Float32Array(3); // reuse buffer to avoid allocations
     const orbitOut = new Float32Array(2); // lat, lng reuse buffer
     const trailCache: Record<string, { lastUpdate: number; points: { lat: number; lng: number }[] }> = {};
+    const orbitalIconImages = new Map<string, HTMLImageElement>();
+    const uniqueOrbitalIcons = Array.from(new Set(Object.values(WWV_ORBITAL_ASSET_BY_CATEGORY)));
+    uniqueOrbitalIcons.forEach((iconUrl) => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.src = iconUrl;
+      orbitalIconImages.set(iconUrl, image);
+    });
     let rafId: number | null = null;
+
+    const getOrbitRadius = (altitudeM: number) => {
+      const altitudeScale = Math.min(0.26, Math.max(0.025, altitudeM / 150_000_000));
+      return R * (1 + altitudeScale);
+    };
 
     const renderFrame = (timestamp?: number) => {
       if (!active) return;
@@ -210,6 +256,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
         omega0: number;
         argLat0: number;
         color: string;
+        category: string;
         isIss: boolean;
       }> = [];
 
@@ -217,12 +264,13 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
       if (satelliteCategories['spaceStations'] !== false) {
         sidsToDraw.push({
           id: 'iss',
-          name: '🛰️ ISS',
+          name: 'ISS',
           altitudeM: 420_000,
           inclinationRad: (51.64 * Math.PI) / 180,
           omega0: 0.0,
           argLat0: 0.0,
           color: '#00FFF7',
+          category: 'spaceStations',
           isIss: true
         });
       }
@@ -231,6 +279,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
       const curatedSats = SATELLITES;
       for (let i = 0; i < curatedSats.length; i++) {
         const sat = curatedSats[i];
+        if (sat.id === 'iss') continue;
         if (satelliteCategories[sat.category] !== false) {
           sidsToDraw.push({
             id: sat.id,
@@ -240,6 +289,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
             omega0: sat.omega0,
             argLat0: sat.argLat0,
             color: sat.color,
+            category: sat.category,
             isIss: false
           });
         }
@@ -271,7 +321,8 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
           lng = orbitOut[1];
         }
 
-        const p = projectLatLng(lat, lng, rotation, tilt, R, cx, cy);
+        const orbitRadius = getOrbitRadius(sat.altitudeM);
+        const p = projectLatLng(lat, lng, rotation, tilt, orbitRadius, cx, cy);
 
         // Draw trail if needed (with caching to avoid heavy TLE propagation every frame)
         if (shouldHaveTrail) {
@@ -304,7 +355,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
           const trailCoords = trailCache[cacheKey].points;
           for (let j = 0; j < trailCoords.length; j++) {
             const c = trailCoords[j];
-            const opt = projectLatLng(c.lat, c.lng, rotation, tilt, R, cx, cy);
+            const opt = projectLatLng(c.lat, c.lng, rotation, tilt, orbitRadius, cx, cy);
             if (opt.visible) {
               if (firstOrbitPoint) {
                 ctx.moveTo(opt.x, opt.y);
@@ -322,12 +373,25 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
 
         if (!p.visible) continue;
 
-        // Draw point marker
+        // Draw copied/derived WWV orbital silhouette marker.
         const pulse = (Math.sin(Date.now() / 250) + 1) / 2;
-        ctx.fillStyle = sat.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, isSelected ? 3.5 : 2, 0, 2 * Math.PI);
-        ctx.fill();
+        const iconUrl = WWV_ORBITAL_ASSET_BY_CATEGORY[sat.category] || WWV_ORBITAL_ASSET_BY_CATEGORY.other;
+        const iconImage = orbitalIconImages.get(iconUrl);
+        const iconSize = isSelected ? 18 : sat.category === 'starlink' ? 10 : 13;
+
+        ctx.save();
+        ctx.shadowColor = sat.color;
+        ctx.shadowBlur = isSelected ? 11 : 5;
+        ctx.globalAlpha = isSelected ? 1 : 0.86;
+        if (iconImage?.complete && iconImage.naturalWidth > 0) {
+          ctx.drawImage(iconImage, p.x - iconSize / 2, p.y - iconSize / 2, iconSize, iconSize);
+        } else {
+          ctx.fillStyle = sat.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, isSelected ? 4 : 2.5, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+        ctx.restore();
 
         if (isSelected) {
           ctx.strokeStyle = sat.color + '80'; // 50% opacity
@@ -340,8 +404,65 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
           ctx.font = '8px monospace';
           ctx.fillStyle = sat.color;
           ctx.textAlign = 'center';
-          ctx.fillText(sat.name.replace(/🛰️\s*|🇨🇳\s*/, ''), p.x, p.y + 14);
+          ctx.fillText(sat.name, p.x, p.y + 14);
         }
+      }
+
+      // 6. Earth-observer telescope target projections.
+      const telescopeTarget = uiState.telescopeTarget;
+      const activeTelescopeName = typeof telescopeTarget === 'object' && telescopeTarget
+        ? telescopeTarget.name
+        : '';
+      const activeObserverPreset = TELESCOPE_PRESETS.find((preset) => preset.name === activeTelescopeName) || TELESCOPE_PRESETS[0];
+      const projectionDate = new Date(currentTime);
+      for (let i = 0; i < TELESCOPE_PRESETS.length; i++) {
+        const preset = TELESCOPE_PRESETS[i];
+        const observerProjection = projectTelescopeTargetToObserverView(
+          activeObserverPreset.raHours,
+          activeObserverPreset.decDegrees,
+          preset.raHours,
+          preset.decDegrees,
+          projectionDate
+        );
+        const isActiveTelescope = activeTelescopeName === preset.name || (!activeTelescopeName && i === 0);
+        const observerRadius = observerProjection.visibleHemisphere ? R : R * 1.18;
+        const observerScale = observerProjection.visibleHemisphere ? observerRadius / 24 : observerRadius / 31.5;
+        const p = {
+          x: cx + (observerProjection.x - 50) * observerScale,
+          y: cy + (observerProjection.y - 50) * observerScale,
+        };
+
+        ctx.save();
+        ctx.globalAlpha = isActiveTelescope ? 1 : observerProjection.visibleHemisphere ? 0.68 : 0.34;
+        ctx.strokeStyle = preset.color + (isActiveTelescope ? 'cc' : observerProjection.visibleHemisphere ? '55' : '44');
+        ctx.fillStyle = preset.color;
+        ctx.lineWidth = isActiveTelescope ? 1.3 : 0.8;
+        ctx.setLineDash(isActiveTelescope ? [3, 3] : observerProjection.visibleHemisphere ? [1.5, 3] : [1, 4]);
+        if (isActiveTelescope) {
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - R * 0.95);
+          ctx.lineTo(p.x, p.y);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, isActiveTelescope ? 4 : observerProjection.visibleHemisphere ? 2.2 : 1.8, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, isActiveTelescope ? 9 : observerProjection.visibleHemisphere ? 5 : 4.5, 0, 2 * Math.PI);
+        ctx.stroke();
+
+        if (isActiveTelescope) {
+          ctx.font = 'bold 8px monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText(preset.name, p.x + 8, p.y - 8);
+          ctx.font = '7px monospace';
+          ctx.fillStyle = 'rgba(230, 245, 255, 0.72)';
+          ctx.fillText(`${observerProjection.latitudeLabel}, ${observerProjection.longitudeLabel}`, p.x + 8, p.y + 2);
+          ctx.fillText(observerProjection.relation, p.x + 8, p.y + 11);
+        }
+        ctx.restore();
       }
 
       rafId = requestAnimationFrame(renderFrame);
@@ -370,7 +491,10 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
 
         {/* 2D Vector Globe Display */}
         <div className="relative flex flex-col items-center gap-8 z-10">
-          <div className="relative w-64 h-64 flex items-center justify-center border border-primary/10 rounded-full bg-[#08090f]/60 backdrop-blur-md shadow-[0_0_60px_rgba(138,91,199,0.06),inset_0_0_20px_rgba(138,91,199,0.03)]">
+          <div
+            className="relative flex min-h-64 min-w-64 items-center justify-center rounded-full border border-primary/10 bg-[#08090f]/60 shadow-[0_0_60px_rgba(138,91,199,0.06),inset_0_0_20px_rgba(138,91,199,0.03)] backdrop-blur-md"
+            style={{ width: 'min(68vmin, 520px)', height: 'min(68vmin, 520px)' }}
+          >
 
             {/* Canvas-based spinning vector globe */}
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ display: 'block' }} />
@@ -387,6 +511,16 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
             <span className="text-[8px] uppercase tracking-[0.15em] text-text-muted">
               WebGL Unavailable — Running Pure Physics Simulation
             </span>
+            <div className="mt-2 rounded border border-primary/10 bg-black/25 px-3 py-2 text-[8px] uppercase tracking-[0.14em] text-white/50">
+              <div className="font-bold text-primary/80">Earth Observer Telescope Projection</div>
+              <div className="mt-1 text-white/70">{activeTelescopePreset.name}</div>
+              <div className="text-white/45">
+                {activeTelescopeProjection.latitudeLabel}, {activeTelescopeProjection.longitudeLabel}
+              </div>
+              <div className="text-white/35">{TELESCOPE_PRESETS.length} WWT presets in observer frame</div>
+              <div className="text-white/30">{activeObserverFrameSummary.nearSide} near side / {activeObserverFrameSummary.farSide} far limb</div>
+              <div className="text-white/30">WWV-derived orbital silhouettes; live imagery not claimed</div>
+            </div>
             <TelemetryCoords />
           </div>
         </div>

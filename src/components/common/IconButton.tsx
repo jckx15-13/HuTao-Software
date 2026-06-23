@@ -25,7 +25,7 @@ export function IconButton({
   ...buttonProps
 }: IconButtonProps) {
   const classes = [
-    'inline-flex min-h-8 min-w-8 items-center justify-center gap-2 rounded-lg p-2 text-sm transition-colors disabled:pointer-events-none disabled:opacity-40',
+    'inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg p-2 text-sm transition-colors disabled:pointer-events-none disabled:opacity-40',
     variantClasses[variant],
     className,
   ]

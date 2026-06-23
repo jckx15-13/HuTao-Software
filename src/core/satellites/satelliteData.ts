@@ -15,7 +15,7 @@ export const SATELLITES: SatelliteConfig[] = [
   // 1. SPACE STATIONS (#00FFF7)
   {
     id: 'iss',
-    name: '🛰️ ISS (SPACE STATION)',
+    name: 'ISS (SPACE STATION)',
     noradId: '25544',
     category: 'spaceStations',
     altitudeM: 420_000,
@@ -27,7 +27,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'tiangong',
-    name: '🇨🇳 TIANGONG SPACE STATION',
+    name: 'TIANGONG SPACE STATION',
     noradId: '48274',
     category: 'spaceStations',
     altitudeM: 390_000,
@@ -41,7 +41,7 @@ export const SATELLITES: SatelliteConfig[] = [
   // 2. BRIGHTEST SATELLITES (#F0ABFC)
   {
     id: 'hubble',
-    name: '🔭 HUBBLE SPACE TELESCOPE',
+    name: 'HUBBLE SPACE TELESCOPE',
     noradId: '20580',
     category: 'brightest',
     altitudeM: 540_000,
@@ -53,7 +53,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'envisat',
-    name: '🛰️ ENVISAT MONITOR',
+    name: 'ENVISAT MONITOR',
     noradId: '27386',
     category: 'brightest',
     altitudeM: 790_000,
@@ -65,7 +65,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'genesis-1',
-    name: '🎈 GENESIS I EXPANDABLE',
+    name: 'GENESIS I EXPANDABLE',
     noradId: '29252',
     category: 'brightest',
     altitudeM: 560_000,
@@ -77,7 +77,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'genesis-2',
-    name: '🎈 GENESIS II EXPANDABLE',
+    name: 'GENESIS II EXPANDABLE',
     noradId: '31789',
     category: 'brightest',
     altitudeM: 560_000,
@@ -91,7 +91,7 @@ export const SATELLITES: SatelliteConfig[] = [
   // 3. WEATHER (#A78BFA)
   {
     id: 'noaa-19',
-    name: '🌤️ NOAA-19 CLIMATE',
+    name: 'NOAA-19 CLIMATE',
     noradId: '33591',
     category: 'weather',
     altitudeM: 870_000,
@@ -103,7 +103,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'noaa-20',
-    name: '🌤️ NOAA-20 WEATHER',
+    name: 'NOAA-20 WEATHER',
     noradId: '43010',
     category: 'weather',
     altitudeM: 824_000,
@@ -115,83 +115,83 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'goes-16',
-    name: '🌀 GOES-16 WEATHER (GEO-MOCK)',
+    name: 'GOES-16 WEATHER (GEO)',
     noradId: '41866',
     category: 'weather',
-    altitudeM: 1_200_000, 
+    altitudeM: 35_786_000,
     inclinationRad: (0.1 * Math.PI) / 180,
     omega0: 3.5,
     argLat0: 0.2,
     color: '#A78BFA',
-    description: 'Geostationary environmental satellite monitoring weather across East Americas.',
+    description: 'Geostationary environmental satellite monitoring weather across East Americas from the GEO belt.',
   },
   {
     id: 'meteosat-11',
-    name: '🌀 METEOSAT-11 WEATHER',
+    name: 'METEOSAT-11 WEATHER',
     noradId: '42830',
     category: 'weather',
-    altitudeM: 1_100_000,
+    altitudeM: 35_786_000,
     inclinationRad: (0.8 * Math.PI) / 180,
     omega0: -2.3,
     argLat0: 2.9,
     color: '#A78BFA',
-    description: 'European meteorological geostationary weather satellite providing coverage over Europe/Africa.',
+    description: 'European meteorological geostationary weather satellite providing coverage over Europe/Africa from the GEO belt.',
   },
 
   // 4. GPS (#22C55E)
   {
     id: 'gps-prn01',
-    name: '🛰️ GPS BIIRM-1 (PRN 01)',
+    name: 'GPS BIIRM-1 (PRN 01)',
     noradId: '28474',
     category: 'gps',
-    altitudeM: 950_000, 
+    altitudeM: 20_200_000,
     inclinationRad: (55.0 * Math.PI) / 180,
     omega0: 0.0,
     argLat0: 0.8,
     color: '#22C55E',
-    description: 'US GPS block IIR-M navigational satellite serving global military/civilian networks.',
+    description: 'US GPS block IIR-M navigational satellite serving global military/civilian networks from medium Earth orbit.',
   },
   {
     id: 'gps-prn02',
-    name: '🛰️ GPS BIIF-1 (PRN 02)',
+    name: 'GPS BIIF-1 (PRN 02)',
     noradId: '36585',
     category: 'gps',
-    altitudeM: 950_000,
+    altitudeM: 20_200_000,
     inclinationRad: (55.0 * Math.PI) / 180,
     omega0: (60.0 * Math.PI) / 180,
     argLat0: 2.4,
     color: '#22C55E',
-    description: 'US GPS block IIF navigational satellite providing ultra-precise atomic clocks.',
+    description: 'US GPS block IIF navigational satellite providing ultra-precise atomic clocks from medium Earth orbit.',
   },
   {
     id: 'glonass-701',
-    name: '🛰️ GLONASS-701 (RUSSIAN)',
+    name: 'GLONASS-701 (RUSSIAN)',
     noradId: '28915',
     category: 'gps',
-    altitudeM: 920_000,
+    altitudeM: 19_100_000,
     inclinationRad: (64.8 * Math.PI) / 180,
     omega0: 1.5,
     argLat0: 4.1,
     color: '#22C55E',
-    description: 'Russian global navigation satellite system providing civilian/defense services.',
+    description: 'Russian global navigation satellite system providing civilian/defense services from medium Earth orbit.',
   },
   {
     id: 'galileo-e01',
-    name: '🛰️ GALILEO-E01 (EUROPEAN)',
+    name: 'GALILEO-E01 (EUROPEAN)',
     noradId: '37846',
     category: 'gps',
-    altitudeM: 980_000,
+    altitudeM: 23_222_000,
     inclinationRad: (56.0 * Math.PI) / 180,
     omega0: -1.8,
     argLat0: 1.5,
     color: '#22C55E',
-    description: 'European union global navigation system, offering independent precise positioning.',
+    description: 'European union global navigation system, offering independent precise positioning from medium Earth orbit.',
   },
 
   // 5. EARTH OBSERVATION (#F97316)
   {
     id: 'terra',
-    name: '🌍 TERRA MONITOR (NASA)',
+    name: 'TERRA MONITOR (NASA)',
     noradId: '25994',
     category: 'earthObs',
     altitudeM: 705_000,
@@ -203,7 +203,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'aqua',
-    name: '🌍 AQUA WATER (NASA)',
+    name: 'AQUA WATER (NASA)',
     noradId: '27424',
     category: 'earthObs',
     altitudeM: 705_000,
@@ -215,7 +215,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'landsat-8',
-    name: '📸 LANDSAT-8 GEOLOGICAL',
+    name: 'LANDSAT-8 GEOLOGICAL',
     noradId: '39084',
     category: 'earthObs',
     altitudeM: 705_000,
@@ -227,7 +227,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'sentinel-2a',
-    name: '📸 SENTINEL-2A (ESA)',
+    name: 'SENTINEL-2A (ESA)',
     noradId: '40697',
     category: 'earthObs',
     altitudeM: 786_000,
@@ -241,7 +241,7 @@ export const SATELLITES: SatelliteConfig[] = [
   // 6. STARLINK (#FFFFFF)
   {
     id: 'starlink-1007',
-    name: '🛰️ STARLINK-1007 (COMMS)',
+    name: 'STARLINK-1007 (COMMS)',
     noradId: '44713',
     category: 'starlink',
     altitudeM: 550_000,
@@ -253,7 +253,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'starlink-3012',
-    name: '🛰️ STARLINK-3012 (COMMS)',
+    name: 'STARLINK-3012 (COMMS)',
     noradId: '49281',
     category: 'starlink',
     altitudeM: 550_000,
@@ -265,7 +265,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'starlink-4015',
-    name: '🛰️ STARLINK-4015 (COMMS)',
+    name: 'STARLINK-4015 (COMMS)',
     noradId: '53600',
     category: 'starlink',
     altitudeM: 550_000,
@@ -277,7 +277,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'starlink-5021',
-    name: '🛰️ STARLINK-5021 (COMMS)',
+    name: 'STARLINK-5021 (COMMS)',
     noradId: '55610',
     category: 'starlink',
     altitudeM: 550_000,
@@ -291,19 +291,19 @@ export const SATELLITES: SatelliteConfig[] = [
   // 7. MILITARY (#3B82F6)
   {
     id: 'usa-243',
-    name: '🛡️ USA-243 (WGS-5 MILCOM)',
+    name: 'USA-243 (WGS-5 MILCOM)',
     noradId: '39172',
     category: 'military',
-    altitudeM: 1_050_000,
+    altitudeM: 35_786_000,
     inclinationRad: (12.0 * Math.PI) / 180,
     omega0: 0.4,
     argLat0: 1.5,
     color: '#3B82F6',
-    description: 'Wideband Global SATCOM tactical communications satellite for US Dept of Defense.',
+    description: 'Wideband Global SATCOM tactical communications satellite for US Dept of Defense in geostationary orbit.',
   },
   {
     id: 'usa-276',
-    name: '🛡️ USA-276 RECONNAISSANCE',
+    name: 'USA-276 RECONNAISSANCE',
     noradId: '42689',
     category: 'military',
     altitudeM: 400_000,
@@ -315,7 +315,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'usa-290',
-    name: '🛡️ USA-290 (NROL-71 SPY)',
+    name: 'USA-290 (NROL-71 SPY)',
     noradId: '43906',
     category: 'military',
     altitudeM: 410_000,
@@ -327,7 +327,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'kosmos-2542',
-    name: '🛡️ KOSMOS-2542 (RUSSIAN)',
+    name: 'KOSMOS-2542 (RUSSIAN)',
     noradId: '44797',
     category: 'military',
     altitudeM: 370_000,
@@ -341,7 +341,7 @@ export const SATELLITES: SatelliteConfig[] = [
   // 8. OTHER (#94A3B8)
   {
     id: 'calipso',
-    name: '🛰️ CALIPSO CLOUD LASER',
+    name: 'CALIPSO CLOUD LASER',
     noradId: '29108',
     category: 'other',
     altitudeM: 705_000,
@@ -353,7 +353,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'cloudsat',
-    name: '🛰️ CLOUDSAT METEOROLOGY',
+    name: 'CLOUDSAT METEOROLOGY',
     noradId: '29107',
     category: 'other',
     altitudeM: 705_000,
@@ -365,7 +365,7 @@ export const SATELLITES: SatelliteConfig[] = [
   },
   {
     id: 'suomi-npp',
-    name: '🛰️ SUOMI NPP (WEATHER/OBS)',
+    name: 'SUOMI NPP (WEATHER/OBS)',
     noradId: '37849',
     category: 'other',
     altitudeM: 824_000,

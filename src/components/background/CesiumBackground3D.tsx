@@ -1,7 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useCesiumViewer } from '../../hooks/cesium/useCesiumViewer';
 import { useLandmarks } from '../../hooks/cesium/useLandmarks';
-import { useIssTracker } from '../../hooks/cesium/useIssTracker';
 import { useAutoRotation } from '../../hooks/cesium/useAutoRotation';
 import { useWWVGlobe } from '../../hooks/cesium/useWWVGlobe';
 import { useConstellations } from '../../hooks/cesium/useConstellations';
@@ -42,7 +41,6 @@ export default function CesiumBackground3D({ interactive, onError }: CesiumBackg
 
   // Activate Cesium features
   useLandmarks(viewer);
-  useIssTracker(viewer);
   useAutoRotation(viewer, interactive);
   useWWVGlobe(viewer);
   useConstellations(viewer);

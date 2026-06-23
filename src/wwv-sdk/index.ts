@@ -157,6 +157,8 @@ export interface CesiumEntityOptions {
     modelScale?: number;
     modelMinPixelSize?: number;
     modelHeadingOffset?: number;
+    /** Camera distance in meters below which a model entity is promoted from billboard fallback to glTF. */
+    modelPromotionDistance?: number;
     trailOptions?: {
         width?: number;
         color?: string;

@@ -28,6 +28,10 @@ interface EngineConnection {
   awaitingWelcome: boolean;
   /** Closes the connection if the server doesn't send welcome within 3s */
   authTimeoutTimer: NodeJS.Timeout | null;
+  /** Prevents repeated user-facing outage warnings while background retries continue */
+  outageNoticeEmitted: boolean;
+  /** Last time a retry diagnostic was written for this engine */
+  lastRetryDiagnosticAt: number;
 }
 
 const RECONNECT_BASE_MS = 5000;
@@ -35,6 +39,7 @@ const RECONNECT_MAX_MS = 60000; // Cap at 1 minute
 const RECONNECT_JITTER_MS = 4000;
 const STABLE_CONNECTION_MS = 5000; // Reset backoff after 5s of stable connection
 const CLEANUP_GRACE_MS = 30000;
+const RETRY_DIAGNOSTIC_INTERVAL_MS = 60000;
 
 /** Normalizes underscore-based pluginIds to kebab-case (e.g. `my_plugin` → `my-plugin`). */
 function normalizePluginId(id: string): string {
@@ -56,10 +61,44 @@ class WebSocketClient {
         stableConnectionTimer: null,
         awaitingWelcome: false,
         authTimeoutTimer: null,
+        outageNoticeEmitted: false,
+        lastRetryDiagnosticAt: 0,
       };
       this.engines.set(engineUrl, engine);
     }
     return engine;
+  }
+
+  private recordEngineOutage(engine: EngineConnection, engineUrl: string, reconnectAttempts = 0, delay = 0) {
+    const now = Date.now();
+    const firstNotice = !engine.outageNoticeEmitted;
+    const shouldRecordDiagnostic = firstNotice || now - engine.lastRetryDiagnosticAt > RETRY_DIAGNOSTIC_INTERVAL_MS;
+    const retryText = reconnectAttempts > 0
+      ? ` Retrying in about ${Math.round(delay / 1000)} seconds.`
+      : " Retrying in the background.";
+    const message = `WorldWideView live stream is unavailable.${retryText} Static copied layers and WWT controls remain usable.`;
+
+    if (firstNotice) {
+      console.warn(`[WSClient] ${message}`);
+      engine.outageNoticeEmitted = true;
+    } else {
+      console.debug(`[WSClient] ${message}`);
+    }
+
+    if (!shouldRecordDiagnostic) return;
+
+    engine.lastRetryDiagnosticAt = now;
+    try {
+      useDiagnosticsStore.getState().add({
+        level: reconnectAttempts > 0 ? 'warning' : 'error',
+        message: `[WSClient] ${message}`,
+        suggestion:
+          'Check the configured WorldWideView engine URL or continue with static copied layers until the live stream is reachable.',
+        metadata: { engineUrl, reconnectAttempts, delay, staticFallbackAvailable: true }
+      });
+    } catch (e) {
+      // ignore diagnostics errors
+    }
   }
 
   private connectEngine(engineUrl: string) {
@@ -84,6 +123,8 @@ class WebSocketClient {
 
     engine.ws.onopen = () => {
       console.debug(`[WSClient] 🟢 Connected to ${engineUrl}. WS Handshake took ${(performance.now() - wsStart).toFixed(2)}ms`);
+      engine.outageNoticeEmitted = false;
+      engine.lastRetryDiagnosticAt = 0;
       // Only reset backoff if the connection stays open for a non-trivial time —
       // an immediate close (e.g. server-side rejection) shouldn't be treated as success.
       if (engine.stableConnectionTimer) clearTimeout(engine.stableConnectionTimer);
@@ -145,18 +186,7 @@ class WebSocketClient {
     };
 
     engine.ws.onerror = () => {
-      const errMsg = `Connection to ${engineUrl} failed. Retrying in background...`;
-      console.warn(`[WSClient] ${errMsg}`);
-      try {
-        useDiagnosticsStore.getState().add({
-          level: 'error',
-          message: `[WSClient] ${errMsg}`,
-          suggestion: 'Ensure that the local backend service or engine is reachable at the specified address, or check for network connectivity issues.',
-          metadata: { engineUrl }
-        });
-      } catch (e) {
-        // ignore diagnostics errors
-      }
+      this.recordEngineOutage(engine, engineUrl);
     };
 
     engine.ws.onclose = () => {
@@ -179,19 +209,7 @@ class WebSocketClient {
         );
         const delay = expDelay + Math.random() * RECONNECT_JITTER_MS;
         engine.reconnectAttempts++;
-        const reconnectMessage = `Disconnected from ${engineUrl}. Reconnecting in ${Math.round(delay / 1000)}s (attempt ${engine.reconnectAttempts})...`;
-        console.warn(`[WSClient] ${reconnectMessage}`);
-        
-        try {
-          useDiagnosticsStore.getState().add({
-            level: 'warning',
-            message: `[WSClient] ${reconnectMessage}`,
-            suggestion: 'Verify that the engine server is running at the configured URL and that there are no local firewall or routing blockers.',
-            metadata: { engineUrl, reconnectAttempts: engine.reconnectAttempts, delay }
-          });
-        } catch (e) {
-          // ignore diagnostics errors
-        }
+        this.recordEngineOutage(engine, engineUrl, engine.reconnectAttempts, delay);
 
         engine.reconnectTimer = setTimeout(() => this.connectEngine(engineUrl), delay);
       }

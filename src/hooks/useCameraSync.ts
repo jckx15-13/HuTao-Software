@@ -1,7 +1,23 @@
 import { useEffect, useRef } from 'react';
 import * as Cesium from 'cesium';
 import { useUIStore } from '../store/uiStore';
-import { ecefToCelestial, celestialToEcef } from '../lib/coordinateTransforms';
+import { ecefToCelestial, celestialToEcef, raHoursToDegrees } from '../lib/coordinateTransforms';
+
+const MIN_WWT_FOV_DEGREES = 0.25;
+const MAX_WWT_FOV_DEGREES = 60;
+const EARTH_RADIUS_METERS = 6_378_137;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function cameraHeightToWwtFovDegrees(camera: Cesium.Camera): number {
+  const cartographic = Cesium.Cartographic.fromCartesian(camera.positionWC);
+  const height = Number.isFinite(cartographic.height) ? Math.max(0, cartographic.height) : EARTH_RADIUS_METERS;
+  const horizonAngleRadians = 2 * Math.atan(EARTH_RADIUS_METERS / Math.max(EARTH_RADIUS_METERS, height));
+  const fov = Cesium.Math.toDegrees(horizonAngleRadians);
+  return clamp(fov, MIN_WWT_FOV_DEGREES, MAX_WWT_FOV_DEGREES);
+}
 
 /**
  * useCameraSync Hook
@@ -53,10 +69,10 @@ export function useCameraSync(
       // Push to WWT iframe
       postToWWT({
         event: 'center_on_coordinates',
-        ra: celestial.ra,
+        ra: raHoursToDegrees(celestial.ra),
         dec: celestial.dec,
         roll: roll,
-        fov: 60, // TODO: Map Cesium height to WWT FOV
+        fov: cameraHeightToWwtFovDegrees(camera),
         instant: true,
       });
 

@@ -1,11 +1,13 @@
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '../../core/state/store';
 import { pluginManager } from '../../core/plugins/PluginManager';
+import type { GeoEntity } from '@/core/plugins/PluginTypes';
 import { DiagnosticPanel } from '../DiagnosticPanel';
 import { TelemetryPanel } from '../TelemetryPanel';
 import { OdysseusConsole } from '../dev/OdysseusConsole';
-import { ChevronRight, Globe, Terminal, Info, MapPin, Radio, Compass, X, ArrowLeft, RotateCw, ExternalLink as ExtLink, Bug, Activity } from 'lucide-react';
+import { ChevronRight, Globe, Terminal, Info, MapPin, Radio, Compass, X, ArrowLeft, RotateCw, ExternalLink as ExtLink, Bug, Activity, Plane, Camera, Shield } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
+import { WWV_ORBITAL_ASSET_BY_CATEGORY } from '@/assets/wwvVisualAssets';
 
 export function RightPanel() {
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
@@ -37,6 +39,7 @@ export function RightPanel() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [history, setHistory] = useState<string[]>([browserUrl]);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const isFallbackMode = typeof window !== 'undefined' && window.location.search.includes('fallback');
 
   // Sync input when the global URL updates during render to avoid synchronous setState in effect
   const [prevBrowserUrl, setPrevBrowserUrl] = useState(browserUrl);
@@ -98,24 +101,24 @@ export function RightPanel() {
 
   if (!rightPanelOpen) return null;
 
-  const isSpatialMode = interactionMode === 'orbital';
+  const isSpatialMode = interactionMode === 'orbital' || interactionMode === 'telescope';
 
   return (
     <aside
       className={`glass-panel flex flex-col select-none pointer-events-auto transition-all duration-300 ${
         isSpatialMode
-          ? 'fixed top-[68px] right-[12px] bottom-[52px] w-[310px] rounded-xl border border-white/10 shadow-2xl z-20 h-auto'
+          ? 'fixed top-[112px] right-[12px] bottom-[52px] w-[310px] rounded-xl border border-white/10 shadow-2xl z-20 h-auto'
           : 'h-full w-[310px] border-l border-white/5'
       }`}
       style={!isSpatialMode ? { borderRadius: 0 } : undefined}
     >
       {/* Header and Tab Switcher */}
-      <div className="flex min-h-12 py-1.5 items-center justify-between px-3 border-b border-white/5 bg-black/10">
-        <div className="flex flex-wrap items-center gap-1 font-mono text-[8.5px]">
+      <div className="flex min-h-14 py-1.5 items-center justify-between gap-2 px-3 border-b border-white/5 bg-black/10">
+        <div className="flex flex-wrap items-center gap-1.5 font-mono text-[8.5px]">
           <button
             type="button"
             onClick={() => setRightPanelTab('context')}
-            className={`px-1.5 py-0.5 rounded transition-colors ${
+            className={`inline-flex min-h-11 items-center rounded px-2 transition-colors ${
               rightPanelTab === 'context' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -124,7 +127,7 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('browser')}
-            className={`px-1.5 py-0.5 rounded transition-colors ${
+            className={`inline-flex min-h-11 items-center rounded px-2 transition-colors ${
               rightPanelTab === 'browser' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -133,7 +136,7 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('changes')}
-            className={`px-1.5 py-0.5 rounded transition-colors ${
+            className={`inline-flex min-h-11 items-center rounded px-2 transition-colors ${
               rightPanelTab === 'changes' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -142,7 +145,7 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('diagnostics')}
-            className={`px-1.5 py-0.5 rounded transition-colors ${
+            className={`inline-flex min-h-11 items-center rounded px-2 transition-colors ${
               rightPanelTab === 'diagnostics' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -151,7 +154,7 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('telemetry')}
-            className={`px-1.5 py-0.5 rounded transition-colors ${
+            className={`inline-flex min-h-11 items-center rounded px-2 transition-colors ${
               rightPanelTab === 'telemetry' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -160,7 +163,7 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('odysseus')}
-            className={`px-1.5 py-0.5 rounded transition-colors ${
+            className={`inline-flex min-h-11 items-center rounded px-2 transition-colors ${
               rightPanelTab === 'odysseus' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -171,7 +174,7 @@ export function RightPanel() {
         <button
           type="button"
           onClick={() => setRightPanelOpen(false)}
-          className="rounded p-1 text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors"
           title="Collapse Panel"
         >
           <ChevronRight className="h-4 w-4" />
@@ -189,12 +192,14 @@ export function RightPanel() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-cyan-400 font-mono text-[9px] font-bold uppercase tracking-wider">
                     <Radio className="h-3.5 w-3.5 animate-pulse" />
-                    <span>ISS LIVE TELECAST</span>
+                    <span>{isFallbackMode ? 'ISS CAMERA UNAVAILABLE' : 'ISS CAMERA FEED'}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIssFeedOpen(false)}
-                    className="rounded p-0.5 hover:bg-white/5 text-white/30 hover:text-white/70"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded hover:bg-white/5 text-white/30 hover:text-white/70"
+                    aria-label="Close ISS camera panel"
+                    title="Close ISS camera panel"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -202,14 +207,17 @@ export function RightPanel() {
 
                 {/* Live stream video frame */}
                 <div className="relative aspect-video w-full rounded overflow-hidden bg-black border border-white/5 flex items-center justify-center">
-                  {window.location.search.includes('fallback') ? (
-                    <div className="text-cyan-400 font-mono text-[9px] text-center p-4">
-                      [ISS LIVE TELECAST MOCKED]
+                  {isFallbackMode ? (
+                    <div className="text-cyan-300 font-mono text-[9px] text-center p-4 leading-relaxed">
+                      Camera stream disabled in fallback mode. Satellite telemetry may still update below.
                     </div>
                   ) : (
                     <iframe
                       src="https://www.ustream.tv/embed/17074538?html5=1&autoplay=1&mute=1"
                       title="ISS Live Camera Feed"
+                      sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allow="autoplay; fullscreen; picture-in-picture"
                       allowFullScreen
                       className="absolute inset-0 h-full w-full border-none"
                     />
@@ -291,6 +299,12 @@ export function RightPanel() {
                   </div>
                 )}
               </div>
+            ) : selectedEntity?.pluginId === 'wwv-aviation' ? (
+              <AviationTelemetryCard entity={selectedEntity} />
+            ) : selectedEntity?.pluginId === 'wwv-public-cameras' ? (
+              <PublicCameraTelemetryCard entity={selectedEntity} />
+            ) : selectedEntity?.pluginId === 'wwv-military-bases' ? (
+              <MilitaryBaseTelemetryCard entity={selectedEntity} />
             ) : selectedEntity ? (
               <div className="space-y-3">
                 <div className="space-y-1">
@@ -317,7 +331,9 @@ export function RightPanel() {
                   )}
                   {selectedEntity.timestamp && (
                     <div className="flex items-center justify-between text-white/50">
-                      <span className="uppercase">Telemetry Time</span>
+                      <span className="uppercase">
+                        {selectedEntity.properties?.staticDataset ? 'Dataset Time' : 'Telemetry Time'}
+                      </span>
                       <span>{new Date(selectedEntity.timestamp).toLocaleTimeString()}</span>
                     </div>
                   )}
@@ -374,7 +390,8 @@ export function RightPanel() {
                 type="button"
                 onClick={handleBack}
                 disabled={historyIndex <= 0}
-                className="p-1 rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none text-white/70 transition-colors"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none text-white/70 transition-colors"
+                aria-label="Go back in embedded browser"
                 title="Back"
               >
                 <ArrowLeft size={12} />
@@ -382,7 +399,8 @@ export function RightPanel() {
               <button
                 type="button"
                 onClick={handleRefresh}
-                className="p-1 rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
+                aria-label="Refresh embedded browser frame"
                 title="Refresh Frame"
               >
                 <RotateCw size={12} />
@@ -390,12 +408,13 @@ export function RightPanel() {
               <button
                 type="button"
                 onClick={handleHome}
-                className="p-1 rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
+                aria-label="Open embedded browser home page"
                 title="Home Page"
               >
                 <Globe size={12} />
               </button>
-              <div className="flex-1 flex items-center gap-1 bg-black/40 px-2 py-1 rounded border border-white/5">
+              <div className="flex min-h-11 flex-1 items-center gap-1 rounded border border-white/5 bg-black/40 px-2 py-1">
                 <input
                   type="text"
                   value={addressInput}
@@ -405,14 +424,19 @@ export function RightPanel() {
                       handleNavigate(addressInput);
                     }
                   }}
-                  className="w-full bg-transparent text-[8px] text-white/80 focus:outline-none placeholder:text-white/20 select-text"
+                  className="min-h-11 w-full bg-transparent text-[8px] text-white/80 focus:outline-none placeholder:text-white/20 select-text"
                   placeholder="URL or search query..."
+                  aria-label="Embedded browser URL or search query"
                 />
               </div>
               <button
                 type="button"
-                onClick={() => window.open(browserUrl, '_blank')}
-                className="p-1 rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
+                onClick={() => {
+                  const opened = window.open(browserUrl, '_blank', 'noopener,noreferrer');
+                  if (opened) opened.opener = null;
+                }}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
+                aria-label="Open embedded browser URL in new window"
                 title="Open in new window"
               >
                 <ExtLink size={12} />
@@ -493,12 +517,307 @@ export function RightPanel() {
   );
 }
 
+function AviationTelemetryCard({ entity }: { entity: GeoEntity }) {
+  const properties = entity.properties || {};
+  const callsign = String(properties.callsign || entity.label || entity.id);
+  const operator = String(properties.operator || 'WorldWideView sample aircraft');
+  const kind = String(properties.kind || 'civil');
+  const altitudeKm = Number(entity.altitude || 0) / 1000;
+  const speed = Number(entity.speed || properties.speed_mps || 0);
+  const speedKmh = speed * 3.6;
+  const heading = Number(entity.heading || 0);
+  const iconUrl = String(properties.iconUrl || properties.visualAssetUrl || '');
+  const modelUrl = String(properties.modelUrl || '');
+  const sourcePath = String(properties.sourcePath || 'worldwideview/public/airplane/scene.gltf');
+  const stateHonesty = String(properties.stateHonesty || 'Static sample aircraft layer, not live ADS-B telemetry.');
+  const visualAssetStatus = String(properties.visualAssetStatus || 'Rendered with copied WorldWideView aircraft assets.');
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Plane className="h-4 w-4 text-sky-300" />
+          <h3 className="font-bold text-sm tracking-wide text-white uppercase">{callsign}</h3>
+        </div>
+        <span className="text-[7.5px] font-mono uppercase tracking-widest text-sky-300">
+          {kind} aircraft sample
+        </span>
+        <div className="text-[9px] text-white/45 font-mono uppercase">{operator}</div>
+      </div>
+
+      <div className="border-t border-white/5 pt-3 space-y-2 font-mono text-[9px]">
+        <div className="flex items-center justify-between text-white/50">
+          <span className="uppercase">Latitude</span>
+          <span className="text-cyan-400 font-bold">{entity.latitude.toFixed(5)}°</span>
+        </div>
+        <div className="flex items-center justify-between text-white/50">
+          <span className="uppercase">Longitude</span>
+          <span className="text-cyan-400 font-bold">{entity.longitude.toFixed(5)}°</span>
+        </div>
+        <div className="flex items-center justify-between text-white/50">
+          <span className="uppercase">Altitude</span>
+          <span className="text-white font-bold">{altitudeKm.toFixed(1)} km</span>
+        </div>
+        <div className="flex items-center justify-between text-white/50">
+          <span className="uppercase">Ground Speed</span>
+          <span className="text-white font-bold">{speedKmh.toFixed(0)} km/h</span>
+        </div>
+        <div className="flex items-center justify-between text-white/50">
+          <span className="uppercase">Heading</span>
+          <span className="text-white font-bold">{heading.toFixed(0)}°</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-white/50">
+          <span className="uppercase">Telemetry State</span>
+          <span className="text-amber-300 text-right font-bold">Static sample</span>
+        </div>
+      </div>
+
+      <div className="rounded border border-amber-400/15 bg-amber-400/5 p-3 font-mono text-[8px] uppercase leading-relaxed text-amber-100/65">
+        {stateHonesty}
+      </div>
+
+      <div className="space-y-1.5 rounded border border-sky-300/10 bg-sky-300/5 p-3 font-mono text-[8px] uppercase leading-relaxed text-white/45">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-bold text-sky-300">WWV Aircraft Asset Source</span>
+          <span className="text-emerald-300">Copied assets active</span>
+        </div>
+        <div>{visualAssetStatus}</div>
+        <div className="break-all">
+          <span className="text-white/30">Icon path: </span>
+          <span className="text-white/65">{iconUrl || 'Unavailable'}</span>
+        </div>
+        <div className="break-all">
+          <span className="text-white/30">Model path: </span>
+          <span className="text-white/65">{modelUrl || 'Unavailable'}</span>
+        </div>
+        <div className="break-all">
+          <span className="text-white/30">Source path: </span>
+          <span className="text-white/65">{sourcePath}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PublicCameraTelemetryCard({ entity }: { entity: GeoEntity }) {
+  const properties = entity.properties || {};
+  const label = String(entity.label || entity.id);
+  const city = String(properties.city || 'Unknown city');
+  const region = String(properties.region || 'Unknown region');
+  const country = String(properties.country || 'Unknown country');
+  const categories = String(properties.categories || 'Uncategorized');
+  const timezone = String(properties.timezone || 'Not provided');
+  const sourcePath = String(properties.sourcePath || 'worldwideview/public/cameras_geojson.json');
+  const copiedDatasetPath = String(properties.copiedDatasetPath || '/wwv-assets/source-public/cameras_geojson.json');
+  const stateHonesty = String(
+    properties.stateHonesty ||
+    'Static copied WWV public-camera locations. Markers do not prove cameras are online and do not open video streams.'
+  );
+  const streamPolicy = String(
+    properties.externalStreamPolicy ||
+    'Copied camera stream and thumbnail URLs are scrubbed from the served dataset; Silver Wolf renders static locations only.'
+  );
+  const datasetFeatureCount = Number(properties.datasetFeatureCount || 0);
+  const renderedFeatureLimit = Number(properties.renderedFeatureLimit || 0);
+  const streamPresent = Boolean(properties.externalStreamPresent);
+  const previewPresent = Boolean(properties.externalPreviewPresent);
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <div className="flex items-start gap-2">
+          <Camera className="h-4 w-4 shrink-0 text-cyan-300 mt-0.5" />
+          <h3 className="font-bold text-sm tracking-wide text-white uppercase leading-snug break-words">{label}</h3>
+        </div>
+        <span className="text-[7.5px] font-mono uppercase tracking-widest text-cyan-300">
+          Static public-camera location
+        </span>
+        <div className="text-[9px] text-white/45 font-mono uppercase leading-relaxed">
+          {[city, region, country].filter(Boolean).join(' / ')}
+        </div>
+      </div>
+
+      <div className="border-t border-white/5 pt-3 space-y-2 font-mono text-[9px]">
+        <div className="flex items-center justify-between gap-3 text-white/50">
+          <span className="uppercase">Latitude</span>
+          <span className="text-cyan-400 font-bold">{entity.latitude.toFixed(5)}°</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-white/50">
+          <span className="uppercase">Longitude</span>
+          <span className="text-cyan-400 font-bold">{entity.longitude.toFixed(5)}°</span>
+        </div>
+        <div className="flex items-start justify-between gap-3 text-white/50">
+          <span className="uppercase">Categories</span>
+          <span className="text-right text-white font-bold break-words">{categories}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-white/50">
+          <span className="uppercase">Timezone</span>
+          <span className="text-white font-bold">{timezone}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-white/50">
+          <span className="uppercase">Stream URLs</span>
+          <span className="text-amber-300 text-right font-bold">
+            {streamPresent || previewPresent ? 'Scrubbed from served copy' : 'Not provided'}
+          </span>
+        </div>
+      </div>
+
+      <div className="rounded border border-amber-400/15 bg-amber-400/5 p-3 font-mono text-[8px] uppercase leading-relaxed text-amber-100/65">
+        {stateHonesty}
+      </div>
+
+      <div className="space-y-1.5 rounded border border-cyan-300/10 bg-cyan-300/5 p-3 font-mono text-[8px] uppercase leading-relaxed text-white/45">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-bold text-cyan-300">External Feed Policy</span>
+          <span className="text-amber-300">Blocked by design</span>
+        </div>
+        <div>{streamPolicy}</div>
+        <div>
+          <span className="text-white/30">Rendered records: </span>
+          <span className="text-white/65">
+            {renderedFeatureLimit > 0 ? renderedFeatureLimit.toLocaleString() : 'Capped'} of{' '}
+            {datasetFeatureCount > 0 ? datasetFeatureCount.toLocaleString() : 'copied dataset'}
+          </span>
+        </div>
+        <div className="break-all">
+          <span className="text-white/30">Dataset path: </span>
+          <span className="text-white/65">{copiedDatasetPath}</span>
+        </div>
+        <div className="break-all">
+          <span className="text-white/30">Source path: </span>
+          <span className="text-white/65">{sourcePath}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MilitaryBaseTelemetryCard({ entity }: { entity: GeoEntity }) {
+  const properties = entity.properties || {};
+  const label = String(entity.label || entity.id);
+  const type = String(properties.type || 'military site');
+  const operator = String(properties.operator || 'Unknown');
+  const sourcePath = String(properties.sourcePath || 'worldwideview/public/military_bases.geojson');
+  const copiedDatasetPath = String(properties.copiedDatasetPath || '/wwv-assets/data/military_bases.geojson');
+  const stateHonesty = String(
+    properties.stateHonesty ||
+    'Static copied WWV dataset. Position records are not a live military feed.'
+  );
+  const visualAssetStatus = String(
+    properties.visualAssetStatus ||
+    'Military markers use copied WWV aircraft imagery where applicable and generated shield markers otherwise.'
+  );
+  const visualAssetUrl = String(properties.visualAssetUrl || properties.iconUrl || '');
+  const datasetFeatureCount = Number(properties.datasetFeatureCount || 0);
+  const renderedFeatureLimit = Number(properties.renderedFeatureLimit || 0);
+  const renderedFeatureNote = String(
+    properties.renderedFeatureNote ||
+    'Desktop startup renders a capped subset from the full copied WWV dataset to keep controls responsive.'
+  );
+  const osmId = String(properties.osmId || 'Not provided');
+  const wikidata = String(properties.wikidata || 'Not provided');
+  const wikipedia = String(properties.wikipedia || 'Not provided');
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <div className="flex items-start gap-2">
+          <Shield className="h-4 w-4 shrink-0 text-blue-300 mt-0.5" />
+          <h3 className="font-bold text-sm tracking-wide text-white uppercase leading-snug break-words">{label}</h3>
+        </div>
+        <span className="text-[7.5px] font-mono uppercase tracking-widest text-blue-300">
+          Static WWV military-site record
+        </span>
+        <div className="text-[9px] text-white/45 font-mono uppercase leading-relaxed">
+          {type} / {operator}
+        </div>
+      </div>
+
+      <div className="border-t border-white/5 pt-3 space-y-2 font-mono text-[9px]">
+        <div className="flex items-center justify-between gap-3 text-white/50">
+          <span className="uppercase">Latitude</span>
+          <span className="text-cyan-400 font-bold">{entity.latitude.toFixed(5)}°</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-white/50">
+          <span className="uppercase">Longitude</span>
+          <span className="text-cyan-400 font-bold">{entity.longitude.toFixed(5)}°</span>
+        </div>
+        <div className="flex items-start justify-between gap-3 text-white/50">
+          <span className="uppercase">Site Type</span>
+          <span className="text-right text-white font-bold break-words">{type}</span>
+        </div>
+        <div className="flex items-start justify-between gap-3 text-white/50">
+          <span className="uppercase">Operator</span>
+          <span className="text-right text-white font-bold break-words">{operator}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-white/50">
+          <span className="uppercase">Telemetry State</span>
+          <span className="text-amber-300 text-right font-bold">Static dataset</span>
+        </div>
+      </div>
+
+      <div className="rounded border border-amber-400/15 bg-amber-400/5 p-3 font-mono text-[8px] uppercase leading-relaxed text-amber-100/65">
+        {stateHonesty}
+      </div>
+
+      <div className="space-y-1.5 rounded border border-blue-300/10 bg-blue-300/5 p-3 font-mono text-[8px] uppercase leading-relaxed text-white/45">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-bold text-blue-300">WWV Military Dataset Source</span>
+          <span className="text-amber-300">Static copied data</span>
+        </div>
+        <div>{renderedFeatureNote}</div>
+        <div>
+          <span className="text-white/30">Rendered records: </span>
+          <span className="text-white/65">
+            {renderedFeatureLimit > 0 ? renderedFeatureLimit.toLocaleString() : 'Capped'} of{' '}
+            {datasetFeatureCount > 0 ? datasetFeatureCount.toLocaleString() : 'copied dataset'}
+          </span>
+        </div>
+        <div className="break-all">
+          <span className="text-white/30">Dataset path: </span>
+          <span className="text-white/65">{copiedDatasetPath}</span>
+        </div>
+        <div className="break-all">
+          <span className="text-white/30">Source path: </span>
+          <span className="text-white/65">{sourcePath}</span>
+        </div>
+        <div className="break-all">
+          <span className="text-white/30">OSM id: </span>
+          <span className="text-white/65">{osmId}</span>
+        </div>
+        <div className="break-all">
+          <span className="text-white/30">Wikidata: </span>
+          <span className="text-white/65">{wikidata}</span>
+        </div>
+        <div className="break-all">
+          <span className="text-white/30">Wikipedia: </span>
+          <span className="text-white/65">{wikipedia}</span>
+        </div>
+      </div>
+
+      <div className="space-y-1.5 rounded border border-sky-300/10 bg-sky-300/5 p-3 font-mono text-[8px] uppercase leading-relaxed text-white/45">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-bold text-sky-300">Marker Asset</span>
+          <span className="text-emerald-300">Desktop ready</span>
+        </div>
+        <div>{visualAssetStatus}</div>
+        <div className="break-all">
+          <span className="text-white/30">Asset path: </span>
+          <span className="text-white/65">{visualAssetUrl || 'Generated marker'}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 import { SATELLITES } from '@/data/satellites';
+import { WWV_ASSET_AUDIT } from '@/assets/wwvVisualAssets';
 import { propagateCircularOrbit, calculateOrbitalSpeed, calculateOrbitalPeriod } from '../../lib/simulation';
 import { useRef } from 'react';
 
 function SatelliteTelemetryCard({ satId }: { satId: string }) {
   const issTelemetry = useUIStore((s) => s.issTelemetry);
+  const satelliteEntity = useStore((s) => s.entitiesByPlugin.satellites?.find((entity) => entity.id === `sat-${satId}`));
   const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
   const [startTime] = useState(() => Date.now());
 
@@ -507,7 +826,7 @@ function SatelliteTelemetryCard({ satId }: { satId: string }) {
   }, [satId]);
 
   useEffect(() => {
-    if (satId === 'iss') return;
+    if (satId === 'iss' || satelliteEntity) return;
 
     const updateLoop = () => {
       if (!satConfig) return;
@@ -525,20 +844,43 @@ function SatelliteTelemetryCard({ satId }: { satId: string }) {
 
     let frameId = requestAnimationFrame(updateLoop);
     return () => cancelAnimationFrame(frameId);
-  }, [satId, satConfig]);
+  }, [satId, satConfig, satelliteEntity]);
 
   if (satId === 'iss') {
-    const lat = issTelemetry?.latitude ?? 0;
-    const lng = issTelemetry?.longitude ?? 0;
-    const alt = issTelemetry?.altitude ?? 420;
-    const vel = issTelemetry?.velocity ?? 27600; // km/h
+    const source = String(satelliteEntity?.properties?.source || (issTelemetry?.simulated ? 'simulated-iss-telemetry' : 'live-iss-telemetry'));
+    const lat = satelliteEntity?.latitude ?? issTelemetry?.latitude ?? 0;
+    const lng = satelliteEntity?.longitude ?? issTelemetry?.longitude ?? 0;
+    const alt = satelliteEntity?.altitude !== undefined ? satelliteEntity.altitude / 1000 : issTelemetry?.altitude ?? 420;
+    const entityVelocity = typeof satelliteEntity?.properties?.velocity === 'number'
+      ? satelliteEntity.properties.velocity as number
+      : undefined;
+    const vel = entityVelocity !== undefined ? entityVelocity * 3.6 : issTelemetry?.velocity ?? 27600; // km/h
     const period = calculateOrbitalPeriod(alt * 1000) / 60; // mins
+    const status = getSatelliteSourceStatus(source);
+    const visualAssetStatus = String(satelliteEntity?.properties?.visualAssetStatus || 'Generated local category billboard.');
+    const visualAssetUrl = String(
+      satelliteEntity?.properties?.visualAssetUrl ||
+      WWV_ORBITAL_ASSET_BY_CATEGORY[satConfig?.category || 'station'] ||
+      WWV_ORBITAL_ASSET_BY_CATEGORY.other ||
+      ''
+    );
+    const altitudeAudit = getAltitudeAudit(satelliteEntity);
 
     return (
       <div className="space-y-3">
-        <div className="space-y-1">
-          <h3 className="font-bold text-sm tracking-wide text-primary uppercase">🛰️ ISS (SPACE STATION)</h3>
-          <span className="text-[7.5px] text-white/30 font-mono uppercase tracking-widest block">Live Satcom Feed Active</span>
+        <div className="flex items-center gap-2">
+          {visualAssetUrl && (
+            <img
+              src={visualAssetUrl}
+              alt=""
+              className="h-9 w-9 shrink-0 rounded border border-white/10 bg-black/40 p-1"
+              loading="lazy"
+            />
+          )}
+          <div className="min-w-0 space-y-1">
+            <h3 className="truncate font-bold text-sm tracking-wide text-primary uppercase">ISS (SPACE STATION)</h3>
+            <span className={`block text-[7.5px] font-mono uppercase tracking-widest ${status.className}`}>{status.label}</span>
+          </div>
         </div>
 
         <div className="border-t border-white/5 pt-3 space-y-2 font-mono text-[9px]">
@@ -566,8 +908,23 @@ function SatelliteTelemetryCard({ satId }: { satId: string }) {
             <span className="uppercase">Inclination</span>
             <span className="text-white font-bold">51.64°</span>
           </div>
+          <div className="flex items-center justify-between gap-3 text-white/50">
+            <span className="uppercase">Position Source</span>
+            <span className={`${status.className} text-right font-bold`}>{status.shortLabel}</span>
+          </div>
+          {satelliteEntity?.properties?.telemetryTimestamp && (
+            <div className="flex items-center justify-between gap-3 text-white/50">
+              <span className="uppercase">Telemetry Age</span>
+              <span className="text-white font-bold">{formatAge(Number(satelliteEntity.properties.telemetryTimestamp))}</span>
+            </div>
+          )}
         </div>
 
+        <div className="p-3 rounded bg-white/5 border border-white/5 text-[8px] uppercase leading-relaxed text-white/40 font-mono">
+          {visualAssetStatus}
+        </div>
+        <SatelliteAltitudeAudit audit={altitudeAudit} />
+        <SatelliteVisualAssetAudit satelliteEntity={satelliteEntity} />
         <div className="p-3 rounded bg-white/5 border border-white/5 text-[8px] uppercase leading-relaxed text-white/40 font-mono">
           Habitable artificial satellite in Low Earth Orbit serving as a microgravity and space environment research laboratory.
         </div>
@@ -578,38 +935,64 @@ function SatelliteTelemetryCard({ satId }: { satId: string }) {
   if (!satConfig) return null;
 
   const altitudeKm = satConfig.altitudeM / 1000;
-  const speedKms = calculateOrbitalSpeed(satConfig.altitudeM) / 1000; // km/s
+  const source = String(satelliteEntity?.properties?.source || 'circular-orbit-fallback');
+  const status = getSatelliteSourceStatus(source);
+  const displayLat = satelliteEntity?.latitude ?? coords.lat;
+  const displayLng = satelliteEntity?.longitude ?? coords.lng;
+  const displayAltitudeKm = satelliteEntity?.altitude !== undefined ? satelliteEntity.altitude / 1000 : altitudeKm;
+  const entityVelocity = typeof satelliteEntity?.properties?.velocity === 'number'
+    ? satelliteEntity.properties.velocity as number
+    : undefined;
+  const speedKms = (entityVelocity ?? calculateOrbitalSpeed(satConfig.altitudeM)) / 1000; // km/s
   const speedKmh = speedKms * 3600; // km/h
-  const periodMins = calculateOrbitalPeriod(satConfig.altitudeM) / 60; // mins
+  const periodMins = calculateOrbitalPeriod((satelliteEntity?.altitude ?? satConfig.altitudeM)) / 60; // mins
   const inclinationDeg = (satConfig.inclinationRad * 180) / Math.PI;
+  const visualAssetStatus = String(satelliteEntity?.properties?.visualAssetStatus || 'Generated local category billboard.');
+  const altitudeAudit = getAltitudeAudit(satelliteEntity);
+  const visualAssetUrl = String(
+    satelliteEntity?.properties?.visualAssetUrl ||
+    WWV_ORBITAL_ASSET_BY_CATEGORY[satConfig.category] ||
+    WWV_ORBITAL_ASSET_BY_CATEGORY.other ||
+    ''
+  );
 
   return (
     <div className="space-y-3">
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-sm tracking-wide text-white uppercase">{satConfig.name}</h3>
-          <span
-            className="h-2 w-2 rounded-full animate-pulse"
-            style={{ backgroundColor: satConfig.color }}
-          />
+          <div className="flex min-w-0 items-center gap-2">
+            {visualAssetUrl && (
+              <img
+                src={visualAssetUrl}
+                alt=""
+                className="h-9 w-9 shrink-0 rounded border border-white/10 bg-black/40 p-1"
+                loading="lazy"
+              />
+            )}
+            <h3 className="min-w-0 truncate font-bold text-sm tracking-wide text-white uppercase">{satConfig.name}</h3>
+          </div>
+          <span className="h-2 w-2 shrink-0 rounded-full animate-pulse" style={{ backgroundColor: satConfig.color }} />
         </div>
         <span className="text-[7.5px] text-white/30 font-mono uppercase tracking-widest block">
           Telemetry Group: {satConfig.category.toUpperCase()}
+        </span>
+        <span className={`text-[7.5px] font-mono uppercase tracking-widest block ${status.className}`}>
+          {status.label}
         </span>
       </div>
 
       <div className="border-t border-white/5 pt-3 space-y-2 font-mono text-[9px]">
         <div className="flex items-center justify-between text-white/50">
           <span className="uppercase">Latitude</span>
-          <span className="text-cyan-400 font-bold">{coords.lat.toFixed(5)}°</span>
+          <span className="text-cyan-400 font-bold">{displayLat.toFixed(5)}°</span>
         </div>
         <div className="flex items-center justify-between text-white/50">
           <span className="uppercase">Longitude</span>
-          <span className="text-cyan-400 font-bold">{coords.lng.toFixed(5)}°</span>
+          <span className="text-cyan-400 font-bold">{displayLng.toFixed(5)}°</span>
         </div>
         <div className="flex items-center justify-between text-white/50">
           <span className="uppercase">Orbit Altitude</span>
-          <span className="text-white font-bold">{altitudeKm.toFixed(1)} km</span>
+          <span className="text-white font-bold">{displayAltitudeKm.toFixed(1)} km</span>
         </div>
         <div className="flex items-center justify-between text-white/50">
           <span className="uppercase">Orbital Velocity</span>
@@ -623,11 +1006,165 @@ function SatelliteTelemetryCard({ satId }: { satId: string }) {
           <span className="uppercase">Inclination</span>
           <span className="text-white font-bold">{inclinationDeg.toFixed(2)}°</span>
         </div>
+        <div className="flex items-center justify-between gap-3 text-white/50">
+          <span className="uppercase">Position Source</span>
+          <span className={`${status.className} text-right font-bold`}>{status.shortLabel}</span>
+        </div>
       </div>
+
+      <div className="p-3 rounded bg-white/5 border border-white/5 text-[8px] uppercase leading-relaxed text-white/40 font-mono">
+        {visualAssetStatus}
+      </div>
+      <SatelliteAltitudeAudit audit={altitudeAudit} />
+      <SatelliteVisualAssetAudit satelliteEntity={satelliteEntity} />
 
       <div className="p-3 rounded bg-white/5 border border-white/5 text-[8px] uppercase leading-relaxed text-white/40 font-mono">
         {satConfig.description}
       </div>
     </div>
   );
+}
+
+function getAltitudeAudit(satelliteEntity?: any) {
+  if (!satelliteEntity?.properties) return null;
+  const rawAltitude = Number(satelliteEntity.properties.rawAltitudeMeters);
+  const renderedAltitude = Number(satelliteEntity.properties.renderedAltitudeMeters ?? satelliteEntity.altitude);
+  const adjusted = Boolean(satelliteEntity.properties.altitudeAdjusted);
+  const reason = String(satelliteEntity.properties.altitudeAdjustmentReason || '');
+
+  if (!Number.isFinite(renderedAltitude)) return null;
+  return {
+    rawAltitude: Number.isFinite(rawAltitude) ? rawAltitude : null,
+    renderedAltitude,
+    adjusted,
+    reason,
+  };
+}
+
+function SatelliteAltitudeAudit({ audit }: { audit: ReturnType<typeof getAltitudeAudit> }) {
+  if (!audit) return null;
+
+  return (
+    <div className={`space-y-1.5 rounded border p-3 font-mono text-[8px] uppercase leading-relaxed ${
+      audit.adjusted
+        ? 'border-amber-300/20 bg-amber-300/10 text-amber-100/70'
+        : 'border-emerald-300/10 bg-emerald-300/5 text-white/45'
+    }`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className={audit.adjusted ? 'font-bold text-amber-200' : 'font-bold text-emerald-300'}>Orbital altitude integrity</span>
+        <span>{audit.adjusted ? 'Corrected render shell' : 'Raw altitude accepted'}</span>
+      </div>
+      <div>
+        <span className="text-white/35">Rendered altitude: </span>
+        <span>{(audit.renderedAltitude / 1000).toFixed(1)} km</span>
+      </div>
+      {audit.rawAltitude !== null && (
+        <div>
+          <span className="text-white/35">Incoming altitude: </span>
+          <span>{(audit.rawAltitude / 1000).toFixed(1)} km</span>
+        </div>
+      )}
+      {audit.adjusted && audit.reason && <div>{audit.reason}</div>}
+    </div>
+  );
+}
+
+function SatelliteVisualAssetAudit({ satelliteEntity }: { satelliteEntity?: any }) {
+  const copiedRoot = String(satelliteEntity?.properties?.copiedWwvAssetRoot || WWV_ASSET_AUDIT.copiedRoot);
+  const sourceMirrorRoot = String(satelliteEntity?.properties?.copiedWwvSourceMirrorRoot || WWV_ASSET_AUDIT.sourceMirrorRoot);
+  const sourceMirrorCount = Number(satelliteEntity?.properties?.copiedWwvSourceFileCount || WWV_ASSET_AUDIT.sourcePublicFileCount);
+  const derivedRoot = String(satelliteEntity?.properties?.derivedSatelliteAssetRoot || WWV_ASSET_AUDIT.derivedSatelliteAssetRoot);
+  const copiedSummary = String(satelliteEntity?.properties?.copiedWwvAssetSummary || 'WWV aircraft icons/model and logo artwork');
+  const visualAssetSource = String(satelliteEntity?.properties?.visualAssetSource || 'silver-wolf-derived-orbital-svg');
+  const visualAssetUrl = String(satelliteEntity?.properties?.visualAssetUrl || '');
+  const hasSatelliteAsset = Boolean(satelliteEntity?.properties?.satelliteSpecificWwvAssetPresent);
+
+  return (
+    <div className="space-y-1.5 rounded border border-primary/10 bg-primary/5 p-3 font-mono text-[8px] uppercase leading-relaxed text-white/45">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-bold text-primary">WWV Asset Source</span>
+        <span className={hasSatelliteAsset ? 'text-emerald-300' : 'text-amber-300'}>
+          {hasSatelliteAsset ? 'Satellite asset copied' : 'No satellite asset in WWV source'}
+        </span>
+      </div>
+      <div>
+        <span className="text-white/30">Copied root: </span>
+        <span className="text-white/65">{copiedRoot}</span>
+      </div>
+      <div>
+        <span className="text-white/30">Source mirror: </span>
+        <span className="text-white/65">{sourceMirrorCount} files at {sourceMirrorRoot}</span>
+      </div>
+      <div>
+        <span className="text-white/30">Derived root: </span>
+        <span className="text-white/65">{derivedRoot}</span>
+      </div>
+      <div>
+        <span className="text-white/30">Rendered marker: </span>
+        <span className="text-white/65">{visualAssetSource}</span>
+      </div>
+      <div className="break-all">
+        <span className="text-white/30">Asset path: </span>
+        <span className="text-white/60">{visualAssetUrl || 'Unavailable'}</span>
+      </div>
+      {visualAssetUrl && (
+        <div className="flex items-center justify-between gap-3 rounded border border-white/5 bg-black/25 p-2">
+          <span className="text-white/30">Preview: </span>
+          <img
+            src={visualAssetUrl}
+            alt="Rendered satellite visual asset preview"
+            className="h-10 w-10 rounded border border-white/10 bg-black/50 p-1"
+            loading="lazy"
+          />
+        </div>
+      )}
+      <div>
+        <span className="text-white/30">Copied assets: </span>
+        <span className="text-white/60">{copiedSummary}</span>
+      </div>
+    </div>
+  );
+}
+
+function getSatelliteSourceStatus(source: string) {
+  switch (source) {
+    case 'live-iss-telemetry':
+      return {
+        label: 'Live ISS telemetry active',
+        shortLabel: 'Live telemetry',
+        className: 'text-emerald-300'
+      };
+    case 'simulated-iss-telemetry':
+      return {
+        label: 'Simulated ISS telemetry',
+        shortLabel: 'Simulated telemetry',
+        className: 'text-amber-300'
+      };
+    case 'live-tle':
+      return {
+        label: 'TLE-propagated orbit',
+        shortLabel: 'Live TLE',
+        className: 'text-cyan-300'
+      };
+    case 'circular-orbit-fallback':
+      return {
+        label: 'Catalog orbit fallback',
+        shortLabel: 'Catalog orbit',
+        className: 'text-amber-300'
+      };
+    default:
+      return {
+        label: 'Fallback orbit model',
+        shortLabel: 'Fallback model',
+        className: 'text-amber-300'
+      };
+  }
+}
+
+function formatAge(timestamp: number) {
+  const normalizedTimestamp = timestamp < 10_000_000_000 ? timestamp * 1000 : timestamp;
+  const ageMs = Math.max(0, Date.now() - normalizedTimestamp);
+  if (ageMs < 1000) return '<1 sec';
+  if (ageMs < 60000) return `${Math.round(ageMs / 1000)} sec`;
+  return `${Math.round(ageMs / 60000)} min`;
 }

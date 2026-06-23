@@ -11,14 +11,14 @@ export function WorkspaceHeader() {
   return (
     <header
       id="workspace-header"
-      className="flex h-10 w-full items-center justify-between px-4 glass-panel-subtle border-b border-white/5"
+      className="flex h-14 w-full items-center justify-between px-4 glass-panel-subtle border-b border-white/5"
       style={{ borderRadius: 0 }}
     >
       {/* Left section */}
       <div className="flex items-center gap-4">
         <button
           type="button"
-          className="rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 md:hidden"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 md:hidden"
           onClick={() => setLeftPanelOpen(!leftPanelOpen)}
           aria-label="Toggle navigation"
         >
@@ -45,7 +45,7 @@ export function WorkspaceHeader() {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className="relative rounded-md p-1.5 text-white/30 transition-colors hover:bg-white/5 hover:text-white/60"
+          className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-1.5 text-white/30 transition-colors hover:bg-white/5 hover:text-white/60"
           aria-label="Notifications"
         >
           <Bell className="h-3.5 w-3.5" />
@@ -55,7 +55,7 @@ export function WorkspaceHeader() {
         <button
           type="button"
           onClick={() => setCurrentPage('settings')}
-          className="flex items-center gap-2 rounded-full p-1 pr-3 text-white/40 transition-colors hover:bg-white/5 hover:text-white/60"
+          className="flex min-h-11 items-center gap-2 rounded-full p-1 pr-3 text-white/40 transition-colors hover:bg-white/5 hover:text-white/60"
           aria-label="User profile"
         >
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20">

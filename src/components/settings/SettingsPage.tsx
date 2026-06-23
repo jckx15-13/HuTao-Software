@@ -26,14 +26,20 @@ export function SettingsPage() {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex h-screen w-screen bg-[#06070a]/92 backdrop-blur-2xl overflow-hidden settings-enter">
+    <div
+      className="fixed inset-0 z-50 flex h-screen w-screen bg-[#06070a]/92 backdrop-blur-2xl overflow-hidden settings-enter"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settings"
+    >
       <div className="w-full h-full flex overflow-hidden relative">
         
         {/* Close Button */}
         <button
           type="button"
           onClick={() => setCurrentPage('workspace')}
-          className="absolute top-6 right-6 z-10 rounded-full border border-white/10 bg-white/5 p-2 text-white/40 hover:bg-white/10 hover:text-white/80 transition-all cursor-pointer shadow-lg"
+          className="absolute top-6 right-6 z-10 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 p-2 text-white/40 hover:bg-white/10 hover:text-white/80 transition-all cursor-pointer shadow-lg"
+          aria-label="Exit Settings"
           title="Exit Settings"
         >
           <X className="h-6 w-6" />
@@ -55,7 +61,7 @@ export function SettingsPage() {
                   key={cat.key}
                   type="button"
                   onClick={() => setSettingsCategory(cat.key)}
-                  className={`flex h-10 w-full items-center gap-3 rounded-lg px-3 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                     isActive
                       ? 'bg-primary/20 text-primary border-l-2 border-primary font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
                       : 'text-white/40 hover:bg-white/5 hover:text-white/70'

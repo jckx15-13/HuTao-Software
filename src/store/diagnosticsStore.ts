@@ -22,6 +22,20 @@ interface DiagnosticsState {
 const makeId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 const SENSITIVE_KEYS = /(key|token|auth|password|secret|notion|weather|credential)/i;
+const CELESTRAK_TLE_PATTERN = /celestrak\.org\/NORAD\/elements\/gp\.php/i;
+
+function isSatelliteTelemetryFetch(url: string): boolean {
+  if (!url) return false;
+  if (CELESTRAK_TLE_PATTERN.test(url)) return true;
+
+  try {
+    const parsed = new URL(url, typeof window !== 'undefined' ? window.location.href : 'http://localhost');
+    const proxiedUrl = parsed.searchParams.get('url') || '';
+    return CELESTRAK_TLE_PATTERN.test(decodeURIComponent(proxiedUrl));
+  } catch (e) {
+    return false;
+  }
+}
 
 function sanitize(data: any): any {
   if (!data) return data;
@@ -156,6 +170,7 @@ if (typeof window !== 'undefined') {
   window.fetch = async function (input, init) {
     const startTime = performance.now();
     const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : '');
+    const isSatelliteTelemetryRequest = isSatelliteTelemetryFetch(url);
 
     // Avoid intercepting calls to the logging endpoint to prevent infinite recursion loop
     if (url.includes('/log')) {
@@ -166,7 +181,7 @@ if (typeof window !== 'undefined') {
       const response = await originalFetch.apply(window, arguments as any);
       const duration = performance.now() - startTime;
 
-      if (!response.ok) {
+      if (!response.ok && !isSatelliteTelemetryRequest) {
         useDiagnosticsStore.getState().add({
           level: 'error',
           message: `API request failed: ${response.status} ${response.statusText} on ${url}`,
@@ -184,6 +199,10 @@ if (typeof window !== 'undefined') {
       return response;
     } catch (err: any) {
       const duration = performance.now() - startTime;
+      if (isSatelliteTelemetryRequest) {
+        throw err;
+      }
+
       useDiagnosticsStore.getState().add({
         level: 'error',
         message: `API request error: "${err.message || err}" on ${url}`,
