@@ -316,23 +316,6 @@ async def _proxy_to_frontend(path: str, request: Request):
         )
 
 
-@app.get("/{path:path}", include_in_schema=False)
-async def frontend_proxy(path: str, request: Request):
-    reserved = {
-        "status",
-        "sync",
-        "chat",
-        "log",
-        "openapi.json",
-        "docs",
-        "redoc",
-    }
-
-    if path.startswith("api/") or path in reserved:
-        raise HTTPException(status_code=404, detail="Not found")
-
-    return await _proxy_to_frontend(path, request)
-
 def compact_sync_file() -> None:
     if not SYNC_FILE.exists() or SYNC_FILE.stat().st_size <= MAX_SYNC_BYTES:
         return
@@ -582,6 +565,24 @@ async def proxy_to_odysseus(path: str, request: Request):
             return resp
     except Exception as e:
         return JSONResponse(status_code=502, content={"error": f"Odysseus backend unreachable: {e}"})
+
+@app.get("/{path:path}", include_in_schema=False)
+async def frontend_proxy(path: str, request: Request):
+    reserved = {
+        "status",
+        "sync",
+        "chat",
+        "log",
+        "openapi.json",
+        "docs",
+        "redoc",
+    }
+
+    if path in reserved:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    return await _proxy_to_frontend(path, request)
+
 
 if __name__ == "__main__":
     import uvicorn
