@@ -37,6 +37,9 @@ const BUDGETS = {
 const INCLUDE_CHAT_BENCHMARKS = process.env.PERF_INCLUDE_CHAT == null
   ? !isFastProfile
   : process.env.PERF_INCLUDE_CHAT !== '0';
+const INCLUDE_GIT_BENCHMARKS = process.env.PERF_INCLUDE_GIT == null
+  ? !isFastProfile
+  : process.env.PERF_INCLUDE_GIT !== '0';
 
 function percentile(values, p) {
   if (!values.length) return null;
@@ -387,20 +390,22 @@ async function main() {
   console.log(`FRONTEND_URL=${FRONTEND_URL}`);
   console.log(`PROFILE=${PERF_PROFILE}`);
   console.log(`ROUNDS=${ROUNDS} INTERVAL_MS=${INTERVAL_MS} FRONTEND_PAGES=${FRONTEND_PAGES}`);
-  console.log(`INCLUDE_CHAT_BENCHMARKS=${INCLUDE_CHAT_BENCHMARKS}\n`);
+  console.log(`INCLUDE_CHAT_BENCHMARKS=${INCLUDE_CHAT_BENCHMARKS}`);
+  console.log(`INCLUDE_GIT_BENCHMARKS=${INCLUDE_GIT_BENCHMARKS}\n`);
 
   const [
     bridge,
-    bridgeGitStatus,
     frontend,
     bundle,
   ] = await Promise.all([
     measureApi(`${BRIDGE_URL}/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS),
-    measureApi(`${BRIDGE_URL}/git/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS),
     measureFrontend(),
     measureBundle(),
   ]);
 
+  const bridgeGitStatus = INCLUDE_GIT_BENCHMARKS
+    ? await measureApi(`${BRIDGE_URL}/git/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS)
+    : skipped('Bridge /git/status benchmark', 'Disabled for fast profile. Use PERF_INCLUDE_GIT=1 or --standard to include git status latency.');
   const bridgeChat = INCLUDE_CHAT_BENCHMARKS
     ? await measureApi(
       `${BRIDGE_URL}/chat`,
@@ -444,7 +449,9 @@ async function main() {
     bridgeChatP95: INCLUDE_CHAT_BENCHMARKS
       ? warnOrOk('Bridge /chat p95', results.bridgeChat.payload.latency?.p95, BUDGETS.bridgeChatP95)
       : skipped('Bridge /chat p95', 'Disabled for fast profile.'),
-    gitStatusP95: warnOrOk('Bridge /git/status p95', results.bridgeGitStatus.payload.latency?.p95, BUDGETS.gitStatusP95),
+    gitStatusP95: INCLUDE_GIT_BENCHMARKS
+      ? warnOrOk('Bridge /git/status p95', results.bridgeGitStatus.payload.latency?.p95, BUDGETS.gitStatusP95)
+      : skipped('Bridge /git/status p95', 'Disabled for fast profile.'),
     frontendLoadP95: warnOrOk(
       'Frontend dom load p95',
       (frontend.averages?.loadMs?.p95 || null),
@@ -465,6 +472,7 @@ async function main() {
       frontendPages: FRONTEND_PAGES,
       frontendSettleMs: FRONTEND_SETTLE_MS,
       includeChatBenchmarks: INCLUDE_CHAT_BENCHMARKS,
+      includeGitBenchmarks: INCLUDE_GIT_BENCHMARKS,
       bridgeUrl: BRIDGE_URL,
       frontendUrl: FRONTEND_URL,
     },
