@@ -115,6 +115,130 @@ SERVER_AI_PROVIDER_CONFIGS = [
     },
 ]
 
+SERVER_CONNECTOR_PROVIDER_CONFIGS = [
+    {
+        "id": "openai",
+        "label": "OpenAI API",
+        "category": "ai",
+        "key_env": "OPENAI_API_KEY",
+        "endpoint_env": "OPENAI_CHAT_COMPLETIONS_URL",
+        "default_base_url": "https://api.openai.com/v1",
+        "probe_path": "/models",
+        "capabilities": ["chat", "models"],
+        "requires_backend": True,
+    },
+    {
+        "id": "anthropic",
+        "label": "Anthropic Claude",
+        "category": "ai",
+        "key_env": "ANTHROPIC_API_KEY",
+        "endpoint_env": "ANTHROPIC_API_URL",
+        "default_base_url": "https://api.anthropic.com/v1",
+        "probe_path": "/models",
+        "capabilities": ["chat", "models"],
+        "requires_backend": True,
+    },
+    {
+        "id": "openrouter",
+        "label": "OpenRouter",
+        "category": "ai",
+        "key_env": "OPENROUTER_API_KEY",
+        "endpoint_env": "OPENROUTER_CHAT_COMPLETIONS_URL",
+        "default_base_url": "https://openrouter.ai/api/v1",
+        "probe_path": "/models",
+        "capabilities": ["chat", "models"],
+        "requires_backend": True,
+    },
+    {
+        "id": "mistral",
+        "label": "Mistral AI",
+        "category": "ai",
+        "key_env": "MISTRAL_API_KEY",
+        "endpoint_env": "MISTRAL_CHAT_COMPLETIONS_URL",
+        "default_base_url": "https://api.mistral.ai/v1",
+        "probe_path": "/models",
+        "capabilities": ["chat", "models"],
+        "requires_backend": True,
+    },
+    {
+        "id": "perplexity",
+        "label": "Perplexity",
+        "category": "ai",
+        "key_env": "PERPLEXITY_API_KEY",
+        "endpoint_env": "PERPLEXITY_CHAT_COMPLETIONS_URL",
+        "default_base_url": "https://api.perplexity.ai",
+        "probe_path": "/models",
+        "capabilities": ["chat", "models"],
+        "requires_backend": True,
+    },
+    {
+        "id": "groq",
+        "label": "Groq",
+        "category": "ai",
+        "key_env": "GROQ_API_KEY",
+        "endpoint_env": "GROQ_CHAT_COMPLETIONS_URL",
+        "default_base_url": "https://api.groq.com/openai/v1",
+        "probe_path": "/models",
+        "capabilities": ["chat", "models"],
+        "requires_backend": True,
+    },
+    {
+        "id": "apify",
+        "label": "Apify",
+        "category": "automation",
+        "key_env": "APIFY_TOKEN",
+        "endpoint_env": "APIFY_API_URL",
+        "default_base_url": "https://api.apify.com/v2",
+        "probe_path": "/users/me",
+        "capabilities": ["actors", "automation"],
+        "requires_backend": True,
+    },
+    {
+        "id": "google-cloud",
+        "label": "Google Cloud",
+        "category": "cloud",
+        "key_env": "GOOGLE_MAPS_API_KEY",
+        "endpoint_env": "GOOGLE_MAPS_API_URL",
+        "default_base_url": "https://maps.googleapis.com",
+        "probe_path": "/maps/api/tile/v1/createSession",
+        "capabilities": ["cloud", "maps"],
+        "requires_backend": False,
+    },
+    {
+        "id": "github",
+        "label": "GitHub",
+        "category": "developer",
+        "key_env": "GITHUB_TOKEN",
+        "endpoint_env": "GITHUB_API_URL",
+        "default_base_url": "https://api.github.com",
+        "probe_path": "/user",
+        "capabilities": ["repos", "automation"],
+        "requires_backend": True,
+    },
+    {
+        "id": "notion",
+        "label": "Notion",
+        "category": "connector",
+        "key_env": "NOTION_API_KEY",
+        "endpoint_env": "NOTION_API_URL",
+        "default_base_url": "https://api.notion.com/v1",
+        "probe_path": "/users/me",
+        "capabilities": ["pages", "automation"],
+        "requires_backend": True,
+    },
+    {
+        "id": "openweather",
+        "label": "OpenWeather",
+        "category": "weather",
+        "key_env": "OPENWEATHER_API_KEY",
+        "endpoint_env": "OPENWEATHER_API_URL",
+        "default_base_url": "https://api.openweathermap.org/data/2.5",
+        "probe_path": "/weather",
+        "capabilities": ["weather"],
+        "requires_backend": False,
+    },
+]
+
 def get_python_executable() -> str:
     """Returns the path to the virtual environment python if it exists, fallback to sys.executable."""
     odysseus_dir = BASE_DIR.parent / "odysseus"
@@ -477,6 +601,31 @@ def get_server_provider_status() -> list[dict]:
             "model_env": provider["model_env"],
             "endpoint_env": provider["endpoint_env"],
             "endpoint": os.getenv(provider["endpoint_env"], provider["default_endpoint"]),
+        })
+    return providers
+
+def _join_url(base_url: str, path: str) -> str:
+    return f"{base_url.rstrip('/')}/{path.lstrip('/')}" if path else base_url.rstrip("/")
+
+def get_server_connector_provider_status() -> list[dict]:
+    providers = []
+    for provider in SERVER_CONNECTOR_PROVIDER_CONFIGS:
+        key_env = provider["key_env"]
+        endpoint_env = provider["endpoint_env"]
+        has_key = bool(os.getenv(key_env, "").strip())
+        endpoint = os.getenv(endpoint_env, provider["default_base_url"]).strip() or provider["default_base_url"]
+        providers.append({
+            "id": provider["id"],
+            "label": provider["label"],
+            "category": provider["category"],
+            "configured": has_key,
+            "has_key": has_key,
+            "key_env": key_env,
+            "endpoint_env": endpoint_env,
+            "endpoint_configured": bool(os.getenv(endpoint_env, "").strip()),
+            "probe_url": _join_url(endpoint, provider["probe_path"]),
+            "capabilities": provider["capabilities"],
+            "requires_backend": provider["requires_backend"],
         })
     return providers
 
@@ -885,11 +1034,28 @@ async def git_status():
 async def api_credential_provider_status():
     providers = get_server_provider_status()
     configured = [provider for provider in providers if provider["configured"]]
+    connector_providers = get_server_connector_provider_status()
+    configured_connectors = [provider for provider in connector_providers if provider["configured"]]
     return {
         "providers": providers,
         "configured_count": len(configured),
+        "connector_providers": connector_providers,
+        "connector_configured_count": len(configured_connectors),
+        "supported_connector_count": len(connector_providers),
         "server_side_only": True,
         "message": "Secrets are read from Bridge environment variables and are never returned by this status endpoint.",
+    }
+
+@app.get("/api/connectors/providers")
+async def api_connector_provider_status():
+    providers = get_server_connector_provider_status()
+    configured = [provider for provider in providers if provider["configured"]]
+    return {
+        "providers": providers,
+        "configured_count": len(configured),
+        "supported_count": len(providers),
+        "server_side_only": True,
+        "message": "Connector secrets are read from Bridge environment variables and are never returned by this status endpoint.",
     }
 
 # Secure Generic Proxy to Odysseus Endpoints
