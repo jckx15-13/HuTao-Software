@@ -10,7 +10,8 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "lint": "node ./node_modules/typescript/bin/tsc --noEmit",
     "test": "node scripts/test_cursor_engine.cjs && node scripts/test_physics_and_runtime.cjs && node scripts/test_integration_contracts.cjs",
-    "perf:check": "node scripts/perf-check.mjs"
+    "perf:check": "node scripts/perf-check.mjs",
+    "perf:check:fast": "node scripts/perf-check.mjs --fast"
   },
   "dependencies": {
     "@google/genai": "^1.52.0",

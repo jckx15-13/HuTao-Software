@@ -8,12 +8,32 @@ import { setTimeout as wait } from 'node:timers/promises';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+const args = new Set(process.argv.slice(2));
+const PERF_PROFILE = args.has('--fast')
+  ? 'fast'
+  : args.has('--standard')
+    ? 'standard'
+    : process.env.PERF_PROFILE || 'standard';
+const isFastProfile = PERF_PROFILE === 'fast';
+
 const BRIDGE_URL = process.env.BRIDGE_URL || 'http://127.0.0.1:8001';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://127.0.0.1:3005';
-const ROUNDS = Number.parseInt(process.env.PERF_ROUNDS || '6', 10);
-const INTERVAL_MS = Number.parseInt(process.env.PERF_INTERVAL_MS || '120', 10);
-const FRONTEND_PAGES = Number.parseInt(process.env.FRONTEND_PAGES || '2', 10);
-const API_WARMUP_ROUNDS = Number.parseInt(process.env.PERF_API_WARMUP_ROUNDS || '2', 10);
+const ROUNDS = Number.parseInt(process.env.PERF_ROUNDS || (isFastProfile ? '3' : '6'), 10);
+const INTERVAL_MS = Number.parseInt(process.env.PERF_INTERVAL_MS || (isFastProfile ? '40' : '120'), 10);
+const FRONTEND_PAGES = Number.parseInt(process.env.FRONTEND_PAGES || (isFastProfile ? '1' : '2'), 10);
+const API_WARMUP_ROUNDS = Number.parseInt(process.env.PERF_API_WARMUP_ROUNDS || (isFastProfile ? '1' : '2'), 10);
+const FRONTEND_SETTLE_MS = Number.parseInt(process.env.PERF_FRONTEND_SETTLE_MS || (isFastProfile ? '250' : '1000'), 10);
+const FRONTEND_GOTO_TIMEOUT_MS = Number.parseInt(process.env.PERF_FRONTEND_GOTO_TIMEOUT_MS || (isFastProfile ? '30000' : '45000'), 10);
+const FRONTEND_CONTENT_TIMEOUT_MS = Number.parseInt(process.env.PERF_FRONTEND_CONTENT_TIMEOUT_MS || (isFastProfile ? '5000' : '15000'), 10);
+const FRONTEND_NETWORK_IDLE_TIMEOUT_MS = Number.parseInt(process.env.PERF_FRONTEND_NETWORK_IDLE_TIMEOUT_MS || (isFastProfile ? '2500' : '10000'), 10);
+
+const BUDGETS = {
+  bridgeStatusP95: Number.parseInt(process.env.PERF_BRIDGE_STATUS_BUDGET_MS || '700', 10),
+  bridgeChatP95: Number.parseInt(process.env.PERF_BRIDGE_CHAT_BUDGET_MS || '1800', 10),
+  gitStatusP95: Number.parseInt(process.env.PERF_GIT_STATUS_BUDGET_MS || '600', 10),
+  frontendLoadP95: Number.parseInt(process.env.PERF_FRONTEND_LOAD_BUDGET_MS || '1500', 10),
+  frontendDomP95: Number.parseInt(process.env.PERF_FRONTEND_DOM_BUDGET_MS || '1500', 10),
+};
 
 function percentile(values, p) {
   if (!values.length) return null;
@@ -172,6 +192,7 @@ async function measureFrontend() {
   try {
     const pageResults = [];
     let failedLoads = 0;
+    const loadErrors = [];
 
     for (let i = 0; i < FRONTEND_PAGES; i += 1) {
       let page;
@@ -179,16 +200,33 @@ async function measureFrontend() {
         page = await browser.newPage();
       } catch (error) {
         failedLoads += 1;
+        loadErrors.push(error.message || String(error));
         continue;
       }
       try {
         await page.setViewport({ width: 1365, height: 1024 });
         const pageLoad = await page.goto(FRONTEND_URL, {
           waitUntil: 'domcontentloaded',
-          timeout: 90000,
+          timeout: FRONTEND_GOTO_TIMEOUT_MS,
         });
-        await page.waitForSelector('body', { timeout: 10000 });
-        await wait(1000);
+        await page
+          .waitForFunction(
+            () => document.body && document.body.innerText.trim().length > 20,
+            { timeout: FRONTEND_CONTENT_TIMEOUT_MS },
+          )
+          .catch((error) => {
+            loadErrors.push(`content wait: ${error.message}`);
+          });
+        if (FRONTEND_SETTLE_MS > 0 && typeof page.waitForNetworkIdle === 'function') {
+          await page
+            .waitForNetworkIdle({
+              idleTime: FRONTEND_SETTLE_MS,
+              timeout: FRONTEND_NETWORK_IDLE_TIMEOUT_MS,
+            })
+            .catch(() => {});
+        } else {
+          await wait(FRONTEND_SETTLE_MS);
+        }
         const metrics = await page.evaluate(() => {
           const navigation = performance.getEntriesByType('navigation')[0];
           const paint = performance.getEntriesByType('paint');
@@ -226,6 +264,7 @@ async function measureFrontend() {
         });
       } catch (error) {
         failedLoads += 1;
+        loadErrors.push(error.message || String(error));
       } finally {
         await page.close().catch(() => {});
       }
@@ -235,6 +274,7 @@ async function measureFrontend() {
       return {
         status: 'failed',
         reason: `Frontend was not reachable on all ${FRONTEND_PAGES} attempts (failed ${failedLoads}).`,
+        errors: loadErrors.slice(0, 5),
       };
     }
 
@@ -248,6 +288,7 @@ async function measureFrontend() {
       status: 'ok',
       pageResults,
       failedLoads,
+      loadErrors: loadErrors.slice(0, 5),
       averages: {
         domContentMs: avgDomContent,
         loadMs: avgLoad,
@@ -337,63 +378,79 @@ async function main() {
   console.log(`\n=== Silver Wolf VI Performance Baseline (${new Date().toISOString()}) ===`);
   console.log(`BRIDGE_URL=${BRIDGE_URL}`);
   console.log(`FRONTEND_URL=${FRONTEND_URL}`);
-  console.log(`ROUNDS=${ROUNDS} INTERVAL_MS=${INTERVAL_MS}\n`);
+  console.log(`PROFILE=${PERF_PROFILE}`);
+  console.log(`ROUNDS=${ROUNDS} INTERVAL_MS=${INTERVAL_MS} FRONTEND_PAGES=${FRONTEND_PAGES}\n`);
+
+  const [
+    bridge,
+    bridgeChat,
+    bridgeGitStatus,
+    bridgeChatStream,
+    frontend,
+    bundle,
+  ] = await Promise.all([
+    measureApi(`${BRIDGE_URL}/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS),
+    measureApi(
+      `${BRIDGE_URL}/chat`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Latency test ping', system_instruction: 'Keep reply concise.' }),
+      },
+      Math.min(ROUNDS, 4),
+      5000,
+      isFastProfile ? 0 : 1,
+    ),
+    measureApi(`${BRIDGE_URL}/git/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS),
+    measureChatStream(`${BRIDGE_URL}/api/chat_stream`, {
+      message: 'Latency test ping for stream',
+    }),
+    measureFrontend(),
+    measureBundle(),
+  ]);
 
   const results = {
     bridge: {
       status: '/status',
-      payload: await measureApi(`${BRIDGE_URL}/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS),
+      payload: bridge,
     },
     bridgeChat: {
       status: '/chat',
-      payload: await measureApi(
-        `${BRIDGE_URL}/chat`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: 'Latency test ping', system_instruction: 'Keep reply concise.' }),
-        },
-        Math.min(ROUNDS, 4),
-        5000,
-        1,
-      ),
+      payload: bridgeChat,
     },
     bridgeGitStatus: {
       status: '/git/status',
-      payload: await measureApi(`${BRIDGE_URL}/git/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS),
+      payload: bridgeGitStatus,
     },
     bridgeChatStream: {
       status: '/api/chat_stream',
-      payload: await measureChatStream(`${BRIDGE_URL}/api/chat_stream`, {
-        message: 'Latency test ping for stream',
-      }),
+      payload: bridgeChatStream,
     },
   };
 
-  const frontend = await measureFrontend();
-  const bundle = await measureBundle();
-
   const checks = {
-    bridgeStatusP95: warnOrOk('Bridge /status p95', results.bridge.payload.latency?.p95, 700),
-    bridgeChatP95: warnOrOk('Bridge /chat p95', results.bridgeChat.payload.latency?.p95, 1800),
-    gitStatusP95: warnOrOk('Bridge /git/status p95', results.bridgeGitStatus.payload.latency?.p95, 600),
+    bridgeStatusP95: warnOrOk('Bridge /status p95', results.bridge.payload.latency?.p95, BUDGETS.bridgeStatusP95),
+    bridgeChatP95: warnOrOk('Bridge /chat p95', results.bridgeChat.payload.latency?.p95, BUDGETS.bridgeChatP95),
+    gitStatusP95: warnOrOk('Bridge /git/status p95', results.bridgeGitStatus.payload.latency?.p95, BUDGETS.gitStatusP95),
     frontendLoadP95: warnOrOk(
       'Frontend dom load p95',
       (frontend.averages?.loadMs?.p95 || null),
-      1500
+      BUDGETS.frontendLoadP95
     ),
     frontendDomP95: warnOrOk(
       'Frontend DOM ready p95',
       (frontend.averages?.domContentMs?.p95 || null),
-      900
+      BUDGETS.frontendDomP95
     ),
   };
 
   console.log(JSON.stringify({
     metadata: {
       date: new Date().toISOString(),
+      profile: PERF_PROFILE,
       rounds: ROUNDS,
       frontendPages: FRONTEND_PAGES,
+      frontendSettleMs: FRONTEND_SETTLE_MS,
       bridgeUrl: BRIDGE_URL,
       frontendUrl: FRONTEND_URL,
     },
