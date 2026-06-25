@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import { existsSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { setTimeout as wait } from 'node:timers/promises';
 
@@ -11,20 +12,10 @@ const NAVIGATION_TIMEOUT_MS = Number.parseInt(process.env.UI_AUDIT_NAVIGATION_TI
 const CONTENT_TIMEOUT_MS = Number.parseInt(process.env.UI_AUDIT_CONTENT_TIMEOUT_MS || '12000', 10);
 const WORKSPACE_SETTLE_MS = Number.parseInt(process.env.UI_AUDIT_WORKSPACE_SETTLE_MS || (isFastProfile ? '2600' : '4200'), 10);
 const STRICT_CONSOLE = process.env.UI_AUDIT_STRICT_CONSOLE === '1';
+const NORMAL_USER_AGENT = process.env.UI_AUDIT_USER_AGENT ||
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
-function withAuditFallback(url) {
-  try {
-    const parsed = new URL(url);
-    if (!parsed.searchParams.has('fallback')) {
-      parsed.searchParams.set('fallback', 'true');
-    }
-    return parsed.toString();
-  } catch {
-    return url;
-  }
-}
-
-const AUDIT_URL = process.env.UI_AUDIT_URL || withAuditFallback(FRONTEND_URL);
+const AUDIT_URL = process.env.UI_AUDIT_URL || FRONTEND_URL;
 
 const VIEWPORTS = isFastProfile
   ? [
@@ -60,16 +51,36 @@ function isRetryableFrameError(error) {
   return /detached frame|frame was detached|target closed|navigation failed|net::err_aborted/i.test(message);
 }
 
+function resolveBrowserExecutable() {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH && existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+
+  const candidates = process.platform === 'win32'
+    ? [
+        `${process.env.ProgramFiles || 'C:\\Program Files'}\\Google\\Chrome\\Application\\chrome.exe`,
+        `${process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)'}\\Google\\Chrome\\Application\\chrome.exe`,
+        `${process.env.ProgramFiles || 'C:\\Program Files'}\\Microsoft\\Edge\\Application\\msedge.exe`,
+        `${process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)'}\\Microsoft\\Edge\\Application\\msedge.exe`,
+      ]
+    : process.platform === 'darwin'
+      ? [
+          '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+          '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+        ]
+      : [
+          '/usr/bin/google-chrome',
+          '/usr/bin/google-chrome-stable',
+          '/usr/bin/chromium',
+          '/usr/bin/chromium-browser',
+          '/usr/bin/microsoft-edge',
+        ];
+
+  return candidates.find((candidate) => existsSync(candidate));
+}
+
 async function forceLauncherPage(page) {
   await page.evaluateOnNewDocument(() => {
-    const originalGetContext = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function getContext(type, ...rest) {
-      if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') {
-        return null;
-      }
-      return originalGetContext.apply(this, [type, ...rest]);
-    };
-
     const key = 'silver-wolf-v6-core';
     const fallback = { state: {}, version: 7 };
     let payload = fallback;
@@ -337,6 +348,7 @@ async function runViewportAttempt(browser, viewport) {
   });
 
   try {
+    await page.setUserAgent(NORMAL_USER_AGENT);
     await page.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
     await forceLauncherPage(page);
     await gotoWithRetry(page, AUDIT_URL);
@@ -504,21 +516,18 @@ function printReport(report) {
 
 async function main() {
   const start = performance.now();
-  const browser = await puppeteer.launch({
+  const executablePath = resolveBrowserExecutable();
+  const launchOptions = {
     headless: 'new',
     protocolTimeout: 90000,
-    args: [
-      '--no-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--disable-gpu-compositing',
-      '--disable-webgl',
-      '--disable-webgl2',
-      '--disable-3d-apis',
-      '--disable-extensions',
-      '--use-gl=swiftshader',
-    ],
-  });
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  };
+
+  if (executablePath) {
+    launchOptions.executablePath = executablePath;
+  }
+
+  const browser = await puppeteer.launch(launchOptions);
 
   try {
     const results = [];

@@ -294,6 +294,7 @@ assert.ok(read("scripts/verification_harness/verify_system.cjs").includes("proce
 assert.ok(packageJsonSource.includes('"ui:audit:fast": "node scripts/ui-audit.mjs --fast"'), "Package scripts must expose the fast UI audit");
 assert.ok(uiAuditSource.includes("process.env.FRONTEND_URL || 'http://127.0.0.1:3005'"), "UI audit must target the active Silver Wolf Vite port by default");
 assert.ok(uiAuditSource.includes("launcherDismissed: false"), "UI audit must exercise the launcher before entering the workspace");
+assert.ok(uiAuditSource.includes("setUserAgent(NORMAL_USER_AGENT)"), "UI audit must use a normal browser user agent so the launcher path remains testable");
 assert.ok(uiAuditSource.includes("fieldsWithoutProgrammaticLabel"), "UI audit must catch visible form fields without programmatic labels");
 
 assert.ok(cesiumViewerSource.includes("baseLayer: false"), "Cesium viewer must start without implicit Cesium world imagery");
