@@ -23,9 +23,12 @@ import {
     Cartographic,
 } from "cesium";
 import type { Viewer as CesiumViewer } from "cesium";
-import { getWwtAssetRemoteUrl, WWT_ASSET_PATHS } from "@/lib/wwt/repositoryData";
+import { getWwtAssetLocalCandidateUrls, getWwtAssetRemoteUrl, WWT_ASSET_PATHS } from "@/lib/wwt/repositoryData";
 
-const WWV_BORDERS_DATASET_URLS = [getWwtAssetRemoteUrl(WWT_ASSET_PATHS.bordersDataset)];
+const WWV_BORDERS_DATASET_URLS = [
+    ...getWwtAssetLocalCandidateUrls(WWT_ASSET_PATHS.bordersDataset),
+    getWwtAssetRemoteUrl(WWT_ASSET_PATHS.bordersDataset),
+];
 
 /**
  * Hook that manages physical 3D borders and labels.

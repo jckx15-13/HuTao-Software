@@ -37,6 +37,7 @@ export default defineConfig(({mode}) => {
       rollupOptions: {
         output: {
           manualChunks: {
+            'react-core': ['react', 'react-dom', 'zustand', 'react-textarea-autosize'],
             ai: ['@google/genai'],
             markdown: ['react-markdown', 'remark-gfm'],
             motion: ['motion'],

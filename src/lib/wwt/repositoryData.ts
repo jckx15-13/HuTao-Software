@@ -35,6 +35,16 @@ export function getWwtAssetLocalUrl(assetPath: string): string {
   return resolveWwtAssetPath(assetPath).local;
 }
 
+export function getWwtAssetLocalCandidateUrls(assetPath: string): string[] {
+  const normalizedPath = normalizeAssetPath(assetPath);
+  const { local } = resolveWwtAssetPath(normalizedPath);
+  return Array.from(new Set([
+    local,
+    `${WWT_LOCAL_ASSET_ROOT}/source-public/${normalizedPath}`,
+    `${WWT_LOCAL_ASSET_ROOT}/data/${normalizedPath}`,
+  ]));
+}
+
 export function getWwtAssetSourcePath(assetPath: string): string {
   return resolveWwtAssetPath(assetPath).source.replace(/\/+$/, "");
 }
@@ -57,13 +67,9 @@ export async function fetchWwtJson<T>(
 ): Promise<T> {
   const { fallbackToLocal = true, preferLocal = true, timeoutMs = 20_000 } = options;
   const effectiveTimeoutMs = clampTimeoutMs(timeoutMs);
-  const { remote, local } = resolveWwtAssetPath(assetPath);
+  const { remote } = resolveWwtAssetPath(assetPath);
   const normalizedPath = normalizeAssetPath(assetPath);
-  const localCandidates = [
-    local,
-    `${WWT_LOCAL_ASSET_ROOT}/source-public/${normalizedPath}`,
-    `${WWT_LOCAL_ASSET_ROOT}/data/${normalizedPath}`,
-  ];
+  const localCandidates = getWwtAssetLocalCandidateUrls(normalizedPath);
   const fetchCandidates = Array.from(new Set(
     preferLocal
       ? [...localCandidates, remote]
