@@ -13,6 +13,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://127.0.0.1:3005';
 const ROUNDS = Number.parseInt(process.env.PERF_ROUNDS || '6', 10);
 const INTERVAL_MS = Number.parseInt(process.env.PERF_INTERVAL_MS || '120', 10);
 const FRONTEND_PAGES = Number.parseInt(process.env.FRONTEND_PAGES || '2', 10);
+const API_WARMUP_ROUNDS = Number.parseInt(process.env.PERF_API_WARMUP_ROUNDS || '2', 10);
 
 function percentile(values, p) {
   if (!values.length) return null;
@@ -142,6 +143,15 @@ async function measureChatStream(url, payload) {
 }
 
 async function measureFrontend() {
+  try {
+    await requestWithTimeout(FRONTEND_URL, { headers: { Accept: 'text/html' } }, 20000);
+  } catch (error) {
+    return {
+      status: 'failed',
+      reason: `Frontend preflight failed: ${error.name === 'AbortError' ? 'timeout' : error.message || String(error)}`,
+    };
+  }
+
   let puppeteer;
   try {
     puppeteer = await import('puppeteer');
@@ -174,9 +184,11 @@ async function measureFrontend() {
       try {
         await page.setViewport({ width: 1365, height: 1024 });
         const pageLoad = await page.goto(FRONTEND_URL, {
-          waitUntil: 'load',
+          waitUntil: 'domcontentloaded',
           timeout: 90000,
         });
+        await page.waitForSelector('body', { timeout: 10000 });
+        await wait(1000);
         const metrics = await page.evaluate(() => {
           const navigation = performance.getEntriesByType('navigation')[0];
           const paint = performance.getEntriesByType('paint');
@@ -196,7 +208,7 @@ async function measureFrontend() {
               fetchStart: navigation?.fetchStart,
               domContentLoadedEventEnd: navigation?.domContentLoadedEventEnd,
               domInteractive: navigation?.domInteractive,
-              loadEventEnd: navigation?.loadEventEnd,
+              loadEventEnd: navigation?.loadEventEnd || performance.now(),
               responseStart: navigation?.responseStart,
               requestStart: navigation?.requestStart,
             },
@@ -330,7 +342,7 @@ async function main() {
   const results = {
     bridge: {
       status: '/status',
-      payload: await measureApi(`${BRIDGE_URL}/status`, { method: 'GET' }, 1),
+      payload: await measureApi(`${BRIDGE_URL}/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS),
     },
     bridgeChat: {
       status: '/chat',
@@ -348,7 +360,7 @@ async function main() {
     },
     bridgeGitStatus: {
       status: '/git/status',
-      payload: await measureApi(`${BRIDGE_URL}/git/status`, { method: 'GET' }, Math.min(ROUNDS, 4)),
+      payload: await measureApi(`${BRIDGE_URL}/git/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS),
     },
     bridgeChatStream: {
       status: '/api/chat_stream',
