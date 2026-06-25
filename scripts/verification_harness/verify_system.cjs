@@ -483,6 +483,32 @@ async function navigateUntilUiStoreReady(browser, page, url) {
   throw lastError || new Error('Timed out waiting for UI store after navigation.');
 }
 
+async function evaluateUiStoreMutationWithRecovery(browser, page, url, label, evaluator, attempts = 3) {
+  let currentBrowser = browser;
+  let currentPage = page;
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await evaluateWithRetry(currentPage, evaluator, 3);
+      return { browser: currentBrowser, page: currentPage };
+    } catch (err) {
+      lastError = err;
+      if (!isRetryablePageError(err) || attempt === attempts) {
+        break;
+      }
+      console.warn(`- ${label} retry ${attempt}: ${err.message}`);
+      ({ browser: currentBrowser, page: currentPage } = await navigateUntilUiStoreReady(
+        currentBrowser,
+        currentPage,
+        url,
+      ));
+    }
+  }
+
+  throw lastError || new Error(`${label} failed.`);
+}
+
 function createMockLlmServer(port) {
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
@@ -932,7 +958,7 @@ async function run() {
 
       // 5a. Verify Workspace Layout & Space/Globe state
       console.log('- Activating Workspace layout via Zustand store...');
-      await evaluateWithRetry(page, () => {
+      ({ browser, page } = await evaluateUiStoreMutationWithRecovery(browser, page, targetUrl, 'Workspace activation', () => {
         const store = window.useUIStore.getState();
         store.setLauncherDismissed(true);
         store.setCurrentPage('workspace');
@@ -940,7 +966,7 @@ async function run() {
         store.setSpaceInteractionTarget('earth');
         store.setLeftPanelOpen(true);
         store.setRightPanelOpen(true);
-      });
+      }));
       await settleReact(page);
 
       console.log('- Asserting Space/globe state exists in the DOM...');
@@ -1005,11 +1031,11 @@ async function run() {
 
       // 5b. Verify Telemetry view in RightPanel
       console.log('- Activating Telemetry tab in RightPanel via Zustand store...');
-      await evaluateWithRetry(page, () => {
+      ({ browser, page } = await evaluateUiStoreMutationWithRecovery(browser, page, targetUrl, 'Telemetry activation', () => {
         const store = window.useUIStore.getState();
         store.setRightPanelOpen(true);
         store.setRightPanelTab('telemetry');
-      });
+      }));
       await settleReact(page);
 
       console.log('- Asserting Telemetry view exists in the DOM...');

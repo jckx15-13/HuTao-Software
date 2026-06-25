@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-25T17:13:18.944Z",
+  "timestamp": "2026-06-25T17:21:29.972Z",
   "services": {
     "vite": {
       "status": "online",
@@ -63,7 +63,7 @@
   },
   "ui_verification": {
     "status": "failed",
-    "space_tab_found": false,
+    "space_tab_found": true,
     "telemetry_view_found": false,
     "settings_panel_found": false,
     "ai_key_inputs_found": false,
@@ -74,7 +74,7 @@
     }
   },
   "overall_status": "FAIL",
-  "error": "net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3005/?fallback=true",
+  "error": "Attempted to use detached Frame '52ACA0BBF8BBED2B42ACF6B646AFC21B'.",
   "partial_reasons": [
     "no configured Odysseus or server-side AI provider model endpoint"
   ]
