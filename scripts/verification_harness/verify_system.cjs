@@ -241,7 +241,23 @@ async function launchVerificationBrowser() {
 }
 
 async function prepareVerificationPage(browser) {
-  const page = await browser.newPage();
+  let page;
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      page = await browser.newPage();
+      break;
+    } catch (err) {
+      lastError = err;
+      if (!isRetryablePageError(err)) {
+        throw err;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+    }
+  }
+  if (!page) {
+    throw lastError;
+  }
   await page.setViewport({ width: 1280, height: 800 });
   page.on('console', msg => {
     const text = msg.text();
@@ -304,6 +320,27 @@ async function prepareVerificationPage(browser) {
   return page;
 }
 
+async function launchVerificationBrowserWithPage(label = 'Browser startup') {
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    let nextBrowser;
+    try {
+      nextBrowser = await launchVerificationBrowser();
+      const nextPage = await prepareVerificationPage(nextBrowser);
+      return { browser: nextBrowser, page: nextPage };
+    } catch (err) {
+      lastError = err;
+      await nextBrowser?.close().catch(() => undefined);
+      if (!isRetryablePageError(err)) {
+        throw err;
+      }
+      console.warn(`- ${label}: browser startup retry ${attempt} after ${err.message}`);
+      await new Promise((resolve) => setTimeout(resolve, 750 * attempt));
+    }
+  }
+  throw lastError;
+}
+
 async function recoverVerificationPage(browser, page, label) {
   await page?.close().catch(() => undefined);
   try {
@@ -314,11 +351,7 @@ async function recoverVerificationPage(browser, page, label) {
   } catch (err) {
     console.warn(`- ${label}: relaunching browser after page recovery failed: ${err.message}`);
     await browser?.close().catch(() => undefined);
-    const nextBrowser = await launchVerificationBrowser();
-    return {
-      browser: nextBrowser,
-      page: await prepareVerificationPage(nextBrowser),
-    };
+    return launchVerificationBrowserWithPage(label);
   }
 }
 
@@ -675,9 +708,7 @@ async function run() {
 
     try {
       console.log('- Launching Puppeteer browser...');
-      browser = await launchVerificationBrowser();
-
-      page = await prepareVerificationPage(browser);
+      ({ browser, page } = await launchVerificationBrowserWithPage('UI verifier startup'));
 
       console.log(`- Navigating to http://127.0.0.1:${VITE_PORT}/?fallback=true`);
       let navigated = false;

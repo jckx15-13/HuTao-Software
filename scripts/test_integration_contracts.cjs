@@ -125,6 +125,8 @@ function readVerificationStatus(rootPath) {
 const wwvAssetsSource = read("src/assets/wwvVisualAssets.ts");
 const odysseusAssetsSource = read("src/assets/odysseusAssets.ts");
 const bridgeSource = read("bridge/server.py");
+const mainSource = read("src/main.tsx");
+const viteConfigSource = read("vite.config.ts");
 const cesiumViewerSource = read("src/hooks/cesium/useCesiumViewer.ts");
 const imageryManagerSource = read("src/core/globe/useImageryManager.ts");
 const imageryProviderFactorySource = read("src/core/globe/ImageryProviderFactory.ts");
@@ -300,6 +302,8 @@ assert.ok(
   customCursorSource.indexOf("if (nativeCursorFallback || !mountRef.current)") < customCursorSource.indexOf("new CursorEngine"),
   "Custom cursor wrapper must decide native fallback before constructing CursorEngine"
 );
+assert.ok(mainSource.includes("const WWVInitializer = lazy("), "WWV initializer must stay lazy-loaded out of the startup entry chunk");
+assert.ok(viteConfigSource.includes("'react-core'"), "Vite config must keep React/runtime dependencies in a separate startup vendor chunk");
 assert.ok(indexCssSource.includes("--theme-ui-opacity: 0.88"), "Default CSS panel opacity must match restored feature-first glass UI defaults");
 assert.ok(indexCssSource.includes("--theme-ui-blur: 10px"), "Default CSS blur must match restored feature-first glass UI defaults");
 assert.ok(!centerPanelSource.includes("isSpaceMode && spaceInteractionTarget === 'telescope' && ("), "Space mode must not hide telescope HUD overlays behind a telescope-only gate");
