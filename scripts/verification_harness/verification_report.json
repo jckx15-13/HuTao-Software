@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-25T16:49:54.411Z",
+  "timestamp": "2026-06-25T16:52:20.946Z",
   "services": {
     "vite": {
       "status": "online",
@@ -55,19 +55,18 @@
     "response": "Local bridge assistant response.\nInput accepted without echoing the prompt text. Prompt length: 42 characters.\nBridge chat loop verified: request validated, Odysseus availability checked, and assistant output returned separately.\nNo custom system instructions were supplied. Odysseus model status: no configured Odysseus or server-side AI provider model endpoint."
   },
   "ui_verification": {
-    "status": "failed",
+    "status": "success",
     "space_tab_found": true,
     "telemetry_view_found": true,
-    "settings_panel_found": false,
-    "ai_key_inputs_found": false,
+    "settings_panel_found": true,
+    "ai_key_inputs_found": true,
     "layout_overlap_check": {
       "status": "success",
       "major_overlap_count": 0,
       "samples": []
     }
   },
-  "overall_status": "FAIL",
-  "error": "Attempted to use detached Frame 'F0B1021CC7BECAE6C176DBD2DC824965'.",
+  "overall_status": "PARTIAL",
   "partial_reasons": [
     "no configured Odysseus or server-side AI provider model endpoint",
     "unexpected proxy response: {\"response\":\"Local bridge assistant response.\\nInput accepted without echoing the prompt text. Prompt length: 42 characters.\\nBridge chat loop verified: request validated, Odysseus availability checked, and assistant output returned separately.\\nNo custom system instructions were supplied. Odysseus model status: no configured Odysseus or server-side AI provider model endpoint.\",\"mode\":\"local-fallback\",\"reason\":\"no configured Odysseus or server-side AI provider model endpoint\"}"

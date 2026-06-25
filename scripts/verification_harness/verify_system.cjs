@@ -1153,9 +1153,11 @@ async function run() {
             throw err;
           }
           console.warn(`- Settings activation retry ${attempt + 1}: ${err.message}`);
-          ({ browser, page } = await recoverVerificationPage(browser, page, `Settings retry ${attempt + 1}`));
-          await page.goto(`http://127.0.0.1:${VITE_PORT}/?fallback=true`, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => undefined);
-          await waitForUiStore(page).catch(() => undefined);
+          ({ browser, page } = await navigateUntilUiStoreReady(
+            browser,
+            page,
+            `http://127.0.0.1:${VITE_PORT}/?fallback=true`,
+          ));
           await settleReact(page);
           continue;
         }
@@ -1249,4 +1251,34 @@ async function run() {
 
     report.partial_reasons = partialReasons;
     report.overall_status = partialReasons.length > 0 ? 'PARTIAL' : 'PASS';
-    
+    console.log(`Verification completed: ${report.overall_status}`);
+
+  } catch (err) {
+    report.error = err.message;
+    report.partial_reasons = partialReasons;
+    console.error('Verification FAILED:', err.stack || err.message);
+  } finally {
+    // 6. Clean up database
+    if (report.database_seeding === 'success') {
+      console.log('6. Cleaning up database...');
+      try {
+        execSync(`${pythonExec} "${dbHelperPath}" cleanup`, { stdio: 'inherit' });
+      } catch (cleanupErr) {
+        console.error(`Database cleanup failed: ${cleanupErr.message}`);
+      }
+    }
+
+    // 7. Stop mock LLM server
+    if (mockLlmServer) {
+      console.log('7. Stopping mock LLM server...');
+      await new Promise((resolve) => mockLlmServer.close(resolve));
+    }
+
+    // 8. Write JSON report
+    const reportPath = path.join(__dirname, 'verification_report.json');
+    fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf8');
+    console.log(`Report written to ${reportPath}`);
+  }
+}
+
+run();
