@@ -391,7 +391,9 @@ async function main() {
     bundle,
   }, null, 2));
 
-  const failed = Object.values(checks).some((check) => check.status === 'fail');
+  const failed =
+    frontend.status === 'failed' ||
+    Object.values(checks).some((check) => check.status === 'fail');
   process.exitCode = failed ? 1 : 0;
 }
 
