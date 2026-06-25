@@ -12,6 +12,20 @@ const CONTENT_TIMEOUT_MS = Number.parseInt(process.env.UI_AUDIT_CONTENT_TIMEOUT_
 const WORKSPACE_SETTLE_MS = Number.parseInt(process.env.UI_AUDIT_WORKSPACE_SETTLE_MS || (isFastProfile ? '2600' : '4200'), 10);
 const STRICT_CONSOLE = process.env.UI_AUDIT_STRICT_CONSOLE === '1';
 
+function withAuditFallback(url) {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.searchParams.has('fallback')) {
+      parsed.searchParams.set('fallback', 'true');
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+const AUDIT_URL = process.env.UI_AUDIT_URL || withAuditFallback(FRONTEND_URL);
+
 const VIEWPORTS = isFastProfile
   ? [
       { name: 'desktop', width: 1365, height: 900 },
@@ -43,6 +57,14 @@ function formatMs(value) {
 
 async function forceLauncherPage(page) {
   await page.evaluateOnNewDocument(() => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function getContext(type, ...rest) {
+      if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') {
+        return null;
+      }
+      return originalGetContext.apply(this, [type, ...rest]);
+    };
+
     const key = 'silver-wolf-v6-core';
     const fallback = { state: {}, version: 7 };
     let payload = fallback;
@@ -63,6 +85,27 @@ async function forceLauncherPage(page) {
 
     window.localStorage.setItem(key, JSON.stringify({ state, version: 7 }));
   });
+}
+
+async function gotoWithRetry(page, url) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT_MS });
+      return;
+    } catch (error) {
+      lastError = error;
+      const message = error.message || String(error);
+      const retryable = /frame was detached|target closed|navigation failed|net::err_aborted/i.test(message);
+      if (!retryable || attempt === 3) {
+        throw error;
+      }
+      await wait(500 * attempt);
+    }
+  }
+
+  throw lastError;
 }
 
 async function launchWorkspace(page) {
@@ -252,7 +295,7 @@ async function runViewport(browser, viewport) {
   try {
     await page.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
     await forceLauncherPage(page);
-    await page.goto(FRONTEND_URL, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT_MS });
+    await gotoWithRetry(page, AUDIT_URL);
     await page.waitForFunction(() => document.body && document.body.innerText.trim().length > 20, { timeout: CONTENT_TIMEOUT_MS });
     await wait(isFastProfile ? 700 : 1200);
 
@@ -415,7 +458,7 @@ async function main() {
     const score = Math.max(0, 100 - failures.length * 8 - warnings.length * 2);
     const report = {
       profile: isFastProfile ? 'fast' : 'standard',
-      url: FRONTEND_URL,
+      url: AUDIT_URL,
       durationMs: performance.now() - start,
       score,
       failures,
