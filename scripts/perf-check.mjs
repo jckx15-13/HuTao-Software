@@ -34,6 +34,9 @@ const BUDGETS = {
   frontendLoadP95: Number.parseInt(process.env.PERF_FRONTEND_LOAD_BUDGET_MS || '1500', 10),
   frontendDomP95: Number.parseInt(process.env.PERF_FRONTEND_DOM_BUDGET_MS || '1500', 10),
 };
+const INCLUDE_CHAT_BENCHMARKS = process.env.PERF_INCLUDE_CHAT == null
+  ? !isFastProfile
+  : process.env.PERF_INCLUDE_CHAT !== '0';
 
 function percentile(values, p) {
   if (!values.length) return null;
@@ -374,23 +377,32 @@ function warnOrOk(label, val, budgetMs, direction = 'max') {
   };
 }
 
+function skipped(label, reason) {
+  return { label, status: 'skip', reason };
+}
+
 async function main() {
   console.log(`\n=== Silver Wolf VI Performance Baseline (${new Date().toISOString()}) ===`);
   console.log(`BRIDGE_URL=${BRIDGE_URL}`);
   console.log(`FRONTEND_URL=${FRONTEND_URL}`);
   console.log(`PROFILE=${PERF_PROFILE}`);
-  console.log(`ROUNDS=${ROUNDS} INTERVAL_MS=${INTERVAL_MS} FRONTEND_PAGES=${FRONTEND_PAGES}\n`);
+  console.log(`ROUNDS=${ROUNDS} INTERVAL_MS=${INTERVAL_MS} FRONTEND_PAGES=${FRONTEND_PAGES}`);
+  console.log(`INCLUDE_CHAT_BENCHMARKS=${INCLUDE_CHAT_BENCHMARKS}\n`);
 
   const [
     bridge,
-    bridgeChat,
     bridgeGitStatus,
-    bridgeChatStream,
     frontend,
     bundle,
   ] = await Promise.all([
     measureApi(`${BRIDGE_URL}/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS),
-    measureApi(
+    measureApi(`${BRIDGE_URL}/git/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS),
+    measureFrontend(),
+    measureBundle(),
+  ]);
+
+  const bridgeChat = INCLUDE_CHAT_BENCHMARKS
+    ? await measureApi(
       `${BRIDGE_URL}/chat`,
       {
         method: 'POST',
@@ -400,14 +412,13 @@ async function main() {
       Math.min(ROUNDS, 4),
       5000,
       isFastProfile ? 0 : 1,
-    ),
-    measureApi(`${BRIDGE_URL}/git/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS),
-    measureChatStream(`${BRIDGE_URL}/api/chat_stream`, {
+    )
+    : skipped('Bridge /chat benchmark', 'Disabled for fast profile. Use PERF_INCLUDE_CHAT=1 or --standard to include chat latency.');
+  const bridgeChatStream = INCLUDE_CHAT_BENCHMARKS
+    ? await measureChatStream(`${BRIDGE_URL}/api/chat_stream`, {
       message: 'Latency test ping for stream',
-    }),
-    measureFrontend(),
-    measureBundle(),
-  ]);
+    })
+    : skipped('Bridge /api/chat_stream benchmark', 'Disabled for fast profile. Use PERF_INCLUDE_CHAT=1 or --standard to include stream latency.');
 
   const results = {
     bridge: {
@@ -430,7 +441,9 @@ async function main() {
 
   const checks = {
     bridgeStatusP95: warnOrOk('Bridge /status p95', results.bridge.payload.latency?.p95, BUDGETS.bridgeStatusP95),
-    bridgeChatP95: warnOrOk('Bridge /chat p95', results.bridgeChat.payload.latency?.p95, BUDGETS.bridgeChatP95),
+    bridgeChatP95: INCLUDE_CHAT_BENCHMARKS
+      ? warnOrOk('Bridge /chat p95', results.bridgeChat.payload.latency?.p95, BUDGETS.bridgeChatP95)
+      : skipped('Bridge /chat p95', 'Disabled for fast profile.'),
     gitStatusP95: warnOrOk('Bridge /git/status p95', results.bridgeGitStatus.payload.latency?.p95, BUDGETS.gitStatusP95),
     frontendLoadP95: warnOrOk(
       'Frontend dom load p95',
@@ -451,6 +464,7 @@ async function main() {
       rounds: ROUNDS,
       frontendPages: FRONTEND_PAGES,
       frontendSettleMs: FRONTEND_SETTLE_MS,
+      includeChatBenchmarks: INCLUDE_CHAT_BENCHMARKS,
       bridgeUrl: BRIDGE_URL,
       frontendUrl: FRONTEND_URL,
     },
