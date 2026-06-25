@@ -146,6 +146,7 @@ const credentialEngineSource = read("src/lib/credentials/apiCredentialEngine.ts"
 const connectorEngineSource = read("src/lib/credentials/apiConnectorEngine.ts");
 const weatherServiceSource = read("src/services/weatherService.ts");
 const aiSettingsSource = read("src/components/settings/AiSettings.tsx");
+const developerSettingsSource = read("src/components/settings/DeveloperSettings.tsx");
 const verificationHarnessSource = read("scripts/verification_harness/verify_system.cjs");
 const packageJsonSource = read("package.json");
 const uiAuditSource = read("scripts/ui-audit.mjs");
@@ -210,6 +211,16 @@ assert.ok(
   "AI Settings must surface connector readiness, active probe state, and backend-routing metadata",
 );
 assert.ok(
+  developerSettingsSource.includes("Feature Reality Ledger") &&
+    developerSettingsSource.includes("bridgeUrl('/api/integration/status')") &&
+    developerSettingsSource.includes("integration_score") &&
+    developerSettingsSource.includes("not_100_reason") &&
+    developerSettingsSource.includes("verified") &&
+    developerSettingsSource.includes("source-backed") &&
+    developerSettingsSource.includes("unconfigured"),
+  "Developer Settings must surface the source-backed feature reality ledger and non-100 status",
+);
+assert.ok(
   weatherServiceSource.includes('getCredentialSecret("openweather")') &&
     !weatherServiceSource.includes("b6907d289e10d714a6e88b30761fae22"),
   "Weather service must use credential-engine/env OpenWeather keys without embedded demo secrets",
@@ -233,7 +244,12 @@ for (const bridgeProviderContract of [
   '@app.get("/api/credentials/providers")',
   '@app.get("/api/connectors/providers")',
   '@app.get("/api/connectors/probe/{provider_id}")',
+  '@app.get("/api/integration/status")',
   "get_server_connector_provider_status",
+  "build_feature_reality_ledger",
+  "repository_status",
+  "not_100_reason",
+  "integration_score",
   "probe_connector_provider_config",
   "probe_status",
   "secret_returned",
@@ -248,6 +264,8 @@ for (const verifierProviderContract of [
   "connector_provider_status",
   "/api/connectors/providers",
   "Bridge connector status",
+  "feature_reality_ledger",
+  "/api/integration/status",
   "APIFY_TOKEN",
   "NOTION_API_KEY",
   "hasSecretLeak",

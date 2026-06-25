@@ -1,9 +1,47 @@
 import { useState, useEffect } from 'react';
 import { ToggleLeft, ToggleRight, Database, Code, RefreshCw, Clipboard, Check, Activity, ShieldAlert } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
+import { bridgeUrl } from '@/lib/bridgeConfig';
 import { pluginManager } from '../../core/plugins/PluginManager';
 import { dataBus } from '../../core/data/DataBus';
 import { SettingsSection } from './SettingsSection';
+
+type FeatureRealityStatus = 'verified' | 'source-backed' | 'partial' | 'unconfigured' | 'missing';
+
+type FeatureRealityItem = {
+  id: string;
+  label: string;
+  status: FeatureRealityStatus;
+  evidence: string[];
+  limitation?: string;
+};
+
+type RepositoryRealityItem = {
+  id: string;
+  label: string;
+  status: FeatureRealityStatus;
+  path: string;
+  missing_files: string[];
+};
+
+type FeatureRealityLedger = {
+  status: string;
+  integration_score: number;
+  generated_at: string;
+  repositories: RepositoryRealityItem[];
+  features: FeatureRealityItem[];
+  runtime_report_status: string;
+  partial_reasons: string[];
+  not_100_reason: string;
+};
+
+const realityStatusClass: Record<FeatureRealityStatus, string> = {
+  verified: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200',
+  'source-backed': 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
+  partial: 'border-amber-300/20 bg-amber-300/10 text-amber-100',
+  unconfigured: 'border-zinc-300/15 bg-white/5 text-white/45',
+  missing: 'border-red-400/20 bg-red-400/10 text-red-100',
+};
 
 export function DeveloperSettings() {
   const forceFallback = useUIStore((s) => s.forceFallback);
@@ -14,6 +52,8 @@ export function DeveloperSettings() {
   const [copied, setCopied] = useState(false);
   const [busHistory, setBusHistory] = useState<any[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [featureLedger, setFeatureLedger] = useState<FeatureRealityLedger | null>(null);
+  const [featureLedgerStatus, setFeatureLedgerStatus] = useState('checking');
 
   // Poll DataBus event log history periodically for live updates
   useEffect(() => {
@@ -23,6 +63,31 @@ export function DeveloperSettings() {
     updateHistory();
     const interval = setInterval(updateHistory, 1000);
     return () => clearInterval(interval);
+  }, [refreshKey]);
+
+  useEffect(() => {
+    let active = true;
+    async function refreshFeatureLedger() {
+      setFeatureLedgerStatus('checking');
+      try {
+        const response = await fetch(bridgeUrl('/api/integration/status'));
+        if (!response.ok) {
+          throw new Error(`Bridge returned ${response.status}`);
+        }
+        const payload = await response.json() as FeatureRealityLedger;
+        if (!active) return;
+        setFeatureLedger(payload);
+        setFeatureLedgerStatus('online');
+      } catch (error) {
+        if (!active) return;
+        setFeatureLedgerStatus(error instanceof Error ? error.message : 'offline');
+      }
+    }
+
+    refreshFeatureLedger();
+    return () => {
+      active = false;
+    };
   }, [refreshKey]);
 
   // Active Plugins list
@@ -119,6 +184,67 @@ export function DeveloperSettings() {
             </span>
           </div>
 
+        </div>
+      </SettingsSection>
+
+      {/* SECTION 2: SOURCE-BACKED FEATURE REALITY LEDGER */}
+      <SettingsSection title="Feature Reality Ledger">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-white/5 bg-white/5 p-4">
+            <div className="space-y-1">
+              <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-white/75">
+                <Activity size={14} className="text-primary" />
+                Runtime evidence, not marketing copy
+              </span>
+              <p className="max-w-2xl font-mono text-[8px] leading-relaxed text-white/35">
+                This ledger reports verified, source-backed, partial, unconfigured, and missing surfaces from the Bridge runtime.
+                It is intentionally not scored as 100 while external credentials or live provider checks are missing.
+              </p>
+            </div>
+            <div className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-mono text-[9px] uppercase tracking-wider text-primary">
+              {featureLedger ? `${featureLedger.integration_score}/100` : featureLedgerStatus}
+            </div>
+          </div>
+
+          {featureLedger && (
+            <>
+              <div className="grid gap-2 md:grid-cols-3">
+                {featureLedger.repositories.map((repo) => (
+                  <div key={repo.id} className={`rounded-xl border p-3 font-mono text-[8px] leading-relaxed ${realityStatusClass[repo.status] || realityStatusClass.partial}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold uppercase tracking-wider">{repo.label}</span>
+                      <span className="uppercase">{repo.status}</span>
+                    </div>
+                    <div className="mt-2 truncate text-white/45">{repo.path}</div>
+                    {repo.missing_files.length > 0 && (
+                      <div className="mt-1 text-red-200/75">Missing: {repo.missing_files.join(', ')}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-2 md:grid-cols-2">
+                {featureLedger.features.map((feature) => (
+                  <div key={feature.id} className={`rounded-xl border p-3 font-mono text-[8px] leading-relaxed ${realityStatusClass[feature.status] || realityStatusClass.partial}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold uppercase tracking-wider">{feature.label}</span>
+                      <span className="uppercase">{feature.status}</span>
+                    </div>
+                    <div className="mt-2 text-white/45">Evidence: {feature.evidence.join(' / ')}</div>
+                    {feature.limitation && (
+                      <div className="mt-1 text-white/55">{feature.limitation}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 font-mono text-[8px] uppercase leading-relaxed text-amber-100/75">
+                <div className="font-bold">Not 100 reason</div>
+                <div>{featureLedger.not_100_reason}</div>
+                {featureLedger.partial_reasons.length > 0 && <div>Runtime partials: {featureLedger.partial_reasons.join(', ')}</div>}
+              </div>
+            </>
+          )}
         </div>
       </SettingsSection>
 

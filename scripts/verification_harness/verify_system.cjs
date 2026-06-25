@@ -664,6 +664,7 @@ async function run() {
     ai_model_endpoint: { status: 'pending', configured_count: 0 },
     server_provider_route: { status: 'pending', configured_count: 0 },
     connector_provider_status: { status: 'pending', supported_count: 0, configured_count: 0 },
+    feature_reality_ledger: { status: 'pending', integration_score: null },
     proxy_chat_flow: { status: 'pending', response: null },
     ui_verification: {
       status: 'pending',
@@ -792,6 +793,51 @@ async function run() {
           error: connectorErr.message,
         };
         partialReasons.push(`connector provider status check failed: ${connectorErr.message}`);
+      }
+
+      try {
+        const ledgerResponse = await getJson(`http://127.0.0.1:${BRIDGE_PORT}/api/integration/status`);
+        const ledger = ledgerResponse.body || {};
+        const repositories = Array.isArray(ledger.repositories) ? ledger.repositories : [];
+        const features = Array.isArray(ledger.features) ? ledger.features : [];
+        const repositoryIds = new Set(repositories.map((repo) => repo.id));
+        const featureIds = new Set(features.map((feature) => feature.id));
+        const requiredRepositories = ['silver-wolf-vi', 'worldwideview', 'odysseus'];
+        const requiredFeatures = ['chat-loop', 'ui-overlap-budget', 'credential-engine', 'connector-probes', 'server-ai-provider'];
+        const missingRepositories = requiredRepositories.filter((repoId) => !repositoryIds.has(repoId));
+        const missingFeatures = requiredFeatures.filter((featureId) => !featureIds.has(featureId));
+        const score = Number(ledger.integration_score);
+        const serializedLedger = JSON.stringify(ledger);
+        const leaksSecretMaterial = /sk-|ghp_|secret_[a-z0-9]|AIza|Bearer\s+[A-Za-z0-9_-]/i.test(serializedLedger);
+
+        if (missingRepositories.length > 0 || missingFeatures.length > 0) {
+          throw new Error(`feature reality ledger missing entries: repos=${missingRepositories.join(',')} features=${missingFeatures.join(',')}`);
+        }
+        if (!Number.isFinite(score) || score >= 100) {
+          throw new Error(`feature reality ledger must not report 100: ${score}`);
+        }
+        if (!String(ledger.not_100_reason || '').trim()) {
+          throw new Error('feature reality ledger missing not_100_reason');
+        }
+        if (leaksSecretMaterial) {
+          throw new Error('feature reality ledger leaked secret-like material');
+        }
+
+        report.feature_reality_ledger = {
+          status: ledger.status || 'partial',
+          integration_score: score,
+          repository_count: repositories.length,
+          feature_count: features.length,
+          runtime_report_status: ledger.runtime_report_status || 'unknown',
+        };
+        console.log(`- Feature reality ledger: ${score}/100 (${features.length} features, ${repositories.length} repositories)`);
+      } catch (ledgerErr) {
+        report.feature_reality_ledger = {
+          status: 'failed',
+          integration_score: null,
+          error: ledgerErr.message,
+        };
+        partialReasons.push(`feature reality ledger check failed: ${ledgerErr.message}`);
       }
 
       // 2. Start mock LLM server

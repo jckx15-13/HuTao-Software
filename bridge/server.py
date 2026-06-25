@@ -1278,6 +1278,204 @@ async def api_connector_provider_probe(provider_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Unknown connector provider")
     return await probe_connector_provider_config(provider, request.app.state.http_client)
 
+def root_path(relative_path: str) -> Path:
+    return BASE_DIR.parent / relative_path
+
+def path_exists(relative_path: str) -> bool:
+    return root_path(relative_path).exists()
+
+def read_latest_verification_report() -> dict:
+    report_path = root_path("scripts/verification_harness/verification_report.json")
+    try:
+        return json.loads(report_path.read_text(encoding="utf-8")) if report_path.exists() else {}
+    except Exception:
+        return {}
+
+def feature_status(
+    feature_id: str,
+    label: str,
+    status: str,
+    evidence: list[str],
+    limitation: str = "",
+) -> dict:
+    return {
+        "id": feature_id,
+        "label": label,
+        "status": status,
+        "evidence": evidence,
+        "limitation": limitation,
+    }
+
+def repository_status(repo_id: str, label: str, relative_path: str, required_files: list[str]) -> dict:
+    present_files = [item for item in required_files if path_exists(str(Path(relative_path) / item))]
+    status = "verified" if len(present_files) == len(required_files) else "partial" if path_exists(relative_path) else "missing"
+    return {
+        "id": repo_id,
+        "label": label,
+        "path": str(root_path(relative_path)),
+        "status": status,
+        "required_files": required_files,
+        "present_files": present_files,
+        "missing_files": [item for item in required_files if item not in present_files],
+    }
+
+def build_feature_reality_ledger() -> dict:
+    report = read_latest_verification_report()
+    services = report.get("services") if isinstance(report.get("services"), dict) else {}
+    ui = report.get("ui_verification") if isinstance(report.get("ui_verification"), dict) else {}
+    connector_statuses = get_server_connector_provider_status()
+    configured_connectors = [provider for provider in connector_statuses if provider.get("configured")]
+    configured_models = int((report.get("ai_model_endpoint") or {}).get("configured_count") or 0)
+    server_provider_count = int((report.get("ai_model_endpoint") or {}).get("server_provider_count") or 0)
+    runtime_partial = report.get("overall_status") == "PARTIAL"
+
+    repositories = [
+        repository_status("silver-wolf-vi", "Silver Wolf VI root app", ".", [
+            "package.json",
+            "src/App.tsx",
+            "bridge/server.py",
+            "scripts/test_integration_contracts.cjs",
+        ]),
+        repository_status("worldwideview", "WorldWideView source integration", "worldwideview", [
+            "package.json",
+            "public/logo/logo-icon.svg",
+            "public/airplane/scene.gltf",
+        ]),
+        repository_status("odysseus", "Odysseus companion backend", "odysseus", [
+            "pyproject.toml",
+            "package.json",
+            "docs",
+        ]),
+    ]
+
+    features = [
+        feature_status(
+            "chat-loop",
+            "Chat input and assistant response loop",
+            "verified" if (report.get("proxy_chat_flow") or {}).get("status") == "success" else "partial",
+            [
+                "verification_report.proxy_chat_flow",
+                "bridge /chat route",
+                "src/hooks/useAIChat.ts",
+            ],
+            "" if (report.get("proxy_chat_flow") or {}).get("status") == "success" else "Latest runtime report has not proven chat flow.",
+        ),
+        feature_status(
+            "ui-overlap-budget",
+            "Workspace foreground overlap budget",
+            "verified" if (ui.get("layout_overlap_check") or {}).get("status") == "success" else "partial",
+            [
+                "verification_report.ui_verification.layout_overlap_check",
+                "scripts/verification_harness/verify_system.cjs",
+            ],
+            "" if (ui.get("layout_overlap_check") or {}).get("status") == "success" else "Latest runtime report has not proven overlap budget.",
+        ),
+        feature_status(
+            "globe-imagery",
+            "Cesium imagery source ownership",
+            "source-backed" if path_exists("src/core/globe/ImageryProviderFactory.ts") and path_exists("src/core/globe/useImageryManager.ts") else "missing",
+            [
+                "src/core/globe/ImageryProviderFactory.ts",
+                "src/core/globe/useImageryManager.ts",
+                "scripts/test_integration_contracts.cjs",
+            ],
+            "Runtime ledger confirms source/contracts; run visual globe QA for live imagery-provider tile health.",
+        ),
+        feature_status(
+            "astronomy-physics",
+            "Astronomy math, precession, and orbital runtime contracts",
+            "source-backed" if path_exists("src/lib/coordinateTransforms.ts") and path_exists("scripts/test_physics_and_runtime.cjs") else "missing",
+            [
+                "src/lib/coordinateTransforms.ts",
+                "src/hooks/cesium/useConstellations.ts",
+                "scripts/test_physics_and_runtime.cjs",
+            ],
+            "The ledger marks this source-backed because exact apparent sky positions still require external ephemeris validation.",
+        ),
+        feature_status(
+            "cursor-fallback",
+            "Native cursor fallback for high-load states",
+            "source-backed" if path_exists("src/core/cursor/nativeFallback.ts") and path_exists("src/components/layout/CustomCursor.tsx") else "missing",
+            [
+                "src/core/cursor/nativeFallback.ts",
+                "src/components/layout/CustomCursor.tsx",
+                "scripts/test_cursor_engine.cjs",
+            ],
+            "Runtime responsiveness still depends on device/GPU load.",
+        ),
+        feature_status(
+            "credential-engine",
+            "Local credential registry and auth descriptor engine",
+            "source-backed" if path_exists("src/lib/credentials/apiCredentialEngine.ts") and path_exists("src/lib/credentials/apiConnectorEngine.ts") else "missing",
+            [
+                "src/lib/credentials/apiCredentialEngine.ts",
+                "src/lib/credentials/apiConnectorEngine.ts",
+                "src/components/settings/AiSettings.tsx",
+            ],
+            "Browser-stored values are local setup handoff only; production secrets belong in the Bridge environment.",
+        ),
+        feature_status(
+            "connector-probes",
+            "Redacted server-side connector probes",
+            "unconfigured" if len(configured_connectors) == 0 else "partial",
+            [
+                "/api/connectors/providers?probe=true",
+                "/api/connectors/probe/{provider_id}",
+                f"{len(connector_statuses)} providers supported",
+            ],
+            "No live external connector credentials are configured." if len(configured_connectors) == 0 else "Some connectors are configured; probe each provider before claiming live integration.",
+        ),
+        feature_status(
+            "server-ai-provider",
+            "Server-side AI provider route",
+            "unconfigured" if configured_models == 0 and server_provider_count == 0 else "partial",
+            [
+                "OPENAI_API_KEY + OPENAI_MODEL",
+                "OPENROUTER_API_KEY + OPENROUTER_MODEL",
+                "verification mock server-provider route",
+            ],
+            "No real Odysseus or server-side provider model endpoint is configured." if configured_models == 0 and server_provider_count == 0 else "Provider route exists; verify with real credentials before treating it as live AI.",
+        ),
+        feature_status(
+            "runtime-services",
+            "Local Vite, Bridge, Odysseus, and ChromaDB services",
+            "verified" if all((services.get(name) or {}).get("status") == "online" for name in ["vite", "bridge", "odysseus", "chromadb"]) else "partial",
+            [
+                "verification_report.services.vite",
+                "verification_report.services.bridge",
+                "verification_report.services.odysseus",
+                "verification_report.services.chromadb",
+            ],
+            "Service health is local-runtime evidence, not proof of remote deployment readiness.",
+        ),
+    ]
+
+    feature_penalties = {
+        "missing": 12,
+        "partial": 6,
+        "unconfigured": 4,
+        "source-backed": 2,
+        "verified": 0,
+    }
+    integration_score = max(0, 100 - sum(feature_penalties.get(item["status"], 6) for item in features))
+    if integration_score >= 100:
+        integration_score = 99
+
+    return {
+        "status": "partial" if runtime_partial or integration_score < 100 else "verified",
+        "integration_score": integration_score,
+        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "repositories": repositories,
+        "features": features,
+        "runtime_report_status": report.get("overall_status") or "missing",
+        "partial_reasons": report.get("partial_reasons") or [],
+        "not_100_reason": "External model/provider credentials and some live visual/provider checks remain unconfigured or source-backed.",
+    }
+
+@app.get("/api/integration/status")
+async def api_integration_status():
+    return build_feature_reality_ledger()
+
 # Secure Generic Proxy to Odysseus Endpoints
 @app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy_to_odysseus(path: str, request: Request):
