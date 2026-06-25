@@ -25,6 +25,7 @@ export default defineConfig(({mode}) => {
       watch: process.env.DISABLE_HMR === 'true' ? null : {
         ignored: [
           '**/bridge/**',
+          '**/dist/**',
           '**/logs/**',
           '**/.gemini/**',
           '**/launcher.log',

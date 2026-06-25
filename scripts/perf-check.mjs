@@ -20,9 +20,13 @@ const BRIDGE_URL = process.env.BRIDGE_URL || 'http://127.0.0.1:8001';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://127.0.0.1:3005';
 const ROUNDS = Number.parseInt(process.env.PERF_ROUNDS || (isFastProfile ? '3' : '6'), 10);
 const INTERVAL_MS = Number.parseInt(process.env.PERF_INTERVAL_MS || (isFastProfile ? '40' : '120'), 10);
-const FRONTEND_PAGES = Number.parseInt(process.env.FRONTEND_PAGES || (isFastProfile ? '1' : '2'), 10);
-const FRONTEND_PAGE_RETRIES = Number.parseInt(process.env.PERF_FRONTEND_PAGE_RETRIES || (isFastProfile ? '2' : '1'), 10);
+const FRONTEND_PAGES = Number.parseInt(process.env.FRONTEND_PAGES || '1', 10);
+const FRONTEND_PAGE_RETRIES = Number.parseInt(process.env.PERF_FRONTEND_PAGE_RETRIES || (isFastProfile ? '2' : '3'), 10);
 const API_WARMUP_ROUNDS = Number.parseInt(process.env.PERF_API_WARMUP_ROUNDS || (isFastProfile ? '1' : '2'), 10);
+const FRONTEND_FETCH_WARMUP_ROUNDS = Number.parseInt(
+  process.env.PERF_FRONTEND_FETCH_WARMUP_ROUNDS || (isFastProfile ? '3' : '2'),
+  10,
+);
 const FRONTEND_SETTLE_MS = Number.parseInt(process.env.PERF_FRONTEND_SETTLE_MS || (isFastProfile ? '250' : '1000'), 10);
 const FRONTEND_GOTO_TIMEOUT_MS = Number.parseInt(process.env.PERF_FRONTEND_GOTO_TIMEOUT_MS || (isFastProfile ? '30000' : '45000'), 10);
 const FRONTEND_CONTENT_TIMEOUT_MS = Number.parseInt(process.env.PERF_FRONTEND_CONTENT_TIMEOUT_MS || (isFastProfile ? '5000' : '15000'), 10);
@@ -183,7 +187,7 @@ async function measureFrontend() {
       { headers: { Accept: 'text/html' } },
       Math.min(ROUNDS, 3),
       5000,
-      0,
+      FRONTEND_FETCH_WARMUP_ROUNDS,
     );
 
     return {
@@ -216,12 +220,16 @@ async function measureFrontend() {
     return { status: 'skipped', reason: `puppeteer not available: ${error.message}` };
   }
 
-  let browser;
-  try {
-    browser = await puppeteer.launch({
+  const launchBrowser = () => puppeteer.launch({
       headless: 'new',
       args: ['--no-sandbox', '--disable-dev-shm-usage'],
     });
+
+  let browser;
+  try {
+    browser = await launchBrowser();
+    await browser.close().catch(() => {});
+    browser = null;
   } catch (error) {
     return { status: 'failed', reason: `Unable to launch Chromium: ${error.message}` };
   }
@@ -230,12 +238,15 @@ async function measureFrontend() {
     const pageResults = [];
     let failedLoads = 0;
     const loadErrors = [];
+    const recoveredLoadErrors = [];
 
     for (let i = 0; i < FRONTEND_PAGES; i += 1) {
       let loaded = false;
+      const pageAttemptErrors = [];
       for (let attempt = 1; attempt <= FRONTEND_PAGE_RETRIES; attempt += 1) {
         let page;
         try {
+          browser = await launchBrowser();
           page = await browser.newPage();
           await page.setViewport({ width: 1365, height: 1024 });
           const pageLoad = await page.goto(FRONTEND_URL, {
@@ -248,7 +259,7 @@ async function measureFrontend() {
               { timeout: FRONTEND_CONTENT_TIMEOUT_MS },
             )
             .catch((error) => {
-              loadErrors.push(`content wait: ${error.message}`);
+              pageAttemptErrors.push(`page ${i + 1} attempt ${attempt} content wait: ${error.message}`);
             });
           if (FRONTEND_SETTLE_MS > 0 && typeof page.waitForNetworkIdle === 'function') {
             await page
@@ -297,18 +308,25 @@ async function measureFrontend() {
             retryAttempt: attempt,
           });
           loaded = true;
+          if (pageAttemptErrors.length > 0) {
+            recoveredLoadErrors.push(...pageAttemptErrors);
+          }
           break;
         } catch (error) {
-          loadErrors.push(`page ${i + 1} attempt ${attempt}: ${error.message || String(error)}`);
+          const message = error.message || String(error);
+          pageAttemptErrors.push(`page ${i + 1} attempt ${attempt}: ${message}`);
           if (attempt < FRONTEND_PAGE_RETRIES) {
             await wait(250 * attempt);
           }
         } finally {
           await page?.close().catch(() => {});
+          await browser?.close().catch(() => {});
+          browser = null;
         }
       }
       if (!loaded) {
         failedLoads += 1;
+        loadErrors.push(...pageAttemptErrors);
       }
     }
 
@@ -331,6 +349,7 @@ async function measureFrontend() {
       pageResults,
       failedLoads,
       loadErrors: loadErrors.slice(0, 5),
+      recoveredLoadErrors: recoveredLoadErrors.slice(0, 5),
       averages: {
         domContentMs: avgDomContent,
         loadMs: avgLoad,
@@ -339,7 +358,7 @@ async function measureFrontend() {
       },
     };
   } finally {
-    await browser.close().catch(() => {});
+    await browser?.close().catch(() => {});
   }
 }
 
@@ -427,20 +446,21 @@ async function main() {
   console.log(`FRONTEND_URL=${FRONTEND_URL}`);
   console.log(`PROFILE=${PERF_PROFILE}`);
   console.log(`ROUNDS=${ROUNDS} INTERVAL_MS=${INTERVAL_MS} FRONTEND_PAGES=${FRONTEND_PAGES}`);
+  console.log(`FRONTEND_FETCH_WARMUP_ROUNDS=${FRONTEND_FETCH_WARMUP_ROUNDS}`);
   console.log(`INCLUDE_CHAT_BENCHMARKS=${INCLUDE_CHAT_BENCHMARKS}`);
   console.log(`INCLUDE_GIT_BENCHMARKS=${INCLUDE_GIT_BENCHMARKS}`);
   console.log(`INCLUDE_FRONTEND_BROWSER=${INCLUDE_FRONTEND_BROWSER}`);
   console.log(`COMPRESS_BUNDLE_ASSETS=${COMPRESS_BUNDLE_ASSETS}\n`);
 
-  const [
-    bridge,
-    frontend,
-    bundle,
-  ] = await Promise.all([
-    measureApi(`${BRIDGE_URL}/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS),
-    measureFrontend(),
-    measureBundle(),
-  ]);
+  const bridge = await measureApi(
+    `${BRIDGE_URL}/status`,
+    { method: 'GET' },
+    Math.min(ROUNDS, 4),
+    7000,
+    API_WARMUP_ROUNDS,
+  );
+  const frontend = await measureFrontend();
+  const bundle = await measureBundle();
 
   const bridgeGitStatus = INCLUDE_GIT_BENCHMARKS
     ? await measureApi(`${BRIDGE_URL}/git/status`, { method: 'GET' }, Math.min(ROUNDS, 4), 7000, API_WARMUP_ROUNDS)
@@ -513,6 +533,7 @@ async function main() {
       rounds: ROUNDS,
       frontendPages: FRONTEND_PAGES,
       frontendPageRetries: FRONTEND_PAGE_RETRIES,
+      frontendFetchWarmupRounds: FRONTEND_FETCH_WARMUP_ROUNDS,
       frontendSettleMs: FRONTEND_SETTLE_MS,
       includeChatBenchmarks: INCLUDE_CHAT_BENCHMARKS,
       includeGitBenchmarks: INCLUDE_GIT_BENCHMARKS,

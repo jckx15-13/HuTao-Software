@@ -10,6 +10,7 @@ import {
   type CredentialProviderId,
 } from '@/lib/credentials/apiCredentialEngine';
 import { getApiConnectorReadiness } from '@/lib/credentials/apiConnectorEngine';
+import { bridgeUrl } from '@/lib/bridgeConfig';
 import { SettingsSection } from './SettingsSection';
 
 type CredentialDraft = {
@@ -20,12 +21,53 @@ type CredentialDraft = {
   accountId: string;
 };
 
+type BridgeConnectorProviderStatus = {
+  id: string;
+  label: string;
+  category: string;
+  configured: boolean;
+  key_env: string;
+  endpoint_env: string;
+  endpoint_configured: boolean;
+  probe_url: string;
+  capabilities: string[];
+  requires_backend: boolean;
+  probe_ok?: boolean;
+  probe_status?: string;
+  probe_http_status?: number;
+  probe_message?: string;
+  probe_checked_at?: string;
+  secret_returned?: boolean;
+};
+
+type BridgeConnectorStatus = {
+  status: 'idle' | 'checking' | 'online' | 'offline';
+  supportedCount: number;
+  configuredCount: number;
+  providers: BridgeConnectorProviderStatus[];
+  error?: string;
+};
+
+type BridgeConnectorStatusResponse = {
+  providers?: BridgeConnectorProviderStatus[];
+  configured_count?: number;
+  supported_count?: number;
+  probe_checked_count?: number;
+};
+
 const emptyDraft: CredentialDraft = {
   secret: '',
   endpoint: '',
   projectId: '',
   databaseId: '',
   accountId: '',
+};
+
+const emptyBridgeConnectorStatus: BridgeConnectorStatus = {
+  status: 'idle',
+  supportedCount: 0,
+  configuredCount: 0,
+  providers: [],
 };
 
 const apiCredentialPlaceholders = {
@@ -68,6 +110,7 @@ export function AiSettings() {
   const [credentialStatus, setCredentialStatus] = useState('Credential engine idle');
   const [configuredCount, setConfiguredCount] = useState(0);
   const [connectorReadiness, setConnectorReadiness] = useState(getApiConnectorReadiness());
+  const [bridgeConnectorStatus, setBridgeConnectorStatus] = useState<BridgeConnectorStatus>(emptyBridgeConnectorStatus);
 
   const refreshCredentialState = () => {
     try {
@@ -81,6 +124,42 @@ export function AiSettings() {
 
   useEffect(() => {
     refreshCredentialState();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function refreshBridgeConnectorStatus() {
+      setBridgeConnectorStatus((current) => ({ ...current, status: 'checking', error: undefined }));
+      try {
+        const response = await fetch(bridgeUrl('/api/connectors/providers?probe=true'));
+        if (!response.ok) {
+          throw new Error(`Bridge returned ${response.status}`);
+        }
+        const payload = await response.json() as BridgeConnectorStatusResponse;
+        const providers = Array.isArray(payload.providers) ? payload.providers : [];
+        if (!active) return;
+        setBridgeConnectorStatus({
+          status: 'online',
+          supportedCount: Number(payload.supported_count || providers.length),
+          configuredCount: Number(payload.configured_count || 0),
+          providers,
+        });
+      } catch (error) {
+        if (!active) return;
+        setBridgeConnectorStatus({
+          status: 'offline',
+          supportedCount: 0,
+          configuredCount: 0,
+          providers: [],
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    refreshBridgeConnectorStatus();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const updateCredentialDraft = (providerId: CredentialProviderId, field: keyof CredentialDraft, value: string) => {
@@ -175,6 +254,49 @@ export function AiSettings() {
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-2 rounded-2xl border border-cyan-300/15 bg-cyan-300/5 p-3 md:col-span-2">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100/80">Bridge connector status</div>
+                  <p className="mt-1 max-w-3xl font-mono text-[8px] leading-relaxed text-white/40">
+                    Live redacted status from the Bridge. It reports provider readiness, probe state, and env var names without returning secret values.
+                  </p>
+                </div>
+                <div className="rounded-full border border-white/10 bg-black/25 px-3 py-1 font-mono text-[8px] uppercase tracking-wider text-white/45">
+                  {bridgeConnectorStatus.status} / {bridgeConnectorStatus.configuredCount}/{bridgeConnectorStatus.supportedCount} configured
+                </div>
+              </div>
+              {bridgeConnectorStatus.error && (
+                <p className="font-mono text-[8px] leading-relaxed text-amber-300/75">
+                  Bridge connector status unavailable: {bridgeConnectorStatus.error}
+                </p>
+              )}
+              {bridgeConnectorStatus.providers.length > 0 && (
+                <div className="grid gap-2 md:grid-cols-3">
+                  {bridgeConnectorStatus.providers.map((provider) => (
+                    <div key={provider.id} className="rounded-xl border border-white/5 bg-black/20 p-2 font-mono text-[8px] leading-relaxed text-white/35">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold uppercase tracking-wider text-white/60">{provider.label}</span>
+                        <span className={provider.configured ? 'text-emerald-300/75' : 'text-white/30'}>
+                          {provider.configured ? 'configured' : 'missing'}
+                        </span>
+                      </div>
+                      <div className="truncate">Env: {provider.key_env}</div>
+                      <div className="truncate">Probe: {provider.probe_url}</div>
+                      <div className={provider.probe_ok ? 'text-emerald-300/75' : provider.probe_status === 'missing_credentials' ? 'text-white/30' : 'text-amber-300/70'}>
+                        Probe status: {provider.probe_status || 'not checked'}
+                        {provider.probe_http_status ? ` / HTTP ${provider.probe_http_status}` : ''}
+                      </div>
+                      {provider.probe_message && (
+                        <div className="line-clamp-2 text-white/30">{provider.probe_message}</div>
+                      )}
+                      <div>{provider.requires_backend ? 'Bridge/backend required' : 'Browser-callable or backend optional'}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {API_CREDENTIAL_PROVIDERS.map((provider) => {
               const draft = credentialDrafts[provider.id] || emptyDraft;
               const readiness = connectorReadiness.find((item) => item.providerId === provider.id);

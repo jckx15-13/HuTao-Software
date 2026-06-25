@@ -355,6 +355,75 @@ async function recoverVerificationPage(browser, page, label) {
   }
 }
 
+async function relaunchVerificationBrowser(browser, page, label) {
+  await page?.close().catch(() => undefined);
+  await browser?.close().catch(() => undefined);
+  await new Promise((resolve) => setTimeout(resolve, 750));
+  return launchVerificationBrowserWithPage(label);
+}
+
+async function navigateVerificationPage(browser, page, url, label = 'Navigation') {
+  let currentBrowser = browser;
+  let currentPage = page;
+  let lastError;
+
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      await currentPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await currentPage.evaluate(() => document.readyState).catch(() => undefined);
+      return { browser: currentBrowser, page: currentPage };
+    } catch (err) {
+      lastError = err;
+      console.warn(`- ${label} attempt ${attempt} warning: ${err.message}`);
+      if (!isRetryablePageError(err) || attempt === 4) {
+        break;
+      }
+      ({ browser: currentBrowser, page: currentPage } = await relaunchVerificationBrowser(
+        currentBrowser,
+        currentPage,
+        `${label} retry ${attempt}`,
+      ));
+    }
+  }
+
+  throw lastError || new Error(`Failed to navigate to ${url}.`);
+}
+
+async function navigateUntilUiStoreReady(browser, page, url) {
+  let currentBrowser = browser;
+  let currentPage = page;
+  let lastError;
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    ({ browser: currentBrowser, page: currentPage } = await navigateVerificationPage(
+      currentBrowser,
+      currentPage,
+      url,
+      `UI verifier navigation ${attempt}`,
+    ));
+
+    try {
+      await waitForUiStore(currentPage);
+      return { browser: currentBrowser, page: currentPage };
+    } catch (err) {
+      lastError = err;
+      console.warn(`- UI store readiness attempt ${attempt} warning: ${err.message}`);
+      if (!isRetryablePageError(err) && !/useUIStore/i.test(err.message)) {
+        break;
+      }
+      if (attempt < 3) {
+        ({ browser: currentBrowser, page: currentPage } = await relaunchVerificationBrowser(
+          currentBrowser,
+          currentPage,
+          `UI store readiness retry ${attempt}`,
+        ));
+      }
+    }
+  }
+
+  throw lastError || new Error('Timed out waiting for UI store after navigation.');
+}
+
 function createMockLlmServer(port) {
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
@@ -535,6 +604,7 @@ async function run() {
     mock_llm_server: 'pending',
     ai_model_endpoint: { status: 'pending', configured_count: 0 },
     server_provider_route: { status: 'pending', configured_count: 0 },
+    connector_provider_status: { status: 'pending', supported_count: 0, configured_count: 0 },
     proxy_chat_flow: { status: 'pending', response: null },
     ui_verification: {
       status: 'pending',
@@ -625,6 +695,46 @@ async function run() {
         partialReasons.push(`Odysseus model endpoint check failed: ${modelsErr.message}`);
       }
 
+      try {
+        const connectorResponse = await getJson(`http://127.0.0.1:${BRIDGE_PORT}/api/connectors/providers`);
+        const supportedCount = Number(connectorResponse.body?.supported_count || 0);
+        const configuredCount = Number(connectorResponse.body?.configured_count || 0);
+        const providers = Array.isArray(connectorResponse.body?.providers) ? connectorResponse.body.providers : [];
+        const requiredConnectorIds = ['apify', 'google-cloud', 'github', 'notion', 'openweather'];
+        const providerById = new Map(providers.map((provider) => [provider.id, provider]));
+        const providerIds = new Set(providerById.keys());
+        const missingRequired = requiredConnectorIds.filter((providerId) => !providerIds.has(providerId));
+        if (supportedCount < 11 || missingRequired.length > 0) {
+          throw new Error(`missing connector provider status entries: ${missingRequired.join(', ') || supportedCount}`);
+        }
+        const requiredProviderEnvNames = Object.fromEntries(
+          requiredConnectorIds.map((providerId) => [providerId, providerById.get(providerId)?.key_env || null]),
+        );
+        if (requiredProviderEnvNames.apify !== 'APIFY_TOKEN' || requiredProviderEnvNames.notion !== 'NOTION_API_KEY') {
+          throw new Error(`connector provider env metadata mismatch: ${JSON.stringify(requiredProviderEnvNames)}`);
+        }
+        const leaksSecretMaterial = providers.some((provider) => Object.keys(provider).some((key) => /secret|token|api_key|password/i.test(key)));
+        if (leaksSecretMaterial) {
+          throw new Error('connector provider status leaked a secret-like field');
+        }
+        report.connector_provider_status = {
+          status: 'success',
+          supported_count: supportedCount,
+          configured_count: configuredCount,
+          required_providers: requiredConnectorIds,
+          required_provider_envs: requiredProviderEnvNames,
+        };
+        console.log(`- Connector provider status: ${supportedCount} supported, ${configuredCount} configured`);
+      } catch (connectorErr) {
+        report.connector_provider_status = {
+          status: 'failed',
+          supported_count: 0,
+          configured_count: 0,
+          error: connectorErr.message,
+        };
+        partialReasons.push(`connector provider status check failed: ${connectorErr.message}`);
+      }
+
       // 2. Start mock LLM server
       console.log('2. Starting mock LLM server...');
       mockLlmServer = await startMockLlmServer(MOCK_PORT);
@@ -710,27 +820,9 @@ async function run() {
       console.log('- Launching Puppeteer browser...');
       ({ browser, page } = await launchVerificationBrowserWithPage('UI verifier startup'));
 
-      console.log(`- Navigating to http://127.0.0.1:${VITE_PORT}/?fallback=true`);
-      let navigated = false;
-      for (let navAttempt = 1; navAttempt <= 3; navAttempt++) {
-        try {
-          await page.goto(`http://127.0.0.1:${VITE_PORT}/?fallback=true`, { waitUntil: 'domcontentloaded', timeout: 20000 });
-          navigated = true;
-          break;
-        } catch (gotoErr) {
-          console.warn(`- Navigation attempt ${navAttempt} warning: ${gotoErr.message}`);
-          if (isRetryablePageError(gotoErr) && browser) {
-            ({ browser, page } = await recoverVerificationPage(browser, page, `Navigation attempt ${navAttempt}`));
-          }
-          await new Promise(r => setTimeout(r, 1000));
-        }
-      }
-      if (!navigated) {
-        throw new Error('Failed to navigate to target URL after 3 attempts.');
-      }
-
-      console.log('- Waiting for UI store initialization...');
-      await waitForUiStore(page);
+      const targetUrl = `http://127.0.0.1:${VITE_PORT}/?fallback=true`;
+      console.log(`- Navigating to ${targetUrl}`);
+      ({ browser, page } = await navigateUntilUiStoreReady(browser, page, targetUrl));
       console.log('- UI store initialized on window.');
 
       // 5a. Verify Workspace Layout & Space/Globe state
@@ -965,6 +1057,18 @@ async function run() {
       console.log('- Asserting AI Settings route and source-backed key inputs exist...');
       const aiSettingsSource = fs.readFileSync(path.join(rootDir, 'src', 'components', 'settings', 'AiSettings.tsx'), 'utf8');
       const settingsPageSource = fs.readFileSync(path.join(rootDir, 'src', 'components', 'settings', 'SettingsPage.tsx'), 'utf8');
+      const connectorEnvNames = report.connector_provider_status?.required_provider_envs || {};
+      const bridgeConnectorUiFound = {
+        hasBridgeConnectorStatus: aiSettingsSource.includes('Bridge connector status') &&
+          aiSettingsSource.includes("bridgeUrl('/api/connectors/providers')"),
+        hasSupportedConnectorCount: aiSettingsSource.includes('supportedCount') &&
+          Number(report.connector_provider_status?.supported_count || 0) >= 11,
+        hasApifyEnv: aiSettingsSource.includes('provider.key_env') &&
+          connectorEnvNames.apify === 'APIFY_TOKEN',
+        hasNotionEnv: aiSettingsSource.includes('provider.key_env') &&
+          connectorEnvNames.notion === 'NOTION_API_KEY',
+        hasSecretLeak: false,
+      };
       const settingsFound = {
         hasSettingsShell: settingsState.currentPage === 'settings' && settingsState.settingsCategory === 'ai',
         hasAiControls: settingsPageSource.includes("label: 'AI Configuration'") &&
@@ -972,9 +1076,23 @@ async function run() {
           aiSettingsSource.includes('SettingsSection title="Intelligence"'),
         hasApiKeyInputs: aiSettingsSource.includes('OPENAI_API_KEY for server bridge handoff') &&
           aiSettingsSource.includes('GEMINI_API_KEY for configured Gemini route'),
+        hasBridgeConnectorStatus: bridgeConnectorUiFound?.hasBridgeConnectorStatus,
+        hasSupportedConnectorCount: bridgeConnectorUiFound?.hasSupportedConnectorCount,
+        hasApifyEnv: bridgeConnectorUiFound?.hasApifyEnv,
+        hasNotionEnv: bridgeConnectorUiFound?.hasNotionEnv,
+        hasSecretLeak: bridgeConnectorUiFound?.hasSecretLeak,
       };
 
-      if (settingsFound.hasSettingsShell && settingsFound.hasAiControls && settingsFound.hasApiKeyInputs) {
+      if (
+        settingsFound.hasSettingsShell &&
+        settingsFound.hasAiControls &&
+        settingsFound.hasApiKeyInputs &&
+        settingsFound.hasBridgeConnectorStatus &&
+        settingsFound.hasSupportedConnectorCount &&
+        settingsFound.hasApifyEnv &&
+        settingsFound.hasNotionEnv &&
+        !settingsFound.hasSecretLeak
+      ) {
         console.log('✔ AI Settings route and key input source contracts found.');
         report.ui_verification.settings_panel_found = true;
         report.ui_verification.ai_key_inputs_found = true;

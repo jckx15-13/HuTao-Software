@@ -47,8 +47,13 @@ CHAT_MODEL_NEGATIVE_CACHE_TTL_SECONDS = float(os.getenv("BRIDGE_CHAT_MODEL_NEGAT
 CHAT_MODEL_CACHE_TTL: dict[str, float] = {}
 BRIDGE_ODYSSEUS_MODELS_TIMEOUT = float(os.getenv("BRIDGE_ODYSSEUS_MODELS_TIMEOUT", "1.2"))
 BRIDGE_MOCK_MODELS_TIMEOUT = float(os.getenv("BRIDGE_MOCK_MODELS_TIMEOUT", "0.5"))
-GIT_STATUS_CACHE_MAX_AGE_SECONDS = 2.5
+GIT_STATUS_CACHE_MAX_AGE_SECONDS = float(os.getenv("BRIDGE_GIT_STATUS_CACHE_SECONDS", "10"))
 GIT_STATUS_CACHE: dict[str, Any] = {
+    "data": None,
+    "expires_at": 0.0,
+}
+ODYSSEUS_STATUS_CACHE_MAX_AGE_SECONDS = float(os.getenv("BRIDGE_STATUS_CACHE_SECONDS", "2"))
+ODYSSEUS_STATUS_CACHE: dict[str, Any] = {
     "data": None,
     "expires_at": 0.0,
 }
@@ -238,6 +243,9 @@ SERVER_CONNECTOR_PROVIDER_CONFIGS = [
         "requires_backend": False,
     },
 ]
+
+BRIDGE_CONNECTOR_PROBE_TIMEOUT = float(os.getenv("BRIDGE_CONNECTOR_PROBE_TIMEOUT", "4.0"))
+CONNECTOR_SECRET_QUERY_NAMES = {"key", "appid", "api_key", "access_token", "token"}
 
 def get_python_executable() -> str:
     """Returns the path to the virtual environment python if it exists, fallback to sys.executable."""
@@ -536,6 +544,18 @@ def set_cached_git_status(payload: dict) -> None:
     GIT_STATUS_CACHE["data"] = payload
     GIT_STATUS_CACHE["expires_at"] = datetime.datetime.now().timestamp() + GIT_STATUS_CACHE_MAX_AGE_SECONDS
 
+def get_cached_odysseus_status() -> dict | None:
+    now = datetime.datetime.now().timestamp()
+    data = ODYSSEUS_STATUS_CACHE.get("data")
+    expires_at = float(ODYSSEUS_STATUS_CACHE.get("expires_at", 0.0))
+    if data is not None and now < expires_at:
+        return data
+    return None
+
+def set_cached_odysseus_status(payload: dict) -> None:
+    ODYSSEUS_STATUS_CACHE["data"] = payload
+    ODYSSEUS_STATUS_CACHE["expires_at"] = datetime.datetime.now().timestamp() + ODYSSEUS_STATUS_CACHE_MAX_AGE_SECONDS
+
 def create_local_bridge_response(req: ChatRequest, reason: str) -> dict:
     prompt_length = len(req.message.strip())
     instruction_status = (
@@ -778,22 +798,28 @@ async def log_diagnostic(entry: LogEntry):
 
 @app.get("/status")
 async def get_status(request: Request):
+    cached = get_cached_odysseus_status()
+    if cached is not None:
+        return cached
+
     odysseus_healthy = False
     try:
         client = request.app.state.http_client
-        resp = await client.get("http://127.0.0.1:7000/api/health", timeout=1.0)
+        resp = await client.get("http://127.0.0.1:7000/api/health", timeout=0.75)
         if resp.status_code == 200:
             odysseus_healthy = True
     except Exception:
         pass
 
-    return {
+    payload = {
         "status": "Ready" if odysseus_healthy else "Starting Odysseus...",
         "ready": odysseus_healthy,
         "sync_file": SYNC_FILE.exists(),
         "host": HOST,
         "odysseus_health": "healthy" if odysseus_healthy else "offline"
     }
+    set_cached_odysseus_status(payload)
+    return payload
 
 
 async def _proxy_to_frontend(path: str, request: Request):
@@ -1046,17 +1072,211 @@ async def api_credential_provider_status():
         "message": "Secrets are read from Bridge environment variables and are never returned by this status endpoint.",
     }
 
+def get_connector_provider_config(provider_id: str) -> Optional[dict]:
+    normalized = (provider_id or "").strip().lower()
+    for provider in SERVER_CONNECTOR_PROVIDER_CONFIGS:
+        if provider["id"] == normalized:
+            return provider
+    return None
+
+def connector_base_url(provider: dict) -> str:
+    configured = os.getenv(provider["endpoint_env"], "").strip()
+    base_url = configured or provider["default_base_url"]
+    parsed = urllib.parse.urlparse(base_url)
+    if parsed.path.endswith("/chat/completions"):
+        trimmed_path = parsed.path[: -len("/chat/completions")]
+        return urllib.parse.urlunparse(parsed._replace(path=trimmed_path, query="", params="", fragment=""))
+    return base_url.rstrip("/")
+
+def connector_probe_url(provider: dict) -> str:
+    base_url = connector_base_url(provider).rstrip("/")
+    probe_path = str(provider.get("probe_path") or "").strip()
+    if not probe_path:
+        return base_url
+    return f"{base_url}/{probe_path.lstrip('/')}"
+
+def redact_probe_url(url: str) -> str:
+    try:
+        parsed = urllib.parse.urlparse(url)
+        query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        redacted_query = [
+            (key, "[redacted]" if key.lower() in CONNECTOR_SECRET_QUERY_NAMES else value)
+            for key, value in query
+        ]
+        return urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(redacted_query)))
+    except Exception:
+        return url
+
+def connector_probe_headers(provider: dict, api_key: str) -> dict:
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": "SilverWolfVI-Bridge/1.0",
+    }
+    provider_id = provider["id"]
+    if provider_id == "anthropic":
+        headers["x-api-key"] = api_key
+        headers["anthropic-version"] = "2023-06-01"
+    elif provider_id == "notion":
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["Notion-Version"] = "2022-06-28"
+    elif provider_id not in {"google-cloud", "openweather"}:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
+
+def connector_probe_request_options(provider: dict, api_key: str) -> tuple[str, str, dict, Optional[dict]]:
+    provider_id = provider["id"]
+    method = "GET"
+    url = connector_probe_url(provider)
+    params: dict[str, str] = {}
+    json_body: Optional[dict] = None
+
+    if provider_id == "openweather":
+        params = {
+            "lat": "0",
+            "lon": "0",
+            "appid": api_key,
+        }
+    elif provider_id == "google-cloud":
+        params = {"key": api_key}
+        if "createSession" in url:
+            method = "POST"
+            json_body = {
+                "mapType": "satellite",
+                "language": "en-US",
+                "region": "US",
+            }
+
+    return method, url, params, json_body
+
+async def probe_connector_provider_config(provider: dict, client: httpx.AsyncClient) -> dict:
+    api_key = os.getenv(provider["key_env"], "").strip()
+    endpoint_configured = bool(os.getenv(provider["endpoint_env"], "").strip())
+    probe_url = connector_probe_url(provider)
+    checked_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    base = {
+        "id": provider["id"],
+        "label": provider["label"],
+        "configured": bool(api_key),
+        "endpoint_configured": endpoint_configured,
+        "probe_url": redact_probe_url(probe_url),
+        "probe_checked_at": checked_at,
+        "secret_returned": False,
+    }
+
+    if not api_key:
+        return {
+            **base,
+            "probe_ok": False,
+            "probe_status": "missing_credentials",
+            "probe_message": f"{provider['key_env']} is not configured in the Bridge environment.",
+        }
+
+    method, request_url, params, json_body = connector_probe_request_options(provider, api_key)
+    safe_url_for_probe = request_url
+    if not is_safe_url(safe_url_for_probe):
+        return {
+            **base,
+            "probe_ok": False,
+            "probe_status": "blocked_unsafe_endpoint",
+            "probe_message": "Probe endpoint is not a safe public http(s) URL.",
+        }
+
+    try:
+        response = await client.request(
+            method,
+            request_url,
+            params=params or None,
+            json=json_body,
+            headers=connector_probe_headers(provider, api_key),
+            timeout=BRIDGE_CONNECTOR_PROBE_TIMEOUT,
+        )
+        status_code = response.status_code
+        if 200 <= status_code < 300:
+            probe_status = "online"
+            message = "Connector credential accepted by provider probe endpoint."
+        elif status_code in {401, 403}:
+            probe_status = "auth_failed"
+            message = "Provider rejected the configured credential."
+        else:
+            probe_status = "probe_failed"
+            message = f"Provider probe returned HTTP {status_code}."
+
+        return {
+            **base,
+            "probe_ok": 200 <= status_code < 300,
+            "probe_status": probe_status,
+            "probe_http_status": status_code,
+            "probe_message": message,
+        }
+    except httpx.TimeoutException:
+        return {
+            **base,
+            "probe_ok": False,
+            "probe_status": "timeout",
+            "probe_message": "Provider probe timed out.",
+        }
+    except Exception as exc:
+        return {
+            **base,
+            "probe_ok": False,
+            "probe_status": "network_error",
+            "probe_message": f"Provider probe failed without exposing credentials ({exc.__class__.__name__}).",
+        }
+
 @app.get("/api/connectors/providers")
-async def api_connector_provider_status():
+async def api_connector_provider_status(request: Request, probe: bool = False):
     providers = get_server_connector_provider_status()
     configured = [provider for provider in providers if provider["configured"]]
+    probe_results: dict[str, dict] = {}
+
+    if probe:
+        client = request.app.state.http_client
+        results = await asyncio.gather(
+            *[probe_connector_provider_config(provider, client) for provider in SERVER_CONNECTOR_PROVIDER_CONFIGS],
+            return_exceptions=True,
+        )
+        for provider, result in zip(SERVER_CONNECTOR_PROVIDER_CONFIGS, results):
+            if isinstance(result, Exception):
+                probe_results[provider["id"]] = {
+                    "probe_ok": False,
+                    "probe_status": "probe_error",
+                    "probe_message": str(result),
+                    "probe_checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                }
+            else:
+                probe_results[provider["id"]] = result
+
+        safe_probe_fields = {
+            "probe_ok",
+            "probe_status",
+            "probe_http_status",
+            "probe_message",
+            "probe_checked_at",
+            "secret_returned",
+        }
+        providers = [
+            {
+                **provider,
+                **{key: value for key, value in probe_results.get(provider["id"], {}).items() if key in safe_probe_fields},
+            }
+            for provider in providers
+        ]
+
     return {
         "providers": providers,
         "configured_count": len(configured),
         "supported_count": len(providers),
+        "probe_checked_count": len(probe_results),
         "server_side_only": True,
         "message": "Connector secrets are read from Bridge environment variables and are never returned by this status endpoint.",
     }
+
+@app.get("/api/connectors/probe/{provider_id}")
+async def api_connector_provider_probe(provider_id: str, request: Request):
+    provider = get_connector_provider_config(provider_id)
+    if not provider:
+        raise HTTPException(status_code=404, detail="Unknown connector provider")
+    return await probe_connector_provider_config(provider, request.app.state.http_client)
 
 # Secure Generic Proxy to Odysseus Endpoints
 @app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])

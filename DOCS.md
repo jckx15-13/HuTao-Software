@@ -32,7 +32,7 @@ Silver Wolf VI is a Vite + React chat and astronomy workspace with adaptive them
 
 ### Settings and Theming
 - `src/components/SettingsWindow.tsx` owns draggable/docked window behavior.
-- `src/components/SettingsPane.tsx` and `src/components/settings/*` own theme selection, wallpaper upload, interface controls, model choice, system instructions, credential-engine UI, connector readiness/probe metadata, connector settings, and bridge URL overrides.
+- `src/components/SettingsPane.tsx` and `src/components/settings/*` own theme selection, wallpaper upload, interface controls, model choice, system instructions, credential-engine UI, connector readiness/probe metadata, live redacted Bridge connector status, connector settings, and bridge URL overrides.
 - `src/lib/themeEngine.ts` owns typed palette tokens, palette definitions, palette name formatting, and harmonic accent generation.
 
 ### Telemetry and Effects
@@ -148,7 +148,7 @@ This section lists the current, source-backed wiring. It intentionally avoids cl
 
 1. `src/lib/bridgeConfig.ts` resolves the bridge URL from Developer Settings, the credential engine, `VITE_BRIDGE_URL`, or the local default.
 2. `bridge/server.py` exposes the local status, chat, sync, diagnostics, camera proxy, git status, credential-provider status, connector-provider status, and generic Odysseus proxy routes. Its chat route skips stale sessions, uses configured Odysseus model endpoints when available, then server-side OpenAI-compatible provider endpoints when configured, then the verifier mock LLM when present, and otherwise returns a local diagnostic assistant response. `BRIDGE_SKIP_ODYSSEUS_START=1` exists for isolated verifier runs that prove provider routing without starting a second Odysseus process. Localhost and `127.0.0.1` frontend ports are allowed through the default CORS regex so preview ports do not silently break bridge status checks.
-3. `scripts/verification_harness/verify_system.cjs` starts a temporary Bridge with dummy server-provider credentials pointed at the mock OpenAI-compatible endpoint. That verifies `mode: server-provider` routing mechanics without claiming a live external account is configured.
+3. `scripts/verification_harness/verify_system.cjs` starts a temporary Bridge with dummy server-provider credentials pointed at the mock OpenAI-compatible endpoint. That verifies `mode: server-provider` routing mechanics without claiming a live external account is configured. It also checks that the live Bridge exposes redacted connector-provider status for Apify, Google Cloud, GitHub, Notion, and OpenWeather.
 4. `scripts/test_integration_contracts.cjs` verifies that mapped WorldWideView assets, copied Odysseus documentation assets, Odysseus source-module references, credential-engine provider contracts, connector-engine contracts, server-provider bridge/verifier contracts, redacted Bridge connector-provider contracts, bridge routes, and bridge CORS defaults still exist.
 5. The integration is conditional, not 100% complete: ChromaDB vector memory and Odysseus Browser MCP now register locally, but a real Odysseus or server-side provider model endpoint is still not configured and WorldWideView still has its own runtime requirements.
 

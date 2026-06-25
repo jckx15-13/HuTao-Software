@@ -201,6 +201,8 @@ for (const connectorContract of [
 }
 assert.ok(
   aiSettingsSource.includes("getApiConnectorReadiness") &&
+    aiSettingsSource.includes("bridgeUrl('/api/connectors/providers')") &&
+    aiSettingsSource.includes("Bridge connector status") &&
     aiSettingsSource.includes("Capabilities:") &&
     aiSettingsSource.includes("Backend/Bridge route required"),
   "AI Settings must surface connector readiness and backend-routing metadata",
@@ -236,6 +238,12 @@ for (const bridgeProviderContract of [
 for (const verifierProviderContract of [
   "runServerProviderBridgeSelfTest",
   "server_provider_route",
+  "connector_provider_status",
+  "/api/connectors/providers",
+  "Bridge connector status",
+  "APIFY_TOKEN",
+  "NOTION_API_KEY",
+  "hasSecretLeak",
   "OPENAI_CHAT_COMPLETIONS_URL",
   "mode !== 'server-provider'",
 ]) {

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-25T11:11:13.032Z",
+  "timestamp": "2026-06-25T16:29:36.880Z",
   "services": {
     "vite": {
       "status": "online",
@@ -31,9 +31,28 @@
     "configured_count": 1,
     "mode": "server-provider"
   },
-  "proxy_chat_flow": {
+  "connector_provider_status": {
     "status": "success",
-    "response": "Hello! I am a mock LLM response."
+    "supported_count": 11,
+    "configured_count": 0,
+    "required_providers": [
+      "apify",
+      "google-cloud",
+      "github",
+      "notion",
+      "openweather"
+    ],
+    "required_provider_envs": {
+      "apify": "APIFY_TOKEN",
+      "google-cloud": "GOOGLE_MAPS_API_KEY",
+      "github": "GITHUB_TOKEN",
+      "notion": "NOTION_API_KEY",
+      "openweather": "OPENWEATHER_API_KEY"
+    }
+  },
+  "proxy_chat_flow": {
+    "status": "invalid_response",
+    "response": "Local bridge assistant response.\nInput accepted without echoing the prompt text. Prompt length: 42 characters.\nBridge chat loop verified: request validated, Odysseus availability checked, and assistant output returned separately.\nNo custom system instructions were supplied. Odysseus model status: connection failed: ."
   },
   "ui_verification": {
     "status": "success",
@@ -49,6 +68,7 @@
   },
   "overall_status": "PARTIAL",
   "partial_reasons": [
-    "no configured Odysseus or server-side AI provider model endpoint"
+    "no configured Odysseus or server-side AI provider model endpoint",
+    "unexpected proxy response: {\"response\":\"Local bridge assistant response.\\nInput accepted without echoing the prompt text. Prompt length: 42 characters.\\nBridge chat loop verified: request validated, Odysseus availability checked, and assistant output returned separately.\\nNo custom system instructions were supplied. Odysseus model status: connection failed: .\",\"mode\":\"local-fallback\",\"reason\":\"connection failed: \"}"
   ]
 }
