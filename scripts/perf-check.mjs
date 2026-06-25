@@ -68,9 +68,20 @@ async function requestWithTimeout(url, init = {}, timeoutMs = 5000) {
   }
 }
 
-async function measureApi(url, init = {}, rounds = ROUNDS, timeoutMs = 5000) {
+async function measureApi(url, init = {}, rounds = ROUNDS, timeoutMs = 5000, warmupRounds = 0) {
   const latency = [];
   const errors = [];
+
+  for (let i = 0; i < warmupRounds; i += 1) {
+    try {
+      await requestWithTimeout(url, init, timeoutMs);
+    } catch {
+      // Warm-up failures are ignored; warm-up is only intended to stabilise caches.
+    }
+    if (INTERVAL_MS > 0) {
+      await wait(INTERVAL_MS);
+    }
+  }
 
   for (let i = 0; i < rounds; i += 1) {
     try {
@@ -215,11 +226,11 @@ async function measureFrontend() {
       };
     }
 
-    const warmup = pageResults.slice(1);
-    const active = warmup.length ? warmup : pageResults;
-    const avgDomContent = summarize(warmup.map((item) => item.timing.domContentLoadedEventEnd - item.timing.fetchStart).filter(Number.isFinite));
+    const warmup = pageResults.slice(0, 1);
+    const active = pageResults.length > 1 ? pageResults.slice(1) : pageResults;
+    const avgDomContent = summarize(active.map((item) => item.timing.domContentLoadedEventEnd - item.timing.fetchStart).filter(Number.isFinite));
     const avgLoad = summarize(active.map((item) => item.timing.loadEventEnd - item.timing.fetchStart).filter(Number.isFinite));
-    const avgLCP = summarize(warmup.map((item) => item.largestContentfulPaint).filter(Number.isFinite));
+    const avgLCP = summarize(active.map((item) => item.largestContentfulPaint).filter(Number.isFinite));
 
     return {
       status: 'ok',
@@ -229,6 +240,7 @@ async function measureFrontend() {
         domContentMs: avgDomContent,
         loadMs: avgLoad,
         lcpMs: avgLCP,
+        warmupSampleCount: summarize(warmup.map((item) => item.timing.loadEventEnd - item.timing.fetchStart).filter(Number.isFinite)).count,
       },
     };
   } finally {
@@ -329,7 +341,9 @@ async function main() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: 'Latency test ping', system_instruction: 'Keep reply concise.' }),
         },
-        Math.min(ROUNDS, 4)
+        Math.min(ROUNDS, 4),
+        5000,
+        1,
       ),
     },
     bridgeGitStatus: {
@@ -353,12 +367,12 @@ async function main() {
     gitStatusP95: warnOrOk('Bridge /git/status p95', results.bridgeGitStatus.payload.latency?.p95, 600),
     frontendLoadP95: warnOrOk(
       'Frontend dom load p95',
-      (frontEndLoadAverage(frontend)?.loadMs?.p95 || null),
+      (frontend.averages?.loadMs?.p95 || null),
       1500
     ),
     frontendDomP95: warnOrOk(
       'Frontend DOM ready p95',
-      (frontEndLoadAverage(frontend)?.domContentMs?.p95 || null),
+      (frontend.averages?.domContentMs?.p95 || null),
       900
     ),
   };
@@ -379,22 +393,6 @@ async function main() {
 
   const failed = Object.values(checks).some((check) => check.status === 'fail');
   process.exitCode = failed ? 1 : 0;
-}
-
-function frontEndLoadAverage(frontend) {
-  if (frontend?.status !== 'ok') return {};
-
-  const samplesDom = frontend.pageResults
-    .map((result) => result.timing.domContentLoadedEventEnd - result.timing.fetchStart)
-    .filter(Number.isFinite);
-  const samplesLoad = frontend.pageResults
-    .map((result) => result.timing.loadEventEnd - result.timing.fetchStart)
-    .filter(Number.isFinite);
-
-  return {
-    domContentMs: summarize(samplesDom),
-    loadMs: summarize(samplesLoad),
-  };
 }
 
 main().catch((error) => {

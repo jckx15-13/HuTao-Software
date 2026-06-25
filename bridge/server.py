@@ -40,9 +40,13 @@ log_lock = Lock()
 CHAT_SESSION_CACHE_MAX_AGE_SECONDS = 60 * 30
 CHAT_SESSION_CACHE: dict[str, str] = {}
 CHAT_SESSION_CACHE_TTL: dict[str, float] = {}
+CHAT_SESSION_LOCKS: dict[str, Lock] = {}
 CHAT_MODEL_CACHE: dict[str, Any] = {}
-CHAT_MODEL_CACHE_TTL_SECONDS = 60
+CHAT_MODEL_CACHE_TTL_SECONDS = float(os.getenv("BRIDGE_CHAT_MODEL_CACHE_TTL_SECONDS", "60"))
+CHAT_MODEL_NEGATIVE_CACHE_TTL_SECONDS = float(os.getenv("BRIDGE_CHAT_MODEL_NEGATIVE_CACHE_TTL_SECONDS", "2"))
 CHAT_MODEL_CACHE_TTL: dict[str, float] = {}
+BRIDGE_ODYSSEUS_MODELS_TIMEOUT = float(os.getenv("BRIDGE_ODYSSEUS_MODELS_TIMEOUT", "1.2"))
+BRIDGE_MOCK_MODELS_TIMEOUT = float(os.getenv("BRIDGE_MOCK_MODELS_TIMEOUT", "0.5"))
 GIT_STATUS_CACHE_MAX_AGE_SECONDS = 2.5
 GIT_STATUS_CACHE: dict[str, Any] = {
     "data": None,
@@ -180,25 +184,30 @@ def start_odysseus_subprocess():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Run setup
-    run_odysseus_setup()
-    # Start server
-    start_odysseus_subprocess()
+    skip_odysseus_start = os.getenv("BRIDGE_SKIP_ODYSSEUS_START", "").strip().lower() in {"1", "true", "yes"}
+    if skip_odysseus_start:
+        print("BRIDGE_SKIP_ODYSSEUS_START enabled; skipping Odysseus setup/subprocess start.")
+    else:
+        # Run setup
+        run_odysseus_setup()
+        # Start server
+        start_odysseus_subprocess()
     # Create shared http client
     app.state.http_client = httpx.AsyncClient(timeout=180.0)
     # Wait for Odysseus to become healthy (up to 30s)
     odysseus_ready = False
-    for attempt in range(30):
-        try:
-            resp = await app.state.http_client.get("http://127.0.0.1:7000/api/health", timeout=2.0)
-            if resp.status_code == 200:
-                odysseus_ready = True
-                print(f"Odysseus healthy after {attempt + 1}s")
-                break
-        except Exception:
-            pass
-        await asyncio.sleep(1)
-    if not odysseus_ready:
+    if not skip_odysseus_start:
+        for attempt in range(30):
+            try:
+                resp = await app.state.http_client.get("http://127.0.0.1:7000/api/health", timeout=2.0)
+                if resp.status_code == 200:
+                    odysseus_ready = True
+                    print(f"Odysseus healthy after {attempt + 1}s")
+                    break
+            except Exception:
+                pass
+            await asyncio.sleep(1)
+    if not odysseus_ready and not skip_odysseus_start:
         print("WARNING: Odysseus did not become healthy within 30s. Bridge will start anyway.")
     yield
     # Clean up the shared client
@@ -298,13 +307,42 @@ def _set_cached_session(cache_key: str, session_id: str) -> None:
     CHAT_SESSION_CACHE[cache_key] = session_id
     CHAT_SESSION_CACHE_TTL[cache_key] = datetime.datetime.now().timestamp() + CHAT_SESSION_CACHE_MAX_AGE_SECONDS
 
-def _get_cached_chat_model() -> tuple[str | None, str | None] | None:
+
+def _get_session_lock(cache_key: str) -> Lock:
+    lock = CHAT_SESSION_LOCKS.get(cache_key)
+    if lock is None:
+        lock = Lock()
+        CHAT_SESSION_LOCKS[cache_key] = lock
+    return lock
+
+
+async def _create_odysseus_session(
+    client: httpx.AsyncClient,
+    model_name: str,
+    endpoint_url: str,
+) -> str | None:
+    create_data = {
+        "name": "Silver Wolf Session",
+        "endpoint_url": endpoint_url,
+        "model": model_name,
+        "rag": "false",
+        "skip_validation": "true",
+    }
+    session_create_resp = await client.post(
+        "http://127.0.0.1:7000/api/session",
+        data=create_data,
+        headers={"X-Odysseus-Internal-Token": INTERNAL_TOOL_TOKEN},
+    )
+    if session_create_resp.status_code != 200:
+        return None
+
+    session_id = session_create_resp.json().get("id")
+    if not session_id:
+        return None
+    return str(session_id)
+def _get_cached_chat_model() -> tuple[str | None, str | None, str, dict] | None:
     cache_entry = CHAT_MODEL_CACHE.get("entry")
     if not isinstance(cache_entry, dict):
-        return None
-    model_name = str(cache_entry.get("model") or "").strip()
-    endpoint_url = str(cache_entry.get("endpoint") or "").strip()
-    if not model_name or not endpoint_url:
         return None
 
     expires_at = float(CHAT_MODEL_CACHE_TTL.get("expires_at", 0.0))
@@ -313,14 +351,50 @@ def _get_cached_chat_model() -> tuple[str | None, str | None] | None:
         CHAT_MODEL_CACHE_TTL.pop("expires_at", None)
         return None
 
-    return (model_name, endpoint_url)
+    status = str(cache_entry.get("status") or "").strip()
+    headers = cache_entry.get("headers") if isinstance(cache_entry.get("headers"), dict) else {}
+    if cache_entry.get("negative"):
+        return (None, None, status or "no configured Odysseus or server-side AI provider model endpoint", headers)
 
-def _set_cached_chat_model(model_name: str, endpoint_url: str) -> None:
+    model_name = str(cache_entry.get("model") or "").strip()
+    endpoint_url = str(cache_entry.get("endpoint") or "").strip()
+    if not model_name or not endpoint_url:
+        return None
+
+    return (
+        model_name,
+        endpoint_url,
+        status or "configured Odysseus model endpoint (cache)",
+        headers,
+    )
+
+def _set_cached_chat_model(
+    model_name: str,
+    endpoint_url: str,
+    status: str,
+    headers: Optional[dict] = None,
+    ttl_seconds: Optional[float] = None,
+) -> None:
     CHAT_MODEL_CACHE["entry"] = {
         "model": model_name,
         "endpoint": endpoint_url,
+        "status": status,
+        "headers": headers or {},
+        "negative": False,
     }
-    CHAT_MODEL_CACHE_TTL["expires_at"] = datetime.datetime.now().timestamp() + CHAT_MODEL_CACHE_TTL_SECONDS
+    CHAT_MODEL_CACHE_TTL["expires_at"] = datetime.datetime.now().timestamp() + (
+        ttl_seconds if ttl_seconds is not None else CHAT_MODEL_CACHE_TTL_SECONDS
+    )
+
+def _set_cached_chat_endpoint_miss(status: str) -> None:
+    CHAT_MODEL_CACHE["entry"] = {
+        "model": "",
+        "endpoint": "",
+        "status": status,
+        "headers": {},
+        "negative": True,
+    }
+    CHAT_MODEL_CACHE_TTL["expires_at"] = datetime.datetime.now().timestamp() + CHAT_MODEL_NEGATIVE_CACHE_TTL_SECONDS
 
 def _clear_cached_session(cache_key: str) -> None:
     CHAT_SESSION_CACHE.pop(cache_key, None)
@@ -468,10 +542,24 @@ async def call_openai_compatible_chat(
 async def resolve_chat_endpoint(client: httpx.AsyncClient, headers: dict) -> tuple[Optional[str], Optional[str], str, dict]:
     cached = _get_cached_chat_model()
     if cached:
-        return cached[0], cached[1], "configured Odysseus model endpoint (cache)"
+        return cached
+
+    server_model, server_endpoint, server_status, server_headers = resolve_server_provider_endpoint()
+    if server_model and server_endpoint:
+        _set_cached_chat_model(
+            server_model,
+            server_endpoint,
+            server_status,
+            server_headers,
+        )
+        return server_model, server_endpoint, server_status, server_headers
 
     try:
-        models_resp = await client.get("http://127.0.0.1:7000/api/models", headers=headers, timeout=5.0)
+        models_resp = await client.get(
+            "http://127.0.0.1:7000/api/models",
+            headers=headers,
+            timeout=BRIDGE_ODYSSEUS_MODELS_TIMEOUT,
+        )
         models_data = models_resp.json() if models_resp.status_code == 200 else {}
     except Exception:
         models_data = {}
@@ -493,29 +581,29 @@ async def resolve_chat_endpoint(client: httpx.AsyncClient, headers: dict) -> tup
         endpoint_url = str(
             endpoint.get("url") or endpoint.get("base_url") or endpoint.get("endpoint") or ""
         ).strip()
+        if model_name and endpoint_url and endpoint_points_to_verification_mock(endpoint_url):
+            return model_name, BRIDGE_TEST_LLM_CHAT_URL, "verification mock LLM endpoint", {}
         if model_name and endpoint_url and not endpoint_points_to_odysseus_loopback(endpoint_url):
-            _set_cached_chat_model(model_name, endpoint_url)
-            return model_name, endpoint_url, "configured Odysseus model endpoint", {}
-
-    server_model, server_endpoint, server_status, server_headers = resolve_server_provider_endpoint()
-    if server_model and server_endpoint:
-        return server_model, server_endpoint, server_status, server_headers
+            model_status = "configured Odysseus model endpoint"
+            _set_cached_chat_model(model_name, endpoint_url, model_status, {})
+            return model_name, endpoint_url, model_status, {}
 
     mock_models_url = BRIDGE_TEST_LLM_CHAT_URL.replace("/chat/completions", "/models")
     try:
-        mock_resp = await client.get(mock_models_url, timeout=5.0)
+        mock_resp = await client.get(mock_models_url, timeout=BRIDGE_MOCK_MODELS_TIMEOUT)
         if mock_resp.status_code == 200:
             mock_data = mock_resp.json()
             mock_models = mock_data.get("data") if isinstance(mock_data, dict) else []
             mock_model = "mock-model"
             if isinstance(mock_models, list) and mock_models:
                 mock_model = str(mock_models[0].get("id") or mock_model)
-            _set_cached_chat_model(mock_model, BRIDGE_TEST_LLM_CHAT_URL)
             return mock_model, BRIDGE_TEST_LLM_CHAT_URL, "verification mock LLM endpoint", {}
     except Exception:
         pass
 
-    return None, None, "no configured Odysseus or server-side AI provider model endpoint", {}
+    no_endpoint_status = "no configured Odysseus or server-side AI provider model endpoint"
+    _set_cached_chat_endpoint_miss(no_endpoint_status)
+    return None, None, no_endpoint_status, {}
 
 @app.post("/log")
 async def log_diagnostic(entry: LogEntry):
@@ -665,46 +753,18 @@ async def chat(req: ChatRequest, request: Request):
         # Reuse an active Odysseus session when possible to reduce chat latency.
         cache_key = _chat_cache_key(model_name, endpoint_url)
         session_id = _get_cached_session(cache_key)
-
         if not session_id:
-            # 1. Fetch sessions to find one for the currently configured endpoint.
-            sessions_resp = await client.get("http://127.0.0.1:7000/api/sessions", headers=headers)
-            sessions = sessions_resp.json() if sessions_resp.status_code == 200 else []
+            async with _get_session_lock(cache_key):
+                session_id = _get_cached_session(cache_key)
+                if not session_id:
+                    session_id = await _create_odysseus_session(client, model_name, endpoint_url)
+                    if not session_id:
+                        return create_local_bridge_response(
+                            req,
+                            "failed to create Odysseus session",
+                        )
+                    _set_cached_session(cache_key, session_id)
 
-            if isinstance(sessions, list) and len(sessions) > 0:
-                for s in sessions:
-                    session_endpoint = str(s.get("endpoint_url") or "").strip()
-                    session_model = str(s.get("model") or "").strip()
-                    if (
-                        is_usable_chat_session(s)
-                        and session_endpoint == endpoint_url
-                        and session_model == model_name
-                    ):
-                        session_id = s.get("id")
-                        break
-
-        if not session_id:
-            # Create a session
-            create_data = {
-                "name": "Silver Wolf Session",
-                "endpoint_url": endpoint_url,
-                "model": model_name,
-                "rag": "false",
-                "skip_validation": "true"
-            }
-            session_create_resp = await client.post(
-                "http://127.0.0.1:7000/api/session",
-                data=create_data,
-                headers={"X-Odysseus-Internal-Token": INTERNAL_TOOL_TOKEN}
-            )
-            if session_create_resp.status_code == 200:
-                session_id = session_create_resp.json().get("id")
-            else:
-                return create_local_bridge_response(
-                    req,
-                    f"failed to create Odysseus session: {session_create_resp.text}",
-                )
-            _set_cached_session(cache_key, str(session_id))
 
         # Send message to /api/chat
         chat_data = {

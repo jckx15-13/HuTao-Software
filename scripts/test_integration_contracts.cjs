@@ -134,8 +134,14 @@ const centerPanelSource = read("src/components/panels/CenterPanel.tsx");
 const coordinateTransformsSource = read("src/lib/coordinateTransforms.ts");
 const cesiumConstellationsSource = read("src/hooks/cesium/useConstellations.ts");
 const cursorEngineSource = read("src/core/cursor/CursorEngine.ts");
+const customCursorSource = read("src/components/layout/CustomCursor.tsx");
+const nativeCursorFallbackSource = read("src/core/cursor/nativeFallback.ts");
 const indexCssSource = read("src/index.css");
 const credentialEngineSource = read("src/lib/credentials/apiCredentialEngine.ts");
+const connectorEngineSource = read("src/lib/credentials/apiConnectorEngine.ts");
+const weatherServiceSource = read("src/services/weatherService.ts");
+const aiSettingsSource = read("src/components/settings/AiSettings.tsx");
+const verificationHarnessSource = read("scripts/verification_harness/verify_system.cjs");
 
 assertFile("package.json", "Silver Wolf root package");
 assertFile("public/config.json", "Browser runtime public config");
@@ -145,6 +151,7 @@ assertFile("odysseus/pyproject.toml", "Odysseus Python package");
 assertFile("odysseus/package.json", "Odysseus frontend package");
 assertFile("bridge/server.py", "Silver Wolf bridge server");
 assertFile("src/lib/credentials/apiCredentialEngine.ts", "API credential management engine");
+assertFile("src/lib/credentials/apiConnectorEngine.ts", "API connector request engine");
 
 for (const providerId of [
   "openai",
@@ -171,6 +178,52 @@ for (const contract of [
   "GEMINI_API_KEY for configured Gemini route",
 ]) {
   assert.ok(credentialEngineSource.includes(contract), `Credential engine missing contract ${contract}`);
+}
+for (const connectorContract of [
+  "createApiRequestDescriptor",
+  "getApiConnectorReadiness",
+  "directBrowserAllowed",
+  "requiresBackend",
+  "https://api.apify.com/v2",
+  "https://api.github.com",
+  "https://api.notion.com/v1",
+  "https://maps.googleapis.com",
+  "https://api.openweathermap.org/data/2.5",
+]) {
+  assert.ok(connectorEngineSource.includes(connectorContract), `API connector engine missing contract ${connectorContract}`);
+}
+assert.ok(
+  aiSettingsSource.includes("getApiConnectorReadiness") &&
+    aiSettingsSource.includes("Capabilities:") &&
+    aiSettingsSource.includes("Backend/Bridge route required"),
+  "AI Settings must surface connector readiness and backend-routing metadata",
+);
+assert.ok(
+  weatherServiceSource.includes('getCredentialSecret("openweather")') &&
+    !weatherServiceSource.includes("b6907d289e10d714a6e88b30761fae22"),
+  "Weather service must use credential-engine/env OpenWeather keys without embedded demo secrets",
+);
+for (const bridgeProviderContract of [
+  "SERVER_AI_PROVIDER_CONFIGS",
+  "BRIDGE_SKIP_ODYSSEUS_START",
+  "OPENAI_API_KEY",
+  "OPENAI_MODEL",
+  "OPENROUTER_API_KEY",
+  "MISTRAL_API_KEY",
+  "PERPLEXITY_API_KEY",
+  "GROQ_API_KEY",
+  '@app.get("/api/credentials/providers")',
+  '"mode": "server-provider"',
+]) {
+  assert.ok(bridgeSource.includes(bridgeProviderContract), `Bridge credential provider contract missing ${bridgeProviderContract}`);
+}
+for (const verifierProviderContract of [
+  "runServerProviderBridgeSelfTest",
+  "server_provider_route",
+  "OPENAI_CHAT_COMPLETIONS_URL",
+  "mode !== 'server-provider'",
+]) {
+  assert.ok(verificationHarnessSource.includes(verifierProviderContract), `Verifier provider-route contract missing ${verifierProviderContract}`);
 }
 
 const wwvSourcePaths = collectMatches(
@@ -237,6 +290,16 @@ assert.ok(coordinateTransformsSource.includes("precessEquatorialJ2000ToDate"), "
 assert.ok(cesiumConstellationsSource.includes("precessEquatorialJ2000ToDate"), "Cesium constellation rendering must precess J2000 star coordinates");
 assert.ok(wwtViewSource.includes("precessEquatorialJ2000ToDate"), "WWT constellation overlay must precess J2000 star coordinates");
 assert.ok(cursorEngineSource.includes("this.config.appHighLoad"), "Cursor engine must keep native cursor available during high-load fallback");
+assert.ok(nativeCursorFallbackSource.includes("appHighLoad"), "Native cursor fallback policy must account for app high-load mode");
+assert.ok(nativeCursorFallbackSource.includes("motionReduced"), "Native cursor fallback policy must account for reduced-motion preferences");
+assert.ok(nativeCursorFallbackSource.includes("coarsePointer"), "Native cursor fallback policy must account for coarse pointers");
+assert.ok(nativeCursorFallbackSource.includes("documentHidden"), "Native cursor fallback policy must account for hidden documents");
+assert.ok(customCursorSource.includes("shouldUseNativeCursorFallback"), "Custom cursor wrapper must use the native cursor fallback policy");
+assert.ok(customCursorSource.includes("if (nativeCursorFallback || !mountRef.current)"), "Custom cursor wrapper must guard engine construction behind native fallback state");
+assert.ok(
+  customCursorSource.indexOf("if (nativeCursorFallback || !mountRef.current)") < customCursorSource.indexOf("new CursorEngine"),
+  "Custom cursor wrapper must decide native fallback before constructing CursorEngine"
+);
 assert.ok(indexCssSource.includes("--theme-ui-opacity: 0.88"), "Default CSS panel opacity must match restored feature-first glass UI defaults");
 assert.ok(indexCssSource.includes("--theme-ui-blur: 10px"), "Default CSS blur must match restored feature-first glass UI defaults");
 assert.ok(!centerPanelSource.includes("isSpaceMode && spaceInteractionTarget === 'telescope' && ("), "Space mode must not hide telescope HUD overlays behind a telescope-only gate");

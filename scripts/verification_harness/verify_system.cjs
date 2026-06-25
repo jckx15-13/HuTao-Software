@@ -2,7 +2,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const puppeteer = require('puppeteer');
 
 const MOCK_PORT = 9099;
@@ -26,7 +26,10 @@ function checkEndpointHealth(url, timeoutMs = 2000) {
     };
 
     const req = http.request(options, (res) => {
-      resolve(res.statusCode === 200);
+      res.resume();
+      res.on('end', () => {
+        resolve(res.statusCode >= 200 && res.statusCode < 400);
+      });
     });
 
     req.on('error', () => {
@@ -40,6 +43,16 @@ function checkEndpointHealth(url, timeoutMs = 2000) {
 
     req.end();
   });
+}
+
+async function checkEndpointHealthWithRetry(url, timeoutMs = 5000, attempts = 3) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    if (await checkEndpointHealth(url, timeoutMs)) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+  }
+  return false;
 }
 
 function getJson(url, timeoutMs = 5000) {
@@ -211,6 +224,22 @@ async function settleReact(page, ms = 350) {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function launchVerificationBrowser() {
+  return puppeteer.launch({
+    headless: true,
+    protocolTimeout: 60000,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      '--no-proxy-server',
+      '--proxy-bypass-list=*',
+      '--disable-features=site-per-process'
+    ]
+  });
+}
+
 async function prepareVerificationPage(browser) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
@@ -273,6 +302,24 @@ async function prepareVerificationPage(browser) {
   });
 
   return page;
+}
+
+async function recoverVerificationPage(browser, page, label) {
+  await page?.close().catch(() => undefined);
+  try {
+    return {
+      browser,
+      page: await prepareVerificationPage(browser),
+    };
+  } catch (err) {
+    console.warn(`- ${label}: relaunching browser after page recovery failed: ${err.message}`);
+    await browser?.close().catch(() => undefined);
+    const nextBrowser = await launchVerificationBrowser();
+    return {
+      browser: nextBrowser,
+      page: await prepareVerificationPage(nextBrowser),
+    };
+  }
 }
 
 function createMockLlmServer(port) {
@@ -364,6 +411,80 @@ function startMockLlmServer(basePort) {
   });
 }
 
+async function waitForHttpOk(url, timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await checkEndpointHealth(url, 1500)) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 750));
+  }
+  return false;
+}
+
+async function runServerProviderBridgeSelfTest({ rootDir, pythonExec, mockChatUrl }) {
+  const testPort = Number(process.env.BRIDGE_PROVIDER_TEST_PORT || 8191);
+  const bridgeScript = path.join(rootDir, 'bridge', 'server.py');
+  const pyExecutable = pythonExec.replace(/^"|"$/g, '');
+  const stdoutPath = path.join(__dirname, 'provider_bridge_test.out.log');
+  const stderrPath = path.join(__dirname, 'provider_bridge_test.err.log');
+  const stdout = fs.openSync(stdoutPath, 'a');
+  const stderr = fs.openSync(stderrPath, 'a');
+  const child = spawn(pyExecutable, [bridgeScript], {
+    cwd: rootDir,
+    env: {
+      ...process.env,
+      BRIDGE_PORT: String(testPort),
+      BRIDGE_HOST: '127.0.0.1',
+      BRIDGE_SKIP_ODYSSEUS_START: '1',
+      OPENAI_API_KEY: 'verification-test-key',
+      OPENAI_MODEL: 'mock-model',
+      OPENAI_CHAT_COMPLETIONS_URL: mockChatUrl,
+      BRIDGE_TEST_LLM_CHAT_URL: 'http://127.0.0.1:1/disabled',
+      BRIDGE_FRONTEND_ORIGIN: `http://127.0.0.1:${VITE_PORT}`,
+    },
+    stdio: ['ignore', stdout, stderr],
+    windowsHide: true,
+  });
+
+  try {
+    const ready = await waitForHttpOk(`http://127.0.0.1:${testPort}/status`, 30000);
+    if (!ready) {
+      throw new Error(`temporary provider Bridge did not become ready on port ${testPort}`);
+    }
+
+    const providerStatus = await getJson(`http://127.0.0.1:${testPort}/api/credentials/providers`);
+    const configuredCount = Number(providerStatus.body?.configured_count || 0);
+    if (configuredCount < 1) {
+      throw new Error('temporary provider Bridge did not report configured server provider');
+    }
+
+    const chatRes = await postJson(`http://127.0.0.1:${testPort}/chat`, {
+      message: 'Server provider self-test. Do not echo this prompt.',
+      system_instruction: 'Return the mock response only.',
+    });
+    if (chatRes.statusCode !== 200) {
+      throw new Error(`temporary provider Bridge returned ${chatRes.statusCode}: ${chatRes.body}`);
+    }
+
+    const payload = JSON.parse(chatRes.body);
+    const responseText = String(payload.response || '');
+    if (payload.mode !== 'server-provider' || !responseText.includes('Hello! I am a mock LLM response.')) {
+      throw new Error(`temporary provider Bridge returned unexpected payload: ${JSON.stringify(payload)}`);
+    }
+
+    return {
+      status: 'success',
+      configured_count: configuredCount,
+      mode: payload.mode,
+    };
+  } finally {
+    child.kill();
+    fs.closeSync(stdout);
+    fs.closeSync(stderr);
+  }
+}
+
 // Global helper functions removed (now defined locally inside run() to access safeEvaluate)
 
 
@@ -380,13 +501,19 @@ async function run() {
     database_seeding: 'pending',
     mock_llm_server: 'pending',
     ai_model_endpoint: { status: 'pending', configured_count: 0 },
+    server_provider_route: { status: 'pending', configured_count: 0 },
     proxy_chat_flow: { status: 'pending', response: null },
     ui_verification: {
       status: 'pending',
       space_tab_found: false,
       telemetry_view_found: false,
       settings_panel_found: false,
-      ai_key_inputs_found: false
+      ai_key_inputs_found: false,
+      layout_overlap_check: {
+        status: 'pending',
+        major_overlap_count: null,
+        samples: [],
+      },
     },
     overall_status: 'FAIL'
   };
@@ -401,15 +528,15 @@ async function run() {
   try {
     // 1. Health check services
     console.log('1. Checking service health...');
-    const viteHealthy = await checkEndpointHealth(`http://127.0.0.1:${VITE_PORT}`);
+    const viteHealthy = await checkEndpointHealthWithRetry(`http://127.0.0.1:${VITE_PORT}`, 10000, 5);
     report.services.vite.status = viteHealthy ? 'online' : 'offline';
     console.log(`- Vite: ${report.services.vite.status}`);
 
-    const bridgeHealthy = await checkEndpointHealth(`http://127.0.0.1:${BRIDGE_PORT}/status`);
+    const bridgeHealthy = await checkEndpointHealthWithRetry(`http://127.0.0.1:${BRIDGE_PORT}/status`, 5000, 3);
     report.services.bridge.status = bridgeHealthy ? 'online' : 'offline';
     console.log(`- Bridge: ${report.services.bridge.status}`);
 
-    const odysseusHealthy = await checkEndpointHealth(`http://127.0.0.1:${ODYSSEUS_PORT}/api/health`);
+    const odysseusHealthy = await checkEndpointHealthWithRetry(`http://127.0.0.1:${ODYSSEUS_PORT}/api/health`, 5000, 3);
     report.services.odysseus.status = odysseusHealthy ? 'online' : 'offline';
     console.log(`- Odysseus: ${report.services.odysseus.status}`);
 
@@ -437,14 +564,24 @@ async function run() {
     if (bridgeHealthy) {
       try {
         const modelsResponse = await getJson(`http://127.0.0.1:${BRIDGE_PORT}/api/models`);
-        const configuredModelCount = countConfiguredModelEndpoints(modelsResponse.body);
+        const odysseusConfiguredModelCount = countConfiguredModelEndpoints(modelsResponse.body);
+        let serverProviderCount = 0;
+        try {
+          const providerResponse = await getJson(`http://127.0.0.1:${BRIDGE_PORT}/api/credentials/providers`);
+          serverProviderCount = Number(providerResponse.body?.configured_count || 0);
+        } catch (providerErr) {
+          partialReasons.push(`server provider endpoint check failed: ${providerErr.message}`);
+        }
+        const configuredModelCount = odysseusConfiguredModelCount + serverProviderCount;
         report.ai_model_endpoint = {
           status: configuredModelCount > 0 ? 'configured' : 'missing',
           configured_count: configuredModelCount,
+          odysseus_configured_count: odysseusConfiguredModelCount,
+          server_provider_count: serverProviderCount,
         };
         console.log(`- Odysseus model endpoints: ${report.ai_model_endpoint.status}`);
         if (configuredModelCount === 0) {
-          partialReasons.push('no configured Odysseus model endpoint');
+          partialReasons.push('no configured Odysseus or server-side AI provider model endpoint');
         }
       } catch (modelsErr) {
         report.ai_model_endpoint = {
@@ -459,6 +596,26 @@ async function run() {
       console.log('2. Starting mock LLM server...');
       mockLlmServer = await startMockLlmServer(MOCK_PORT);
       report.mock_llm_server = 'success';
+      const mockAddress = mockLlmServer.address();
+      const mockPort = typeof mockAddress === 'object' && mockAddress ? mockAddress.port : MOCK_PORT;
+      const mockChatUrl = `http://127.0.0.1:${mockPort}/v1/chat/completions`;
+
+      console.log('2b. Verifying temporary server-provider Bridge route...');
+      try {
+        report.server_provider_route = await runServerProviderBridgeSelfTest({
+          rootDir,
+          pythonExec,
+          mockChatUrl,
+        });
+        console.log('- Temporary server-provider Bridge route verified.');
+      } catch (providerRouteErr) {
+        report.server_provider_route = {
+          status: 'failed',
+          configured_count: 0,
+          error: providerRouteErr.message,
+        };
+        partialReasons.push(`server-provider route self-test failed: ${providerRouteErr.message}`);
+      }
 
       // 3. Seed database only when the companion service is live.
       if (odysseusHealthy) {
@@ -490,12 +647,11 @@ async function run() {
 
         const responseText = String(responseObj.response || '');
         const promptEchoed = responseText.includes('Hello, this is a system verification test.');
-        const mockVerified = responseText.includes('Hello! I am a mock LLM response.');
-        const localFallbackVerified = responseObj.mode === 'local-fallback' &&
-          responseText.includes('Bridge chat loop verified') &&
+        const mockVerified = responseObj.mode === 'verification-mock' &&
+          responseText.includes('Hello! I am a mock LLM response.') &&
           !promptEchoed;
 
-        if (mockVerified || localFallbackVerified) {
+        if (mockVerified) {
           report.proxy_chat_flow.status = 'success';
           console.log('- Proxy chat flow successfully verified!');
         } else {
@@ -519,19 +675,7 @@ async function run() {
 
     try {
       console.log('- Launching Puppeteer browser...');
-      browser = await puppeteer.launch({
-        headless: true,
-        protocolTimeout: 60000,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-gpu',
-          '--disable-dev-shm-usage',
-          '--no-proxy-server',
-          '--proxy-bypass-list=*',
-          '--disable-features=site-per-process'
-        ]
-      });
+      browser = await launchVerificationBrowser();
 
       page = await prepareVerificationPage(browser);
 
@@ -545,8 +689,7 @@ async function run() {
         } catch (gotoErr) {
           console.warn(`- Navigation attempt ${navAttempt} warning: ${gotoErr.message}`);
           if (isRetryablePageError(gotoErr) && browser) {
-            await page.close().catch(() => undefined);
-            page = await prepareVerificationPage(browser);
+            ({ browser, page } = await recoverVerificationPage(browser, page, `Navigation attempt ${navAttempt}`));
           }
           await new Promise(r => setTimeout(r, 1000));
         }
@@ -599,8 +742,7 @@ async function run() {
             throw err;
           }
           console.warn(`- Space/globe DOM check retry ${attempt + 1}: ${err.message}`);
-          await page.close().catch(() => undefined);
-          page = await prepareVerificationPage(browser);
+          ({ browser, page } = await recoverVerificationPage(browser, page, `Space/globe retry ${attempt + 1}`));
           await page.goto(`http://127.0.0.1:${VITE_PORT}/?fallback=true`, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => undefined);
           await waitForUiStore(page).catch(() => undefined);
           await evaluateWithRetry(page, () => {
@@ -655,8 +797,7 @@ async function run() {
             throw err;
           }
           console.warn(`- Telemetry DOM check retry ${attempt + 1}: ${err.message}`);
-          await page.close().catch(() => undefined);
-          page = await prepareVerificationPage(browser);
+          ({ browser, page } = await recoverVerificationPage(browser, page, `Telemetry retry ${attempt + 1}`));
           await page.goto(`http://127.0.0.1:${VITE_PORT}/?fallback=true`, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => undefined);
           await waitForUiStore(page).catch(() => undefined);
           await evaluateWithRetry(page, () => {
@@ -681,6 +822,97 @@ async function run() {
       } else {
         throw new Error('Telemetry view text "DataBus Telemetry" not found in DOM.');
       }
+
+      console.log('- Checking first-viewport foreground overlap budget...');
+      const overlapAudit = await evaluateWithRetry(page, () => {
+        const viewport = {
+          width: window.innerWidth || document.documentElement.clientWidth || 0,
+          height: window.innerHeight || document.documentElement.clientHeight || 0,
+        };
+        const selector = [
+          'button',
+          'a[href]',
+          'input',
+          'textarea',
+          'select',
+          '[role="button"]',
+          '[role="tab"]',
+          '[role="switch"]',
+          '[aria-label]',
+          '.glass-panel',
+          '[data-layout-panel]',
+        ].join(',');
+        const raw = Array.from(document.querySelectorAll(selector));
+        const candidates = raw
+          .filter((el) => {
+            if (raw.some((other) => other !== el && other.contains(el))) return false;
+            const style = window.getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden' || style.pointerEvents === 'none') return false;
+            const opacity = Number.parseFloat(style.opacity || '1');
+            if (Number.isFinite(opacity) && opacity < 0.05) return false;
+            const rect = el.getBoundingClientRect();
+            if (rect.width < 8 || rect.height < 8) return false;
+            if (rect.right <= 0 || rect.bottom <= 0 || rect.left >= viewport.width || rect.top >= viewport.height) return false;
+            return true;
+          })
+          .map((el, index) => {
+            const rect = el.getBoundingClientRect();
+            const label = (el.getAttribute('aria-label') || el.textContent || el.id || el.className || el.tagName)
+              .toString()
+              .replace(/\s+/g, ' ')
+              .trim()
+              .slice(0, 80);
+            return {
+              index,
+              tag: el.tagName.toLowerCase(),
+              label,
+              left: Math.max(0, rect.left),
+              top: Math.max(0, rect.top),
+              right: Math.min(viewport.width, rect.right),
+              bottom: Math.min(viewport.height, rect.bottom),
+              width: Math.min(viewport.width, rect.right) - Math.max(0, rect.left),
+              height: Math.min(viewport.height, rect.bottom) - Math.max(0, rect.top),
+            };
+          })
+          .filter((rect) => rect.width >= 8 && rect.height >= 8);
+
+        const overlaps = [];
+        for (let i = 0; i < candidates.length; i += 1) {
+          for (let j = i + 1; j < candidates.length; j += 1) {
+            const a = candidates[i];
+            const b = candidates[j];
+            const width = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+            const height = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+            if (width <= 0 || height <= 0) continue;
+            const area = width * height;
+            const smallerArea = Math.min(a.width * a.height, b.width * b.height);
+            const ratio = smallerArea > 0 ? area / smallerArea : 0;
+            if (area >= 72 && ratio >= 0.18) {
+              overlaps.push({
+                a: `${a.tag}:${a.label}`,
+                b: `${b.tag}:${b.label}`,
+                area: Math.round(area),
+                ratio: Number(ratio.toFixed(2)),
+              });
+            }
+          }
+        }
+
+        return {
+          candidateCount: candidates.length,
+          majorOverlapCount: overlaps.length,
+          samples: overlaps.slice(0, 5),
+        };
+      });
+      report.ui_verification.layout_overlap_check = {
+        status: overlapAudit.majorOverlapCount === 0 ? 'success' : 'failed',
+        major_overlap_count: overlapAudit.majorOverlapCount,
+        samples: overlapAudit.samples,
+      };
+      if (overlapAudit.majorOverlapCount > 0) {
+        throw new Error(`Foreground layout overlap regression: ${JSON.stringify(overlapAudit.samples)}`);
+      }
+      console.log(`✔ Foreground overlap check passed (${overlapAudit.candidateCount} scanned surfaces).`);
 
       // 5c. Verify Settings Panel. Reuse the same page instead of creating a
       // second target after Cesium/plugin initialization; the second target is

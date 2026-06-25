@@ -180,6 +180,8 @@ export interface UIStore {
   clearMessages: () => void;
   setMessages: (messages: Message[]) => void;
   setIsProcessing: (b: boolean) => void;
+  setMessageContent: (messageId: string, content: string) => void;
+  appendToMessage: (messageId: string, content: string) => void;
 
   // Theme / Appearance
   activePalette: PaletteKey;
@@ -443,6 +445,47 @@ export const useUIStore = create<UIStore>()(
             };
           }),
         setIsProcessing: (isProcessing) => set({ isProcessing }),
+        setMessageContent: (messageId, content) =>
+          set((s) => {
+            const now = Date.now();
+            let found = false;
+            const messages = s.messages.map((message) => {
+              if (message.id !== messageId) return message;
+              found = true;
+              return { ...message, content };
+            });
+            if (!found) return s;
+
+            return {
+              messages,
+              chatSessions: s.chatSessions.map((cs) =>
+                cs.id === s.activeChatId
+                  ? { ...cs, messages, lastActive: now }
+                  : cs,
+              ),
+            };
+          }),
+        appendToMessage: (messageId, content) =>
+          set((s) => {
+            if (!content) return s;
+            const now = Date.now();
+            let found = false;
+            const messages = s.messages.map((message) => {
+              if (message.id !== messageId) return message;
+              found = true;
+              return { ...message, content: `${message.content}${content}` };
+            });
+            if (!found) return s;
+
+            return {
+              messages,
+              chatSessions: s.chatSessions.map((cs) =>
+                cs.id === s.activeChatId
+                  ? { ...cs, messages, lastActive: now }
+                  : cs,
+              ),
+            };
+          }),
         setMessages: (messages) =>
           set((s) => {
             const now = Date.now();

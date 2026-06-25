@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-25T05:20:15.458Z",
+  "timestamp": "2026-06-25T10:04:31.088Z",
   "services": {
     "vite": {
       "status": "online",
@@ -22,22 +22,33 @@
   "mock_llm_server": "success",
   "ai_model_endpoint": {
     "status": "missing",
-    "configured_count": 0
+    "configured_count": 0,
+    "odysseus_configured_count": 0,
+    "server_provider_count": 0
+  },
+  "server_provider_route": {
+    "status": "success",
+    "configured_count": 1,
+    "mode": "server-provider"
   },
   "proxy_chat_flow": {
     "status": "success",
     "response": "Hello! I am a mock LLM response."
   },
   "ui_verification": {
-    "status": "failed",
-    "space_tab_found": false,
-    "telemetry_view_found": false,
-    "settings_panel_found": false,
-    "ai_key_inputs_found": false
+    "status": "success",
+    "space_tab_found": true,
+    "telemetry_view_found": true,
+    "settings_panel_found": true,
+    "ai_key_inputs_found": true,
+    "layout_overlap_check": {
+      "status": "success",
+      "major_overlap_count": 0,
+      "samples": []
+    }
   },
-  "overall_status": "FAIL",
-  "error": "Failed to launch the browser process:  Code: 0\n\nstderr:\n\n\nTROUBLESHOOTING: https://pptr.dev/troubleshooting\n",
+  "overall_status": "PARTIAL",
   "partial_reasons": [
-    "no configured Odysseus model endpoint"
+    "no configured Odysseus or server-side AI provider model endpoint"
   ]
 }

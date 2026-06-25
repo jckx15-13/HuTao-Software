@@ -43,24 +43,31 @@ export function LauncherPage() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-        // Simple ping to bridge health or root
-        const response = await fetch(bridgeUrl('/chat'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: 'ping_test_diagnostics' }),
+        // Simple ping to bridge health endpoint.
+        const response = await fetch(bridgeUrl('/status'), {
+          method: 'GET',
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
 
         if (!active) return;
+        const status = await response.json().catch(() => ({}));
 
-        if (response.ok || response.status === 422 || response.status === 400) {
+        if (response.ok && status.ready) {
           setBridgeStatus('active');
           addDiagnostic({ source: 'BRIDGE', level: 'success', message: `Assistant Bridge verified active at ${bridgeBaseUrl}.` });
           checkGit();
         } else {
           setBridgeStatus('offline');
-          addDiagnostic({ source: 'BRIDGE', level: 'warning', message: `Bridge returned status ${response.status}.` });
+          if (response.ok) {
+            addDiagnostic({
+              source: 'BRIDGE',
+              level: 'warning',
+              message: `Bridge is reachable but waiting for odysseus readiness at ${bridgeBaseUrl}.`,
+            });
+          } else {
+            addDiagnostic({ source: 'BRIDGE', level: 'warning', message: `Bridge returned status ${response.status}.` });
+          }
         }
       } catch (err) {
         if (!active) return;

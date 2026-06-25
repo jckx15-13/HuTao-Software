@@ -43,6 +43,7 @@ Module._resolveFilename = function resolveAlias(request, parent, isMain, options
 };
 
 const { CursorTargetRegistry, deriveRuntimePolicy, validateCursorProfile, CURSOR_PROFILES } = require("../src/core/cursor");
+const { shouldUseNativeCursorFallback } = require("../src/core/cursor/nativeFallback");
 
 function testTargetPriority() {
   const registry = new CursorTargetRegistry();
@@ -143,10 +144,22 @@ function testDiagnostics() {
   assert.equal(diagnostic.blocking, true);
 }
 
+function testNativeCursorFallbackGuard() {
+  assert.equal(shouldUseNativeCursorFallback({}), false);
+  assert.equal(shouldUseNativeCursorFallback({ appHighLoad: true }), true);
+  assert.equal(shouldUseNativeCursorFallback({ motionReduced: true }), true);
+  assert.equal(shouldUseNativeCursorFallback({ prefersReducedMotion: true }), true);
+  assert.equal(shouldUseNativeCursorFallback({ coarsePointer: true }), true);
+  assert.equal(shouldUseNativeCursorFallback({ hoverlessPointer: true }), true);
+  assert.equal(shouldUseNativeCursorFallback({ documentHidden: true }), true);
+  assert.equal(shouldUseNativeCursorFallback({ headless: true }), true);
+}
+
 testTargetPriority();
 testStaleTargetExpiry();
 testExplicitLock();
 testPolicyDegradation();
 testDiagnostics();
+testNativeCursorFallbackGuard();
 
 console.log("Cursor engine contract tests passed.");

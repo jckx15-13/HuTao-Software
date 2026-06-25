@@ -1,5 +1,6 @@
 import { useUIStore } from "../store/uiStore";
 import { useDiagnosticsStore } from "../store/diagnosticsStore";
+import { getCredentialSecret } from "../lib/credentials/apiCredentialEngine";
 import { fetchWwtJson, WWT_ASSET_PATHS } from "../lib/wwt/repositoryData";
 
 type FailureState = { count: number; nextAttempt: number };
@@ -48,7 +49,9 @@ const failureState: Record<string, FailureState> = {};
 const BACKOFF_BASE = 2000; // 2s
 const BACKOFF_MAX = 5 * 60 * 1000; // 5 minutes
 const DATASET_PATH = WWT_ASSET_PATHS.publicCamerasList;
-const OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY ?? "b6907d289e10d714a6e88b30761fae22";
+function getOpenWeatherApiKey(): string {
+  return getCredentialSecret("openweather") || import.meta.env.VITE_OPENWEATHER_API_KEY || "";
+}
 
 const MAX_COORDINATE_SEEDS = 1200;
 const CLEAN_TEXT_MAX = 48;
@@ -203,7 +206,12 @@ class WeatherService {
       const seeds = await getWeatherSeeds();
       const seed = getRandomSeed(seeds);
 
-      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${seed.latitude}&lon=${seed.longitude}&appid=${OPENWEATHER_API_KEY}&units=metric`;
+      const apiKey = getOpenWeatherApiKey();
+      if (!apiKey) {
+        return;
+      }
+
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${seed.latitude}&lon=${seed.longitude}&appid=${apiKey}&units=metric`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 

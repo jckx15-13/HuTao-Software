@@ -9,6 +9,7 @@ import {
   validateCredentialRecord,
   type CredentialProviderId,
 } from '@/lib/credentials/apiCredentialEngine';
+import { getApiConnectorReadiness } from '@/lib/credentials/apiConnectorEngine';
 import { SettingsSection } from './SettingsSection';
 
 type CredentialDraft = {
@@ -66,11 +67,13 @@ export function AiSettings() {
   const [credentialDrafts, setCredentialDrafts] = useState<Record<string, CredentialDraft>>({});
   const [credentialStatus, setCredentialStatus] = useState('Credential engine idle');
   const [configuredCount, setConfiguredCount] = useState(0);
+  const [connectorReadiness, setConnectorReadiness] = useState(getApiConnectorReadiness());
 
   const refreshCredentialState = () => {
     try {
       setCredentialDrafts(readDrafts());
       setConfiguredCount(getCredentialSummaries().filter((summary) => summary.configured).length);
+      setConnectorReadiness(getApiConnectorReadiness());
     } catch {
       setCredentialStatus('Browser credential storage unavailable');
     }
@@ -97,6 +100,7 @@ export function AiSettings() {
         saveCredentialRecord(provider.id, draft);
       }
       setConfiguredCount(getCredentialSummaries().filter((summary) => summary.configured).length);
+      setConnectorReadiness(getApiConnectorReadiness());
       setCredentialStatus('Saved provider registry locally for this browser profile');
     } catch {
       setCredentialStatus('Save failed: browser credential storage unavailable');
@@ -108,6 +112,7 @@ export function AiSettings() {
       clearCredentialRecord(providerId);
       setCredentialDrafts((current) => ({ ...current, [providerId]: emptyDraft }));
       setConfiguredCount(getCredentialSummaries().filter((summary) => summary.configured).length);
+      setConnectorReadiness(getApiConnectorReadiness());
       setCredentialStatus(`Cleared ${providerId} credentials`);
     } catch {
       setCredentialStatus('Clear failed: browser credential storage unavailable');
@@ -120,6 +125,7 @@ export function AiSettings() {
         clearCredentialRecord(provider.id);
       }
       setCredentialDrafts(readDrafts());
+      setConnectorReadiness(getApiConnectorReadiness());
       setConfiguredCount(0);
       setCredentialStatus('Cleared all local provider credentials');
     } catch {
@@ -171,6 +177,7 @@ export function AiSettings() {
           <div className="grid gap-3 md:grid-cols-2">
             {API_CREDENTIAL_PROVIDERS.map((provider) => {
               const draft = credentialDrafts[provider.id] || emptyDraft;
+              const readiness = connectorReadiness.find((item) => item.providerId === provider.id);
               const warnings = validateCredentialRecord(provider.id, {
                 secret: draft.secret,
                 endpoint: draft.endpoint,
@@ -256,6 +263,17 @@ export function AiSettings() {
                   )}
 
                   <p className="font-mono text-[8px] leading-relaxed text-white/35">{provider.notes}</p>
+                  {readiness && (
+                    <div className="rounded-xl border border-white/5 bg-white/[0.03] p-2 font-mono text-[8px] leading-relaxed text-white/35">
+                      <div className="uppercase tracking-wider text-white/50">
+                        Capabilities: {readiness.capabilities.join(', ')}
+                      </div>
+                      <div className="truncate">Probe: {readiness.probeUrl}</div>
+                      <div className={readiness.directBrowserAllowed ? 'text-emerald-300/70' : 'text-amber-300/70'}>
+                        {readiness.directBrowserAllowed ? 'Browser-callable for local use' : 'Backend/Bridge route required'}
+                      </div>
+                    </div>
+                  )}
                   {warnings.map((warning) => (
                     <p key={warning} className="font-mono text-[8px] leading-relaxed text-amber-300/75">{warning}</p>
                   ))}
