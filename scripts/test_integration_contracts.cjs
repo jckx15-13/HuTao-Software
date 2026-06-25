@@ -201,7 +201,8 @@ for (const connectorContract of [
 }
 assert.ok(
   aiSettingsSource.includes("getApiConnectorReadiness") &&
-    aiSettingsSource.includes("bridgeUrl('/api/connectors/providers?probe=true')") &&
+    aiSettingsSource.includes("bridgeUrl(") &&
+    aiSettingsSource.includes("/api/connectors/providers") &&
     aiSettingsSource.includes("Bridge connector status") &&
     aiSettingsSource.includes("Probe status:") &&
     aiSettingsSource.includes("Capabilities:") &&

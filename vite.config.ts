@@ -43,7 +43,7 @@ export default defineConfig(({mode}) => {
             markdown: ['react-markdown', 'remark-gfm'],
             motion: ['motion'],
             lucide: ['lucide-react'],
-            window: ['react-window', 'react-virtuoso'],
+            virtualization: ['react-virtuoso'],
             satellite: ['satellite.js'],
           },
         },

@@ -1093,9 +1093,13 @@ async function run() {
       const connectorEnvNames = report.connector_provider_status?.required_provider_envs || {};
       const bridgeConnectorUiFound = {
         hasBridgeConnectorStatus: aiSettingsSource.includes('Bridge connector status') &&
-          aiSettingsSource.includes("bridgeUrl('/api/connectors/providers')"),
+          aiSettingsSource.includes('bridgeUrl(') &&
+          aiSettingsSource.includes('/api/connectors/providers?probe=true'),
         hasSupportedConnectorCount: aiSettingsSource.includes('supportedCount') &&
           Number(report.connector_provider_status?.supported_count || 0) >= 11,
+        hasProbeStatus: aiSettingsSource.includes('Probe status:') &&
+          aiSettingsSource.includes('probe_status') &&
+          aiSettingsSource.includes('probe_message'),
         hasApifyEnv: aiSettingsSource.includes('provider.key_env') &&
           connectorEnvNames.apify === 'APIFY_TOKEN',
         hasNotionEnv: aiSettingsSource.includes('provider.key_env') &&
@@ -1111,6 +1115,7 @@ async function run() {
           aiSettingsSource.includes('GEMINI_API_KEY for configured Gemini route'),
         hasBridgeConnectorStatus: bridgeConnectorUiFound?.hasBridgeConnectorStatus,
         hasSupportedConnectorCount: bridgeConnectorUiFound?.hasSupportedConnectorCount,
+        hasProbeStatus: bridgeConnectorUiFound?.hasProbeStatus,
         hasApifyEnv: bridgeConnectorUiFound?.hasApifyEnv,
         hasNotionEnv: bridgeConnectorUiFound?.hasNotionEnv,
         hasSecretLeak: bridgeConnectorUiFound?.hasSecretLeak,
@@ -1122,6 +1127,7 @@ async function run() {
         settingsFound.hasApiKeyInputs &&
         settingsFound.hasBridgeConnectorStatus &&
         settingsFound.hasSupportedConnectorCount &&
+        settingsFound.hasProbeStatus &&
         settingsFound.hasApifyEnv &&
         settingsFound.hasNotionEnv &&
         !settingsFound.hasSecretLeak

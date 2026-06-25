@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-25T16:29:36.880Z",
+  "timestamp": "2026-06-25T16:42:07.552Z",
   "services": {
     "vite": {
       "status": "online",
@@ -51,24 +51,24 @@
     }
   },
   "proxy_chat_flow": {
-    "status": "invalid_response",
-    "response": "Local bridge assistant response.\nInput accepted without echoing the prompt text. Prompt length: 42 characters.\nBridge chat loop verified: request validated, Odysseus availability checked, and assistant output returned separately.\nNo custom system instructions were supplied. Odysseus model status: connection failed: ."
+    "status": "success",
+    "response": "Hello! I am a mock LLM response."
   },
   "ui_verification": {
-    "status": "success",
+    "status": "failed",
     "space_tab_found": true,
     "telemetry_view_found": true,
-    "settings_panel_found": true,
-    "ai_key_inputs_found": true,
+    "settings_panel_found": false,
+    "ai_key_inputs_found": false,
     "layout_overlap_check": {
       "status": "success",
       "major_overlap_count": 0,
       "samples": []
     }
   },
-  "overall_status": "PARTIAL",
+  "overall_status": "FAIL",
+  "error": "AI Settings panel not verified: {\"hasSettingsShell\":true,\"hasAiControls\":true,\"hasApiKeyInputs\":true,\"hasBridgeConnectorStatus\":false,\"hasSupportedConnectorCount\":true,\"hasApifyEnv\":true,\"hasNotionEnv\":true,\"hasSecretLeak\":false}",
   "partial_reasons": [
-    "no configured Odysseus or server-side AI provider model endpoint",
-    "unexpected proxy response: {\"response\":\"Local bridge assistant response.\\nInput accepted without echoing the prompt text. Prompt length: 42 characters.\\nBridge chat loop verified: request validated, Odysseus availability checked, and assistant output returned separately.\\nNo custom system instructions were supplied. Odysseus model status: connection failed: .\",\"mode\":\"local-fallback\",\"reason\":\"connection failed: \"}"
+    "no configured Odysseus or server-side AI provider model endpoint"
   ]
 }
