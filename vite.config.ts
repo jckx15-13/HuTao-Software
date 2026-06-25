@@ -11,7 +11,14 @@ function asyncCesiumGlobalScript() {
     transformIndexHtml(html: string) {
       return html.replace(
         '<script src="/cesium/Cesium.js"></script>',
-        '<script async src="/cesium/Cesium.js"></script>',
+        `<script>
+window.addEventListener('load', function loadCesiumGlobalAfterFirstPaint() {
+  var script = document.createElement('script');
+  script.async = true;
+  script.src = '/cesium/Cesium.js';
+  document.head.appendChild(script);
+}, { once: true });
+</script>`,
       );
     },
   };
