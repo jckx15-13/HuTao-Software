@@ -122,7 +122,6 @@ export default function WorldWideTelescopeView({
   const telescopeTelemetry = useUIStore((s) => s.telescopeTelemetry);
   const syncSource = useUIStore((s) => s.syncSource);
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
-  const setLeftPanelOpen = useUIStore((s) => s.setLeftPanelOpen);
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
   const [refreshKey, setRefreshKey] = useState(0);
   const telescopeWindowActive = interactionMode === 'telescope' || spaceInteractionTarget === 'telescope';
@@ -181,7 +180,7 @@ export default function WorldWideTelescopeView({
   const [drawerOpen, setDrawerOpen] = useState(() => spaceInteractionTarget !== 'telescope');
   const [activeControlTab, setActiveControlTab] = useState<'navigator' | 'overlays' | 'imagery' | 'photos'>('navigator');
   const [searchQuery, setSearchQuery] = useState('');
-  const [telemetryTimelineCollapsed, setTelemetryTimelineCollapsed] = useState(false);
+  const [telemetryTimelineCollapsed, setTelemetryTimelineCollapsed] = useState(true);
 
   const panelInsetPx = clampPx(viewportSize.width * 0.22, 160, 360);
   const leftPanelInset = leftPanelOpen
@@ -677,9 +676,6 @@ export default function WorldWideTelescopeView({
     width: `${windowPixelDimensions[windowSize].width}px`,
     height: `${windowPixelDimensions[windowSize].height}px`,
   };
-  const hudOffsetX = leftPanelOpen
-    ? `${Math.max(leftPanelInset + 8, 168)}px`
-    : 'clamp(0.75rem, 3vw, 1.25rem)';
   const drawerTop = drawerOpen
     ? workspaceInsets.top + drawerTopPadding.expanded
     : workspaceInsets.top + drawerTopPadding.collapsed;
@@ -1228,34 +1224,12 @@ export default function WorldWideTelescopeView({
   };
 
   const renderHUDAndTimeline = () => {
+    if (!telescopeWindowActive) {
+      return null;
+    }
+
     return (
       <div ref={overlayRootRef} className="fixed inset-0 w-full h-full flex overflow-hidden bg-transparent select-none pointer-events-none">
-
-        {/* Spatial HUD Migration Notice & Refresh Button */}
-        <div
-          className="absolute top-[clamp(3.25rem,12vh,4.75rem)] z-50 flex items-center gap-2 pointer-events-auto"
-          style={{ left: hudOffsetX }}
-        >
-          {!leftPanelOpen && (
-            <button
-              type="button"
-              onClick={() => setLeftPanelOpen(true)}
-              aria-label="Open spatial HUD sidebar"
-              title="Open spatial HUD sidebar"
-              className="glass-panel inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-primary/25 bg-black/35 text-primary shadow-lg transition-colors hover:bg-primary/15 hover:text-white"
-            >
-              <Compass className="w-4 h-4" aria-hidden="true" />
-            </button>
-          )}
-          <button
-            onClick={() => setRefreshKey(k => k + 1)}
-            className="glass-panel min-h-11 p-3 px-4 hover:bg-white/10 text-white/80 hover:text-white transition-colors rounded shadow-lg flex items-center gap-2 text-xs font-bold font-mono cursor-pointer border border-primary/20"
-            title="Reload Telescope Client"
-          >
-            <RefreshCw className="w-4 h-4 animate-spin-slow" />
-            <span>Refresh WWT</span>
-          </button>
-        </div>
 
         {/* --- Real-time Telescope Telemetry Overlay --- */}
         {telescopeTelemetry && (
@@ -1283,13 +1257,13 @@ export default function WorldWideTelescopeView({
           </div>
         )}
 
-        <div className="absolute top-4 left-1/2 z-40 w-[min(92vw,21.25rem)] -translate-x-1/2 pointer-events-none">
+        <div className="absolute right-[clamp(1rem,4vw,2rem)] top-[clamp(4.75rem,10vh,6rem)] z-40 w-[min(88vw,18rem)] pointer-events-none">
           <div className="glass-panel-strong border border-primary/15 px-3 py-2 font-mono text-[9px] uppercase tracking-wider shadow-xl">
             <div className="flex items-center justify-between gap-3">
               <span className="text-primary font-bold">Earth Observer Frame</span>
               <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[8px] font-bold text-primary">{earthReferenceFrame.frameLabel}</span>
             </div>
-            <div className="mt-1.5 grid grid-cols-4 gap-2 text-white/45">
+            <div className="mt-1.5 grid grid-cols-2 gap-2 text-white/45">
               <div>
                 <span className="block text-white/25">Target</span>
                 <span className="block truncate text-white/80">{activePreset.name}</span>
@@ -1669,9 +1643,13 @@ export default function WorldWideTelescopeView({
 
         {/* Floating Telemetry Timeline Playback Controller (Bottom Center) */}
         <div
-          className={`absolute left-1/2 -translate-x-1/2 z-40 pointer-events-auto max-w-[95vw] transition-all duration-200 ${
-            telemetryTimelineCollapsed ? 'bottom-2 w-[min(92vw,32.5rem)]' : 'bottom-4 w-[min(92vw,38.75rem)]'
+          className={`absolute z-40 pointer-events-auto transition-all duration-200 ${
+            telemetryTimelineCollapsed ? 'bottom-2' : 'bottom-4'
           }`}
+          style={{
+            left: 'clamp(1rem, 4vw, 2rem)',
+            right: 'clamp(4.75rem, 8vw, 6rem)',
+          }}
         >
           <div
             className={`glass-panel-strong relative border border-primary/20 shadow-2xl font-mono text-white text-[10px] ${

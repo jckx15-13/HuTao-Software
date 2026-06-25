@@ -376,12 +376,18 @@ assert.ok(indexCssSource.includes("--theme-ui-opacity: 0.88"), "Default CSS pane
 assert.ok(indexCssSource.includes("--theme-ui-blur: 10px"), "Default CSS blur must match restored feature-first glass UI defaults");
 assert.ok(!centerPanelSource.includes("isSpaceMode && spaceInteractionTarget === 'telescope' && ("), "Space mode must not hide telescope HUD overlays behind a telescope-only gate");
 assert.ok(wwtViewSource.includes("telemetryTimelineCollapsed"), "WWT bottom telemetry timeline must expose a collapsed bottom-bar state");
+assert.ok(wwtViewSource.includes("const [telemetryTimelineCollapsed, setTelemetryTimelineCollapsed] = useState(true)"), "WWT timeline must default to the compact bottom-bar state");
 assert.ok(wwtViewSource.includes("Collapse telemetry timeline to bottom bar"), "WWT timeline must provide a centered collapse control");
 assert.ok(wwtViewSource.includes("Expand telemetry timeline"), "WWT timeline must provide an expand control for the collapsed bottom bar");
 assert.ok(wwtViewSource.includes("{!telemetryTimelineCollapsed &&"), "WWT timeline lanes and slider must hide when collapsed");
 assert.ok(wwtViewSource.includes("left-1/2"), "WWT collapse control must be centered horizontally");
 assert.ok(wwtViewSource.includes("-translate-x-1/2"), "WWT collapse control must apply horizontal translate-centering");
 assert.ok(wwtViewSource.includes("-translate-y-1/2"), "WWT collapse control must anchor at the top edge");
+assert.ok(wwtViewSource.includes("if (!telescopeWindowActive)"), "WWT chrome must not render during the Earth navigation workflow");
+assert.ok(wwtViewSource.includes("right: 'clamp(4.75rem, 8vw, 6rem)'"), "WWT timeline must reserve the right-side globe navigation rail");
+assert.ok(!wwtViewSource.includes('aria-label="Open spatial HUD sidebar"'), "WWT overlay must not duplicate the main spatial HUD sidebar opener");
+assert.ok(!wwtViewSource.includes("<span>Refresh WWT</span>"), "WWT overlay must not render the bulky top-level Refresh WWT text button");
+assert.ok(centerPanelSource.includes('aria-label="Expand left sidebar"'), "Center panel must keep a single accessible sidebar opener");
 
 for (const [label, source] of [
   ["WorldWideTelescopeView", wwtViewSource],
@@ -389,7 +395,6 @@ for (const [label, source] of [
 ]) {
   assert.ok(!source.includes("Spatial HUD collapsed. Controls moved to sidebar."), `${label} must not render the bulky collapsed-HUD notice`);
   assert.ok(!source.includes(">Open HUD<"), `${label} must not render the bulky Open HUD text button`);
-  assert.ok(source.includes('aria-label="Open spatial HUD sidebar"'), `${label} must keep an accessible icon-only HUD opener`);
 }
 
 const runtime = readVerificationStatus(root);
