@@ -3,6 +3,7 @@ type CesiumImageryApi = Pick<
     | "ArcGisMapServerImageryProvider"
     | "BingMapsImageryProvider"
     | "BingMapsStyle"
+    | "createGooglePhotorealistic3DTileset"
     | "IonImageryProvider"
     | "UrlTemplateImageryProvider"
 >;
@@ -100,6 +101,19 @@ export async function createOsmProvider() {
         url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
         subdomains: ["a", "b", "c"]
     });
+}
+
+export async function createGooglePhotorealistic3DTileset(options: { key?: string } = {}) {
+    const { createGooglePhotorealistic3DTileset: create } = await loadCesiumImageryApi();
+    if (typeof create !== "function") {
+        throw new Error("Google photorealistic tiles API is not available in this Cesium runtime.");
+    }
+
+    if (!options.key) {
+        throw new Error("Google photorealistic tiles require a valid API key configured as GOOGLE_MAPS_API_KEY.");
+    }
+
+    return create(options);
 }
 
 async function createGoogleProvider(lyrs: string) {

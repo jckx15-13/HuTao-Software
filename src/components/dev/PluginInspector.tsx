@@ -35,7 +35,7 @@ export default function PluginInspector() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Plugin List */}
-        <div className="space-y-2 max-h-[400px] overflow-y-auto scroller pr-2">
+        <div className="space-y-2 max-h-[min(58vh,34rem)] overflow-y-auto scroller pr-2">
           {plugins.map((p) => (
             <button
               key={p.plugin.id}
@@ -68,7 +68,7 @@ export default function PluginInspector() {
         </div>
 
         {/* Entity Inspector */}
-        <div className="flex flex-col h-[400px] border border-white/10 rounded bg-black/30 overflow-hidden">
+        <div className="flex min-h-0 flex-col h-[min(58vh,34rem)] border border-white/10 rounded bg-black/30 overflow-hidden">
           <div className="p-2 border-b border-white/10 bg-white/5 flex items-center justify-between">
             <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-white/60">
               <Box size={12} />
@@ -117,7 +117,7 @@ export default function PluginInspector() {
                   
                   {expandedEntityId === entity.id && (
                     <div className="p-2 border-t border-white/5 bg-black/40">
-                      <pre className="text-[9px] text-cyan-400/80 overflow-x-auto scroller max-h-[200px]">
+                      <pre className="text-[9px] text-cyan-400/80 overflow-x-auto scroller max-h-[min(30vh,12rem)]">
                         {JSON.stringify(entity.properties, (key, value) => {
                           if (key === 'rawEntity') return '[Circular/Suppressed]';
                           return value;

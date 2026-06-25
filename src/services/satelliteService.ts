@@ -1,6 +1,7 @@
 import { useUIStore, type SatelliteData } from '../store/uiStore';
 import { useDiagnosticsStore } from '../store/diagnosticsStore';
-import { SATELLITES } from '../core/satellites/satelliteData';
+import type { SatelliteConfig } from '../core/satellites/satelliteData';
+import { getSatelliteCatalog } from '../core/satellites/satelliteCatalog';
 import { bridgeUrl } from '../lib/bridgeConfig';
 
 type FailureState = { count: number; nextAttempt: number };
@@ -56,7 +57,22 @@ class SatelliteService {
       return;
     }
 
-    const satellitesWithNorad = SATELLITES.filter(s => s.noradId);
+    const satellites = await getSatelliteCatalog((error) => {
+      useUIStore.getState().addChangeLog(
+        "SATELLITE",
+        `Satellite catalog fetch failed; WWT catalog source is currently unavailable for NORAD enrichment: ${error.message}`,
+        "warning",
+      );
+    });
+    const satellitesWithNorad = satellites.filter((sat: SatelliteConfig) => sat.noradId);
+
+    if (!satellitesWithNorad.length) {
+      this.reportLiveTleFallback(
+        "Satellite catalog has no NORAD-enabled entries, so live TLE ingestion was skipped."
+      );
+      return;
+    }
+
     let consecutiveFailures = 0;
 
     // Process in small batches to avoid rate limiting

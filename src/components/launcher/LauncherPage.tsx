@@ -223,7 +223,11 @@ export function LauncherPage() {
         <button
           type="button"
           onClick={() => setLauncherDismissed(true)}
-          className="absolute bottom-6 right-6 flex min-h-11 items-center rounded px-3 font-mono text-[9px] tracking-wider text-white/25 transition-colors hover:bg-white/5 hover:text-white/50 cursor-pointer"
+          className="absolute flex min-h-11 items-center rounded px-3 font-mono text-[9px] tracking-wider text-white/25 transition-colors hover:bg-white/5 hover:text-white/50 cursor-pointer"
+          style={{
+            right: 'max(1rem, env(safe-area-inset-right))',
+            bottom: 'max(1rem, env(safe-area-inset-bottom))',
+          }}
         >
           SKIP BOOT INTERFACE →
         </button>

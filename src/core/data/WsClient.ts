@@ -76,7 +76,7 @@ class WebSocketClient {
     const retryText = reconnectAttempts > 0
       ? ` Retrying in about ${Math.round(delay / 1000)} seconds.`
       : " Retrying in the background.";
-    const message = `WorldWideView live stream is unavailable.${retryText} Static copied layers and WWT controls remain usable.`;
+    const message = `WorldWideView live stream is unavailable.${retryText} WWT controls remain usable with static dataset overlays.`;
 
     if (firstNotice) {
       console.warn(`[WSClient] ${message}`);
@@ -93,7 +93,7 @@ class WebSocketClient {
         level: reconnectAttempts > 0 ? 'warning' : 'error',
         message: `[WSClient] ${message}`,
         suggestion:
-          'Check the configured WorldWideView engine URL or continue with static copied layers until the live stream is reachable.',
+          'Check the configured WorldWideView engine URL or continue with static dataset overlays until the live stream is reachable.',
         metadata: { engineUrl, reconnectAttempts, delay, staticFallbackAvailable: true }
       });
     } catch (e) {

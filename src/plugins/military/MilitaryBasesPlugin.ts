@@ -8,8 +8,9 @@ import type {
     CesiumEntityOptions,
 } from "@/core/plugins/PluginTypes";
 import { createSvgIconUrl } from "@/wwv-sdk";
+import { fetchWwtJson, getWwtAssetLocalUrl, getWwtAssetRemoteUrl, getWwtAssetSourcePath, WWT_ASSET_PATHS } from "@/lib/wwt/repositoryData";
 
-const DATASET_URL = "/wwv-assets/data/military_bases.geojson";
+const DATASET_PATH = WWT_ASSET_PATHS.militaryBasesDataset;
 const STATIC_DATASET_TIMESTAMP = new Date("2026-06-22T00:00:00.000Z");
 const MAX_LABEL_LENGTH = 90;
 const INITIAL_RENDER_LIMIT = 3000;
@@ -61,7 +62,7 @@ function isAirfieldType(type: string): boolean {
 export class MilitaryBasesPlugin implements WorldPlugin {
     readonly id = "wwv-military-bases";
     readonly name = "WWV Military Bases";
-    readonly description = "Static WorldWideView military-site dataset copied locally; not live telemetry";
+    readonly description = "Static WorldWideView military-site dataset sourced from the WWT public mirror; not live telemetry";
     readonly icon = Shield;
     readonly category = "military" as const;
     readonly version = "1.0.0";
@@ -78,10 +79,9 @@ export class MilitaryBasesPlugin implements WorldPlugin {
 
     async fetch(_timeRange: TimeRange): Promise<GeoEntity[]> {
         try {
-            const response = await fetch(DATASET_URL, { cache: "force-cache" });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-            const data = (await response.json()) as MilitaryBasesGeoJson;
+            const data = await fetchWwtJson<MilitaryBasesGeoJson>(DATASET_PATH, {
+                init: { cache: "force-cache" },
+            });
             const features = Array.isArray(data.features) ? data.features : [];
 
             return features.flatMap((feature, index): GeoEntity[] => {
@@ -95,7 +95,7 @@ export class MilitaryBasesPlugin implements WorldPlugin {
                 const operator = cleanText(props.operator, "Unknown");
                 const entityId = `wwv-military-base-${cleanId(osmId, String(index))}`;
                 const isAirfield = isAirfieldType(type);
-                const visualAssetUrl = isAirfield ? "/wwv-assets/military-plane-icon.svg" : shieldIconUrl;
+                const visualAssetUrl = isAirfield ? getWwtAssetRemoteUrl(WWT_ASSET_PATHS.militaryPlaneIcon) : shieldIconUrl;
 
                 return [{
                     id: entityId,
@@ -112,22 +112,22 @@ export class MilitaryBasesPlugin implements WorldPlugin {
                         wikipedia: cleanText(props.wikipedia, "Not provided"),
                         wikidata: cleanText(props.wikidata, "Not provided"),
                         source: "wwv-public-military-bases",
-                        sourcePath: "worldwideview/public/military_bases.geojson",
-                        copiedDatasetPath: DATASET_URL,
-                        copiedWwvAssetRoot: "/wwv-assets",
-                        visualAssetSource: isAirfield ? "copied-worldwideview-military-plane-icon" : "generated-lucide-shield-icon",
+                        sourcePath: getWwtAssetSourcePath(DATASET_PATH),
+                        copiedDatasetPath: getWwtAssetLocalUrl(DATASET_PATH),
+                        copiedWwvAssetRoot: getWwtAssetLocalUrl(""),
+                        visualAssetSource: isAirfield ? "worldwideview-military-plane-icon" : "generated-lucide-shield-icon",
                         visualAssetUrl,
                         iconUrl: visualAssetUrl,
                         visualAssetStatus: isAirfield
-                            ? "Airfield marker uses the copied WWV military aircraft SVG asset."
-                            : "Military site marker uses a generated shield icon because the copied WWV dataset has no dedicated base icon.",
+                            ? "Airfield marker uses the WWT military aircraft SVG asset."
+                            : "Military site marker uses a generated shield icon because the WWT dataset has no dedicated base icon.",
                         staticDataset: true,
                         datasetFeatureCount: features.length,
                         renderedFeatureLimit: INITIAL_RENDER_LIMIT,
                         renderedFeatureNote:
-                            "Desktop startup renders a capped subset from the full copied WWV dataset to keep controls responsive.",
+                            "Desktop startup renders a capped subset from the full WWT dataset to keep controls responsive.",
                         liveTelemetry: false,
-                        stateHonesty: "Static copied WWV dataset. Position records are not a live military feed.",
+                        stateHonesty: "Static WWT dataset. Position records are not a live military feed.",
                     },
                 }];
             }).slice(0, INITIAL_RENDER_LIMIT);
@@ -156,11 +156,14 @@ export class MilitaryBasesPlugin implements WorldPlugin {
     renderEntity(entity: GeoEntity): CesiumEntityOptions {
         const type = String(entity.properties.type || "");
         const isAirfield = isAirfieldType(type);
+        const militaryPlaneIconUrl = getWwtAssetRemoteUrl(WWT_ASSET_PATHS.militaryPlaneIcon);
 
         return {
             type: "billboard",
             color: isAirfield ? "#93c5fd" : "#60a5fa",
-            iconUrl: String(entity.properties.iconUrl || (isAirfield ? "/wwv-assets/military-plane-icon.svg" : shieldIconUrl)),
+            iconUrl: String(
+                entity.properties.iconUrl || (isAirfield ? militaryPlaneIconUrl : shieldIconUrl),
+            ),
             size: isAirfield ? 22 : 18,
             iconScale: isAirfield ? 0.55 : 0.72,
             outlineColor: "#0f172a",

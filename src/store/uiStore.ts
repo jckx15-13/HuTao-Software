@@ -95,21 +95,21 @@ export type RightPanelTab = 'context' | 'browser' | 'changes' | 'diagnostics' | 
 export type SettingsCategory = 'personalisation' | 'ai' | 'connections' | 'feedback' | 'developer' | 'about' | 'map' | 'plugins';
 
 const defaultPersonalisation: Personalisation = {
-  panelOpacity: 0.92,
-  blurIntensity: 8,
-  animationIntensity: 0.45,
+  panelOpacity: 0.88,
+  blurIntensity: 10,
+  animationIntensity: 0.65,
   motionReduced: false,
-  cornerRadius: 8,
-  borderStyle: 'subtle',
-  shadowIntensity: 0.35,
-  chatBubbleStyle: 'solid',
+  cornerRadius: 20,
+  borderStyle: 'glow',
+  shadowIntensity: 0.45,
+  chatBubbleStyle: 'glass',
   minimalMode: false,
   iconStyle: 'outlined',
-  uiDensity: 'comfortable',
+  uiDensity: 'compact',
   fontScale: 1.0,
   accentColor: '',
   fontFamily: 'Outfit',
-  panelTransitionStyle: 'slide',
+  panelTransitionStyle: 'fade',
 };
 
 const activeAiModels = new Set<AiModel>([
@@ -136,16 +136,14 @@ function normalizeAiModel(model: unknown): AiModel {
 function normalizePersonalisation(personalisation?: Partial<Personalisation> | null): Personalisation {
   const merged = { ...defaultPersonalisation, ...(personalisation || {}) };
   const isMinimal = merged.minimalMode === true;
-  const panelRange = isMinimal ? { min: 0.45, max: 0.8 } : { min: 0.88, max: 0.98 };
-  const blurRange = isMinimal ? { min: 0, max: 6 } : { min: 0, max: 10 };
+  const panelRange = isMinimal ? { min: 0.78, max: 0.98 } : { min: 0.72, max: 0.98 };
+  const blurRange = isMinimal ? { min: 0, max: 8 } : { min: 0, max: 16 };
 
   return {
     ...merged,
     panelOpacity: Math.max(panelRange.min, Math.min(panelRange.max, merged.panelOpacity ?? defaultPersonalisation.panelOpacity)),
     blurIntensity: Math.max(blurRange.min, Math.min(blurRange.max, merged.blurIntensity ?? defaultPersonalisation.blurIntensity)),
-    chatBubbleStyle: merged.chatBubbleStyle === 'glass'
-      ? 'solid'
-      : (merged.chatBubbleStyle || defaultPersonalisation.chatBubbleStyle),
+    chatBubbleStyle: merged.chatBubbleStyle || defaultPersonalisation.chatBubbleStyle,
   };
 }
 
@@ -482,7 +480,7 @@ export const useUIStore = create<UIStore>()(
         // Sensory
         audioFeedback: false,
         setAudioFeedback: (audioFeedback) => set({ audioFeedback }),
-        particleEffects: false,
+        particleEffects: true,
         setParticleEffects: (particleEffects) => set({ particleEffects }),
         terminalFontSize: 15,
         setTerminalFontSize: (terminalFontSize) => set({ terminalFontSize }),
@@ -628,9 +626,9 @@ export const useUIStore = create<UIStore>()(
 
 
         // Panel State
-        leftPanelOpen: false,
+        leftPanelOpen: true,
         setLeftPanelOpen: (leftPanelOpen) => set({ leftPanelOpen }),
-        rightPanelOpen: false,
+        rightPanelOpen: true,
         setRightPanelOpen: (rightPanelOpen) => set({ rightPanelOpen }),
         rightPanelTab: 'context',
         setRightPanelTab: (rightPanelTab) => set({ rightPanelTab }),
@@ -715,7 +713,7 @@ export const useUIStore = create<UIStore>()(
     },
     {
       name: 'silver-wolf-v6-core',
-      version: 5,
+      version: 7,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') return persistedState;
         const { notionApiKey: _notionApiKey, ...safeState } = persistedState as Partial<UIStore> & {
@@ -723,11 +721,25 @@ export const useUIStore = create<UIStore>()(
         };
         const migrated = { ...safeState };
         migrated.aiModel = normalizeAiModel(migrated.aiModel);
-        migrated.particleEffects = false;
-        migrated.leftPanelOpen = false;
-        migrated.rightPanelOpen = false;
+        migrated.particleEffects = true;
+        migrated.leftPanelOpen = true;
+        migrated.rightPanelOpen = true;
+        migrated.scanlineOverlay = false;
+        migrated.showBorders = true;
         migrated.imageryProvider = migrated.imageryProvider === 'cesium' ? 'arcgis-world' : (migrated.imageryProvider || 'arcgis-world');
-        migrated.personalisation = normalizePersonalisation(migrated.personalisation);
+        migrated.personalisation = normalizePersonalisation({
+          ...migrated.personalisation,
+          minimalMode: false,
+          panelOpacity: 0.88,
+          blurIntensity: 10,
+          animationIntensity: 0.65,
+          motionReduced: false,
+          cornerRadius: 20,
+          shadowIntensity: 0.45,
+          borderStyle: 'glow',
+          chatBubbleStyle: 'glass',
+          uiDensity: 'compact',
+        });
         return migrated;
       },
       partialize: (s) => ({

@@ -7,7 +7,7 @@ Silver Wolf VI is a Vite + React chat and astronomy workspace with adaptive them
 ### App Shell
 - `src/App.tsx` owns the high-level shell: top app bar, layout, settings window, particle overlay, and theme wrapper.
 - `src/App.tsx` lazy-loads the workspace layout, globe background, launcher, particle overlay, and custom cursor so first paint is not blocked by closed or opt-in surfaces.
-- `src/hooks/useThemeVariables.ts` merges the active palette with any extracted wallpaper theme and applies CSS variables to the document.
+- `src/hooks/useThemeVariables.ts` merges the active palette with any extracted wallpaper theme and applies CSS variables to the document. The current defaults favor restored glass/rounded feature surfaces, with high-load clamps still reducing blur and motion when needed.
 - `src/components/layout/DockedLayout.tsx` composes the main workspace, responsive side navigation, chat surface, and telemetry panel.
 - `src/components/layout/SessionSidebar.tsx` owns the left navigation/session actions.
 
@@ -20,15 +20,16 @@ Silver Wolf VI is a Vite + React chat and astronomy workspace with adaptive them
 - `src/hooks/useChatPersistence.ts` loads/saves chat history in `localStorage`.
 - `src/hooks/useAutoScroll.ts` handles scroll-to-bottom behavior and streaming content mutations.
 - `src/lib/messages.ts` centralizes message types, IDs, storage key, and default/reset message factories.
-- `src/lib/ai.ts` owns provider routing. The local diagnostic assistant works without external keys, Gemini requires `GEMINI_API_KEY`, and the Odysseus route requires the configured local bridge, defaulting to `http://127.0.0.1:8001`.
-- `src/lib/bridgeConfig.ts` centralizes bridge URL normalization so chat, diagnostics, memory push, satellite proxy fallback, launcher checks, and the Odysseus console use the same endpoint.
+- `src/lib/ai.ts` owns provider routing. The local diagnostic assistant works without external keys, Gemini reads from the credential engine or `GEMINI_API_KEY`, and the Odysseus route uses the configured local bridge, defaulting to `http://127.0.0.1:8001`.
+- `src/lib/credentials/apiCredentialEngine.ts` owns the local API and connector credential registry for OpenAI, Gemini, Anthropic, OpenRouter, Mistral, Perplexity, Groq, Apify, Google Cloud, GitHub, Notion, OpenWeather, and the Bridge endpoint. It stores local-development credentials in a versioned browser vault, migrates legacy key fields, masks status, builds auth headers for connector code, and labels server-side-only providers honestly.
+- `src/lib/bridgeConfig.ts` centralizes bridge URL normalization so chat, diagnostics, memory push, satellite proxy fallback, launcher checks, and the Odysseus console use the same endpoint. The Bridge endpoint override is now read from the credential engine.
 - `bridge/server.py` allows the local dev and Vite preview origins by default through explicit origins plus `BRIDGE_CORS_ORIGIN_REGEX`; set `BRIDGE_CORS_ORIGINS` or `BRIDGE_CORS_ORIGIN_REGEX` for any different hosted origin.
 - `public/config.json` provides a non-secret browser config endpoint so production preview does not warn before falling back to env vars.
 - `src/store/uiStore.ts` stores active chat messages explicitly and synchronizes them with the active chat session so the composer, message feed, and AI dispatcher observe the same current state.
 
 ### Settings and Theming
 - `src/components/SettingsWindow.tsx` owns draggable/docked window behavior.
-- `src/components/SettingsPane.tsx` owns theme selection, wallpaper upload, interface controls, model choice, and system instructions.
+- `src/components/SettingsPane.tsx` and `src/components/settings/*` own theme selection, wallpaper upload, interface controls, model choice, system instructions, credential-engine UI, connector settings, and bridge URL overrides.
 - `src/lib/themeEngine.ts` owns typed palette tokens, palette definitions, palette name formatting, and harmonic accent generation.
 
 ### Telemetry and Effects
@@ -61,7 +62,7 @@ What improved:
 
 Remaining risks:
 - The telemetry system is simulated in multiple places. If it becomes real data, move all metric updates into one telemetry service/hook.
-- Gemini and Odysseus behavior depends on external configuration. The app now gives a local diagnostic AI response when those providers are unavailable so chat can still be tested.
+- Gemini and Odysseus behavior depends on external model configuration. The app and bridge now give local diagnostic AI responses when those providers are unavailable so chat can still be tested without prompt echo.
 - Chat history is local-only and not versioned. If the message schema changes, add migration logic around `silverWolf.chatHistory`.
 - Wallpaper object URLs are cleaned up when replaced/removed, but uploaded wallpaper is not persisted across reloads.
 - The model selector exposes only currently wired routes. Keep it aligned with deployed providers instead of listing aspirational models.
@@ -72,7 +73,7 @@ Remaining risks:
 What improved:
 - Labels now use plain language: "New chat", "Wallpaper", "Motion effects", "Sound feedback", "Chat text size", and "System instructions" are more intuitive than the previous system-jargon-heavy copy.
 - Icon buttons now share accessibility labels and titles.
-- Settings and code blocks use smaller 8px radii for a tighter tool-like interface.
+- Settings and workspace controls use compact spacing with rounded glass surfaces. Minimalism means fewer competing overlays, not flat or square controls.
 - The layout is more responsive: the session sidebar starts at medium viewports and the telemetry panel starts at extra-large viewports, keeping mobile focused on chat.
 - Reduced-motion users now get a calmer experience via a global media query.
 
@@ -110,7 +111,14 @@ Validation:
 - Current 2026-06-24 compact spatial HUD smoke: temporary Vite preview at `http://127.0.0.1:4182/?fallback=true` in Space mode rendered the collapsed HUD opener as one 44x44 icon-only button with `aria-label="Open spatial HUD sidebar"`; the old bulky text `Spatial HUD collapsed. Controls moved to sidebar.` and `Open HUD` text button were absent, and the browser reported no fresh relevant console warnings.
 - Current 2026-06-24 constellation contract: the runtime test verifies fixed catalog star coordinates remain unchanged at J2000 but precess away from their J2000 RA/Dec by 2026; integration tests verify both Cesium and WWT constellation renderers call the shared precession transform.
 - Current 2026-06-24 visual-readability contract: integration tests verify default CSS panel opacity/blur match the readable runtime defaults, large telescope HUD panels use stronger opaque glass, and the cursor engine restores the native cursor during high-load fallback.
+- Current 2026-06-24 runtime performance guard: when CPU load is high, app theme clamps blur to a minimal value and nudges panel opacity for readable, lower-cost compositing while preserving the same fallback paths.
 - Current 2026-06-24 bottom telemetry contract: the WWT timeline has a centered top icon button that collapses the full telemetry/timeline panel into a slim bottom bar and expands it again; integration tests verify the labels and collapsed-state guard.
+- Current 2026-06-25 UI restoration pass: chat no longer renders the redundant `CHAT INTERFACE READY` strip, the workspace no longer reserves a blocking top app bar, the Chat/Space switcher keeps compact rounded controls with restrained animation, and sidebars default open again so documented feature surfaces remain reachable.
+- Current 2026-06-25 globe readability pass: Cesium credit UI is compacted/non-blocking, satellite labels use globe occlusion instead of drawing through Earth, and restored feature surfaces remain subject to high-load performance guards.
+- Current 2026-06-25 AI configuration pass: Settings -> AI Configuration exposes local input bars for Gemini key staging, OpenAI key setup handoff, and bridge URL override. Gemini can use the staged key for local browser testing; OpenAI keys are not sent directly from the frontend and require a server-side bridge.
+- Current 2026-06-25 bridge chat pass: `/chat` skips stale Odysseus sessions, returns the verifier mock LLM response while the mock endpoint is running, and otherwise returns a local bridge assistant response without echoing the user prompt when no Odysseus model endpoint is configured.
+- Current 2026-06-25 runtime integration verification: `node scripts/verification_harness/verify_system.cjs` passes Vite, Bridge, Odysseus health, ChromaDB heartbeat, database seed/cleanup, proxy chat through the mock LLM, Space/globe DOM state, telemetry DOM state, and AI Settings source contracts. The report remains `PARTIAL` because no real Odysseus model endpoint is configured.
+- Current 2026-06-25 validation: `npm test`, `npm run lint`, and `npm run build` pass. The repository integration contract reports 96/100, not 100/100, because runtime dependency scoring keeps the missing real model endpoint visible.
 - Previous dependency pass: `pnpm audit --json` reported zero vulnerabilities after the 2026-06-20 remediation.
 
 ---
@@ -130,20 +138,20 @@ This section lists the current, source-backed wiring. It intentionally avoids cl
 
 1. `ChatComposer.tsx` captures text and calls `ChatPanel.tsx`.
 2. `useAIChat.ts` writes the user message to the active Zustand chat session, sets processing state, and routes the request.
-3. `src/lib/ai.ts` returns a deterministic local assistant response by default without echoing the prompt text. Gemini requires `GEMINI_API_KEY`; Odysseus requires the configured local bridge.
+3. `src/lib/ai.ts` returns a deterministic local assistant response by default without echoing the prompt text. Gemini uses the credential-engine Gemini key or `GEMINI_API_KEY`; Odysseus uses the configured local bridge and falls back locally when the bridge or model endpoint is unavailable.
 4. The response is appended as a separate assistant message, which is what the browser and runtime tests verify.
 
 ## Bridge And Companion Repositories
 
-1. `src/lib/bridgeConfig.ts` resolves the bridge URL from Developer Settings, `VITE_BRIDGE_URL`, or the local default.
-2. `bridge/server.py` exposes the local status, chat, sync, diagnostics, camera proxy, git status, and generic Odysseus proxy routes. Localhost and `127.0.0.1` frontend ports are allowed through the default CORS regex so preview ports do not silently break bridge status checks.
-3. `scripts/test_integration_contracts.cjs` verifies that mapped WorldWideView assets, copied Odysseus documentation assets, Odysseus source-module references, bridge routes, and bridge CORS defaults still exist.
-4. The integration is conditional, not 100% complete: WorldWideView and Odysseus still have their own runtime requirements.
+1. `src/lib/bridgeConfig.ts` resolves the bridge URL from Developer Settings, the credential engine, `VITE_BRIDGE_URL`, or the local default.
+2. `bridge/server.py` exposes the local status, chat, sync, diagnostics, camera proxy, git status, and generic Odysseus proxy routes. Its chat route skips stale sessions, uses configured Odysseus model endpoints when available, uses the verifier mock LLM when present, and otherwise returns a local diagnostic assistant response. Localhost and `127.0.0.1` frontend ports are allowed through the default CORS regex so preview ports do not silently break bridge status checks.
+3. `scripts/test_integration_contracts.cjs` verifies that mapped WorldWideView assets, copied Odysseus documentation assets, Odysseus source-module references, credential-engine provider contracts, bridge routes, and bridge CORS defaults still exist.
+4. The integration is conditional, not 100% complete: ChromaDB vector memory and Odysseus Browser MCP now register locally, but a real Odysseus model endpoint is still not configured and WorldWideView still has its own runtime requirements.
 
 ## Performance And Visual Load
 
 1. `App.tsx` lazy-loads the workspace layout, globe background, launcher, particle overlay, custom cursor, settings, diagnostics, and telescope views.
-2. Particle effects and the custom cursor are off by default; enabling particle effects opt-ins to the custom cursor.
+2. Particle effects and the custom cursor are feature defaults again. They still shut off under high-load, reduced-motion, or low animation-intensity conditions so the native cursor remains responsive.
 3. The cursor engine restores the native cursor when high-load mode disables the custom reticle, avoiding hidden or lagging cursor feedback.
 4. `useThemeVariables.ts` clamps normal-mode panels to readable opacity and blur, and `index.css` uses the same fallback defaults before React hydrates.
 5. `npm run build` currently verifies that the production entry chunk stays below Vite's 500 kB warning threshold.

@@ -4,7 +4,7 @@
 :root {
   /* HOLOGRAPHIC THEME - SILVERWOLF */
   --theme-bg-base: #0a0b10;
-  --theme-bg-panel: rgba(15, 17, 26, 0.5); /* translucent for glassmorphism */
+  --theme-bg-panel: rgba(15, 17, 26, 0.72); /* stronger base readability behind glass */
   --theme-bg-panel-border: rgba(138, 91, 199, 0.25);
 
   --theme-primary: #8A5BC7;       /* Silverwolf Purple */
@@ -24,14 +24,14 @@
   --theme-primary-glow: color-mix(in srgb, var(--theme-primary) 50%, transparent);
 
   /* UI personalisation — set by JS from store */
-  --theme-ui-opacity: 0.92;
-  --theme-ui-blur: 8px;
-  --theme-ui-radius: 8px;
-  --theme-ui-shadow-intensity: 0.5;
+  --theme-ui-opacity: 0.88;
+  --theme-ui-blur: 10px;
+  --theme-ui-radius: 20px;
+  --theme-ui-shadow-intensity: 0.45;
   --theme-ui-animation-speed: 1;
   --theme-ui-font-scale: 1;
   --theme-ui-density-row-height: 36px;
-  --theme-ui-border-opacity: 0.08;
+  --theme-ui-border-opacity: 0.26;
 
   --theme-font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --theme-font-mono: Consolas, "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -102,6 +102,94 @@ body {
   box-shadow: 0 0 20px 2px color-mix(in srgb, var(--theme-primary) 15%, transparent);
 }
 
+.mode-switcher-shell {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.mode-switcher-shell::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at var(--mode-glow-x, 28%) 50%, color-mix(in srgb, var(--theme-primary) 24%, transparent), transparent 34%),
+    linear-gradient(120deg, transparent 10%, color-mix(in srgb, var(--theme-secondary) 18%, transparent), transparent 42%);
+  opacity: 0.65;
+  animation: modeSwitcherBreathe calc(4s / max(var(--theme-ui-animation-speed, 1), 0.2)) ease-in-out infinite;
+}
+
+.mode-tab {
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+.mode-tab::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  border: 1px solid transparent;
+  transition: border-color 180ms ease, opacity 180ms ease;
+  opacity: 0;
+}
+
+.mode-tab:hover {
+  transform: translateY(-1px);
+}
+
+.mode-tab:hover::after {
+  border-color: color-mix(in srgb, var(--theme-primary) 28%, transparent);
+  opacity: 1;
+}
+
+.mode-tab-active {
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--theme-primary) 22%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+@keyframes modeSwitcherBreathe {
+  0%, 100% {
+    opacity: 0.48;
+    transform: translateX(-8%);
+  }
+  50% {
+    opacity: 0.78;
+    transform: translateX(8%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-switcher-shell::before {
+    animation: none;
+  }
+
+  .mode-tab:hover {
+    transform: none;
+  }
+}
+
+.cesium-viewer-bottom,
+.cesium-widget-credits,
+.cesium-credit-textContainer,
+.cesium-credit-logoContainer,
+.cesium-credit-expand-link {
+  max-width: min(44vw, 360px) !important;
+  opacity: 0.42 !important;
+  transform: scale(0.84);
+  transform-origin: left bottom;
+  pointer-events: none !important;
+}
+
+.cesium-credit-lightbox,
+.cesium-credit-lightbox-overlay {
+  display: none !important;
+}
+
 .panel-glass {
   background: rgba(15, 17, 26, var(--theme-ui-opacity, 0.92));
   backdrop-filter: blur(var(--theme-ui-blur, 8px));
@@ -147,15 +235,23 @@ body {
 .is-minimal-ui .glass-panel,
 .is-minimal-ui .glass-panel-subtle,
 .is-minimal-ui .glass-panel-strong {
-  backdrop-filter: blur(2px) !important;
-  -webkit-backdrop-filter: blur(2px) !important;
-  border-radius: 4px !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24) !important;
+}
+
+.state-high-load .panel-glass,
+.state-high-load .glass-panel,
+.state-high-load .glass-panel-subtle,
+.state-high-load .glass-panel-strong {
+  backdrop-filter: blur(1px) !important;
+  -webkit-backdrop-filter: blur(1px) !important;
   box-shadow: none !important;
 }
 
 .is-minimal-ui .ambient-glow {
-  box-shadow: none !important;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--theme-primary) 10%, transparent) !important;
 }
 
 .is-minimal-ui .cyber-glitch::before,

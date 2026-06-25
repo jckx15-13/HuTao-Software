@@ -73,6 +73,7 @@ export function createUpdateLoop(
     let smoothedSimMs = Date.now();
     let lastStoreUpdatePerf = lastPerfTime;
     let performanceOrigin = Date.now() - lastPerfTime;
+    const liveStoreUpdateIntervalMs = 33;
 
     return () => {
         if (!viewer || viewer.isDestroyed()) return;
@@ -115,6 +116,11 @@ export function createUpdateLoop(
             }
             nowMs = performanceOrigin + nowPerf;
             smoothedSimMs = nowMs;
+
+            if (nowPerf - lastStoreUpdatePerf > liveStoreUpdateIntervalMs) {
+                lastStoreUpdatePerf = nowPerf;
+                state.setCurrentTime(new Date(nowMs));
+            }
         }
 
         const animatables = animatablesRef.current;

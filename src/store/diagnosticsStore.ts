@@ -24,6 +24,13 @@ const makeId = () => `${Date.now().toString(36)}-${Math.random().toString(36).sl
 
 const SENSITIVE_KEYS = /(key|token|auth|password|secret|notion|weather|credential)/i;
 const CELESTRAK_TLE_PATTERN = /celestrak\.org\/NORAD\/elements\/gp\.php/i;
+const TRACKED_FETCH_PATHS = ['/api/', '/chat', '/status', '/git/status', '/sync', '/openapi'];
+
+function shouldTrackFetchLatency(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  if (url.includes('/log')) return false;
+  return TRACKED_FETCH_PATHS.some((path) => url.includes(path));
+}
 
 function isSatelliteTelemetryFetch(url: string): boolean {
   if (!url) return false;
@@ -169,14 +176,15 @@ if (typeof window !== 'undefined') {
   // 4. Global fetch latency & error interceptor
   const originalFetch = window.fetch;
   window.fetch = async function (input, init) {
-    const startTime = performance.now();
     const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : '');
-    const isSatelliteTelemetryRequest = isSatelliteTelemetryFetch(url);
+    const shouldTrack = shouldTrackFetchLatency(url);
 
-    // Avoid intercepting calls to the logging endpoint to prevent infinite recursion loop
-    if (url.includes('/log')) {
+    if (!shouldTrack && !isSatelliteTelemetryFetch(url)) {
       return originalFetch.apply(window, arguments as any);
     }
+
+    const startTime = performance.now();
+    const isSatelliteTelemetryRequest = isSatelliteTelemetryFetch(url);
 
     try {
       const response = await originalFetch.apply(window, arguments as any);
@@ -303,11 +311,11 @@ if (typeof window !== 'undefined') {
 
         // 8. Viewport Resolution Check
         const checkViewport = () => {
-          if (window.innerWidth < 1024) {
+          if (window.innerWidth < 768 || window.innerHeight < 500) {
             useDiagnosticsStore.getState().add({
-              level: 'warning',
-              message: `Sub-optimal viewport size: ${window.innerWidth}px width. HUD layout requires at least 1024px.`,
-              suggestion: 'Resize browser window or adjust screen scaling to prevent layout overlaps.'
+              level: 'info',
+              message: `Compact viewport detected: ${window.innerWidth}x${window.innerHeight}. Layout has adapted to responsive mode.`,
+              suggestion: 'Use full-height/width mode for maximum panel density if overlaps are seen.'
             });
           }
         };

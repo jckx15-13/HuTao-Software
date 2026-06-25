@@ -1,6 +1,8 @@
 declare const __SILVER_WOLF_BRIDGE_URL__: string | undefined;
 declare const __SILVER_WOLF_ODYSSEUS_CORE_URL__: string | undefined;
 
+import { getCredentialEndpoint } from "./credentials/apiCredentialEngine";
+
 export const FALLBACK_BRIDGE_URL = "http://127.0.0.1:8001";
 export const FALLBACK_ODYSSEUS_CORE_URL = "http://127.0.0.1:7000";
 
@@ -17,7 +19,9 @@ function configuredBuildValue(name: "bridge" | "odysseus-core"): string {
 function storedEndpointOverride(): string {
   if (typeof window === "undefined") return "";
   const store = (window as any).useUIStore;
-  return store?.getState?.()?.engineUrlOverride || "";
+  const stateOverride = store?.getState?.()?.engineUrlOverride || "";
+  const credentialOverride = getCredentialEndpoint("bridge");
+  return stateOverride || credentialOverride;
 }
 
 export function normalizeBridgeBaseUrl(rawUrl?: string | null, fallback = FALLBACK_BRIDGE_URL): string {

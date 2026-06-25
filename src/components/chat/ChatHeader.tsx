@@ -16,10 +16,15 @@ async function toggleFullscreen() {
 
 export function ChatHeader({ onClear }: ChatHeaderProps) {
   return (
-    <header className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-panel-border bg-panel-border/20 px-4">
-      <div className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-primary">
-        <TerminalSquare className="h-4 w-4" />
-        <span>Chat</span>
+    <header className="panel-glass relative z-20 flex h-16 shrink-0 items-center justify-between border-b border-primary/15 bg-gradient-to-r from-panel/85 via-panel/65 to-background/30 px-5 shadow-[0_12px_30px_color-mix(in_srgb,var(--theme-primary)_8%,transparent)]">
+      <div className="flex items-center gap-3 font-mono text-xs font-bold uppercase tracking-widest text-primary">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/25 bg-primary/10 shadow-[0_0_18px_color-mix(in_srgb,var(--theme-primary)_18%,transparent)]">
+          <TerminalSquare className="h-4 w-4" />
+        </div>
+        <div className="flex flex-col leading-none">
+          <span>Chat</span>
+          <span className="mt-1 text-[9px] font-medium tracking-[0.28em] text-text-muted/60">AI workspace</span>
+        </div>
       </div>
 
       <div className="flex gap-2">

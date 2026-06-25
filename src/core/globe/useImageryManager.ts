@@ -7,10 +7,9 @@ import {
     Cesium3DTileset,
     Cesium3DTileStyle,
     createOsmBuildingsAsync,
-    createGooglePhotorealistic3DTileset
 } from "cesium";
 import { useStore } from "@/core/state/store";
-import { createImageryProvider, createOsmProvider } from "./ImageryProviderFactory";
+import { createGooglePhotorealistic3DTileset, createImageryProvider, createOsmProvider } from "./ImageryProviderFactory";
 import { loadConfig } from "../../lib/config";
 
 export function useImageryManager(viewerInstance: CesiumViewer | null, viewerReady: boolean) {
@@ -23,9 +22,10 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
     const selectedLayerId = baseLayerId || 'osm';
     const currentImageryLayerRef = useRef<ImageryLayer | null>(null);
     const initialCleanupDoneRef = useRef(false);
-    const osmBuildingsRef = useRef<Cesium3DTileset | null>(null);
-    const googleTilesetRef = useRef<Cesium3DTileset | null>(null);
-    const [google3DActive, setGoogle3DActive] = useState(false);
+  const osmBuildingsRef = useRef<Cesium3DTileset | null>(null);
+  const googleTilesetRef = useRef<Cesium3DTileset | null>(null);
+  const [google3DActive, setGoogle3DActive] = useState(false);
+  const imageryRequestRef = useRef(0);
 
     // 1. Manage Scene Mode (2D / 3D / Columbus)
     useEffect(() => {
@@ -42,14 +42,17 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
         }
     }, [viewer, viewerReady, sceneMode]);
 
-    // 2. Manage Imagery Layer and Google 3D Tiles
-    useEffect(() => {
-        if (!viewer || !viewerReady || viewer.isDestroyed()) return;
+  // 2. Manage Imagery Layer and Google 3D Tiles
+  useEffect(() => {
+    if (!viewer || !viewerReady || viewer.isDestroyed()) return;
 
-        let active = true;
+    let active = true;
+    const requestId = ++imageryRequestRef.current;
+    const isStale = () => !active || requestId !== imageryRequestRef.current;
 
-        async function updateImagery() {
-            if (!viewer || !viewerReady || viewer.isDestroyed() || !active) return;
+    async function updateImagery() {
+      if (!viewer || !viewerReady || viewer.isDestroyed() || !active) return;
+      if (isStale()) return;
 
             if (!initialCleanupDoneRef.current) {
                 viewer.imageryLayers.removeAll();
@@ -61,15 +64,25 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
 
             // Toggle Google 3D Tileset visibility if it exists
             // Or find it in primitives
-            const {primitives} = viewer.scene;
+            const { primitives } = viewer.scene;
             let foundTileset: Cesium3DTileset | null = null;
 
-            for (let i = 0; i < primitives.length; i++) {
-                const p = primitives.get(i);
-                // Find the Google tileset — skip any tagged as OSM buildings
-                if (p instanceof Cesium3DTileset && !(p as any)._wwvOsmBuildings) {
-                    foundTileset = p;
-                    break;
+            if (googleTilesetRef.current && !googleTilesetRef.current.isDestroyed?.()) {
+                foundTileset = googleTilesetRef.current;
+            }
+
+            if (isGoogle3D && !foundTileset) {
+                for (let i = 0; i < primitives.length; i++) {
+                    const p = primitives.get(i);
+                    if (
+                        p instanceof Cesium3DTileset &&
+                        (p as any)._wwvGooglePhotorealistic &&
+                        !(p as any)._wwvOsmBuildings &&
+                        !p.isDestroyed()
+                    ) {
+                        foundTileset = p;
+                        break;
+                    }
                 }
             }
 
@@ -78,13 +91,22 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
             if (isGoogle3D && !foundTileset) {
                 const config = await loadConfig();
                 const apiKey = config.GOOGLE_MAPS_API_KEY || (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined);
-                if (apiKey && active && !viewer.isDestroyed()) {
-                    try {
-                        console.log("[useImageryManager] Dynamically initializing Google 3D Tileset...");
-                        const tileset = await createGooglePhotorealistic3DTileset({ key: apiKey });
-                        if (active && !viewer.isDestroyed()) {
-                            viewer.scene.primitives.add(tileset);
-                            foundTileset = tileset;
+          if (apiKey && active && !viewer.isDestroyed()) {
+            try {
+              console.log("[useImageryManager] Dynamically initializing Google 3D Tileset...");
+              const tileset = await createGooglePhotorealistic3DTileset({ key: apiKey });
+              if (isStale() || !active || !viewer || viewer.isDestroyed()) {
+                if (typeof tileset.destroy === 'function') {
+                  tileset.destroy();
+                }
+                return;
+              }
+
+              if (active && !viewer.isDestroyed()) {
+                (tileset as any)._wwvGooglePhotorealistic = true;
+                viewer.scene.primitives.add(tileset);
+                foundTileset = tileset;
+                            googleTilesetRef.current = tileset;
                         } else {
                             if (typeof tileset.destroy === 'function') {
                                 tileset.destroy();
@@ -99,6 +121,14 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
             const hasGoogle3D = isGoogle3D && !!foundTileset;
             if (foundTileset) {
                 foundTileset.show = hasGoogle3D;
+                googleTilesetRef.current = foundTileset;
+            }
+
+            if (!isGoogle3D && googleTilesetRef.current) {
+                if (primitives.contains(googleTilesetRef.current)) {
+                    primitives.remove(googleTilesetRef.current);
+                }
+                googleTilesetRef.current = null;
             }
 
             // Update state so buildings and components know whether 3D mode is active
@@ -122,17 +152,17 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
                 let provider;
 
                 try {
-                    provider = await createImageryProvider(initialLayerId);
+                  provider = await createImageryProvider(initialLayerId);
                 } catch (primaryErr) {
                     console.warn(`[useImageryManager] Failed to load imagery layer ${initialLayerId}, trying fallback if available`, primaryErr);
 
                     if (fallbackLayerId && fallbackLayerId !== initialLayerId) {
-                        try {
-                            provider = await createImageryProvider(fallbackLayerId);
-                            console.warn(`[useImageryManager] Falling back to imagery layer ${fallbackLayerId}`);
-                        } catch (fallbackErr) {
-                            console.warn(`[useImageryManager] Fallback imagery ${fallbackLayerId} also failed`, fallbackErr);
-                        }
+                    try {
+                      provider = await createImageryProvider(fallbackLayerId);
+                      console.warn(`[useImageryManager] Falling back to imagery layer ${fallbackLayerId}`);
+                    } catch (fallbackErr) {
+                      console.warn(`[useImageryManager] Fallback imagery ${fallbackLayerId} also failed`, fallbackErr);
+                    }
                     }
 
                     if (!provider) {
@@ -146,9 +176,15 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
                 }
 
                 const newLayer = new ImageryLayer(provider);
+                if (isStale() || viewer.isDestroyed()) {
+                  if (typeof (provider as { destroy?: () => void }).destroy === 'function') {
+                    (provider as { destroy?: () => void }).destroy?.();
+                  }
+                  return;
+                }
 
                 if (currentImageryLayerRef.current) {
-                    viewer.imageryLayers.remove(currentImageryLayerRef.current);
+                  viewer.imageryLayers.remove(currentImageryLayerRef.current);
                 }
 
                 if (viewer.isDestroyed() || !active) return;
@@ -159,11 +195,12 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
 
         updateImagery();
 
-        return () => {
-            active = false;
-            if (viewer && !viewer.isDestroyed()) {
-                if (currentImageryLayerRef.current) {
-                    viewer.imageryLayers.remove(currentImageryLayerRef.current);
+    return () => {
+      active = false;
+      imageryRequestRef.current += 1;
+      if (viewer && !viewer.isDestroyed()) {
+        if (currentImageryLayerRef.current) {
+          viewer.imageryLayers.remove(currentImageryLayerRef.current);
                     currentImageryLayerRef.current = null;
                 }
                 if (googleTilesetRef.current && viewer.scene.primitives.contains(googleTilesetRef.current)) {

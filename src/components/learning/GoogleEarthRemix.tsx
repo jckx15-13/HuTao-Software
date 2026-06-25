@@ -58,7 +58,7 @@ import { useStore } from '../../core/state/store';
 import { pluginManager } from '../../core/plugins/PluginManager';
 import { locations, type LocationData } from '../../data/locations';
 import { tours, type Tour, type TourStep } from '../../data/tours';
-import { SATELLITES } from '../../data/satellites';
+import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
 import {
   LANDMASS_POINTS_3D,
   MERIDIANS_3D,
@@ -139,6 +139,7 @@ export default function GoogleEarthRemix() {
   const mapConfig = useStore((s) => s.mapConfig);
   const updateMapConfig = useStore((s) => s.updateMapConfig);
   const layers = useStore((s) => s.layers);
+  const { satellites } = useSatelliteCatalog();
 
   // 3. Fallback Interactive Canvas Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -158,6 +159,11 @@ export default function GoogleEarthRemix() {
       };
     }
   }, [activeLocation]);
+
+  const selectedSatellite = useMemo(
+    () => satellites.find((satellite) => satellite.id === activeSatelliteId),
+    [activeSatelliteId, satellites]
+  );
 
   // Set initial camera position if location selected on load
   useEffect(() => {
@@ -858,8 +864,8 @@ export default function GoogleEarthRemix() {
         <header
           className={`orbital-hud-bar ${rightPanelOpen ? 'right-panel-open' : ''}`}
           style={{
-            left: leftPanelOpen ? '336px' : '12px',
-            right: rightPanelOpen ? '336px' : '12px',
+            left: leftPanelOpen ? 'min(336px, 70vw)' : '0.75rem',
+            right: rightPanelOpen ? 'min(336px, 70vw)' : '0.75rem',
           }}
         >
           {/* Futuristic left-side branding/status/coordinates */}
@@ -885,13 +891,13 @@ export default function GoogleEarthRemix() {
           </div>
 
           {/* Center spacing gap reserved for mode switcher */}
-          <div className="hud-center-spacer w-[220px] hidden lg:block" />
+          <div className="hud-center-spacer w-[min(220px,24vw)] hidden lg:block" />
 
           {/* High-tech glass action buttons & target telemetry */}
           <div className="hud-section actions">
             <div className="hud-metric text-[8px] text-white/40 hidden xl:flex gap-2 mr-2 border-r border-white/10 pr-2">
-              <span>TARGET: <span className="text-purple-400 font-bold uppercase">{activeSatelliteId ? cleanSatelliteName(SATELLITES.find(s => s.id === activeSatelliteId)?.name || activeSatelliteId) : (activeLocation ? activeLocation.name.split(',')[0] : 'EARTH')}</span></span>
-              {activeSatelliteId && <span>ALT: <span className="text-amber-400 font-bold">{(SATELLITES.find(s => s.id === activeSatelliteId)?.altitudeM || 420000) / 1000}KM</span></span>}
+              <span>TARGET: <span className="text-purple-400 font-bold uppercase">{activeSatelliteId ? cleanSatelliteName(selectedSatellite?.name || activeSatelliteId) : (activeLocation ? activeLocation.name.split(',')[0] : 'EARTH')}</span></span>
+              {activeSatelliteId && <span>ALT: <span className="text-amber-400 font-bold">{(selectedSatellite?.altitudeM || 420000) / 1000}KM</span></span>}
             </div>
 
             <button
@@ -982,7 +988,7 @@ export default function GoogleEarthRemix() {
               onClick={() => setLeftPanelOpen(true)}
               aria-label="Open spatial HUD sidebar"
               title="Open spatial HUD sidebar"
-              className="absolute top-[80px] left-[20px] z-50 glass-panel inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-primary/25 bg-black/35 text-primary shadow-lg transition-colors hover:bg-primary/15 hover:text-white pointer-events-auto"
+              className="absolute top-[clamp(3.25rem,12vh,4.75rem)] left-[clamp(0.75rem,3vw,1.25rem)] z-50 glass-panel inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-primary/25 bg-black/35 text-primary shadow-lg transition-colors hover:bg-primary/15 hover:text-white pointer-events-auto"
             >
               <Compass className="w-4 h-4" aria-hidden="true" />
             </button>
@@ -999,7 +1005,7 @@ export default function GoogleEarthRemix() {
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
-                className="w-[min(65vw,680px)] aspect-square max-h-[75vh]"
+                className="w-[min(90vw,68vh,680px)] aspect-square max-h-[min(75vh,68vh)]"
                 style={{ display: 'block', touchAction: 'none', cursor: 'grab' }}
               />
             </div>

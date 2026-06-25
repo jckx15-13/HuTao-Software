@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-06-15T12:49:38.700Z",
+  "timestamp": "2026-06-25T05:15:15.549Z",
   "services": {
     "vite": {
       "status": "online",
-      "port": 3000
+      "port": 3005
     },
     "bridge": {
       "status": "online",
@@ -12,19 +12,31 @@
     "odysseus": {
       "status": "online",
       "port": 7000
+    },
+    "chromadb": {
+      "status": "online",
+      "port": 8100
     }
   },
   "database_seeding": "success",
   "mock_llm_server": "success",
+  "ai_model_endpoint": {
+    "status": "missing",
+    "configured_count": 0
+  },
   "proxy_chat_flow": {
     "status": "success",
-    "response": "Hello! I am a mock LLM response."
+    "response": "Local bridge assistant response.\nInput accepted without echoing the prompt text. Prompt length: 42 characters.\nBridge chat loop verified: request validated, Odysseus availability checked, and assistant output returned separately.\nNo custom system instructions were supplied. Odysseus model status: Odysseus chat returned 404: {\"detail\":\"Session ad14e1c7-220c-4225-87c0-22e04c243577 not found\"}."
   },
   "ui_verification": {
     "status": "success",
     "space_tab_found": true,
     "telemetry_view_found": true,
-    "settings_panel_found": true
+    "settings_panel_found": true,
+    "ai_key_inputs_found": true
   },
-  "overall_status": "PASS"
+  "overall_status": "PARTIAL",
+  "partial_reasons": [
+    "no configured Odysseus model endpoint"
+  ]
 }

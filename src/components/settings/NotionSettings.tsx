@@ -1,9 +1,40 @@
 import { Link2, Shield, Database } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { SettingsSection } from './SettingsSection';
+import { useEffect, useState } from 'react';
+import { clearCredentialRecord, getCredentialRecord, saveCredentialRecord } from '@/lib/credentials/apiCredentialEngine';
 
 export function NotionSettings() {
   const s = useUIStore();
+  const [notionSecret, setNotionSecret] = useState('');
+  const [status, setStatus] = useState('Managed by credential engine');
+
+  useEffect(() => {
+    const record = getCredentialRecord('notion');
+    if (record?.secret) {
+      setNotionSecret(record.secret);
+      s.setNotionApiKey(record.secret);
+    }
+    if (record?.databaseId && !s.notionDatabaseId) {
+      s.setNotionDatabaseId(record.databaseId);
+    }
+  }, []);
+
+  const saveNotionCredential = () => {
+    saveCredentialRecord('notion', {
+      secret: notionSecret,
+      databaseId: s.notionDatabaseId,
+    });
+    s.setNotionApiKey(notionSecret);
+    setStatus('Saved Notion connector credential locally');
+  };
+
+  const clearNotionCredential = () => {
+    clearCredentialRecord('notion');
+    setNotionSecret('');
+    s.setNotionApiKey('');
+    setStatus('Cleared Notion connector credential');
+  };
 
   return (
     <SettingsSection title="Antigravity Connector (Notion)">
@@ -28,8 +59,11 @@ export function NotionSettings() {
           </div>
           <input 
             type="password"
-            value={s.notionApiKey}
-            onChange={e => s.setNotionApiKey(e.target.value)}
+            value={notionSecret}
+            onChange={e => {
+              setNotionSecret(e.target.value);
+              s.setNotionApiKey(e.target.value);
+            }}
             className="w-full p-2 rounded bg-white/5 border border-white/5 text-[10px] outline-none focus:border-primary"
             placeholder="secret_..."
           />
@@ -50,8 +84,28 @@ export function NotionSettings() {
         </div>
 
         <p className="text-[8px] text-white/30 uppercase leading-relaxed">
-          API keys are kept in memory for this session only and are not written to browser storage.
+          Notion credentials are managed by the centralized credential engine. Browser storage is for local setup only.
         </p>
+
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="font-mono text-[8px] uppercase tracking-wider text-white/35">{status}</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={clearNotionCredential}
+              className="min-h-11 rounded-full border border-white/10 px-4 py-2 font-mono text-[9px] font-bold uppercase tracking-wider text-white/45 transition-colors hover:border-white/20 hover:text-white/80"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={saveNotionCredential}
+              className="min-h-11 rounded-full border border-primary/40 bg-primary/20 px-4 py-2 font-mono text-[9px] font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-text"
+            >
+              Save connector
+            </button>
+          </div>
+        </div>
       </div>
     </SettingsSection>
   );

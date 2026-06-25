@@ -9,8 +9,9 @@ import type {
     SelectionBehavior,
 } from "@/core/plugins/PluginTypes";
 import { createSvgIconUrl } from "@/wwv-sdk";
+import { fetchWwtJson, getWwtAssetLocalUrl, getWwtAssetSourcePath, WWT_ASSET_PATHS } from "@/lib/wwt/repositoryData";
 
-const DATASET_URL = "/wwv-assets/source-public/cameras_geojson.json";
+const DATASET_PATH = WWT_ASSET_PATHS.publicCamerasList;
 const STATIC_DATASET_TIMESTAMP = new Date("2026-06-22T00:00:00.000Z");
 const INITIAL_RENDER_LIMIT = 1800;
 const MAX_LABEL_LENGTH = 80;
@@ -77,7 +78,7 @@ function formatCameraLabel(props: Record<string, unknown>, index: number): strin
 export class WwvPublicCamerasPlugin implements WorldPlugin {
     readonly id = "wwv-public-cameras";
     readonly name = "WWV Public Cameras";
-    readonly description = "Static copied WorldWideView public-camera locations; no live camera stream is opened";
+    readonly description = "Static WorldWideView public-camera locations sourced from the WWT public mirror; no live stream is opened";
     readonly icon = Camera;
     readonly category = "infrastructure" as const;
     readonly version = "1.0.0";
@@ -94,10 +95,9 @@ export class WwvPublicCamerasPlugin implements WorldPlugin {
 
     async fetch(_timeRange: TimeRange): Promise<GeoEntity[]> {
         try {
-            const response = await fetch(DATASET_URL, { cache: "force-cache" });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-            const data = (await response.json()) as CameraGeoJson;
+            const data = await fetchWwtJson<CameraGeoJson>(DATASET_PATH, {
+                init: { cache: "force-cache" },
+            });
             const features = Array.isArray(data.features) ? data.features : [];
 
             return features.flatMap((feature, index): GeoEntity[] => {
@@ -127,23 +127,23 @@ export class WwvPublicCamerasPlugin implements WorldPlugin {
                         timezone: cleanText(props.timezone, "Not provided"),
                         categories,
                         source: "wwv-public-cameras",
-                        sourcePath: "worldwideview/public/cameras_geojson.json",
-                        copiedDatasetPath: DATASET_URL,
+                        sourcePath: getWwtAssetSourcePath(DATASET_PATH),
+                        copiedDatasetPath: getWwtAssetLocalUrl(DATASET_PATH),
                         visualAssetSource: "lucide-camera-rendered-through-wwv-sdk",
                         iconUrl: cameraIconUrl,
                         staticDataset: true,
                         datasetFeatureCount: features.length,
                         renderedFeatureLimit: INITIAL_RENDER_LIMIT,
                         renderedFeatureNote:
-                            "Desktop startup renders a capped subset from the copied WWV camera dataset to keep navigation responsive.",
+                            "Desktop startup renders a capped subset from the WWT camera dataset to keep navigation responsive.",
                         sourceUrlFieldsRemoved: true,
                         externalStreamPresent: Boolean(props.stream_present_in_source),
                         externalPreviewPresent: Boolean(props.preview_present_in_source),
                         externalStreamPolicy:
-                            "Copied camera stream and thumbnail URLs are scrubbed from the served dataset; Silver Wolf renders static locations only.",
+                            "Camera stream and thumbnail URLs are scrubbed from the served dataset; Silver Wolf renders static locations only.",
                         liveTelemetry: false,
                         stateHonesty:
-                            "Static copied WWV public-camera locations. Markers do not prove cameras are online and do not open video streams.",
+                            "Static WWT public-camera locations. Markers do not prove cameras are online and do not open video streams.",
                     },
                 }];
             }).slice(0, INITIAL_RENDER_LIMIT);

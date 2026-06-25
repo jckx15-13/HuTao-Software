@@ -1,13 +1,26 @@
 import { X, Palette, Brain, Link2, Sparkles, Info, Code, Map as MapIcon } from 'lucide-react';
 import { useUIStore, type SettingsCategory } from '@/store/uiStore';
-import { PersonalisationSettings } from './PersonalisationSettings';
-import GlassOpacitySettings from './GlassOpacitySettings';
-import { AiSettings } from './AiSettings';
-import { NotionSettings } from './NotionSettings';
-import { FeedbackSettings } from './FeedbackSettings';
-import { DeveloperSettings } from './DeveloperSettings';
-import { MapSettings } from './MapSettings';
+import { lazy, Suspense } from 'react';
 
+const PersonalisationSettings = lazy(() =>
+  import('./PersonalisationSettings').then((m) => ({ default: m.PersonalisationSettings }))
+);
+const GlassOpacitySettings = lazy(() => import('./GlassOpacitySettings'));
+const AiSettings = lazy(() =>
+  import('./AiSettings').then((m) => ({ default: m.AiSettings }))
+);
+const NotionSettings = lazy(() =>
+  import('./NotionSettings').then((m) => ({ default: m.NotionSettings }))
+);
+const FeedbackSettings = lazy(() =>
+  import('./FeedbackSettings').then((m) => ({ default: m.FeedbackSettings }))
+);
+const DeveloperSettings = lazy(() =>
+  import('./DeveloperSettings').then((m) => ({ default: m.DeveloperSettings }))
+);
+const MapSettings = lazy(() =>
+  import('./MapSettings').then((m) => ({ default: m.MapSettings }))
+);
 
 export function SettingsPage() {
   const settingsCategory = useUIStore((s) => s.settingsCategory);
@@ -27,7 +40,7 @@ export function SettingsPage() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex h-screen w-screen bg-[#06070a]/92 backdrop-blur-2xl overflow-hidden settings-enter"
+      className="fixed inset-0 z-50 flex h-[100dvh] min-h-[100dvh] w-full bg-[#06070a]/92 backdrop-blur-2xl overflow-hidden settings-enter"
       role="dialog"
       aria-modal="true"
       aria-label="Settings"
@@ -46,7 +59,7 @@ export function SettingsPage() {
         </button>
 
         {/* Sidebar Nav */}
-        <aside className="w-[220px] bg-black/30 border-r border-white/5 p-4 flex flex-col font-mono shrink-0">
+        <aside className="w-[clamp(11rem,24vw,13.75rem)] bg-black/30 border-r border-white/5 p-4 flex flex-col font-mono shrink-0">
           <div className="mb-6 px-2">
             <span className="text-[10px] font-bold text-primary block tracking-[0.2em] uppercase">SYSTEM PANEL</span>
             <span className="text-[8px] text-white/20 block tracking-widest mt-0.5">SILVER WOLF v6.5</span>
@@ -86,17 +99,18 @@ export function SettingsPage() {
 
           {/* Section Body */}
           <div className="flex-1 overflow-y-auto p-6 scroller">
-            {settingsCategory === 'personalisation' && (<>
-                <PersonalisationSettings />
-                <GlassOpacitySettings />
-              </>)}
-            {settingsCategory === 'ai' && <AiSettings />}
-            {settingsCategory === 'connections' && <NotionSettings />}
-            {settingsCategory === 'feedback' && <FeedbackSettings />}
-            {settingsCategory === 'map' && <MapSettings />}
-            {settingsCategory === 'developer' && <DeveloperSettings />}
-            {settingsCategory === 'about' && <AboutSection />}
-
+            <Suspense fallback={<div className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/35">Loading settings...</div>}>
+              {settingsCategory === 'personalisation' && (<>
+                  <PersonalisationSettings />
+                  <GlassOpacitySettings />
+                </>)}
+              {settingsCategory === 'ai' && <AiSettings />}
+              {settingsCategory === 'connections' && <NotionSettings />}
+              {settingsCategory === 'feedback' && <FeedbackSettings />}
+              {settingsCategory === 'map' && <MapSettings />}
+              {settingsCategory === 'developer' && <DeveloperSettings />}
+              {settingsCategory === 'about' && <AboutSection />}
+            </Suspense>
           </div>
         </main>
       </div>

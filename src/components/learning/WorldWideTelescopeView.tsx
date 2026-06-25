@@ -72,6 +72,12 @@ const WWT_RUNTIME_STATE_EVENT = 'silver-wolf-wwt-runtime-state';
 const WWT_LOAD_WATCHDOG_MS = 45_000;
 const WWT_RESEARCH_APP_URL = 'https://web.wwtassets.org/research/latest/';
 
+const clampPx = (value: number, min: number, max: number): number => {
+  const normalized = Math.round(value);
+  if (!Number.isFinite(normalized)) return min;
+  return Math.min(Math.max(normalized, min), max);
+};
+
 function publishWwtRuntimeState(state: WwtRuntimeState) {
   if (typeof window === 'undefined') return;
   (window as any).__silverWolfWwtRuntimeState = state;
@@ -177,16 +183,33 @@ export default function WorldWideTelescopeView({
   const [searchQuery, setSearchQuery] = useState('');
   const [telemetryTimelineCollapsed, setTelemetryTimelineCollapsed] = useState(false);
 
-  const workspaceInsets = useMemo(() => ({
-    left: leftPanelOpen ? 340 : 16,
-    right: rightPanelOpen ? 336 : 328,
-    top: 80,
-    bottom: spaceInteractionTarget === 'telescope'
-      ? (telemetryTimelineCollapsed ? 92 : 190)
-      : 84,
-  }), [leftPanelOpen, rightPanelOpen, spaceInteractionTarget, telemetryTimelineCollapsed]);
+  const panelInsetPx = clampPx(viewportSize.width * 0.22, 160, 360);
+  const leftPanelInset = leftPanelOpen
+    ? clampPx(panelInsetPx, 176, 336)
+    : clampPx(viewportSize.width * 0.025, 12, 20);
+  const rightPanelInset = rightPanelOpen
+    ? clampPx(panelInsetPx, 180, 344)
+    : clampPx(panelInsetPx * 0.96, 140, 328);
 
-  const drawerWidth = spaceInteractionTarget === 'telescope' && viewportSize.width < 1360 ? 288 : 320;
+  const workspaceInsets = useMemo(() => ({
+    left: leftPanelInset,
+    right: rightPanelInset,
+    top: clampPx(viewportSize.height * 0.075, 56, 88),
+    bottom: spaceInteractionTarget === 'telescope'
+      ? (telemetryTimelineCollapsed
+        ? clampPx(viewportSize.height * 0.11, 84, 108)
+        : clampPx(viewportSize.height * 0.205, 132, 206))
+      : clampPx(viewportSize.height * 0.075, 62, 84),
+  }), [leftPanelInset, rightPanelInset, spaceInteractionTarget, telemetryTimelineCollapsed]);
+
+  const drawerWidth = clampPx(
+    Math.min(
+      Math.round(viewportSize.width * 0.3),
+      Math.round(viewportSize.width - leftPanelInset - rightPanelInset - 24)
+    ),
+    248,
+    360
+  );
   const drawerReserveWidth = spaceInteractionTarget === 'telescope' && drawerOpen ? drawerWidth + 16 : 0;
   const pipSafeLeft = workspaceInsets.left + drawerReserveWidth + (drawerReserveWidth ? 16 : 0);
   const pipViewportBounds = {
@@ -195,6 +218,11 @@ export default function WorldWideTelescopeView({
   };
   const pipAvailableWidth = Math.max(320, pipViewportBounds.width - pipSafeLeft - workspaceInsets.right);
   const pipAvailableHeight = Math.max(300, pipViewportBounds.height - workspaceInsets.top - workspaceInsets.bottom);
+  const drawerTopPadding = {
+    collapsed: clampPx(viewportSize.height * 0.065, 52, 78),
+    expanded: clampPx(viewportSize.height * 0.11, 76, 96),
+  };
+  const drawerContentReserve = clampPx(viewportSize.height * 0.19, 170, 224);
 
   const windowPixelDimensions = useMemo(() => ({
     normal: { width: Math.min(480, pipAvailableWidth), height: Math.min(320, pipAvailableHeight) },
@@ -649,10 +677,15 @@ export default function WorldWideTelescopeView({
     width: `${windowPixelDimensions[windowSize].width}px`,
     height: `${windowPixelDimensions[windowSize].height}px`,
   };
-  const drawerTop = drawerOpen ? workspaceInsets.top + 80 : workspaceInsets.top + 64;
+  const hudOffsetX = leftPanelOpen
+    ? `${Math.max(leftPanelInset + 8, 168)}px`
+    : 'clamp(0.75rem, 3vw, 1.25rem)';
+  const drawerTop = drawerOpen
+    ? workspaceInsets.top + drawerTopPadding.expanded
+    : workspaceInsets.top + drawerTopPadding.collapsed;
   const drawerContentMaxHeight = Math.min(
     300,
-    Math.max(180, viewportSize.height - drawerTop - workspaceInsets.bottom - 210)
+    Math.max(180, viewportSize.height - drawerTop - workspaceInsets.bottom - drawerContentReserve)
   );
 
   // Search filter for presets
@@ -1199,7 +1232,10 @@ export default function WorldWideTelescopeView({
       <div ref={overlayRootRef} className="fixed inset-0 w-full h-full flex overflow-hidden bg-transparent select-none pointer-events-none">
 
         {/* Spatial HUD Migration Notice & Refresh Button */}
-        <div className={`absolute top-[80px] z-50 flex items-center gap-2 pointer-events-auto ${leftPanelOpen ? 'left-[340px]' : 'left-[20px]'}`}>
+        <div
+          className="absolute top-[clamp(3.25rem,12vh,4.75rem)] z-50 flex items-center gap-2 pointer-events-auto"
+          style={{ left: hudOffsetX }}
+        >
           {!leftPanelOpen && (
             <button
               type="button"
@@ -1247,7 +1283,7 @@ export default function WorldWideTelescopeView({
           </div>
         )}
 
-        <div className="absolute top-4 left-1/2 z-40 w-[340px] -translate-x-1/2 pointer-events-none">
+        <div className="absolute top-4 left-1/2 z-40 w-[min(92vw,21.25rem)] -translate-x-1/2 pointer-events-none">
           <div className="glass-panel-strong border border-primary/15 px-3 py-2 font-mono text-[9px] uppercase tracking-wider shadow-xl">
             <div className="flex items-center justify-between gap-3">
               <span className="text-primary font-bold">Earth Observer Frame</span>
@@ -1287,7 +1323,7 @@ export default function WorldWideTelescopeView({
             style={{
               left: workspaceInsets.left,
               top: drawerTop,
-              maxHeight: `calc(100% - ${workspaceInsets.top + workspaceInsets.bottom + (drawerOpen ? 96 : 80)}px)`,
+              maxHeight: `calc(100% - ${workspaceInsets.top + workspaceInsets.bottom + (drawerOpen ? drawerTopPadding.expanded : drawerTopPadding.collapsed)}px)`,
             }}
           >
             {drawerOpen ? (
@@ -1634,7 +1670,7 @@ export default function WorldWideTelescopeView({
         {/* Floating Telemetry Timeline Playback Controller (Bottom Center) */}
         <div
           className={`absolute left-1/2 -translate-x-1/2 z-40 pointer-events-auto max-w-[95vw] transition-all duration-200 ${
-            telemetryTimelineCollapsed ? 'bottom-2 w-[520px]' : 'bottom-4 w-[620px]'
+            telemetryTimelineCollapsed ? 'bottom-2 w-[min(92vw,32.5rem)]' : 'bottom-4 w-[min(92vw,38.75rem)]'
           }`}
         >
           <div

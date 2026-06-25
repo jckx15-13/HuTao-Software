@@ -7,7 +7,6 @@ import {
   projectUnitVectorInto,
   projectLatLng,
 } from '../../lib/globeProjection';
-import { SATELLITES } from '../../data/satellites';
 import { propagateCircularOrbit, propagateCircularOrbitInto, propagateSatelliteTleInto } from '../../lib/simulation';
 import { TELESCOPE_PRESETS, resolveTelescopePresetCoordinates } from '@/data/telescopePresets';
 import {
@@ -15,6 +14,7 @@ import {
   projectTelescopeTargetToObserverView,
 } from '@/lib/earthObserverProjection';
 import { WWV_ORBITAL_ASSET_BY_CATEGORY } from '@/assets/wwvVisualAssets';
+import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
 
 const CesiumBackground3D = React.lazy(() => import('./CesiumBackground3D'));
 
@@ -50,6 +50,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
   // Scanline/CRT overlay toggle
   const scanlineOverlay = useUIStore((s) => s.scanlineOverlay);
   const telescopeTarget = useUIStore((s) => s.telescopeTarget);
+  const { satellites } = useSatelliteCatalog();
   const isFallbackRuntime = typeof window !== 'undefined' && (
     /HeadlessChrome/i.test(navigator.userAgent) ||
     window.location.search.includes('fallback')
@@ -281,7 +282,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
       }
 
       // Add other SATELLITES if their category is visible
-      const curatedSats = SATELLITES;
+      const curatedSats = satellites;
       for (let i = 0; i < curatedSats.length; i++) {
         const sat = curatedSats[i];
         if (sat.id === 'iss') continue;
@@ -494,7 +495,14 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
         )}
 
         {/* Nebulous Aurora glow */}
-        <div className="absolute w-[500px] h-[500px] rounded-full bg-primary/5 filter blur-[120px] pointer-events-none animate-pulse" />
+        <div
+          className="absolute rounded-full bg-primary/5 pointer-events-none animate-pulse"
+          style={{
+            width: 'min(500px, 56vmin)',
+            height: 'min(500px, 56vmin)',
+            filter: 'blur(clamp(42px, 8vmin, 120px))',
+          }}
+        />
 
         {/* 2D Vector Globe Display */}
         <div className="relative flex flex-col items-center gap-8 z-10">

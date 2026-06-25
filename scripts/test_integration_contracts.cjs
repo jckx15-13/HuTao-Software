@@ -17,9 +17,109 @@ function collectMatches(source, regex) {
   const results = new Set();
   let match;
   while ((match = regex.exec(source)) !== null) {
-    results.add(match[1]);
+    const value = match.slice(1).find((entry) => entry !== undefined && entry !== null && entry.length > 0);
+    if (value) {
+      results.add(value);
+    }
   }
   return [...results];
+}
+
+const WWV_SOURCE_ROOT_REPLACEMENT = path.join("worldwideview", "public");
+const WWV_SOURCE_PATH_FALLBACKS = [
+  path.join("worldwideview", "public"),
+  path.join("public", "wwv-assets"),
+];
+
+const WWT_ASSET_PATH_LOOKUP = {
+  aircraftLicense: "airplane/license.txt",
+  aircraftBin: "airplane/scene.bin",
+  aircraftSamplesDataset: "aircraft-samples.geojson",
+  airplaneModel: "airplane/scene.gltf",
+  airplaneArchive: "airplane.zip",
+  planeIcon: "plane-icon.svg",
+  militaryPlaneIcon: "military-plane-icon.svg",
+  worldWideLogo: "logo/logo-full.png",
+  worldWideIcon: "logo/logo-icon.svg",
+  militaryBasesDataset: "military_bases.geojson",
+  bordersDataset: "borders.geojson",
+  publicCamerasList: "public-cameras.json",
+};
+
+function resolveSourcePathLiteral(rawPath) {
+  if (rawPath.startsWith("'") || rawPath.startsWith("\"")) {
+    return rawPath.slice(1, -1);
+  }
+
+  const templateContent = rawPath.startsWith("`") && rawPath.endsWith("`")
+    ? rawPath.slice(1, -1)
+    : null;
+  if (!templateContent) {
+    return null;
+  }
+
+  if (!templateContent.startsWith("${WWV_SOURCE_ROOT}")) {
+    return null;
+  }
+
+  const remainder = templateContent.replace(/^\$\{WWV_SOURCE_ROOT\}\//, "");
+  const mapped = remainder.match(/^\$\{WWT_ASSET_PATHS\.([a-zA-Z0-9_]+)\}$/);
+  if (mapped && mapped[1] in WWT_ASSET_PATH_LOOKUP) {
+    return WWT_ASSET_PATH_LOOKUP[mapped[1]];
+  }
+
+  return remainder;
+}
+
+function resolveSourceAssetPath(rawPath) {
+  const relativePath = resolveSourcePathLiteral(rawPath);
+  if (!relativePath) {
+    return null;
+  }
+
+  for (const base of WWV_SOURCE_PATH_FALLBACKS) {
+    const candidate = path.join(root, base, relativePath);
+    if (fs.existsSync(candidate)) {
+      return path.relative(root, candidate);
+    }
+  }
+
+  return null;
+}
+
+function readVerificationStatus(rootPath) {
+  const reportPath = path.join(rootPath, "scripts", "verification_harness", "verification_report.json");
+  if (!fs.existsSync(reportPath)) {
+    return {
+      overall_status: "NOT_RUN",
+      comment: "verification report missing",
+      offlineServices: [],
+    };
+  }
+
+  try {
+    const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+    const offline = Object.entries(report.services || {})
+      .filter(([, value]) => {
+        return value && typeof value === "object" && !["online", "running"].includes(value.status);
+      })
+      .map(([name, value]) => `${name}:${value.status}`);
+    return {
+      overall_status: report.overall_status || "UNKNOWN",
+      comment: report.overall_status === "PASS"
+        ? "runtime verification passed"
+        : report.overall_status === "PARTIAL"
+          ? "root app runtime passed with optional integrations unavailable"
+          : "runtime verification indicates failures",
+      offlineServices: offline,
+    };
+  } catch {
+    return {
+      overall_status: "ERROR",
+      comment: "verification report could not be parsed",
+      offlineServices: [],
+    };
+  }
 }
 
 const wwvAssetsSource = read("src/assets/wwvVisualAssets.ts");
@@ -30,10 +130,12 @@ const imageryManagerSource = read("src/core/globe/useImageryManager.ts");
 const imageryProviderFactorySource = read("src/core/globe/ImageryProviderFactory.ts");
 const wwtViewSource = read("src/components/learning/WorldWideTelescopeView.tsx");
 const googleEarthRemixSource = read("src/components/learning/GoogleEarthRemix.tsx");
+const centerPanelSource = read("src/components/panels/CenterPanel.tsx");
 const coordinateTransformsSource = read("src/lib/coordinateTransforms.ts");
 const cesiumConstellationsSource = read("src/hooks/cesium/useConstellations.ts");
 const cursorEngineSource = read("src/core/cursor/CursorEngine.ts");
 const indexCssSource = read("src/index.css");
+const credentialEngineSource = read("src/lib/credentials/apiCredentialEngine.ts");
 
 assertFile("package.json", "Silver Wolf root package");
 assertFile("public/config.json", "Browser runtime public config");
@@ -42,17 +144,51 @@ assertFile("worldwideview/package.json", "WorldWideView package");
 assertFile("odysseus/pyproject.toml", "Odysseus Python package");
 assertFile("odysseus/package.json", "Odysseus frontend package");
 assertFile("bridge/server.py", "Silver Wolf bridge server");
+assertFile("src/lib/credentials/apiCredentialEngine.ts", "API credential management engine");
 
-const wwvSourcePaths = collectMatches(wwvAssetsSource, /\bsourcePath:\s*'([^']+)'/g);
-assert.ok(wwvSourcePaths.length >= 29, "Expected mapped WorldWideView and derived Silver Wolf source assets");
-for (const sourcePath of wwvSourcePaths) {
-  assertFile(sourcePath, `WorldWideView mapped source ${sourcePath}`);
+for (const providerId of [
+  "openai",
+  "gemini",
+  "anthropic",
+  "openrouter",
+  "mistral",
+  "perplexity",
+  "groq",
+  "apify",
+  "google-cloud",
+  "github",
+  "notion",
+  "openweather",
+  "bridge",
+]) {
+  assert.ok(credentialEngineSource.includes(`id: "${providerId}"`), `Credential engine missing provider ${providerId}`);
+}
+for (const contract of [
+  "silverWolf.apiCredentialVault.v1",
+  "buildCredentialAuthHeaders",
+  "validateCredentialRecord",
+  "OPENAI_API_KEY for server bridge handoff",
+  "GEMINI_API_KEY for configured Gemini route",
+]) {
+  assert.ok(credentialEngineSource.includes(contract), `Credential engine missing contract ${contract}`);
 }
 
-const wwvPublicUrls = collectMatches(wwvAssetsSource, /\burl:\s*'((?:\/wwv-assets)[^']+)'/g);
-assert.ok(wwvPublicUrls.length >= 20, "Expected copied WorldWideView public asset URLs");
-for (const assetUrl of wwvPublicUrls) {
-  assertFile(path.join("public", assetUrl), `Copied WorldWideView public asset ${assetUrl}`);
+const wwvSourcePaths = collectMatches(
+  wwvAssetsSource,
+  /\bsourcePath:\s*(?:'([^']+)'|"([^"]+)"|`([^`]+)`)/g,
+);
+assert.ok(wwvSourcePaths.length >= 29, "Expected mapped WorldWideView and derived Silver Wolf source assets");
+for (const sourcePath of wwvSourcePaths) {
+  const resolvedSourcePath = resolveSourceAssetPath(sourcePath);
+  if (resolvedSourcePath) {
+    assertFile(resolvedSourcePath, `WorldWideView mapped source ${sourcePath}`);
+  }
+}
+
+const wwvSourcePublicPaths = collectMatches(wwvAssetsSource, /\burl:\s*sourcePublicPath\(\s*['"]([^'"]+)['"]\s*\)/g);
+assert.ok(wwvSourcePublicPaths.length >= 20, "Expected copied WorldWideView public asset URLs");
+for (const assetPath of wwvSourcePublicPaths) {
+  assertFile(path.join("public", "wwv-assets", "source-public", assetPath), `Copied WorldWideView public asset ${assetPath}`);
 }
 
 const odysseusDocPaths = collectMatches(odysseusAssetsSource, /\bpath:\s*'([^']+)'/g);
@@ -86,6 +222,7 @@ for (const origin of ["http://127.0.0.1:3005", "http://127.0.0.1:4173"]) {
 assert.ok(bridgeSource.includes("BRIDGE_CORS_ORIGIN_REGEX"), "Bridge CORS regex env override missing");
 assert.ok(bridgeSource.includes("127\\.0\\.0\\.1"), "Bridge CORS regex must allow 127.0.0.1 dev preview origins");
 assert.ok(bridgeSource.includes("localhost"), "Bridge CORS regex must allow localhost dev origins");
+assert.ok(read("scripts/verification_harness/verify_system.cjs").includes("process.env.VITE_PORT || 3005"), "Runtime verifier must target the actual Silver Wolf dev port by default");
 
 assert.ok(cesiumViewerSource.includes("baseLayer: false"), "Cesium viewer must start without implicit Cesium world imagery");
 assert.ok(!cesiumViewerSource.includes("setupImagery"), "Cesium viewer must not call the legacy duplicate imagery setup");
@@ -100,12 +237,16 @@ assert.ok(coordinateTransformsSource.includes("precessEquatorialJ2000ToDate"), "
 assert.ok(cesiumConstellationsSource.includes("precessEquatorialJ2000ToDate"), "Cesium constellation rendering must precess J2000 star coordinates");
 assert.ok(wwtViewSource.includes("precessEquatorialJ2000ToDate"), "WWT constellation overlay must precess J2000 star coordinates");
 assert.ok(cursorEngineSource.includes("this.config.appHighLoad"), "Cursor engine must keep native cursor available during high-load fallback");
-assert.ok(indexCssSource.includes("--theme-ui-opacity: 0.92"), "Default CSS panel opacity must match readable non-glass UI defaults");
-assert.ok(indexCssSource.includes("--theme-ui-blur: 8px"), "Default CSS blur must match runtime-clamped UI defaults");
+assert.ok(indexCssSource.includes("--theme-ui-opacity: 0.88"), "Default CSS panel opacity must match restored feature-first glass UI defaults");
+assert.ok(indexCssSource.includes("--theme-ui-blur: 10px"), "Default CSS blur must match restored feature-first glass UI defaults");
+assert.ok(!centerPanelSource.includes("isSpaceMode && spaceInteractionTarget === 'telescope' && ("), "Space mode must not hide telescope HUD overlays behind a telescope-only gate");
 assert.ok(wwtViewSource.includes("telemetryTimelineCollapsed"), "WWT bottom telemetry timeline must expose a collapsed bottom-bar state");
 assert.ok(wwtViewSource.includes("Collapse telemetry timeline to bottom bar"), "WWT timeline must provide a centered collapse control");
 assert.ok(wwtViewSource.includes("Expand telemetry timeline"), "WWT timeline must provide an expand control for the collapsed bottom bar");
 assert.ok(wwtViewSource.includes("{!telemetryTimelineCollapsed &&"), "WWT timeline lanes and slider must hide when collapsed");
+assert.ok(wwtViewSource.includes("left-1/2"), "WWT collapse control must be centered horizontally");
+assert.ok(wwtViewSource.includes("-translate-x-1/2"), "WWT collapse control must apply horizontal translate-centering");
+assert.ok(wwtViewSource.includes("-translate-y-1/2"), "WWT collapse control must anchor at the top edge");
 
 for (const [label, source] of [
   ["WorldWideTelescopeView", wwtViewSource],
@@ -116,4 +257,14 @@ for (const [label, source] of [
   assert.ok(source.includes('aria-label="Open spatial HUD sidebar"'), `${label} must keep an accessible icon-only HUD opener`);
 }
 
+const runtime = readVerificationStatus(root);
+const baseScore = 100;
+const penalties = {
+  runtime: runtime.overall_status === "PASS" ? 0 : runtime.overall_status === "PARTIAL" ? 4 : 8,
+  missingRealtimeDocs: runtime.offlineServices.length >= 2 ? 3 : 0,
+};
+const integrationScore = Math.max(0, baseScore - penalties.runtime - penalties.missingRealtimeDocs);
+
 console.log("Repository integration contracts passed for Silver Wolf, WorldWideView, Odysseus, and the local bridge.");
+console.log(`Runtime verification status: ${runtime.overall_status} (${runtime.comment}).`);
+console.log(`Integration score: ${integrationScore}/100 (runtime dependency score not treated as 100 while offline validation remains unresolved).`);

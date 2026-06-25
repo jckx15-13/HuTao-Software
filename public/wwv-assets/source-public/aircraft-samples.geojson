@@ -1,0 +1,107 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "singapore-arrival",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [103.98, 1.36]
+      },
+      "properties": {
+        "callsign": "SQ-WWV-318",
+        "operator": "Singapore approach sample",
+        "kind": "civil",
+        "altitude": 5200,
+        "heading": 78,
+        "speed": 205,
+        "on_ground": false
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "pacific-transit",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-157.92, 21.33]
+      },
+      "properties": {
+        "callsign": "PA-WWV-041",
+        "operator": "Pacific transit sample",
+        "kind": "civil",
+        "altitude": 11200,
+        "heading": 252,
+        "speed": 246,
+        "on_ground": false
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "atlantic-crossing",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-0.45, 51.47]
+      },
+      "properties": {
+        "callsign": "AT-WWV-902",
+        "operator": "Atlantic crossing sample",
+        "kind": "civil",
+        "altitude": 9800,
+        "heading": 288,
+        "speed": 238,
+        "on_ground": false
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "mediterranean-patrol",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [14.48, 35.88]
+      },
+      "properties": {
+        "callsign": "MP-WWV-12",
+        "operator": "Maritime patrol sample",
+        "kind": "military",
+        "altitude": 7200,
+        "heading": 112,
+        "speed": 174,
+        "on_ground": false
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "arctic-logistics",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-149.5, 64.2]
+      },
+      "properties": {
+        "callsign": "AL-WWV-77",
+        "operator": "Arctic logistics sample",
+        "kind": "civil",
+        "altitude": 8600,
+        "heading": 34,
+        "speed": 221,
+        "on_ground": false
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "indo-pacific-survey",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [130.84, -12.46]
+      },
+      "properties": {
+        "callsign": "IP-WWV-09",
+        "operator": "Reconnaissance sample",
+        "kind": "military",
+        "altitude": 6400,
+        "heading": 316,
+        "speed": 190,
+        "on_ground": false
+      }
+    }
+  ]
+}

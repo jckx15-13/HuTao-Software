@@ -6,12 +6,17 @@ import { DiagnosticPanel } from '../DiagnosticPanel';
 import { TelemetryPanel } from '../TelemetryPanel';
 import { OdysseusConsole } from '../dev/OdysseusConsole';
 import { ChevronRight, Globe, Terminal, Info, MapPin, Radio, Compass, X, ArrowLeft, RotateCw, ExternalLink as ExtLink, Bug, Activity, Plane, Camera, Shield } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
-import { WWV_ORBITAL_ASSET_BY_CATEGORY } from '@/assets/wwvVisualAssets';
+import { useRef, useState, useEffect, useMemo } from 'react';
+import { WWV_ASSET_AUDIT, WWV_ORBITAL_ASSET_BY_CATEGORY } from '@/assets/wwvVisualAssets';
+import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
+import { propagateCircularOrbit, calculateOrbitalSpeed, calculateOrbitalPeriod } from '../../lib/simulation';
+import { useViewportSize } from '@/hooks/useViewportSize';
+import { buildSpatialPanelGeometry } from './panelGeometry';
 
 export function RightPanel() {
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
   const setRightPanelOpen = useUIStore((s) => s.setRightPanelOpen);
+  const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
 
   const rightPanelTab = useUIStore((s) => s.rightPanelTab);
   const setRightPanelTab = useUIStore((s) => s.setRightPanelTab);
@@ -40,13 +45,34 @@ export function RightPanel() {
   const [history, setHistory] = useState<string[]>([browserUrl]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const isFallbackMode = typeof window !== 'undefined' && window.location.search.includes('fallback');
+  const viewportSize = useViewportSize();
+  const spatialPanelStyle = useMemo(
+    () =>
+      buildSpatialPanelGeometry({
+        placement: 'right',
+        viewport: viewportSize,
+        leftPanelOpen,
+        rightPanelOpen,
+      }),
+    [leftPanelOpen, rightPanelOpen, viewportSize],
+  );
 
-  // Sync input when the global URL updates during render to avoid synchronous setState in effect
-  const [prevBrowserUrl, setPrevBrowserUrl] = useState(browserUrl);
-  if (browserUrl !== prevBrowserUrl) {
+  useEffect(() => {
     setAddressInput(browserUrl);
-    setPrevBrowserUrl(browserUrl);
-  }
+    setHistory((previousHistory) => {
+      const existingIndex = previousHistory.lastIndexOf(browserUrl);
+      if (existingIndex >= 0) {
+        setHistoryIndex(existingIndex);
+        return previousHistory;
+      }
+
+      const nextHistory = previousHistory[previousHistory.length - 1] === browserUrl
+        ? previousHistory
+        : [...previousHistory, browserUrl];
+      setHistoryIndex(nextHistory.length - 1);
+      return nextHistory;
+    });
+  }, [browserUrl]);
 
   // Search/Wikipedia link auto-sync when a landmark or plugin entity is selected
   useEffect(() => {
@@ -105,15 +131,21 @@ export function RightPanel() {
 
   return (
     <aside
-      className={`glass-panel flex flex-col select-none pointer-events-auto transition-all duration-300 ${
+      className={`glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 ${
         isSpatialMode
-          ? 'fixed top-[112px] right-[12px] bottom-[52px] w-[310px] rounded-xl border border-white/10 shadow-2xl z-20 h-auto'
-          : 'h-full w-[310px] border-l border-white/5'
+          ? 'fixed rounded-xl border border-white/10 shadow-2xl z-40 h-auto bg-black/75'
+          : 'h-full w-[clamp(10rem,22vw,19rem)] border-l border-white/5'
       }`}
-      style={!isSpatialMode ? { borderRadius: 0 } : undefined}
+      style={
+        isSpatialMode
+          ? spatialPanelStyle
+          : {
+              borderRadius: 0,
+            }
+      }
     >
       {/* Header and Tab Switcher */}
-      <div className="flex min-h-14 py-1.5 items-center justify-between gap-2 px-3 border-b border-white/5 bg-black/10">
+      <div className="flex min-h-14 py-1.5 items-center justify-between gap-2 px-3 border-b border-white/10 bg-black/45">
         <div className="flex flex-wrap items-center gap-1.5 font-mono text-[8.5px]">
           <button
             type="button"
@@ -444,7 +476,7 @@ export function RightPanel() {
             </div>
 
             {/* Sandboxed iframe viewport */}
-            <div className="relative flex-1 flex flex-col h-[400px] w-full rounded-xl overflow-hidden border border-white/5 bg-black shadow-lg pointer-events-auto flex items-center justify-center">
+            <div className="relative flex-1 flex h-[min(400px,45vh)] min-h-[220px] w-full flex-col overflow-hidden rounded-xl border border-white/5 bg-black shadow-lg pointer-events-auto flex items-center justify-center">
               {window.location.search.includes('fallback') ? (
                 <div className="text-cyan-400 font-mono text-[9px] text-center p-4">
                   [BROWSER VIEWPORT MOCKED FOR: {browserUrl}]
@@ -467,7 +499,7 @@ export function RightPanel() {
           <div className="space-y-3 font-mono">
             <span className="text-[9px] font-bold uppercase tracking-widest text-primary block mb-2">SYSTEM TELEMETRY LOG</span>
             {changeLogs.length > 0 ? (
-              <div className="relative border-l border-white/10 pl-3.5 ml-1.5 space-y-4 text-[9px] py-1 max-h-[500px] overflow-y-auto scroller">
+              <div className="relative border-l border-white/10 pl-3.5 ml-1.5 space-y-4 text-[9px] py-1 max-h-[min(500px,45vh)] overflow-y-auto scroller">
                 {changeLogs.map((log) => {
                   let badgeBg = 'bg-primary ring-primary-hover/20';
                   if (log.level === 'success') badgeBg = 'bg-green-500 ring-green-950';
@@ -520,7 +552,7 @@ export function RightPanel() {
 function AviationTelemetryCard({ entity }: { entity: GeoEntity }) {
   const properties = entity.properties || {};
   const callsign = String(properties.callsign || entity.label || entity.id);
-  const operator = String(properties.operator || 'WorldWideView sample aircraft');
+  const operator = String(properties.operator || 'WorldWide Telescope sample aircraft');
   const kind = String(properties.kind || 'civil');
   const altitudeKm = Number(entity.altitude || 0) / 1000;
   const speed = Number(entity.speed || properties.speed_mps || 0);
@@ -528,9 +560,9 @@ function AviationTelemetryCard({ entity }: { entity: GeoEntity }) {
   const heading = Number(entity.heading || 0);
   const iconUrl = String(properties.iconUrl || properties.visualAssetUrl || '');
   const modelUrl = String(properties.modelUrl || '');
-  const sourcePath = String(properties.sourcePath || 'worldwideview/public/airplane/scene.gltf');
+  const sourcePath = String(properties.sourcePath || `${WWV_ASSET_AUDIT.sourceRoot}/airplane/scene.gltf`);
   const stateHonesty = String(properties.stateHonesty || 'Static sample aircraft layer, not live ADS-B telemetry.');
-  const visualAssetStatus = String(properties.visualAssetStatus || 'Rendered with copied WorldWideView aircraft assets.');
+  const visualAssetStatus = String(properties.visualAssetStatus || 'Rendered from repository aircraft models maintained in the WWT asset set.');
 
   return (
     <div className="space-y-3">
@@ -578,8 +610,8 @@ function AviationTelemetryCard({ entity }: { entity: GeoEntity }) {
 
       <div className="space-y-1.5 rounded border border-sky-300/10 bg-sky-300/5 p-3 font-mono text-[8px] uppercase leading-relaxed text-white/45">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-bold text-sky-300">WWV Aircraft Asset Source</span>
-          <span className="text-emerald-300">Copied assets active</span>
+          <span className="font-bold text-sky-300">WWT Aircraft Asset Source</span>
+          <span className="text-emerald-300">Repository-backed assets active</span>
         </div>
         <div>{visualAssetStatus}</div>
         <div className="break-all">
@@ -607,15 +639,17 @@ function PublicCameraTelemetryCard({ entity }: { entity: GeoEntity }) {
   const country = String(properties.country || 'Unknown country');
   const categories = String(properties.categories || 'Uncategorized');
   const timezone = String(properties.timezone || 'Not provided');
-  const sourcePath = String(properties.sourcePath || 'worldwideview/public/cameras_geojson.json');
-  const copiedDatasetPath = String(properties.copiedDatasetPath || '/wwv-assets/source-public/cameras_geojson.json');
+  const sourcePath = String(properties.sourcePath || `${WWV_ASSET_AUDIT.sourceRoot}/cameras_geojson.json`);
+  const mirrorDatasetPath = String(
+    properties.copiedDatasetPath || `${WWV_ASSET_AUDIT.sourceRoot}/source-public/public-cameras.json`,
+  );
   const stateHonesty = String(
     properties.stateHonesty ||
-    'Static copied WWV public-camera locations. Markers do not prove cameras are online and do not open video streams.'
+    'Static camera locations sourced from WorldWide Telescope public mirror data. Markers indicate location only and do not prove camera availability.'
   );
   const streamPolicy = String(
     properties.externalStreamPolicy ||
-    'Copied camera stream and thumbnail URLs are scrubbed from the served dataset; Silver Wolf renders static locations only.'
+    'Camera stream and thumbnail URLs are scrubbed from the served dataset; Silver Wolf renders static locations only.'
   );
   const datasetFeatureCount = Number(properties.datasetFeatureCount || 0);
   const renderedFeatureLimit = Number(properties.renderedFeatureLimit || 0);
@@ -676,12 +710,12 @@ function PublicCameraTelemetryCard({ entity }: { entity: GeoEntity }) {
           <span className="text-white/30">Rendered records: </span>
           <span className="text-white/65">
             {renderedFeatureLimit > 0 ? renderedFeatureLimit.toLocaleString() : 'Capped'} of{' '}
-            {datasetFeatureCount > 0 ? datasetFeatureCount.toLocaleString() : 'copied dataset'}
+            {datasetFeatureCount > 0 ? datasetFeatureCount.toLocaleString() : 'repository dataset'}
           </span>
         </div>
         <div className="break-all">
-          <span className="text-white/30">Dataset path: </span>
-          <span className="text-white/65">{copiedDatasetPath}</span>
+          <span className="text-white/30">Source public path: </span>
+          <span className="text-white/65">{mirrorDatasetPath}</span>
         </div>
         <div className="break-all">
           <span className="text-white/30">Source path: </span>
@@ -697,22 +731,22 @@ function MilitaryBaseTelemetryCard({ entity }: { entity: GeoEntity }) {
   const label = String(entity.label || entity.id);
   const type = String(properties.type || 'military site');
   const operator = String(properties.operator || 'Unknown');
-  const sourcePath = String(properties.sourcePath || 'worldwideview/public/military_bases.geojson');
-  const copiedDatasetPath = String(properties.copiedDatasetPath || '/wwv-assets/data/military_bases.geojson');
+  const sourcePath = String(properties.sourcePath || `${WWV_ASSET_AUDIT.sourceRoot}/military_bases.geojson`);
+  const mirrorDatasetPath = String(properties.copiedDatasetPath || `${WWV_ASSET_AUDIT.sourceRoot}/military_bases.geojson`);
   const stateHonesty = String(
     properties.stateHonesty ||
-    'Static copied WWV dataset. Position records are not a live military feed.'
+    'Static repository dataset. Position records are not a live military feed.'
   );
   const visualAssetStatus = String(
     properties.visualAssetStatus ||
-    'Military markers use copied WWV aircraft imagery where applicable and generated shield markers otherwise.'
+    'Military markers use repository aircraft imagery where available and generated shield markers otherwise.'
   );
   const visualAssetUrl = String(properties.visualAssetUrl || properties.iconUrl || '');
   const datasetFeatureCount = Number(properties.datasetFeatureCount || 0);
   const renderedFeatureLimit = Number(properties.renderedFeatureLimit || 0);
   const renderedFeatureNote = String(
     properties.renderedFeatureNote ||
-    'Desktop startup renders a capped subset from the full copied WWV dataset to keep controls responsive.'
+    'Startup renders a capped subset from the full repository dataset to keep controls responsive.'
   );
   const osmId = String(properties.osmId || 'Not provided');
   const wikidata = String(properties.wikidata || 'Not provided');
@@ -726,7 +760,7 @@ function MilitaryBaseTelemetryCard({ entity }: { entity: GeoEntity }) {
           <h3 className="font-bold text-sm tracking-wide text-white uppercase leading-snug break-words">{label}</h3>
         </div>
         <span className="text-[7.5px] font-mono uppercase tracking-widest text-blue-300">
-          Static WWV military-site record
+          Static WWT military-site record
         </span>
         <div className="text-[9px] text-white/45 font-mono uppercase leading-relaxed">
           {type} / {operator}
@@ -762,20 +796,20 @@ function MilitaryBaseTelemetryCard({ entity }: { entity: GeoEntity }) {
 
       <div className="space-y-1.5 rounded border border-blue-300/10 bg-blue-300/5 p-3 font-mono text-[8px] uppercase leading-relaxed text-white/45">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-bold text-blue-300">WWV Military Dataset Source</span>
-          <span className="text-amber-300">Static copied data</span>
+          <span className="font-bold text-blue-300">WWT Military Dataset Source</span>
+          <span className="text-amber-300">Static repository data</span>
         </div>
         <div>{renderedFeatureNote}</div>
         <div>
           <span className="text-white/30">Rendered records: </span>
           <span className="text-white/65">
             {renderedFeatureLimit > 0 ? renderedFeatureLimit.toLocaleString() : 'Capped'} of{' '}
-            {datasetFeatureCount > 0 ? datasetFeatureCount.toLocaleString() : 'copied dataset'}
+            {datasetFeatureCount > 0 ? datasetFeatureCount.toLocaleString() : 'repository dataset'}
           </span>
         </div>
         <div className="break-all">
-          <span className="text-white/30">Dataset path: </span>
-          <span className="text-white/65">{copiedDatasetPath}</span>
+          <span className="text-white/30">Source public path: </span>
+          <span className="text-white/65">{mirrorDatasetPath}</span>
         </div>
         <div className="break-all">
           <span className="text-white/30">Source path: </span>
@@ -810,20 +844,16 @@ function MilitaryBaseTelemetryCard({ entity }: { entity: GeoEntity }) {
   );
 }
 
-import { SATELLITES } from '@/data/satellites';
-import { WWV_ASSET_AUDIT } from '@/assets/wwvVisualAssets';
-import { propagateCircularOrbit, calculateOrbitalSpeed, calculateOrbitalPeriod } from '../../lib/simulation';
-import { useRef } from 'react';
-
 function SatelliteTelemetryCard({ satId }: { satId: string }) {
   const issTelemetry = useUIStore((s) => s.issTelemetry);
   const satelliteEntity = useStore((s) => s.entitiesByPlugin.satellites?.find((entity) => entity.id === `sat-${satId}`));
+  const { satellites } = useSatelliteCatalog();
   const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
   const [startTime] = useState(() => Date.now());
 
   const satConfig = useMemo(() => {
-    return SATELLITES.find(s => s.id === satId);
-  }, [satId]);
+    return satellites.find(s => s.id === satId);
+  }, [satId, satellites]);
 
   useEffect(() => {
     if (satId === 'iss' || satelliteEntity) return;
@@ -1070,11 +1100,11 @@ function SatelliteAltitudeAudit({ audit }: { audit: ReturnType<typeof getAltitud
 }
 
 function SatelliteVisualAssetAudit({ satelliteEntity }: { satelliteEntity?: any }) {
-  const copiedRoot = String(satelliteEntity?.properties?.copiedWwvAssetRoot || WWV_ASSET_AUDIT.copiedRoot);
+  const cachedRoot = String(satelliteEntity?.properties?.copiedWwvAssetRoot || WWV_ASSET_AUDIT.copiedRoot);
   const sourceMirrorRoot = String(satelliteEntity?.properties?.copiedWwvSourceMirrorRoot || WWV_ASSET_AUDIT.sourceMirrorRoot);
   const sourceMirrorCount = Number(satelliteEntity?.properties?.copiedWwvSourceFileCount || WWV_ASSET_AUDIT.sourcePublicFileCount);
   const derivedRoot = String(satelliteEntity?.properties?.derivedSatelliteAssetRoot || WWV_ASSET_AUDIT.derivedSatelliteAssetRoot);
-  const copiedSummary = String(satelliteEntity?.properties?.copiedWwvAssetSummary || 'WWV aircraft icons/model and logo artwork');
+  const repositoryAssetSummary = String(satelliteEntity?.properties?.copiedWwvAssetSummary || 'WWT aircraft icons/model and logo artwork');
   const visualAssetSource = String(satelliteEntity?.properties?.visualAssetSource || 'silver-wolf-derived-orbital-svg');
   const visualAssetUrl = String(satelliteEntity?.properties?.visualAssetUrl || '');
   const hasSatelliteAsset = Boolean(satelliteEntity?.properties?.satelliteSpecificWwvAssetPresent);
@@ -1082,14 +1112,14 @@ function SatelliteVisualAssetAudit({ satelliteEntity }: { satelliteEntity?: any 
   return (
     <div className="space-y-1.5 rounded border border-primary/10 bg-primary/5 p-3 font-mono text-[8px] uppercase leading-relaxed text-white/45">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-bold text-primary">WWV Asset Source</span>
+        <span className="font-bold text-primary">WWT Asset Source</span>
         <span className={hasSatelliteAsset ? 'text-emerald-300' : 'text-amber-300'}>
-          {hasSatelliteAsset ? 'Satellite asset copied' : 'No satellite asset in WWV source'}
+          {hasSatelliteAsset ? 'Satellite asset available from repository cache' : 'No dedicated satellite asset in WWT source'}
         </span>
       </div>
       <div>
-        <span className="text-white/30">Copied root: </span>
-        <span className="text-white/65">{copiedRoot}</span>
+        <span className="text-white/30">Cached root: </span>
+        <span className="text-white/65">{cachedRoot}</span>
       </div>
       <div>
         <span className="text-white/30">Source mirror: </span>
@@ -1119,8 +1149,8 @@ function SatelliteVisualAssetAudit({ satelliteEntity }: { satelliteEntity?: any 
         </div>
       )}
       <div>
-        <span className="text-white/30">Copied assets: </span>
-        <span className="text-white/60">{copiedSummary}</span>
+        <span className="text-white/30">Repository assets: </span>
+        <span className="text-white/60">{repositoryAssetSummary}</span>
       </div>
     </div>
   );

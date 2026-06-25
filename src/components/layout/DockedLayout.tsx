@@ -9,6 +9,7 @@
 
 import React, { Suspense } from 'react';
 import { CenterPanel } from '../panels/CenterPanel'; // Middle container coordinating workspace and telescope targets.
+import { ChevronLeft } from 'lucide-react';
 const LeftPanel = React.lazy(() => import('../panels/LeftPanel').then(m => ({ default: m.LeftPanel })));
 const RightPanel = React.lazy(() => import('../panels/RightPanel').then(m => ({ default: m.RightPanel })));
 import { SystemMonitor } from '../SystemMonitor'; // Nested system metrics tracker widget.
@@ -16,7 +17,7 @@ import { useUIStore } from '../../store/uiStore'; // Central state hook providin
 
 export function DockedLayout() {
   // Read open status of panels directly from the Zustand global store.
-  const { settingsDocked, showSettings, rightPanelOpen, interactionMode } = useUIStore();
+  const { settingsDocked, showSettings, rightPanelOpen, setRightPanelOpen, interactionMode } = useUIStore();
   
   // Design logic: Hide the performance meter dashboard if the settings page is docked onto the side layout.
   const hideSystemMonitor = showSettings && settingsDocked;
@@ -47,13 +48,25 @@ export function DockedLayout() {
       ) : showPassiveTelemetry ? (
         // Mode B: Renders system telemetry inside a fixed-width aside bar (320px width).
         // Uses `xl:flex` to hide on smaller screens, appearing automatically once viewport exceeds 1280px wide.
-        <aside className="relative z-20 hidden w-80 shrink-0 flex-col border-l border-panel-border bg-panel panel-glass ambient-glow transition-opacity duration-300 xl:flex">
+        <aside className="relative z-20 hidden w-[clamp(14rem,16vw,20rem)] shrink-0 flex-col border-l border-panel-border bg-panel panel-glass ambient-glow transition-opacity duration-300 xl:flex">
           <SystemMonitor />
         </aside>
       ) : hideSystemMonitor ? (
         // Mode C: Renders a passive width offset (400px) on extra-large screens to balance the layout.
-        <div className="hidden w-[400px] shrink-0 xl:block" />
+        <div className="hidden w-[clamp(14rem,16vw,20rem)] shrink-0 xl:block" />
       ) : null}
+
+      {!rightPanelOpen && (
+        <button
+          type="button"
+          onClick={() => setRightPanelOpen(true)}
+          className="fixed right-0 top-1/2 z-30 flex h-14 w-11 -translate-y-1/2 items-center justify-center rounded-l-lg border-y border-l border-white/10 bg-black/40 text-white/40 shadow-lg transition-all duration-300 ease-out hover:border-white/20 hover:bg-black/60 hover:text-white/80 pointer-events-auto"
+          title="Expand right sidebar"
+          aria-label="Expand right sidebar"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }

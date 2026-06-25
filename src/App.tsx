@@ -99,6 +99,8 @@ export default function App() {
   const customWallpaper = useUIStore((state) => state.customWallpaper);
   const scanlineOverlay = useUIStore((state) => state.scanlineOverlay);
   const particleEffects = useUIStore((state) => state.particleEffects);
+  const motionReduced = useUIStore((state) => state.personalisation.motionReduced);
+  const animationIntensity = useUIStore((state) => state.personalisation.animationIntensity);
   const spaceBlendOpacity = useUIStore((state) => state.spaceBlendOpacity);
   const spaceInteractionTarget = useUIStore((state) => state.spaceInteractionTarget);
   
@@ -163,16 +165,23 @@ export default function App() {
   const backgroundStyle = customWallpaper
     ? { backgroundImage: `url(${customWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : undefined;
-  const workspaceIsolationProps = currentPage === 'settings'
+  const workspaceIsolationProps = currentPage === 'settings' && !isHeadless
     ? { inert: true, 'aria-hidden': true }
     : {};
+  const settingsOverlay = currentPage === 'settings' ? (
+    <Suspense fallback={null}>
+      <ErrorBoundary>
+        <SettingsPage />
+      </ErrorBoundary>
+    </Suspense>
+  ) : null;
 
   return (
     <ConfigProvider>
       <MotionConfig reducedMotion={isHeadless ? "always" : "user"}>
-      {/* Outer viewport root container. Covers whole screen (h-screen, w-full), disables default scrolls (overflow-hidden). */}
+      {/* Outer viewport root container. Covers full viewport height (h-[100dvh], w-full), disables default scrolls (overflow-hidden). */}
       <div
-        className={`relative flex h-screen w-full overflow-hidden bg-base font-sans text-text-main transition-colors duration-500 ${
+        className={`relative flex h-[100dvh] min-h-[100dvh] w-full overflow-hidden bg-base font-sans text-text-main transition-colors duration-500 ${
           isHighLoad ? 'state-high-load' : '' // High load CSS class: throttles expensive SVG/canvas calculations when active.
         } ${isHeadless ? 'is-headless' : ''}`}
         style={{ ...appStyle, ...backgroundStyle }} // Merge global theme CSS variables with optional background image style.
@@ -235,17 +244,19 @@ export default function App() {
           {!isHighLoad && particleEffects && (
             <Suspense fallback={null}>
               <ParticleOverlay />
-              <CustomCursor appHighLoad={isHighLoad} />
+              {!motionReduced && animationIntensity > 0.5 && <CustomCursor appHighLoad={isHighLoad} />}
             </Suspense>
           )}
           
           {/* Cyberpunk flicker screen overlay */}
           {scanlineOverlay && <div className="hologram-overlay" />}
           
-          {!isSpatialInteraction && <TopAppBar />}
+          {/* TopAppBar intentionally not rendered in the workspace: DOCS.md assigns
+              navigation and settings access to DockedLayout side navigation, and
+              keeping the top edge clear avoids blocking the globe/chat viewport. */}
 
           {/* Core viewport layouts: pt-12 leaves space for the 12-unit top app bar, cleared in spatial modes for full-screen floating HUD */}
-          <div className={`relative z-10 flex h-full w-full pointer-events-none transition-all duration-300 ${isSpatialInteraction ? 'pt-0' : 'pt-12'}`}>
+          <div className="relative z-10 flex h-full w-full pointer-events-none transition-all duration-300 pt-0">
             <Suspense fallback={null}>
               <DockedLayout />
             </Suspense>
@@ -266,17 +277,14 @@ export default function App() {
           )}
           </div>
 
-          {/* AnimatePresence monitors settings page component mounting. When currentPage !== 'settings', it plays slide-out fade before removal. */}
-          <AnimatePresence>
-            {currentPage === 'settings' && (
-              // Suspense fallback handles loading state while SettingsPage chunks are downloaded.
-              <Suspense fallback={null}>
-                <ErrorBoundary>
-                  <SettingsPage />
-                </ErrorBoundary>
-              </Suspense>
-            )}
-          </AnimatePresence>
+          {/* AnimatePresence monitors settings page component mounting. Headless verification
+              renders the same SettingsPage directly to avoid Chromium target detaches from
+              page-wide overlay animation/inert transitions. */}
+          {isHeadless ? settingsOverlay : (
+            <AnimatePresence>
+              {settingsOverlay}
+            </AnimatePresence>
+          )}
         </>
       )}
     </div>

@@ -28,12 +28,14 @@ export function useThemeVariables(): AppliedTheme {
     // Keep panels readable over the moving globe even when older persisted
     // settings try to make them highly transparent.
     const isMinimalMode = personalisation.minimalMode;
-    const panelOpacity = isMinimalMode
-      ? Math.max(0.45, Math.min(0.8, personalisation.panelOpacity))
-      : Math.max(0.88, Math.min(0.98, personalisation.panelOpacity));
-    const blurIntensity = isMinimalMode
-      ? Math.max(0, Math.min(6, personalisation.blurIntensity))
-      : Math.max(0, Math.min(10, personalisation.blurIntensity));
+    const clampPanelOpacity = isMinimalMode
+      ? Math.max(0.78, Math.min(0.98, personalisation.panelOpacity))
+      : Math.max(0.72, Math.min(0.98, personalisation.panelOpacity));
+    const clampBlurIntensity = isMinimalMode
+      ? Math.max(0, Math.min(8, personalisation.blurIntensity))
+      : Math.max(0, Math.min(16, personalisation.blurIntensity));
+    const panelOpacity = cpuLoad > 0.8 ? Math.min(0.98, clampPanelOpacity + 0.02) : clampPanelOpacity;
+    const blurIntensity = cpuLoad > 0.8 ? Math.min(2, clampBlurIntensity) : clampBlurIntensity;
 
     // Apply personalisation tokens
     const root = document.documentElement;

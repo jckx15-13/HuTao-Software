@@ -23,9 +23,9 @@ import {
     Cartographic,
 } from "cesium";
 import type { Viewer as CesiumViewer } from "cesium";
+import { getWwtAssetRemoteUrl, WWT_ASSET_PATHS } from "@/lib/wwt/repositoryData";
 
-const WWV_BORDERS_DATASET_URL = "/wwv-assets/source-public/borders.geojson";
-const LEGACY_BORDERS_DATASET_URL = "/borders.geojson";
+const WWV_BORDERS_DATASET_URLS = [getWwtAssetRemoteUrl(WWT_ASSET_PATHS.bordersDataset)];
 
 /**
  * Hook that manages physical 3D borders and labels.
@@ -104,9 +104,9 @@ export function useBorders(
                 let loadedDatasetUrl = "";
                 let lastLoadError: unknown;
 
-                for (const datasetUrl of [WWV_BORDERS_DATASET_URL, LEGACY_BORDERS_DATASET_URL]) {
+                for (const datasetUrl of WWV_BORDERS_DATASET_URLS) {
                     try {
-                        const candidate = new GeoJsonDataSource(`borders_temp_${datasetUrl.includes("wwv-assets") ? "wwv" : "legacy"}`);
+                        const candidate = new GeoJsonDataSource("borders_temp_wwv");
                         await candidate.load(datasetUrl);
                         dataSource = candidate;
                         loadedDatasetUrl = datasetUrl;

@@ -12,7 +12,7 @@ export default function DiagnosticPanel() {
   const exp = useDiagnosticsStore((s) => s.export);
 
   return (
-    <div className="fixed right-4 top-16 z-50 w-[560px] max-h-[80vh] overflow-auto glass-panel border border-white/5 p-3 text-white pointer-events-auto">
+    <div className="fixed right-[max(1rem,env(safe-area-inset-right))] top-16 z-50 w-[min(560px,calc(100vw-1.5rem))] max-h-[min(82vh,40rem)] overflow-auto glass-panel border border-white/5 p-3 text-white pointer-events-auto">
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm font-mono font-bold">Diagnostics</div>
         <div className="flex items-center gap-2">

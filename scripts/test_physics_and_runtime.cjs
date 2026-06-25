@@ -57,6 +57,7 @@ const {
   createLocalAssistantResponse,
 } = require("../src/lib/ai");
 const { createMessage } = require("../src/lib/messages");
+const useAIChatSource = fs.readFileSync(path.join(root, "src/hooks/useAIChat.ts"), "utf8");
 
 const storage = new Map();
 globalThis.localStorage = {
@@ -157,23 +158,30 @@ async function run() {
   assert.doesNotMatch(localResponse.text, /Confirm chat works/);
   assert.equal(localResponse.error, undefined);
 
+  assert.ok(
+    !/requestContents\s*\.push\(\s*\{\s*role:\s*['"]user['"]/.test(useAIChatSource),
+    "AI chat dispatcher must not append a second user turn for Gemini requests",
+  );
+
   const store = useUIStore.getState();
   assert.equal(store.aiModel, "local-assistant");
-  assert.equal(store.leftPanelOpen, false);
-  assert.equal(store.rightPanelOpen, false);
-  assert.equal(store.particleEffects, false);
+  assert.equal(store.leftPanelOpen, true);
+  assert.equal(store.rightPanelOpen, true);
+  assert.equal(store.particleEffects, true);
   assert.equal(store.imageryProvider, "arcgis-world");
-  assert.ok(store.personalisation.panelOpacity >= 0.88);
-  assert.equal(store.personalisation.chatBubbleStyle, "solid");
+  assert.equal(store.personalisation.panelOpacity, 0.88);
+  assert.equal(store.personalisation.minimalMode, false);
+  assert.equal(store.personalisation.motionReduced, false);
+  assert.equal(store.personalisation.chatBubbleStyle, "glass");
 
   store.updatePersonalisation({ panelOpacity: 0.2, blurIntensity: 40, chatBubbleStyle: "glass" });
-  assert.equal(useUIStore.getState().personalisation.panelOpacity, 0.88);
-  assert.equal(useUIStore.getState().personalisation.blurIntensity, 10);
-  assert.equal(useUIStore.getState().personalisation.chatBubbleStyle, "solid");
+  assert.equal(useUIStore.getState().personalisation.panelOpacity, 0.72);
+  assert.equal(useUIStore.getState().personalisation.blurIntensity, 16);
+  assert.equal(useUIStore.getState().personalisation.chatBubbleStyle, "glass");
 
   store.updatePersonalisation({ minimalMode: true, panelOpacity: 0.5, blurIntensity: 3 });
   assert.equal(useUIStore.getState().personalisation.minimalMode, true);
-  assert.equal(useUIStore.getState().personalisation.panelOpacity, 0.5);
+  assert.equal(useUIStore.getState().personalisation.panelOpacity, 0.78);
   assert.equal(useUIStore.getState().personalisation.blurIntensity, 3);
 
   store.setAiModel("gemini-3-flash");

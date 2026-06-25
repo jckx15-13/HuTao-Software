@@ -10,15 +10,15 @@ import { resolveCursorProfile, validateCursorProfile } from '@/core/cursor';
 
 const STANDARD_PRESET: Personalisation = {
   accentColor: '',
-  panelOpacity: 0.92,
-  blurIntensity: 8,
-  cornerRadius: 12,
-  shadowIntensity: 0.5,
-  borderStyle: 'subtle',
-  uiDensity: 'comfortable',
+  panelOpacity: 0.88,
+  blurIntensity: 10,
+  cornerRadius: 20,
+  shadowIntensity: 0.45,
+  borderStyle: 'glow',
+  uiDensity: 'compact',
   chatBubbleStyle: 'glass',
   iconStyle: 'outlined',
-  panelTransitionStyle: 'slide',
+  panelTransitionStyle: 'fade',
   fontScale: 1.0,
   fontFamily: 'Outfit',
   animationIntensity: 0.7,
@@ -28,15 +28,15 @@ const STANDARD_PRESET: Personalisation = {
 
 const MINIMAL_PRESET: Personalisation = {
   accentColor: '',
-  panelOpacity: 0.5,
-  blurIntensity: 3,
-  cornerRadius: 2,
-  shadowIntensity: 0.15,
-  borderStyle: 'none',
+  panelOpacity: 0.88,
+  blurIntensity: 8,
+  cornerRadius: 20,
+  shadowIntensity: 0.35,
+  borderStyle: 'subtle',
   uiDensity: 'compact',
-  chatBubbleStyle: 'minimal',
+  chatBubbleStyle: 'glass',
   iconStyle: 'outlined',
-  panelTransitionStyle: 'fade',
+  panelTransitionStyle: 'slide',
   fontScale: 1.0,
   fontFamily: 'Outfit',
   animationIntensity: 0.2,
@@ -262,8 +262,8 @@ export function PersonalisationSettings() {
               id="personalisation-panel-transparency"
               name="personalisation-panel-transparency"
               type="range"
-              min={personalisation.minimalMode ? 45 : 88}
-              max={personalisation.minimalMode ? 80 : 100}
+              min={92}
+              max={98}
               value={personalisation.panelOpacity * 100}
               onChange={(e) => updatePersonalisation({ panelOpacity: parseFloat(e.target.value) / 100 })}
               className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
@@ -281,7 +281,7 @@ export function PersonalisationSettings() {
               name="personalisation-background-blur"
               type="range"
               min={0}
-              max={personalisation.minimalMode ? 6 : 10}
+              max={personalisation.minimalMode ? 3 : 10}
               value={personalisation.blurIntensity}
               onChange={(e) => updatePersonalisation({ blurIntensity: parseInt(e.target.value) })}
               className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"

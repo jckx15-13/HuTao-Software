@@ -56,8 +56,10 @@ const Cesium = {
   }
 };
 import { IMAGERY_LAYERS } from '@/core/globe/ImageryProviderFactory';
-import { SATELLITES } from '@/data/satellites';
 import { WWV_ORBITAL_ASSET_BY_CATEGORY } from '@/assets/wwvVisualAssets';
+import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
+import { useViewportSize } from '@/hooks/useViewportSize';
+import { buildSpatialPanelGeometry } from './panelGeometry';
 
 // ============================================================================
 // CONSOLIDATED SUB-COMPONENTS
@@ -279,6 +281,7 @@ function CollapsibleSection({ title, icon: Icon, isOpen, onToggle, children }: C
 export function LeftPanel() {
   const contentScrollRef = useRef<HTMLDivElement>(null);
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
+  const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
   const setLeftPanelOpen = useUIStore((s) => s.setLeftPanelOpen);
   const setCurrentPage = useUIStore((s) => s.setCurrentPage);
   const activeLocation = useUIStore((s) => s.activeLocation);
@@ -377,6 +380,18 @@ export function LeftPanel() {
   const toggleSatelliteCategory = useUIStore((s) => s.toggleSatelliteCategory);
   const satelliteSettings = useUIStore((s) => s.satelliteSettings);
   const updateSatelliteSettings = useUIStore((s) => s.updateSatelliteSettings);
+  const { satellites } = useSatelliteCatalog();
+  const viewportSize = useViewportSize();
+  const spatialPanelStyle = useMemo(
+    () =>
+      buildSpatialPanelGeometry({
+        placement: 'left',
+        viewport: viewportSize,
+        leftPanelOpen,
+        rightPanelOpen,
+      }),
+    [leftPanelOpen, rightPanelOpen, viewportSize],
+  );
 
   const SATELLITE_CATEGORIES_METADATA = {
     spaceStations: { label: 'Stations', color: '#00FFF7' },
@@ -417,13 +432,13 @@ export function LeftPanel() {
   }, [activePreset, currentTime]);
 
   const filteredSatellites = useMemo(() => {
-    return SATELLITES.filter((sat) => {
+    return satellites.filter((sat) => {
       const matchesSearch = sat.name.toLowerCase().includes(satelliteSearchQuery.toLowerCase()) || 
                             sat.category.toLowerCase().includes(satelliteSearchQuery.toLowerCase());
       const isCategoryVisible = satelliteCategories[sat.category] !== false;
       return matchesSearch && isCategoryVisible;
     });
-  }, [satelliteSearchQuery, satelliteCategories]);
+  }, [satelliteSearchQuery, satelliteCategories, satellites]);
 
   const handleSelectSatellite = (id: string, altitudeM: number) => {
     setActiveSatelliteId(id);
@@ -573,15 +588,21 @@ export function LeftPanel() {
 
   return (
     <aside 
-      className={`glass-panel flex flex-col select-none pointer-events-auto transition-all duration-300 ${
+      className={`glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 ${
         isSpatialMode 
-          ? 'fixed top-[72px] left-[14px] bottom-[8px] w-[304px] max-w-[calc(100vw-28px)] rounded-xl border border-white/10 shadow-2xl z-20 h-auto min-h-0'
-          : 'h-full w-[260px] border-r border-white/5'
+          ? 'fixed rounded-xl border border-white/10 shadow-2xl z-40 h-auto min-h-0 bg-black/75'
+          : 'h-full w-[clamp(10rem,22vw,19rem)] border-r border-white/5'
       }`} 
-      style={!isSpatialMode ? { borderRadius: 0 } : undefined}
+      style={
+        isSpatialMode
+          ? spatialPanelStyle
+          : {
+              borderRadius: 0,
+            }
+      }
     >
       {/* Header section */}
-      <div className="flex h-12 items-center justify-between px-4 border-b border-white/5 shrink-0 bg-black/20">
+      <div className="flex h-12 items-center justify-between px-4 border-b border-white/10 shrink-0 bg-black/45">
         <div className="flex items-center gap-2">
           <Hexagon className="h-5 w-5 text-primary animate-pulse" />
           <span 
@@ -872,7 +893,7 @@ export function LeftPanel() {
                     <span>WWV Static Borders</span>
                   </label>
                   <p className="pl-10 text-[8px] uppercase leading-relaxed text-white/35">
-                    Copied WorldWideView country borders; political status and labels are static dataset records.
+                    WorldWide Telescope country borders from the public mirror; political status and labels are static dataset records.
                   </p>
                   <label className="flex min-h-11 items-center gap-2 cursor-pointer rounded px-1 hover:bg-white/5 hover:text-white transition-colors">
                     <input
@@ -1058,7 +1079,7 @@ export function LeftPanel() {
                   <div className="grid grid-cols-4 gap-1 text-[10px]">
                     {Object.entries(SATELLITE_CATEGORIES_METADATA).map(([key, meta]) => {
                       const isToggled = satelliteCategories[key] !== false;
-                      const count = SATELLITES.filter(s => s.category === key).length;
+                      const count = satellites.filter(s => s.category === key).length;
                       return (
                         <button
                           key={key}

@@ -10,7 +10,7 @@ import type {
     CesiumEntityOptions,
 } from "@/core/plugins/PluginTypes";
 import { WWV_ASSET_AUDIT, WWV_ORBITAL_ASSET_BY_CATEGORY, getWwvAssetSummary } from "@/assets/wwvVisualAssets";
-import { SATELLITES } from "@/core/satellites/satelliteData";
+import { getSatelliteCatalog } from "@/core/satellites/satelliteCatalog";
 import { OrbitEngine, Coordinates } from "@/core/satellites/OrbitEngine";
 import { useUIStore } from "@/store/uiStore";
 
@@ -54,8 +54,12 @@ export class SatellitesPlugin implements WorldPlugin {
         const uiState = useUIStore.getState();
         const satelliteData = uiState.satelliteData;
         const issTelemetry = uiState.issTelemetry;
+        const satellites = await getSatelliteCatalog((error) => {
+            const message = `Satellite catalog fetch failed from WWT repository: ${error.message}`;
+            useUIStore.getState().addChangeLog("SATELLITE", message, "warning");
+        });
 
-        return SATELLITES.map(sat => {
+        return satellites.map(sat => {
             let coords: Coordinates | null = null;
             const tleData = satelliteData[sat.id]?.tle;
             let source: "live-iss-telemetry" | "simulated-iss-telemetry" | "live-tle" | "circular-orbit-fallback" = "circular-orbit-fallback";
@@ -170,9 +174,10 @@ export class SatellitesPlugin implements WorldPlugin {
             iconScale: visualSize / 48,
             labelText: label || "Satellite",
             labelFont: "bold 9px JetBrains Mono, monospace",
-            disableDepthTestDistance: occludeByGlobe ? undefined : Number.POSITIVE_INFINITY,
-            disableManualHorizonCulling: true,
+            disableDepthTestDistance: occludeByGlobe ? 0 : Number.POSITIVE_INFINITY,
+            disableManualHorizonCulling: !occludeByGlobe,
             disableClustering: true,
+            distanceDisplayCondition: { near: 0, far: 18_000_000 },
             trailOptions: {
                 width: category === "starlink" ? 1 : 1.5,
                 color,

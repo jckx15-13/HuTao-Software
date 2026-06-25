@@ -126,7 +126,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
     // Fullscreen variant
     return (
-      <div className="flex flex-col items-center justify-center h-screen w-screen bg-base text-text-main p-8 text-center gap-6">
+      <div className="flex flex-col items-center justify-center h-[100dvh] min-h-[100dvh] w-full bg-base text-text-main p-8 text-center gap-6">
         <div className="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center text-2xl text-danger animate-pulse">
           ⚠
         </div>

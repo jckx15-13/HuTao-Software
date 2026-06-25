@@ -3,6 +3,7 @@ import { deriveRuntimePolicy, resolveCursorProfile } from "./profiles";
 import { validateCursorProfile } from "./diagnostics";
 import { setActiveCursorEngine } from "./runtime";
 import type {
+  CursorDiagnostic,
   CursorEngineConfig,
   CursorEngineLifecycle,
   CursorFrameState,
@@ -10,6 +11,7 @@ import type {
   CursorMode,
   CursorPointerModality,
   CursorRuntimePolicy,
+  CursorProfile,
   CursorTarget,
   CursorTargetSource,
   CursorVector,
@@ -20,6 +22,7 @@ type TrailSample = {
   y: number;
   life: number;
   width: number;
+  active: boolean;
 };
 
 const DEFAULT_CONFIG: CursorEngineConfig = {
@@ -92,12 +95,22 @@ export class CursorEngine implements CursorEngineLifecycle {
   private pressing = false;
   private dragging = false;
   private overTextInput = false;
+  private canvasNeedsClear = false;
   private readonly registry = new CursorTargetRegistry();
-  private readonly trailPool: TrailSample[] = Array.from({ length: 96 }, () => ({ x: 0, y: 0, life: 0, width: 1 }));
+  private readonly trailPool: TrailSample[] = Array.from({ length: 96 }, () => ({ x: 0, y: 0, life: 0, width: 1, active: false }));
   private trailIndex = 0;
+  private readonly activeTrailSamples = new Set<number>();
+  private resolvedProfile: CursorProfile;
+  private profileDiagnostic: CursorDiagnostic;
+
+  private syncProfile(): void {
+    this.resolvedProfile = resolveCursorProfile(this.config);
+    this.profileDiagnostic = validateCursorProfile(this.resolvedProfile);
+  }
 
   constructor(config: Partial<CursorEngineConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.syncProfile();
   }
 
   init(): void {
@@ -121,12 +134,19 @@ export class CursorEngine implements CursorEngineLifecycle {
     this.unbindEvents();
     this.restoreDocumentCursor();
     this.registry.clear();
+    this.trailIndex = 0;
+    this.activeTrailSamples.clear();
+    for (const sample of this.trailPool) {
+      sample.life = 0;
+      sample.active = false;
+    }
     this.mount?.replaceChildren();
     this.mount = null;
     this.reticle = null;
     this.canvas = null;
     this.ctx = null;
     this.debug = null;
+    this.canvasNeedsClear = false;
     this.attached = false;
   }
 
@@ -141,7 +161,11 @@ export class CursorEngine implements CursorEngineLifecycle {
 
   updateConfig(config: Partial<CursorEngineConfig>): void {
     const designChanged = config.cursorDesign !== undefined && config.cursorDesign !== this.config.cursorDesign;
+    const profileIdChanged = config.profileId !== undefined && config.profileId !== this.config.profileId;
     this.config = { ...this.config, ...config };
+    if (designChanged || profileIdChanged) {
+      this.syncProfile();
+    }
     this.setDocumentCursor();
     if (designChanged && this.reticle) {
       this.updateReticleSvg();
@@ -355,9 +379,7 @@ export class CursorEngine implements CursorEngineLifecycle {
   };
 
   private updateFrame(now: number, dt: number, dtMs: number): CursorFrameState {
-    const profile = resolveCursorProfile(this.config);
-    const diagnostic = validateCursorProfile(profile);
-    const policy = deriveRuntimePolicy(this.config, profile, this.measuredFrameMs, this.documentVisible);
+    const policy = deriveRuntimePolicy(this.config, this.resolvedProfile, this.measuredFrameMs, this.documentVisible);
     const resolved = this.registry.resolve(this.pointerActual, now, dtMs);
 
     const intent: CursorIntent = {
@@ -407,7 +429,7 @@ export class CursorEngine implements CursorEngineLifecycle {
     }
 
     let mode = this.resolveMode(intent, resolved.selectedTarget, lockedTarget, policy);
-    if (diagnostic.blocking) mode = "disabled";
+    if (this.profileDiagnostic.blocking) mode = "disabled";
 
     return {
       mode,
@@ -421,7 +443,7 @@ export class CursorEngine implements CursorEngineLifecycle {
       effectsEnabled: policy.visualEffectsAllowed,
       policy,
       intent,
-      debugReason: policy.disabledReason ?? diagnostic.message,
+      debugReason: policy.disabledReason ?? this.profileDiagnostic.message,
     };
   }
 
@@ -437,12 +459,17 @@ export class CursorEngine implements CursorEngineLifecycle {
   }
 
   private spawnTrail(policy: CursorRuntimePolicy): void {
-    const sample = this.trailPool[this.trailIndex % this.trailPool.length];
+    const slot = this.trailIndex % this.trailPool.length;
+    const sample = this.trailPool[slot];
     this.trailIndex += 1;
     sample.x = this.reticleVisual.x;
     sample.y = this.reticleVisual.y;
     sample.life = Math.max(8, policy.trailBudget);
     sample.width = 1 + clamp(Math.hypot(this.velocity.x, this.velocity.y) * 3, 0, 5);
+    if (!sample.active) {
+      sample.active = true;
+      this.activeTrailSamples.add(slot);
+    }
   }
 
   private render(frame: CursorFrameState): void {
@@ -480,12 +507,26 @@ export class CursorEngine implements CursorEngineLifecycle {
 
   private renderCanvas(frame: CursorFrameState, accent: string): void {
     if (!this.canvas || !this.ctx) return;
+    const shouldRenderCanvas =
+      frame.effectsEnabled &&
+      !frame.intent.wantsNativeCursor &&
+      (frame.lockStrength > 0.05 || frame.selectedTarget !== null || this.activeTrailSamples.size > 0);
+
     const ctx = this.ctx;
     const dpr = window.devicePixelRatio || 1;
-    ctx.clearRect(0, 0, this.canvas.width / dpr, this.canvas.height / dpr);
-    if (!frame.effectsEnabled || frame.intent.wantsNativeCursor) return;
+    if (!shouldRenderCanvas) {
+      if (this.canvasNeedsClear) {
+        ctx.clearRect(0, 0, this.canvas.width / dpr, this.canvas.height / dpr);
+        this.canvasNeedsClear = false;
+      }
+      return;
+    }
 
-    for (const sample of this.trailPool) {
+    this.canvasNeedsClear = true;
+    ctx.clearRect(0, 0, this.canvas.width / dpr, this.canvas.height / dpr);
+
+    for (const index of this.activeTrailSamples) {
+      const sample = this.trailPool[index];
       if (sample.life <= 0) continue;
       const alpha = clamp(sample.life / Math.max(1, frame.policy.trailBudget), 0, 1);
       ctx.beginPath();
@@ -494,7 +535,11 @@ export class CursorEngine implements CursorEngineLifecycle {
       ctx.shadowBlur = 12 * alpha;
       ctx.arc(sample.x, sample.y, sample.width * alpha, 0, Math.PI * 2);
       ctx.fill();
-      sample.life -= 1 + (1 - resolveCursorProfile(this.config).bleedRate) * 4;
+      sample.life -= 1 + (1 - this.resolvedProfile.bleedRate) * 4;
+      if (sample.life <= 0) {
+        sample.active = false;
+        this.activeTrailSamples.delete(index);
+      }
     }
 
     if (frame.lockedTarget && frame.lockStrength > 0.1) {

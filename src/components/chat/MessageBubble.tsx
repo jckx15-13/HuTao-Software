@@ -31,7 +31,7 @@ export function MessageBubble({ message, fontSize }: MessageBubbleProps) {
   // Bubble styling based on chatBubbleStyle and sender
   let bubbleClass = 'relative min-w-0 max-w-[calc(100%-5rem)] px-4 py-2.5 text-xs leading-relaxed transition-all ';
   if (isSystem) {
-    bubbleClass = 'relative min-w-0 max-w-[calc(100%-5rem)] rounded-lg border border-white/10 bg-panel/85 px-3 py-2 font-mono text-[11px] leading-relaxed text-text-muted shadow-sm ';
+    bubbleClass = 'relative min-w-0 max-w-[calc(100%-5rem)] rounded-2xl border border-white/10 bg-panel/85 px-3 py-2 font-mono text-[11px] leading-relaxed text-text-muted shadow-sm ';
   } else if (chatBubbleStyle === 'glass') {
     bubbleClass += isUser
       ? 'bg-primary/10 border border-primary/25 text-white/90 backdrop-blur-md shadow-lg shadow-primary/5 rounded-2xl rounded-tr-sm'
@@ -81,7 +81,7 @@ export function MessageBubble({ message, fontSize }: MessageBubbleProps) {
             whileTap={{ scale: 0.95 }}
             onClick={() => pushToMemory(message.content, message.sender)}
             disabled={isPushing || isPushed}
-            className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg border transition-all ${
+            className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full border transition-all ${
               isPushed 
                 ? 'bg-green-500/20 border-green-500/40 text-green-400' 
                 : 'bg-white/5 border-white/10 text-white/30 hover:text-white/60 hover:bg-white/10'

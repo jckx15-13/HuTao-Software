@@ -59,7 +59,7 @@ export function ChatPanel() {
     // Spring back to base container alignment.
     paneControls.start({ y: 0, transition: { type: 'spring', stiffness: 400, damping: 25 } });
 
-    sendMessage(text); // Dispatches text payload async.
+    await sendMessage(text); // Dispatches text payload async and waits for state update.
   };
 
   return (
