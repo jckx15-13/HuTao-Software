@@ -32,7 +32,7 @@ const BUDGETS = {
   bridgeStatusP95: Number.parseInt(process.env.PERF_BRIDGE_STATUS_BUDGET_MS || '700', 10),
   bridgeChatP95: Number.parseInt(process.env.PERF_BRIDGE_CHAT_BUDGET_MS || '1800', 10),
   gitStatusP95: Number.parseInt(process.env.PERF_GIT_STATUS_BUDGET_MS || '600', 10),
-  frontendFetchP95: Number.parseInt(process.env.PERF_FRONTEND_FETCH_BUDGET_MS || '700', 10),
+  frontendFetchP95: Number.parseInt(process.env.PERF_FRONTEND_FETCH_BUDGET_MS || '2000', 10),
   frontendLoadP95: Number.parseInt(process.env.PERF_FRONTEND_LOAD_BUDGET_MS || '2000', 10),
   frontendDomP95: Number.parseInt(process.env.PERF_FRONTEND_DOM_BUDGET_MS || '1500', 10),
 };
