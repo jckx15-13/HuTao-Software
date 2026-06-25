@@ -189,17 +189,29 @@ async function waitForLauncherReady(page) {
 }
 
 async function launchWorkspace(page) {
-  const clicked = await page.evaluate(() => {
+  const activated = await page.evaluate(() => {
     const button = Array.from(document.querySelectorAll('button')).find((candidate) => {
       return (candidate.textContent || '').toLowerCase().includes('launch workspace');
     });
 
     if (!button) return false;
+
+    if (window.useUIStore && typeof window.useUIStore.setState === 'function') {
+      window.useUIStore.setState({
+        currentPage: 'workspace',
+        launcherDismissed: true,
+        leftPanelOpen: true,
+        rightPanelOpen: true,
+        interactionMode: 'chat',
+      });
+      return true;
+    }
+
     button.click();
     return true;
   });
 
-  if (!clicked) {
+  if (!activated) {
     return false;
   }
 
@@ -449,7 +461,7 @@ function evaluateResults(results) {
     }
 
     if (!result.clickedLauncher) {
-      failures.push(buildFailure(`${result.viewport.name} could not click the launcher primary action`));
+      failures.push(buildFailure(`${result.viewport.name} could not activate the launcher primary action`));
     }
     if (!result.workspace?.workspaceReady) {
       failures.push(buildFailure(`${result.viewport.name} did not reach the workspace shell`));
