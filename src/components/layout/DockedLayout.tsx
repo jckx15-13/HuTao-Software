@@ -14,14 +14,39 @@ const LeftPanel = React.lazy(() => import('../panels/LeftPanel').then(m => ({ de
 const RightPanel = React.lazy(() => import('../panels/RightPanel').then(m => ({ default: m.RightPanel })));
 import { SystemMonitor } from '../SystemMonitor'; // Nested system metrics tracker widget.
 import { useUIStore } from '../../store/uiStore'; // Central state hook providing toggle flags for left/right columns.
+import { useViewportSize } from '../../hooks/useViewportSize';
 
 export function DockedLayout() {
   // Read open status of panels directly from the Zustand global store.
-  const { settingsDocked, showSettings, rightPanelOpen, setRightPanelOpen, interactionMode } = useUIStore();
+  const {
+    settingsDocked,
+    showSettings,
+    leftPanelOpen,
+    setLeftPanelOpen,
+    rightPanelOpen,
+    setRightPanelOpen,
+    interactionMode,
+  } = useUIStore();
+  const viewportSize = useViewportSize();
+  const collapsedForNarrowViewportRef = React.useRef(false);
   
   // Design logic: Hide the performance meter dashboard if the settings page is docked onto the side layout.
   const hideSystemMonitor = showSettings && settingsDocked;
   const showPassiveTelemetry = interactionMode !== 'chat' && !hideSystemMonitor;
+
+  React.useEffect(() => {
+    const isNarrowViewport = viewportSize.width < 760;
+
+    if (isNarrowViewport && !collapsedForNarrowViewportRef.current) {
+      if (leftPanelOpen) setLeftPanelOpen(false);
+      if (rightPanelOpen) setRightPanelOpen(false);
+      collapsedForNarrowViewportRef.current = true;
+    }
+
+    if (!isNarrowViewport) {
+      collapsedForNarrowViewportRef.current = false;
+    }
+  }, [leftPanelOpen, rightPanelOpen, setLeftPanelOpen, setRightPanelOpen, viewportSize.width]);
 
   return (
     // Flexbox row layout spanning full viewport width. Inherits transparency so Cesium canvas is visible behind panels.

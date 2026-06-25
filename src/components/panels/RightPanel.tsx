@@ -134,7 +134,7 @@ export function RightPanel() {
       className={`glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 ${
         isSpatialMode
           ? 'fixed rounded-xl border border-white/10 shadow-2xl z-40 h-auto bg-black/75'
-          : 'h-full w-[clamp(10rem,22vw,19rem)] border-l border-white/5'
+          : 'fixed inset-y-0 right-0 z-40 w-[min(88vw,22rem)] border-l border-white/5 md:relative md:z-auto md:h-full md:w-[clamp(10rem,22vw,19rem)]'
       }`}
       style={
         isSpatialMode

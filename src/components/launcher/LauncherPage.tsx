@@ -230,12 +230,8 @@ export function LauncherPage() {
         <button
           type="button"
           onClick={() => setLauncherDismissed(true)}
-          className="relative mt-1 flex min-h-11 items-center rounded px-3 font-mono text-xs tracking-wider text-white/45 transition-colors hover:bg-white/5 hover:text-white/75 cursor-pointer sm:absolute sm:mt-0"
+          className="relative mt-1 flex min-h-11 items-center rounded px-3 font-mono text-xs tracking-wider text-white/45 transition-colors hover:bg-white/5 hover:text-white/75 cursor-pointer sm:absolute sm:bottom-4 sm:right-4 sm:mt-0"
           aria-label="Skip boot interface"
-          style={{
-            right: 'max(1rem, env(safe-area-inset-right))',
-            bottom: 'max(1rem, env(safe-area-inset-bottom))',
-          }}
         >
           Skip boot interface
         </button>
