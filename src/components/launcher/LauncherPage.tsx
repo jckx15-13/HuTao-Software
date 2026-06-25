@@ -96,7 +96,7 @@ export function LauncherPage() {
             <Hexagon className="h-8 w-8 text-primary animate-spin-slow" />
           </div>
           <div className="max-w-full space-y-1">
-            <h1 className="max-w-full break-words text-2xl font-black uppercase leading-tight tracking-[0.18em] text-white font-sans glow-text cyber-glitch sm:text-3xl sm:tracking-[0.28em]" data-text="SILVER WOLF VI">
+            <h1 className="max-w-full break-words text-2xl font-black uppercase leading-tight tracking-[0.18em] text-white font-sans glow-text sm:text-3xl sm:tracking-[0.28em]">
               SILVER WOLF VI
             </h1>
             <p className="text-xs font-mono uppercase tracking-[0.16em] text-white/55 sm:tracking-[0.22em]">
@@ -140,13 +140,13 @@ export function LauncherPage() {
             <div className="flex min-w-0 items-center gap-2">
               <Cpu className="h-4 w-4 text-white/30" />
               <div className="flex min-w-0 flex-col">
-                <span className="text-white/45 uppercase text-[10px] tracking-wider">Web Runtime</span>
+                <span className="text-white/45 uppercase text-[11px] tracking-wider">Web Runtime</span>
                 <span className="text-white/85 font-bold">Vite Server</span>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-green-400 uppercase font-bold text-[10px]">Active</span>
+              <span className="text-green-400 uppercase font-bold text-[11px]">Active</span>
             </div>
           </div>
 
@@ -155,7 +155,7 @@ export function LauncherPage() {
             <div className="flex min-w-0 items-center gap-2">
               <Wifi className="h-4 w-4 text-white/30" />
               <div className="flex min-w-0 flex-col">
-                <span className="text-white/45 uppercase text-[10px] tracking-wider">Assistant Bridge</span>
+                <span className="text-white/45 uppercase text-[11px] tracking-wider">Assistant Bridge</span>
                 <span className="max-w-full truncate text-white/85 font-bold">{bridgeBaseUrl.replace(/^https?:\/\//, '')}</span>
               </div>
             </div>
@@ -163,7 +163,7 @@ export function LauncherPage() {
               <div className={`h-2 w-2 rounded-full ${
                 bridgeStatus === 'active' ? 'bg-green-500' : bridgeStatus === 'checking' ? 'bg-yellow-500 animate-ping' : 'bg-red-500'
               }`} />
-              <span className={`uppercase font-bold text-[10px] ${
+              <span className={`uppercase font-bold text-[11px] ${
                 bridgeStatus === 'active' ? 'text-green-500' : bridgeStatus === 'checking' ? 'text-yellow-500' : 'text-red-500'
               }`}>
                 {bridgeStatus === 'active' ? 'ONLINE' : bridgeStatus === 'checking' ? 'SYNCING' : 'OFFLINE'}
@@ -176,11 +176,11 @@ export function LauncherPage() {
             <div className="flex min-w-0 items-center gap-2">
               <Battery className="h-4 w-4 text-white/30" />
               <div className="flex min-w-0 flex-col">
-                <span className="text-white/45 uppercase text-[10px] tracking-wider">AI Route</span>
+                <span className="text-white/45 uppercase text-[11px] tracking-wider">AI Route</span>
                 <span className="max-w-full truncate text-white/85 font-bold">{aiModel}</span>
               </div>
             </div>
-            <span className="shrink-0 text-white/45 uppercase text-[10px] font-bold">Ready</span>
+            <span className="shrink-0 text-white/45 uppercase text-[11px] font-bold">Ready</span>
           </div>
 
           {/* Tile 4: Local Storage */}
@@ -188,11 +188,11 @@ export function LauncherPage() {
             <div className="flex min-w-0 items-center gap-2">
               <Database className="h-4 w-4 text-white/30" />
               <div className="flex min-w-0 flex-col">
-                <span className="text-white/45 uppercase text-[10px] tracking-wider">Zustand Engine</span>
+                <span className="text-white/45 uppercase text-[11px] tracking-wider">Zustand Engine</span>
                 <span className="text-white/85 font-bold">IndexedDB</span>
               </div>
             </div>
-            <span className="shrink-0 text-green-400 font-bold uppercase text-[10px]">Local</span>
+            <span className="shrink-0 text-green-400 font-bold uppercase text-[11px]">Local</span>
           </div>
         </div>
 

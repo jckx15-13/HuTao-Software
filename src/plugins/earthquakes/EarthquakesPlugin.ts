@@ -43,30 +43,7 @@ export class EarthquakesPlugin implements WorldPlugin {
 
         try {
             const data = await fetchWithRetry();
-            const features = Array.isArray(data?.features) ? data.features : [];
-            return features.map((feat: any) => {
-                const coords = feat.geometry.coordinates;
-                const props = feat.properties;
-
-                return {
-                    id: feat.id || String(props.time),
-                    pluginId: this.id,
-                    latitude: coords[1],
-                    longitude: coords[0],
-                    altitude: coords[2] ? coords[2] * 1000 : undefined, // depth in meters
-                    timestamp: new Date(props.time),
-                    label: `Mag ${props.mag} - ${props.place}`,
-                    properties: {
-                        mag: props.mag,
-                        place: props.place,
-                        time: props.time,
-                        url: props.url,
-                        tsunami: props.tsunami,
-                        sig: props.sig,
-                        rawEntity: feat
-                    },
-                };
-            });
+            return this.mapWebsocketPayload(data);
         } catch (err) {
             console.error("[EarthquakesPlugin] fetch error:", err);
             if (this.context) {
@@ -74,6 +51,43 @@ export class EarthquakesPlugin implements WorldPlugin {
             }
             return [];
         }
+    }
+
+    mapWebsocketPayload(payload: unknown): GeoEntity[] {
+        const features = Array.isArray((payload as { features?: unknown })?.features)
+            ? (payload as { features: any[] }).features
+            : Array.isArray(payload)
+                ? payload
+                : [];
+
+        return features
+            .filter((feat: any) => Array.isArray(feat?.geometry?.coordinates) && feat.geometry.coordinates.length >= 2)
+            .map((feat: any): GeoEntity => {
+                const coords = feat.geometry.coordinates;
+                const props = feat.properties || {};
+                const time = props.time ?? Date.now();
+                const mag = Number(props.mag ?? 0);
+                const place = props.place || "Unknown location";
+
+                return {
+                    id: feat.id || String(time),
+                    pluginId: this.id,
+                    latitude: Number(coords[1]),
+                    longitude: Number(coords[0]),
+                    altitude: coords[2] != null ? Number(coords[2]) * 1000 : undefined,
+                    timestamp: new Date(time),
+                    label: `Mag ${Number.isFinite(mag) ? mag : 0} - ${place}`,
+                    properties: {
+                        mag: Number.isFinite(mag) ? mag : props.mag,
+                        place,
+                        time,
+                        url: props.url,
+                        tsunami: props.tsunami,
+                        sig: props.sig,
+                        rawEntity: feat
+                    },
+                };
+            });
     }
 
     getPollingInterval(): number {
