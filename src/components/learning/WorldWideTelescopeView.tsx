@@ -1293,7 +1293,7 @@ export default function WorldWideTelescopeView({
         {/* Space HUD / Controls Panel (Collapsible Drawer on Left) */}
         {spaceInteractionTarget === 'telescope' && (
           <div
-            className="absolute z-40 flex flex-col pointer-events-auto"
+            className="absolute z-30 flex flex-col pointer-events-auto"
             style={{
               left: workspaceInsets.left,
               top: drawerTop,
@@ -1312,15 +1312,6 @@ export default function WorldWideTelescopeView({
                     <span>Space Array Control</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setRefreshKey(k => k + 1)}
-                      className="flex min-h-11 min-w-11 items-center justify-center rounded text-white/40 transition-colors hover:bg-white/5 hover:text-white/80 cursor-pointer"
-                      aria-label="Refresh WWT client"
-                      title="Refresh WWT Client"
-                    >
-                      <RefreshCw size={12} />
-                    </button>
                     <button
                       type="button"
                       onClick={() => setDrawerOpen(false)}
@@ -1775,7 +1766,7 @@ export default function WorldWideTelescopeView({
         </div>
 
         {/* Draggable floating Picture-in-Picture window overlay */}
-        {telescopeWindowActive && (
+        {telescopeWindowActive && spaceInteractionTarget === 'telescope' && (
           <div
             className="glass-panel border border-primary/20 flex flex-col overflow-hidden shadow-2xl pointer-events-auto absolute z-50"
             style={{

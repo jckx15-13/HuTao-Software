@@ -4,10 +4,23 @@ import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
 import cesium from 'vite-plugin-cesium';
 
+function asyncCesiumGlobalScript() {
+  return {
+    name: 'silver-wolf-async-cesium-global-script',
+    enforce: 'post' as const,
+    transformIndexHtml(html: string) {
+      return html.replace(
+        '<script src="/cesium/Cesium.js"></script>',
+        '<script async src="/cesium/Cesium.js"></script>',
+      );
+    },
+  };
+}
+
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    plugins: [react(), tailwindcss(), cesium()],
+    plugins: [react(), tailwindcss(), cesium(), asyncCesiumGlobalScript()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       __SILVER_WOLF_BRIDGE_URL__: JSON.stringify(env.VITE_BRIDGE_URL || ''),

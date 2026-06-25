@@ -386,6 +386,7 @@ assert.ok(wwtViewSource.includes("-translate-y-1/2"), "WWT collapse control must
 assert.ok(wwtViewSource.includes("if (!telescopeWindowActive)"), "WWT chrome must not render during the Earth navigation workflow");
 assert.ok(wwtViewSource.includes("right: 'clamp(4.75rem, 8vw, 6rem)'"), "WWT timeline must reserve the right-side globe navigation rail");
 assert.ok(!wwtViewSource.includes('aria-label="Open spatial HUD sidebar"'), "WWT overlay must not duplicate the main spatial HUD sidebar opener");
+assert.ok(!wwtViewSource.includes('aria-label="Refresh WWT client"'), "WWT drawer must not duplicate telescope refresh controls in the header");
 assert.ok(!wwtViewSource.includes("<span>Refresh WWT</span>"), "WWT overlay must not render the bulky top-level Refresh WWT text button");
 assert.ok(centerPanelSource.includes('aria-label="Expand left sidebar"'), "Center panel must keep a single accessible sidebar opener");
 

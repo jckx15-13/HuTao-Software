@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-25T17:21:29.972Z",
+  "timestamp": "2026-06-25T17:22:55.103Z",
   "services": {
     "vite": {
       "status": "online",
@@ -64,17 +64,24 @@
   "ui_verification": {
     "status": "failed",
     "space_tab_found": true,
-    "telemetry_view_found": false,
+    "telemetry_view_found": true,
     "settings_panel_found": false,
     "ai_key_inputs_found": false,
     "layout_overlap_check": {
-      "status": "pending",
-      "major_overlap_count": null,
-      "samples": []
+      "status": "failed",
+      "major_overlap_count": 1,
+      "samples": [
+        {
+          "a": "button:inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/40 ",
+          "b": "button:Refresh WWT",
+          "area": 1166,
+          "ratio": 0.6
+        }
+      ]
     }
   },
   "overall_status": "FAIL",
-  "error": "Attempted to use detached Frame '52ACA0BBF8BBED2B42ACF6B646AFC21B'.",
+  "error": "Foreground layout overlap regression: [{\"a\":\"button:inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/40 \",\"b\":\"button:Refresh WWT\",\"area\":1166,\"ratio\":0.6}]",
   "partial_reasons": [
     "no configured Odysseus or server-side AI provider model endpoint"
   ]
