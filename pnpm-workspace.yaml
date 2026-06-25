@@ -4,6 +4,10 @@ allowBuilds:
   protobufjs: set this to true or false
   puppeteer: set this to true or false
 
+peerDependencyRules:
+  allowedVersions:
+    "rollup-plugin-external-globals>rollup": "^2.25.0 || ^4.0.0"
+
 overrides:
   vite: 6.4.3
   dompurify: 3.4.11

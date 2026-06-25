@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-25T16:42:07.552Z",
+  "timestamp": "2026-06-25T16:49:54.411Z",
   "services": {
     "vite": {
       "status": "online",
@@ -51,8 +51,8 @@
     }
   },
   "proxy_chat_flow": {
-    "status": "success",
-    "response": "Hello! I am a mock LLM response."
+    "status": "invalid_response",
+    "response": "Local bridge assistant response.\nInput accepted without echoing the prompt text. Prompt length: 42 characters.\nBridge chat loop verified: request validated, Odysseus availability checked, and assistant output returned separately.\nNo custom system instructions were supplied. Odysseus model status: no configured Odysseus or server-side AI provider model endpoint."
   },
   "ui_verification": {
     "status": "failed",
@@ -67,8 +67,9 @@
     }
   },
   "overall_status": "FAIL",
-  "error": "AI Settings panel not verified: {\"hasSettingsShell\":true,\"hasAiControls\":true,\"hasApiKeyInputs\":true,\"hasBridgeConnectorStatus\":false,\"hasSupportedConnectorCount\":true,\"hasApifyEnv\":true,\"hasNotionEnv\":true,\"hasSecretLeak\":false}",
+  "error": "Attempted to use detached Frame 'F0B1021CC7BECAE6C176DBD2DC824965'.",
   "partial_reasons": [
-    "no configured Odysseus or server-side AI provider model endpoint"
+    "no configured Odysseus or server-side AI provider model endpoint",
+    "unexpected proxy response: {\"response\":\"Local bridge assistant response.\\nInput accepted without echoing the prompt text. Prompt length: 42 characters.\\nBridge chat loop verified: request validated, Odysseus availability checked, and assistant output returned separately.\\nNo custom system instructions were supplied. Odysseus model status: no configured Odysseus or server-side AI provider model endpoint.\",\"mode\":\"local-fallback\",\"reason\":\"no configured Odysseus or server-side AI provider model endpoint\"}"
   ]
 }

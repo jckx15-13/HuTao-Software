@@ -2,6 +2,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { execSync, spawn } = require('child_process');
 const puppeteer = require('puppeteer');
 
@@ -224,9 +225,67 @@ async function settleReact(page, ms = 350) {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function findSystemBrowserExecutable() {
+  const explicit = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_PATH;
+  if (explicit && fs.existsSync(explicit)) {
+    return explicit;
+  }
+
+  const candidates = [];
+  const puppeteerCacheDir = process.env.PUPPETEER_CACHE_DIR || path.join(os.homedir(), '.cache', 'puppeteer');
+  const puppeteerChromeDir = path.join(puppeteerCacheDir, 'chrome');
+  try {
+    const cachedChromeBuilds = fs
+      .readdirSync(puppeteerChromeDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+    for (const build of cachedChromeBuilds) {
+      if (process.platform === 'win32') {
+        candidates.push(path.join(puppeteerChromeDir, build, 'chrome-win64', 'chrome.exe'));
+      } else if (process.platform === 'darwin') {
+        candidates.push(path.join(puppeteerChromeDir, build, 'chrome-mac-arm64', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing'));
+        candidates.push(path.join(puppeteerChromeDir, build, 'chrome-mac-x64', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing'));
+      } else {
+        candidates.push(path.join(puppeteerChromeDir, build, 'chrome-linux64', 'chrome'));
+      }
+    }
+  } catch {
+    // Falling back to system browser candidates below is enough.
+  }
+
+  if (process.platform === 'win32') {
+    for (const base of [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA]) {
+      if (!base) continue;
+      candidates.push(
+        path.join(base, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        path.join(base, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+      );
+    }
+  } else if (process.platform === 'darwin') {
+    candidates.push(
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    );
+  } else {
+    candidates.push(
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/microsoft-edge',
+    );
+  }
+
+  return candidates.find((candidate) => candidate && fs.existsSync(candidate));
+}
+
 async function launchVerificationBrowser() {
+  const executablePath = findSystemBrowserExecutable();
   return puppeteer.launch({
     headless: true,
+    ...(executablePath ? { executablePath } : {}),
     protocolTimeout: 60000,
     args: [
       '--no-sandbox',
@@ -1076,16 +1135,38 @@ async function run() {
       console.log('- Activating Settings on the existing verification page...');
 
       console.log('- Activating AI Settings page via Zustand store...');
-      const settingsState = await evaluateWithRetry(page, () => {
-        const store = window.useUIStore.getState();
-        store.setSettingsCategory('ai');
-        store.setCurrentPage('settings');
-        const updated = window.useUIStore.getState();
-        return {
-          currentPage: updated.currentPage,
-          settingsCategory: updated.settingsCategory,
-        };
-      });
+      let settingsState = null;
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        try {
+          settingsState = await evaluateWithRetry(page, () => {
+            const store = window.useUIStore.getState();
+            store.setSettingsCategory('ai');
+            store.setCurrentPage('settings');
+            const updated = window.useUIStore.getState();
+            return {
+              currentPage: updated.currentPage,
+              settingsCategory: updated.settingsCategory,
+            };
+          }, 3);
+        } catch (err) {
+          if (!isRetryablePageError(err)) {
+            throw err;
+          }
+          console.warn(`- Settings activation retry ${attempt + 1}: ${err.message}`);
+          ({ browser, page } = await recoverVerificationPage(browser, page, `Settings retry ${attempt + 1}`));
+          await page.goto(`http://127.0.0.1:${VITE_PORT}/?fallback=true`, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => undefined);
+          await waitForUiStore(page).catch(() => undefined);
+          await settleReact(page);
+          continue;
+        }
+        if (settingsState?.currentPage === 'settings' && settingsState?.settingsCategory === 'ai') {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      if (!settingsState) {
+        throw new Error('AI Settings page state could not be activated.');
+      }
 
       console.log('- Asserting AI Settings route and source-backed key inputs exist...');
       const aiSettingsSource = fs.readFileSync(path.join(rootDir, 'src', 'components', 'settings', 'AiSettings.tsx'), 'utf8');
@@ -1168,34 +1249,4 @@ async function run() {
 
     report.partial_reasons = partialReasons;
     report.overall_status = partialReasons.length > 0 ? 'PARTIAL' : 'PASS';
-    console.log(`Verification completed: ${report.overall_status}`);
-
-  } catch (err) {
-    report.error = err.message;
-    report.partial_reasons = partialReasons;
-    console.error('Verification FAILED:', err.stack || err.message);
-  } finally {
-    // 6. Clean up database
-    if (report.database_seeding === 'success') {
-      console.log('6. Cleaning up database...');
-      try {
-        execSync(`${pythonExec} "${dbHelperPath}" cleanup`, { stdio: 'inherit' });
-      } catch (cleanupErr) {
-        console.error(`Database cleanup failed: ${cleanupErr.message}`);
-      }
-    }
-
-    // 7. Stop mock LLM server
-    if (mockLlmServer) {
-      console.log('7. Stopping mock LLM server...');
-      mockLlmServer.close();
-    }
-
-    // 8. Write JSON report
-    const reportPath = path.join(__dirname, 'verification_report.json');
-    fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf8');
-    console.log(`Report written to ${reportPath}`);
-  }
-}
-
-run();
+    

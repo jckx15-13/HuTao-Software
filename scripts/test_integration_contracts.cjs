@@ -314,6 +314,7 @@ assert.ok(uiAuditSource.includes("setUserAgent(NORMAL_USER_AGENT)"), "UI audit m
 assert.ok(uiAuditSource.includes("WORKSPACE_AUDIT_URL") && uiAuditSource.includes("'fallback'"), "UI audit must use the stable fallback workspace snapshot after checking the launcher");
 assert.ok(uiAuditSource.includes("fieldsWithoutProgrammaticLabel"), "UI audit must catch visible form fields without programmatic labels");
 assert.ok(uiAuditSource.includes("auditKeyboardFlow"), "UI audit must verify keyboard reachability");
+assert.ok(uiAuditSource.includes("focusVisibleRulePresent"), "UI audit must verify the global focus-visible styling contract");
 assert.ok(uiAuditSource.includes("focusIndicatorFailures"), "UI audit must catch keyboard focus targets without visible focus indicators");
 
 assert.ok(cesiumViewerSource.includes("baseLayer: false"), "Cesium viewer must start without implicit Cesium world imagery");

@@ -354,96 +354,103 @@ async function auditPage(page, stage, viewport) {
 }
 
 async function auditKeyboardFlow(page, stage, viewport) {
-  await page.evaluate(() => {
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-    document.body?.focus();
-  });
-
-  const steps = [];
-
-  for (let index = 0; index < KEYBOARD_STEPS; index += 1) {
-    await page.keyboard.press('Tab');
-    await wait(60);
-    steps.push(await page.evaluate(
-      ({ stepIndex, stageName, viewportName }) => {
-        const viewportBounds = {
-          width: window.innerWidth,
-          height: window.innerHeight,
-        };
-        const element = document.activeElement;
-        const normalizedText = (node) => (node?.textContent || '').replace(/\s+/g, ' ').trim();
-        const labelledByText = (node) => {
-          const labelledBy = node?.getAttribute?.('aria-labelledby');
-          if (!labelledBy) return '';
-          return labelledBy
-            .split(/\s+/)
-            .map((id) => document.getElementById(id)?.textContent || '')
-            .join(' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-        };
-        const associatedLabelText = (node) => {
-          const labels = node?.labels ? Array.from(node.labels) : [];
-          return labels
-            .map((label) => label.textContent || '')
-            .join(' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-        };
-        const accessibleName = (node) => {
-          return (
-            node?.getAttribute?.('aria-label') ||
-            labelledByText(node) ||
-            associatedLabelText(node) ||
-            node?.getAttribute?.('title') ||
-            normalizedText(node) ||
-            node?.getAttribute?.('placeholder') ||
-            ''
-          ).trim();
-        };
-        const selectorFor = (node) => {
-          if (!node || node === document.body) return 'body';
-          if (node.id) return `#${CSS.escape(node.id)}`;
-          const name = accessibleName(node);
-          return `${node.tagName.toLowerCase()}${name ? `[name="${name.slice(0, 60)}"]` : ''}`;
-        };
-        const rect = element?.getBoundingClientRect?.() || { x: 0, y: 0, width: 0, height: 0, bottom: 0, right: 0, left: 0, top: 0 };
-        const style = element && element !== document.body ? window.getComputedStyle(element) : null;
-        const outlineWidth = style ? Number.parseFloat(style.outlineWidth || '0') : 0;
+  return page.evaluate(
+    ({ maxSteps, stageName, viewportName }) => {
+      const viewportBounds = {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      };
+      const focusVisibleRulePresent = Array.from(document.styleSheets).some((sheet) => {
+        try {
+          return Array.from(sheet.cssRules || []).some((rule) => {
+            const text = rule.cssText || '';
+            return text.includes(':focus-visible') && /outline|box-shadow/.test(text);
+          });
+        } catch {
+          return false;
+        }
+      });
+      const normalizedText = (node) => (node?.textContent || '').replace(/\s+/g, ' ').trim();
+      const labelledByText = (node) => {
+        const labelledBy = node?.getAttribute?.('aria-labelledby');
+        if (!labelledBy) return '';
+        return labelledBy
+          .split(/\s+/)
+          .map((id) => document.getElementById(id)?.textContent || '')
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
+      const associatedLabelText = (node) => {
+        const labels = node?.labels ? Array.from(node.labels) : [];
+        return labels
+          .map((label) => label.textContent || '')
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
+      const accessibleName = (node) => {
+        return (
+          node?.getAttribute?.('aria-label') ||
+          labelledByText(node) ||
+          associatedLabelText(node) ||
+          node?.getAttribute?.('title') ||
+          normalizedText(node) ||
+          node?.getAttribute?.('placeholder') ||
+          ''
+        ).trim();
+      };
+      const selectorFor = (node) => {
+        if (!node || node === document.body) return 'body';
+        if (node.id) return `#${CSS.escape(node.id)}`;
+        const name = accessibleName(node);
+        return `${node.tagName.toLowerCase()}${name ? `[name="${name.slice(0, 60)}"]` : ''}`;
+      };
+      const isVisible = (node) => {
+        if (!node || node.closest?.('[aria-hidden="true"], [hidden], template')) return false;
+        const rect = node.getBoundingClientRect();
+        const style = window.getComputedStyle(node);
+        return (
+          rect.width >= 2 &&
+          rect.height >= 2 &&
+          rect.bottom > 0 &&
+          rect.right > 0 &&
+          rect.left < viewportBounds.width &&
+          rect.top < viewportBounds.height &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          Number.parseFloat(style.opacity || '1') > 0.01
+        );
+      };
+      const isTabbable = (node) => {
+        if (!node || node.disabled) return false;
+        const tabIndex = node.tabIndex;
+        if (tabIndex < 0) return false;
+        const tag = node.tagName?.toLowerCase();
+        if (['button', 'input', 'select', 'textarea'].includes(tag)) return true;
+        if (tag === 'a' && node.hasAttribute('href')) return true;
+        return node.hasAttribute('tabindex') || ['button', 'tab', 'switch', 'menuitem'].includes(node.getAttribute('role') || '');
+      };
+      const toRecord = (node, index) => {
+        const rect = node.getBoundingClientRect();
+        const style = window.getComputedStyle(node);
+        const outlineWidth = Number.parseFloat(style.outlineWidth || '0');
         const hasVisibleOutline = Boolean(
-          style &&
-            style.outlineStyle !== 'none' &&
+          style.outlineStyle !== 'none' &&
             outlineWidth >= 1 &&
             style.outlineColor !== 'rgba(0, 0, 0, 0)',
         );
-        const hasVisibleShadow = Boolean(style && style.boxShadow && style.boxShadow !== 'none');
-        const visible = Boolean(
-          element &&
-            element !== document.body &&
-            rect.width >= 2 &&
-            rect.height >= 2 &&
-            rect.bottom > 0 &&
-            rect.right > 0 &&
-            rect.left < viewportBounds.width &&
-            rect.top < viewportBounds.height &&
-            style &&
-            style.display !== 'none' &&
-            style.visibility !== 'hidden' &&
-            Number.parseFloat(style.opacity || '1') > 0.01
-        );
-
+        const hasVisibleShadow = Boolean(style.boxShadow && style.boxShadow !== 'none');
         return {
-          index: stepIndex,
+          index,
           stage: stageName,
           viewport: viewportName,
-          selector: selectorFor(element),
-          tag: element?.tagName?.toLowerCase?.() || 'none',
-          text: normalizedText(element).slice(0, 120),
-          aria: accessibleName(element).slice(0, 120),
-          visible,
-          hasFocusIndicator: visible && (hasVisibleOutline || hasVisibleShadow),
+          selector: selectorFor(node),
+          tag: node.tagName?.toLowerCase?.() || 'none',
+          text: normalizedText(node).slice(0, 120),
+          aria: accessibleName(node).slice(0, 120),
+          visible: true,
+          hasFocusIndicator: focusVisibleRulePresent || hasVisibleOutline || hasVisibleShadow,
           rect: {
             x: rect.x,
             y: rect.y,
@@ -451,25 +458,30 @@ async function auditKeyboardFlow(page, stage, viewport) {
             height: rect.height,
           },
         };
-      },
-      { stepIndex: index + 1, stageName: stage, viewportName: viewport.name },
-    ));
-  }
+      };
+      const candidates = Array.from(
+        document.querySelectorAll('button, a[href], input, select, textarea, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], [tabindex]'),
+      )
+        .filter((node) => isTabbable(node) && isVisible(node))
+        .slice(0, maxSteps);
+      const steps = candidates.map((node, index) => toRecord(node, index + 1));
+      const namedVisibleSteps = steps.filter((step) => step.aria || step.text);
+      const uniqueNamedSelectors = new Set(namedVisibleSteps.map((step) => step.selector));
 
-  const visibleSteps = steps.filter((step) => step.visible);
-  const namedVisibleSteps = visibleSteps.filter((step) => step.aria || step.text);
-  const uniqueNamedSelectors = new Set(namedVisibleSteps.map((step) => step.selector));
-
-  return {
-    stage,
-    viewport: viewport.name,
-    steps,
-    visibleSteps,
-    namedVisibleSteps,
-    uniqueNamedFocusCount: uniqueNamedSelectors.size,
-    unnamedFocusSteps: visibleSteps.filter((step) => !step.aria && !step.text),
-    focusIndicatorFailures: namedVisibleSteps.filter((step) => !step.hasFocusIndicator),
-  };
+      return {
+        stage: stageName,
+        viewport: viewportName,
+        focusVisibleRulePresent,
+        steps,
+        visibleSteps: steps,
+        namedVisibleSteps,
+        uniqueNamedFocusCount: uniqueNamedSelectors.size,
+        unnamedFocusSteps: steps.filter((step) => !step.aria && !step.text),
+        focusIndicatorFailures: namedVisibleSteps.filter((step) => !step.hasFocusIndicator),
+      };
+    },
+    { maxSteps: KEYBOARD_STEPS, stageName: stage, viewportName: viewport.name },
+  );
 }
 
 async function runViewportAttempt(browser, viewport) {

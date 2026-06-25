@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
 import zlib from 'node:zlib';
 import { dirname } from 'node:path';
+import os from 'node:os';
 import { setTimeout as wait } from 'node:timers/promises';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -220,8 +221,79 @@ async function measureFrontend() {
     return { status: 'skipped', reason: `puppeteer not available: ${error.message}` };
   }
 
+  async function findBrowserExecutable() {
+    const explicit = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_PATH;
+    if (explicit) {
+      try {
+        await fs.access(explicit);
+        return explicit;
+      } catch {
+        // Continue to cached and system candidates.
+      }
+    }
+
+    const candidates = [];
+    const puppeteerCacheDir = process.env.PUPPETEER_CACHE_DIR || path.join(os.homedir(), '.cache', 'puppeteer');
+    const puppeteerChromeDir = path.join(puppeteerCacheDir, 'chrome');
+    try {
+      const cachedChromeBuilds = (await fs.readdir(puppeteerChromeDir, { withFileTypes: true }))
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+        .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+      for (const build of cachedChromeBuilds) {
+        if (process.platform === 'win32') {
+          candidates.push(path.join(puppeteerChromeDir, build, 'chrome-win64', 'chrome.exe'));
+        } else if (process.platform === 'darwin') {
+          candidates.push(path.join(puppeteerChromeDir, build, 'chrome-mac-arm64', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing'));
+          candidates.push(path.join(puppeteerChromeDir, build, 'chrome-mac-x64', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing'));
+        } else {
+          candidates.push(path.join(puppeteerChromeDir, build, 'chrome-linux64', 'chrome'));
+        }
+      }
+    } catch {
+      // Continue to system candidates.
+    }
+
+    if (process.platform === 'win32') {
+      for (const base of [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA]) {
+        if (!base) continue;
+        candidates.push(
+          path.join(base, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+          path.join(base, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+        );
+      }
+    } else if (process.platform === 'darwin') {
+      candidates.push(
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+        '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      );
+    } else {
+      candidates.push(
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/microsoft-edge',
+      );
+    }
+
+    for (const candidate of candidates) {
+      try {
+        await fs.access(candidate);
+        return candidate;
+      } catch {
+        // Try the next candidate.
+      }
+    }
+
+    return null;
+  }
+
+  const executablePath = await findBrowserExecutable();
   const launchBrowser = () => puppeteer.launch({
       headless: 'new',
+      ...(executablePath ? { executablePath } : {}),
       args: ['--no-sandbox', '--disable-dev-shm-usage'],
     });
 
