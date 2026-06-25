@@ -98,9 +98,6 @@ async function forceLauncherPage(page) {
       launcherDismissed: false,
       leftPanelOpen: true,
       rightPanelOpen: true,
-      interactionMode: 'chat',
-      primaryView: 'chat',
-      spaceInteractionTarget: 'earth',
     };
 
     window.localStorage.setItem(key, JSON.stringify({ state, version: 7 }));
@@ -398,21 +395,7 @@ async function runViewportAttempt(browser, viewport) {
 }
 
 async function runViewport(browser, viewport) {
-  let lastError;
-
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    try {
-      return await runViewportAttempt(browser, viewport);
-    } catch (error) {
-      lastError = error;
-      if (!isRetryableFrameError(error) || attempt === 3) {
-        throw error;
-      }
-      await wait(750 * attempt);
-    }
-  }
-
-  throw lastError;
+  return runViewportAttempt(browser, viewport);
 }
 
 function evaluateResults(results) {
