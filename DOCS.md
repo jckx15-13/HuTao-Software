@@ -104,7 +104,7 @@ Validation:
 
 - Current 2026-06-23 validation: `npm run lint` passes.
 - Current 2026-06-23 validation: `npm test` passes the cursor contract test, physics/astronomy/local-AI runtime test, bridge URL normalization checks, and repository integration contract test.
-- Current 2026-06-23 validation: `npm run build` passes with the entry chunk reduced to about 498 kB, below Vite's 500 kB warning threshold.
+- Current 2026-06-25 validation: `npm run build` passes; the startup chunk is about 502 kB and still triggers Vite's large-chunk warning, so further route-level splitting remains a performance follow-up.
 - Current 2026-06-23 browser smoke: `http://127.0.0.1:3005/?fallback=true` accepts input in the chat composer, appends a separate local AI response, defaults to `arcgis-world`, keeps particles and side panels off, and reports no major first-viewport region overlaps at 1366x768.
 - Current 2026-06-23 production-preview smoke: temporary Vite preview at `http://127.0.0.1:4174/?fallback=true` produced the same separate user/local-AI message flow; screenshot evidence is `C:\Users\jaron\AppData\Local\Temp\silver-wolf-chat-layout-1366-preview.png`.
 - Current 2026-06-24 mobile production-preview smoke: temporary Vite preview at `http://127.0.0.1:4178/?fallback=true` accepted a mobile chat prompt, cleared the composer, appended a compact local assistant response that did not echo the prompt text, and reported no visible control overlaps in the 390x844 viewport scan.
