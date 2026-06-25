@@ -207,6 +207,7 @@ assert.ok(
 );
 for (const bridgeProviderContract of [
   "SERVER_AI_PROVIDER_CONFIGS",
+  "SERVER_CONNECTOR_PROVIDER_CONFIGS",
   "BRIDGE_SKIP_ODYSSEUS_START",
   "OPENAI_API_KEY",
   "OPENAI_MODEL",
@@ -214,7 +215,15 @@ for (const bridgeProviderContract of [
   "MISTRAL_API_KEY",
   "PERPLEXITY_API_KEY",
   "GROQ_API_KEY",
+  "APIFY_TOKEN",
+  "GOOGLE_MAPS_API_KEY",
+  "GITHUB_TOKEN",
+  "NOTION_API_KEY",
+  "OPENWEATHER_API_KEY",
   '@app.get("/api/credentials/providers")',
+  '@app.get("/api/connectors/providers")',
+  "get_server_connector_provider_status",
+  "connector_providers",
   '"mode": "server-provider"',
 ]) {
   assert.ok(bridgeSource.includes(bridgeProviderContract), `Bridge credential provider contract missing ${bridgeProviderContract}`);
