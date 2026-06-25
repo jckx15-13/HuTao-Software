@@ -639,6 +639,7 @@ export function LeftPanel() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search project workspaces"
                 placeholder="Search workspaces..."
                 className="min-h-11 w-full rounded-lg bg-white/5 py-2 pl-8 pr-3 text-xs text-text-main focus:outline-none focus:ring-1 focus:ring-primary/35 placeholder:text-white/20 transition-all font-mono border border-transparent"
               />
@@ -733,6 +734,7 @@ export function LeftPanel() {
                   type="text"
                   value={orbitalSearchQuery}
                   onChange={(e) => setOrbitalSearchQuery(e.target.value)}
+                  aria-label="Search landmarks and orbital entities"
                   placeholder="Search landmarks, entities..."
                   className="min-h-11 w-full rounded bg-white/5 py-2 pl-7 pr-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary/30 font-mono border border-white/5"
                 />
@@ -1068,6 +1070,7 @@ export function LeftPanel() {
                     type="text"
                     value={satelliteSearchQuery}
                     onChange={(e) => setSatelliteSearchQuery(e.target.value)}
+                    aria-label="Search satellites"
                     placeholder="Search satellites..."
                     className="min-h-11 w-full rounded bg-[#0a0b10] border border-white/5 py-1.5 pl-7 pr-2 text-xs text-white focus:outline-none focus:border-primary/50 font-mono"
                   />

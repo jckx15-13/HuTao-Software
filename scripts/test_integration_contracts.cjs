@@ -133,6 +133,7 @@ const imageryProviderFactorySource = read("src/core/globe/ImageryProviderFactory
 const wwtViewSource = read("src/components/learning/WorldWideTelescopeView.tsx");
 const googleEarthRemixSource = read("src/components/learning/GoogleEarthRemix.tsx");
 const centerPanelSource = read("src/components/panels/CenterPanel.tsx");
+const leftPanelSource = read("src/components/panels/LeftPanel.tsx");
 const coordinateTransformsSource = read("src/lib/coordinateTransforms.ts");
 const cesiumConstellationsSource = read("src/hooks/cesium/useConstellations.ts");
 const cursorEngineSource = read("src/core/cursor/CursorEngine.ts");
@@ -326,6 +327,13 @@ assert.ok(viteConfigSource.includes("'react-core'"), "Vite config must keep Reac
 assert.ok(!launcherSource.includes("cyber-glitch"), "Launcher heading must not duplicate generated glitch text in the accessibility tree");
 assert.ok(!launcherSource.includes("text-[10px]"), "Launcher status labels must stay at least 11px for mobile readability");
 assert.ok(launcherSource.includes("<main") && launcherSource.includes('aria-labelledby="launcher-title"'), "Launcher must expose a visible main landmark labelled by its heading");
+for (const searchLabel of [
+  'aria-label="Search project workspaces"',
+  'aria-label="Search landmarks and orbital entities"',
+  'aria-label="Search satellites"',
+]) {
+  assert.ok(leftPanelSource.includes(searchLabel), `Left panel search field missing ${searchLabel}`);
+}
 assert.ok(earthquakesSource.includes("mapWebsocketPayload(payload: unknown)"), "Earthquakes plugin must map object websocket payloads instead of warning and ignoring them");
 assert.ok(earthquakesSource.includes("return this.mapWebsocketPayload(data);"), "Earthquakes polling and websocket paths must share entity mapping");
 assert.ok(indexCssSource.includes("--theme-ui-opacity: 0.88"), "Default CSS panel opacity must match restored feature-first glass UI defaults");
