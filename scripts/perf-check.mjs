@@ -21,6 +21,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://127.0.0.1:3005';
 const ROUNDS = Number.parseInt(process.env.PERF_ROUNDS || (isFastProfile ? '3' : '6'), 10);
 const INTERVAL_MS = Number.parseInt(process.env.PERF_INTERVAL_MS || (isFastProfile ? '40' : '120'), 10);
 const FRONTEND_PAGES = Number.parseInt(process.env.FRONTEND_PAGES || (isFastProfile ? '1' : '2'), 10);
+const FRONTEND_PAGE_RETRIES = Number.parseInt(process.env.PERF_FRONTEND_PAGE_RETRIES || (isFastProfile ? '2' : '1'), 10);
 const API_WARMUP_ROUNDS = Number.parseInt(process.env.PERF_API_WARMUP_ROUNDS || (isFastProfile ? '1' : '2'), 10);
 const FRONTEND_SETTLE_MS = Number.parseInt(process.env.PERF_FRONTEND_SETTLE_MS || (isFastProfile ? '250' : '1000'), 10);
 const FRONTEND_GOTO_TIMEOUT_MS = Number.parseInt(process.env.PERF_FRONTEND_GOTO_TIMEOUT_MS || (isFastProfile ? '30000' : '45000'), 10);
@@ -204,78 +205,83 @@ async function measureFrontend() {
     const loadErrors = [];
 
     for (let i = 0; i < FRONTEND_PAGES; i += 1) {
-      let page;
-      try {
-        page = await browser.newPage();
-      } catch (error) {
-        failedLoads += 1;
-        loadErrors.push(error.message || String(error));
-        continue;
-      }
-      try {
-        await page.setViewport({ width: 1365, height: 1024 });
-        const pageLoad = await page.goto(FRONTEND_URL, {
-          waitUntil: 'domcontentloaded',
-          timeout: FRONTEND_GOTO_TIMEOUT_MS,
-        });
-        await page
-          .waitForFunction(
-            () => document.body && document.body.innerText.trim().length > 20,
-            { timeout: FRONTEND_CONTENT_TIMEOUT_MS },
-          )
-          .catch((error) => {
-            loadErrors.push(`content wait: ${error.message}`);
+      let loaded = false;
+      for (let attempt = 1; attempt <= FRONTEND_PAGE_RETRIES; attempt += 1) {
+        let page;
+        try {
+          page = await browser.newPage();
+          await page.setViewport({ width: 1365, height: 1024 });
+          const pageLoad = await page.goto(FRONTEND_URL, {
+            waitUntil: 'domcontentloaded',
+            timeout: FRONTEND_GOTO_TIMEOUT_MS,
           });
-        if (FRONTEND_SETTLE_MS > 0 && typeof page.waitForNetworkIdle === 'function') {
           await page
-            .waitForNetworkIdle({
-              idleTime: FRONTEND_SETTLE_MS,
-              timeout: FRONTEND_NETWORK_IDLE_TIMEOUT_MS,
-            })
-            .catch(() => {});
-        } else {
-          await wait(FRONTEND_SETTLE_MS);
+            .waitForFunction(
+              () => document.body && document.body.innerText.trim().length > 20,
+              { timeout: FRONTEND_CONTENT_TIMEOUT_MS },
+            )
+            .catch((error) => {
+              loadErrors.push(`content wait: ${error.message}`);
+            });
+          if (FRONTEND_SETTLE_MS > 0 && typeof page.waitForNetworkIdle === 'function') {
+            await page
+              .waitForNetworkIdle({
+                idleTime: FRONTEND_SETTLE_MS,
+                timeout: FRONTEND_NETWORK_IDLE_TIMEOUT_MS,
+              })
+              .catch(() => {});
+          } else {
+            await wait(FRONTEND_SETTLE_MS);
+          }
+          const metrics = await page.evaluate(() => {
+            const navigation = performance.getEntriesByType('navigation')[0];
+            const paint = performance.getEntriesByType('paint');
+            const resource = performance.getEntriesByType('resource');
+            const lcpEntries = performance.getEntriesByType('largest-contentful-paint');
+            const largestContentfulPaint = lcpEntries.length
+              ? lcpEntries[lcpEntries.length - 1].startTime
+              : null;
+            const totalResourceCount = resource.length;
+            const totalResourceTransfer = resource.reduce(
+              (sum, item) => sum + (item.transferSize || item.encodedBodySize || 0),
+              0,
+            );
+
+            return {
+              timing: {
+                fetchStart: navigation?.fetchStart,
+                domContentLoadedEventEnd: navigation?.domContentLoadedEventEnd,
+                domInteractive: navigation?.domInteractive,
+                loadEventEnd: navigation?.loadEventEnd || performance.now(),
+                responseStart: navigation?.responseStart,
+                requestStart: navigation?.requestStart,
+              },
+              paint: paint.map((entry) => ({ name: entry.name, startTime: entry.startTime })),
+              largestContentfulPaint,
+              totalResourceCount,
+              totalResourceTransfer,
+            };
+          });
+
+          pageResults.push({
+            ...metrics,
+            status: pageLoad?.status(),
+            url: pageLoad?.url(),
+            retryAttempt: attempt,
+          });
+          loaded = true;
+          break;
+        } catch (error) {
+          loadErrors.push(`page ${i + 1} attempt ${attempt}: ${error.message || String(error)}`);
+          if (attempt < FRONTEND_PAGE_RETRIES) {
+            await wait(250 * attempt);
+          }
+        } finally {
+          await page?.close().catch(() => {});
         }
-        const metrics = await page.evaluate(() => {
-          const navigation = performance.getEntriesByType('navigation')[0];
-          const paint = performance.getEntriesByType('paint');
-          const resource = performance.getEntriesByType('resource');
-          const lcpEntries = performance.getEntriesByType('largest-contentful-paint');
-          const largestContentfulPaint = lcpEntries.length
-            ? lcpEntries[lcpEntries.length - 1].startTime
-            : null;
-          const totalResourceCount = resource.length;
-          const totalResourceTransfer = resource.reduce(
-            (sum, item) => sum + (item.transferSize || item.encodedBodySize || 0),
-            0,
-          );
-
-          return {
-            timing: {
-              fetchStart: navigation?.fetchStart,
-              domContentLoadedEventEnd: navigation?.domContentLoadedEventEnd,
-              domInteractive: navigation?.domInteractive,
-              loadEventEnd: navigation?.loadEventEnd || performance.now(),
-              responseStart: navigation?.responseStart,
-              requestStart: navigation?.requestStart,
-            },
-            paint: paint.map((entry) => ({ name: entry.name, startTime: entry.startTime })),
-            largestContentfulPaint,
-            totalResourceCount,
-            totalResourceTransfer,
-          };
-        });
-
-        pageResults.push({
-          ...metrics,
-          status: pageLoad?.status(),
-          url: pageLoad?.url(),
-        });
-      } catch (error) {
+      }
+      if (!loaded) {
         failedLoads += 1;
-        loadErrors.push(error.message || String(error));
-      } finally {
-        await page.close().catch(() => {});
       }
     }
 
@@ -475,6 +481,7 @@ async function main() {
       profile: PERF_PROFILE,
       rounds: ROUNDS,
       frontendPages: FRONTEND_PAGES,
+      frontendPageRetries: FRONTEND_PAGE_RETRIES,
       frontendSettleMs: FRONTEND_SETTLE_MS,
       includeChatBenchmarks: INCLUDE_CHAT_BENCHMARKS,
       includeGitBenchmarks: INCLUDE_GIT_BENCHMARKS,
