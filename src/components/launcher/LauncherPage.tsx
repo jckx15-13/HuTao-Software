@@ -84,7 +84,10 @@ export function LauncherPage() {
   }, [addDiagnostic, bridgeBaseUrl, clearDiagnostics, engineUrlOverride]);
 
   return (
-    <div className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col items-center overflow-y-auto bg-[#0a0b10] px-4 py-8 text-white sm:px-6">
+    <main
+      className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col items-center overflow-y-auto bg-[#0a0b10] px-4 py-8 text-white sm:px-6"
+      aria-labelledby="launcher-title"
+    >
       {/* Background scanline effect */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,6px_100%] pointer-events-none" />
 
@@ -96,7 +99,10 @@ export function LauncherPage() {
             <Hexagon className="h-8 w-8 text-primary animate-spin-slow" />
           </div>
           <div className="max-w-full space-y-1">
-            <h1 className="max-w-full break-words text-2xl font-black uppercase leading-tight tracking-[0.18em] text-white font-sans glow-text sm:text-3xl sm:tracking-[0.28em]">
+            <h1
+              id="launcher-title"
+              className="max-w-full break-words text-2xl font-black uppercase leading-tight tracking-[0.18em] text-white font-sans glow-text sm:text-3xl sm:tracking-[0.28em]"
+            >
               SILVER WOLF VI
             </h1>
             <p className="text-xs font-mono uppercase tracking-[0.16em] text-white/55 sm:tracking-[0.22em]">
@@ -237,6 +243,6 @@ export function LauncherPage() {
         </button>
 
       </div>
-    </div>
+    </main>
   );
 }
