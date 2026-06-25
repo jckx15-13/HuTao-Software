@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-25T05:15:15.549Z",
+  "timestamp": "2026-06-25T05:20:15.458Z",
   "services": {
     "vite": {
       "status": "online",
@@ -26,16 +26,17 @@
   },
   "proxy_chat_flow": {
     "status": "success",
-    "response": "Local bridge assistant response.\nInput accepted without echoing the prompt text. Prompt length: 42 characters.\nBridge chat loop verified: request validated, Odysseus availability checked, and assistant output returned separately.\nNo custom system instructions were supplied. Odysseus model status: Odysseus chat returned 404: {\"detail\":\"Session ad14e1c7-220c-4225-87c0-22e04c243577 not found\"}."
+    "response": "Hello! I am a mock LLM response."
   },
   "ui_verification": {
-    "status": "success",
-    "space_tab_found": true,
-    "telemetry_view_found": true,
-    "settings_panel_found": true,
-    "ai_key_inputs_found": true
+    "status": "failed",
+    "space_tab_found": false,
+    "telemetry_view_found": false,
+    "settings_panel_found": false,
+    "ai_key_inputs_found": false
   },
-  "overall_status": "PARTIAL",
+  "overall_status": "FAIL",
+  "error": "Failed to launch the browser process:  Code: 0\n\nstderr:\n\n\nTROUBLESHOOTING: https://pptr.dev/troubleshooting\n",
   "partial_reasons": [
     "no configured Odysseus model endpoint"
   ]

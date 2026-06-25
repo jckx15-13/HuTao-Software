@@ -8,7 +8,7 @@ import ipaddress
 import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from asyncio import Lock
 import anyio
 import urllib.request
@@ -40,11 +40,11 @@ log_lock = Lock()
 CHAT_SESSION_CACHE_MAX_AGE_SECONDS = 60 * 30
 CHAT_SESSION_CACHE: dict[str, str] = {}
 CHAT_SESSION_CACHE_TTL: dict[str, float] = {}
-CHAT_MODEL_CACHE: dict[str, str] = {}
+CHAT_MODEL_CACHE: dict[str, Any] = {}
 CHAT_MODEL_CACHE_TTL_SECONDS = 60
 CHAT_MODEL_CACHE_TTL: dict[str, float] = {}
 GIT_STATUS_CACHE_MAX_AGE_SECONDS = 2.5
-GIT_STATUS_CACHE: dict[str, any] = {
+GIT_STATUS_CACHE: dict[str, Any] = {
     "data": None,
     "expires_at": 0.0,
 }
@@ -68,6 +68,48 @@ BRIDGE_TEST_LLM_CHAT_URL = os.getenv(
     "BRIDGE_TEST_LLM_CHAT_URL",
     "http://127.0.0.1:9099/v1/chat/completions",
 )
+SERVER_AI_PROVIDER_CONFIGS = [
+    {
+        "id": "openai",
+        "label": "OpenAI API",
+        "key_env": "OPENAI_API_KEY",
+        "model_env": "OPENAI_MODEL",
+        "endpoint_env": "OPENAI_CHAT_COMPLETIONS_URL",
+        "default_endpoint": "https://api.openai.com/v1/chat/completions",
+    },
+    {
+        "id": "openrouter",
+        "label": "OpenRouter",
+        "key_env": "OPENROUTER_API_KEY",
+        "model_env": "OPENROUTER_MODEL",
+        "endpoint_env": "OPENROUTER_CHAT_COMPLETIONS_URL",
+        "default_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+    },
+    {
+        "id": "mistral",
+        "label": "Mistral AI",
+        "key_env": "MISTRAL_API_KEY",
+        "model_env": "MISTRAL_MODEL",
+        "endpoint_env": "MISTRAL_CHAT_COMPLETIONS_URL",
+        "default_endpoint": "https://api.mistral.ai/v1/chat/completions",
+    },
+    {
+        "id": "perplexity",
+        "label": "Perplexity",
+        "key_env": "PERPLEXITY_API_KEY",
+        "model_env": "PERPLEXITY_MODEL",
+        "endpoint_env": "PERPLEXITY_CHAT_COMPLETIONS_URL",
+        "default_endpoint": "https://api.perplexity.ai/chat/completions",
+    },
+    {
+        "id": "groq",
+        "label": "Groq",
+        "key_env": "GROQ_API_KEY",
+        "model_env": "GROQ_MODEL",
+        "endpoint_env": "GROQ_CHAT_COMPLETIONS_URL",
+        "default_endpoint": "https://api.groq.com/openai/v1/chat/completions",
+    },
+]
 
 def get_python_executable() -> str:
     """Returns the path to the virtual environment python if it exists, fallback to sys.executable."""
@@ -346,11 +388,48 @@ def is_usable_chat_session(session: dict) -> bool:
         and not endpoint_points_to_verification_mock(endpoint_url)
     )
 
+def get_server_provider_status() -> list[dict]:
+    providers = []
+    for provider in SERVER_AI_PROVIDER_CONFIGS:
+        has_key = bool(os.getenv(provider["key_env"], "").strip())
+        has_model = bool(os.getenv(provider["model_env"], "").strip())
+        providers.append({
+            "id": provider["id"],
+            "label": provider["label"],
+            "configured": has_key and has_model,
+            "has_key": has_key,
+            "has_model": has_model,
+            "key_env": provider["key_env"],
+            "model_env": provider["model_env"],
+            "endpoint_env": provider["endpoint_env"],
+            "endpoint": os.getenv(provider["endpoint_env"], provider["default_endpoint"]),
+        })
+    return providers
+
+def resolve_server_provider_endpoint() -> tuple[Optional[str], Optional[str], str, dict]:
+    for provider in SERVER_AI_PROVIDER_CONFIGS:
+        api_key = os.getenv(provider["key_env"], "").strip()
+        model_name = os.getenv(provider["model_env"], "").strip()
+        if not api_key or not model_name:
+            continue
+
+        endpoint_url = os.getenv(provider["endpoint_env"], provider["default_endpoint"]).strip()
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+        }
+        if provider["id"] == "openrouter":
+            headers["HTTP-Referer"] = FRONTEND_ORIGIN
+            headers["X-Title"] = "Silver Wolf VI"
+        return model_name, endpoint_url, f"server-side {provider['label']} credential endpoint", headers
+
+    return None, None, "no configured server-side AI provider endpoint", {}
+
 async def call_openai_compatible_chat(
     client: httpx.AsyncClient,
     endpoint_url: str,
     model_name: str,
     req: ChatRequest,
+    provider_headers: Optional[dict] = None,
 ) -> str:
     messages = []
     if req.system_instruction:
@@ -364,6 +443,7 @@ async def call_openai_compatible_chat(
             "messages": messages,
             "temperature": 0,
         },
+        headers=provider_headers or {},
         timeout=45.0,
     )
     response.raise_for_status()
@@ -385,7 +465,7 @@ async def call_openai_compatible_chat(
                 return value.strip()
     return "No response generated."
 
-async def resolve_chat_endpoint(client: httpx.AsyncClient, headers: dict) -> tuple[Optional[str], Optional[str], str]:
+async def resolve_chat_endpoint(client: httpx.AsyncClient, headers: dict) -> tuple[Optional[str], Optional[str], str, dict]:
     cached = _get_cached_chat_model()
     if cached:
         return cached[0], cached[1], "configured Odysseus model endpoint (cache)"
@@ -415,7 +495,11 @@ async def resolve_chat_endpoint(client: httpx.AsyncClient, headers: dict) -> tup
         ).strip()
         if model_name and endpoint_url and not endpoint_points_to_odysseus_loopback(endpoint_url):
             _set_cached_chat_model(model_name, endpoint_url)
-            return model_name, endpoint_url, "configured Odysseus model endpoint"
+            return model_name, endpoint_url, "configured Odysseus model endpoint", {}
+
+    server_model, server_endpoint, server_status, server_headers = resolve_server_provider_endpoint()
+    if server_model and server_endpoint:
+        return server_model, server_endpoint, server_status, server_headers
 
     mock_models_url = BRIDGE_TEST_LLM_CHAT_URL.replace("/chat/completions", "/models")
     try:
@@ -427,11 +511,11 @@ async def resolve_chat_endpoint(client: httpx.AsyncClient, headers: dict) -> tup
             if isinstance(mock_models, list) and mock_models:
                 mock_model = str(mock_models[0].get("id") or mock_model)
             _set_cached_chat_model(mock_model, BRIDGE_TEST_LLM_CHAT_URL)
-            return mock_model, BRIDGE_TEST_LLM_CHAT_URL, "verification mock LLM endpoint"
+            return mock_model, BRIDGE_TEST_LLM_CHAT_URL, "verification mock LLM endpoint", {}
     except Exception:
         pass
 
-    return None, None, "no configured Odysseus model endpoint"
+    return None, None, "no configured Odysseus or server-side AI provider model endpoint", {}
 
 @app.post("/log")
 async def log_diagnostic(entry: LogEntry):
