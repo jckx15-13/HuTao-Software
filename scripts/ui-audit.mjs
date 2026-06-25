@@ -108,6 +108,51 @@ async function gotoWithRetry(page, url) {
   throw lastError;
 }
 
+async function readBodyText(page) {
+  return page.evaluate(() => document.body?.innerText || '');
+}
+
+async function waitForBodyText(page) {
+  const deadline = Date.now() + CONTENT_TIMEOUT_MS;
+  let lastError;
+
+  while (Date.now() < deadline) {
+    try {
+      const bodyText = await readBodyText(page);
+      if (bodyText.trim().length > 20) {
+        return bodyText;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+    await wait(200);
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
+  throw new Error('Timed out waiting for visible body text');
+}
+
+async function waitForWorkspaceText(page) {
+  const deadline = Date.now() + CONTENT_TIMEOUT_MS;
+  let lastText = '';
+
+  while (Date.now() < deadline) {
+    try {
+      lastText = await readBodyText(page);
+      if (/project workspaces|ai workspace|chat space/i.test(lastText)) {
+        return true;
+      }
+    } catch {
+      // The app can recreate frames during shell transition; retry until the deadline.
+    }
+    await wait(250);
+  }
+
+  return /project workspaces|ai workspace|chat space/i.test(lastText);
+}
+
 async function launchWorkspace(page) {
   const clicked = await page.evaluate(() => {
     const button = Array.from(document.querySelectorAll('button')).find((candidate) => {
@@ -124,12 +169,7 @@ async function launchWorkspace(page) {
   }
 
   await wait(WORKSPACE_SETTLE_MS);
-  await page
-    .waitForFunction(
-      () => /project workspaces|ai workspace|chat space/i.test(document.body?.innerText || ''),
-      { timeout: CONTENT_TIMEOUT_MS },
-    )
-    .catch(() => {});
+  await waitForWorkspaceText(page);
   return true;
 }
 
@@ -296,7 +336,7 @@ async function runViewport(browser, viewport) {
     await page.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
     await forceLauncherPage(page);
     await gotoWithRetry(page, AUDIT_URL);
-    await page.waitForFunction(() => document.body && document.body.innerText.trim().length > 20, { timeout: CONTENT_TIMEOUT_MS });
+    await waitForBodyText(page);
     await wait(isFastProfile ? 700 : 1200);
 
     const launcher = await auditPage(page, 'launcher', viewport);
@@ -445,7 +485,17 @@ async function main() {
   const browser = await puppeteer.launch({
     headless: 'new',
     protocolTimeout: 90000,
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+    args: [
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-gpu-compositing',
+      '--disable-webgl',
+      '--disable-webgl2',
+      '--disable-3d-apis',
+      '--disable-extensions',
+      '--use-gl=swiftshader',
+    ],
   });
 
   try {
