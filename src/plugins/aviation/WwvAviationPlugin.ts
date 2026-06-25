@@ -11,7 +11,6 @@ import type {
 import {
   fetchWwtJson,
   getWwtAssetLocalUrl,
-  getWwtAssetRemoteUrl,
   getWwtAssetSourcePath,
   WWT_ASSET_PATHS,
 } from "@/lib/wwt/repositoryData";
@@ -37,11 +36,11 @@ type AircraftGeoJson = {
   features?: AircraftFeature[];
 };
 
-const PLANE_ICON_URL = getWwtAssetRemoteUrl(WWT_ASSET_PATHS.planeIcon);
-const MILITARY_PLANE_ICON_URL = getWwtAssetRemoteUrl(WWT_ASSET_PATHS.militaryPlaneIcon);
+const PLANE_ICON_URL = getWwtAssetLocalUrl(WWT_ASSET_PATHS.planeIcon);
+const MILITARY_PLANE_ICON_URL = getWwtAssetLocalUrl(WWT_ASSET_PATHS.militaryPlaneIcon);
 const AIRCRAFT_DATASET_SOURCE_PATH = getWwtAssetSourcePath(DATASET_PATH);
 const AIRCRAFT_ASSET_ROOT = getWwtAssetSourcePath("");
-const AIRCRAFT_MODEL_URL = getWwtAssetRemoteUrl(WWT_ASSET_PATHS.airplaneModel);
+const AIRCRAFT_MODEL_URL = getWwtAssetLocalUrl(WWT_ASSET_PATHS.airplaneModel);
 
 function cleanText(value: unknown, fallback = "Unknown"): string {
   const text = String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();

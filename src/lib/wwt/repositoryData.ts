@@ -42,6 +42,7 @@ export function getWwtAssetSourcePath(assetPath: string): string {
 export type WwtJsonFetchOptions = {
   fallbackToLocal?: boolean;
   init?: RequestInit;
+  preferLocal?: boolean;
   timeoutMs?: number;
 };
 
@@ -54,9 +55,20 @@ export async function fetchWwtJson<T>(
   assetPath: string,
   options: WwtJsonFetchOptions = {},
 ): Promise<T> {
-  const { fallbackToLocal = false, timeoutMs = 20_000 } = options;
+  const { fallbackToLocal = true, preferLocal = true, timeoutMs = 20_000 } = options;
   const effectiveTimeoutMs = clampTimeoutMs(timeoutMs);
   const { remote, local } = resolveWwtAssetPath(assetPath);
+  const normalizedPath = normalizeAssetPath(assetPath);
+  const localCandidates = [
+    local,
+    `${WWT_LOCAL_ASSET_ROOT}/source-public/${normalizedPath}`,
+    `${WWT_LOCAL_ASSET_ROOT}/data/${normalizedPath}`,
+  ];
+  const fetchCandidates = Array.from(new Set(
+    preferLocal
+      ? [...localCandidates, remote]
+      : [remote, ...(fallbackToLocal ? localCandidates : [])],
+  ));
 
   const withTimeout = async (url: string): Promise<Response> => {
     const timeoutSignal = AbortSignal.timeout
@@ -83,25 +95,22 @@ export async function fetchWwtJson<T>(
     }
   };
 
-  try {
-    const response = await withTimeout(remote);
-    if (!response.ok) {
-      throw new Error(`Remote WWT asset request failed with status ${response.status} (${response.statusText})`);
+  let lastError: unknown = null;
+  for (const candidateUrl of fetchCandidates) {
+    try {
+      const response = await withTimeout(candidateUrl);
+      if (!response.ok) {
+        throw new Error(`WWT asset request failed for ${candidateUrl} with status ${response.status} (${response.statusText})`);
+      }
+      return (await response.json()) as T;
+    } catch (error) {
+      lastError = error;
     }
-    return (await response.json()) as T;
-  } catch (remoteError) {
-    if (!fallbackToLocal) {
-      throw remoteError;
-    }
-
-    const fallbackResponse = await withTimeout(local);
-    if (!fallbackResponse.ok) {
-      throw new Error(
-        `WWT asset requests failed for both remote (${remote}) and local (${local}) sources; last error: ${String(remoteError)}`,
-      );
-    }
-    return (await fallbackResponse.json()) as T;
   }
+
+  throw new Error(
+    `WWT asset requests failed for ${fetchCandidates.join(", ")}; last error: ${String(lastError)}`,
+  );
 }
 
 export const WWT_ASSET_PATHS = {

@@ -8,7 +8,7 @@ import type {
     CesiumEntityOptions,
 } from "@/core/plugins/PluginTypes";
 import { createSvgIconUrl } from "@/wwv-sdk";
-import { fetchWwtJson, getWwtAssetLocalUrl, getWwtAssetRemoteUrl, getWwtAssetSourcePath, WWT_ASSET_PATHS } from "@/lib/wwt/repositoryData";
+import { fetchWwtJson, getWwtAssetLocalUrl, getWwtAssetSourcePath, WWT_ASSET_PATHS } from "@/lib/wwt/repositoryData";
 
 const DATASET_PATH = WWT_ASSET_PATHS.militaryBasesDataset;
 const STATIC_DATASET_TIMESTAMP = new Date("2026-06-22T00:00:00.000Z");
@@ -95,7 +95,7 @@ export class MilitaryBasesPlugin implements WorldPlugin {
                 const operator = cleanText(props.operator, "Unknown");
                 const entityId = `wwv-military-base-${cleanId(osmId, String(index))}`;
                 const isAirfield = isAirfieldType(type);
-                const visualAssetUrl = isAirfield ? getWwtAssetRemoteUrl(WWT_ASSET_PATHS.militaryPlaneIcon) : shieldIconUrl;
+                const visualAssetUrl = isAirfield ? getWwtAssetLocalUrl(WWT_ASSET_PATHS.militaryPlaneIcon) : shieldIconUrl;
 
                 return [{
                     id: entityId,
@@ -156,7 +156,7 @@ export class MilitaryBasesPlugin implements WorldPlugin {
     renderEntity(entity: GeoEntity): CesiumEntityOptions {
         const type = String(entity.properties.type || "");
         const isAirfield = isAirfieldType(type);
-        const militaryPlaneIconUrl = getWwtAssetRemoteUrl(WWT_ASSET_PATHS.militaryPlaneIcon);
+        const militaryPlaneIconUrl = getWwtAssetLocalUrl(WWT_ASSET_PATHS.militaryPlaneIcon);
 
         return {
             type: "billboard",
