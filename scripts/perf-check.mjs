@@ -32,6 +32,7 @@ const BUDGETS = {
   bridgeStatusP95: Number.parseInt(process.env.PERF_BRIDGE_STATUS_BUDGET_MS || '700', 10),
   bridgeChatP95: Number.parseInt(process.env.PERF_BRIDGE_CHAT_BUDGET_MS || '1800', 10),
   gitStatusP95: Number.parseInt(process.env.PERF_GIT_STATUS_BUDGET_MS || '600', 10),
+  frontendFetchP95: Number.parseInt(process.env.PERF_FRONTEND_FETCH_BUDGET_MS || '700', 10),
   frontendLoadP95: Number.parseInt(process.env.PERF_FRONTEND_LOAD_BUDGET_MS || '2000', 10),
   frontendDomP95: Number.parseInt(process.env.PERF_FRONTEND_DOM_BUDGET_MS || '1500', 10),
 };
@@ -44,6 +45,9 @@ const INCLUDE_GIT_BENCHMARKS = process.env.PERF_INCLUDE_GIT == null
 const COMPRESS_BUNDLE_ASSETS = process.env.PERF_BUNDLE_COMPRESS == null
   ? !isFastProfile
   : process.env.PERF_BUNDLE_COMPRESS !== '0';
+const INCLUDE_FRONTEND_BROWSER = process.env.PERF_FRONTEND_BROWSER == null
+  ? !isFastProfile
+  : process.env.PERF_FRONTEND_BROWSER !== '0';
 
 function percentile(values, p) {
   if (!values.length) return null;
@@ -173,6 +177,29 @@ async function measureChatStream(url, payload) {
 }
 
 async function measureFrontend() {
+  if (!INCLUDE_FRONTEND_BROWSER) {
+    const payload = await measureApi(
+      FRONTEND_URL,
+      { headers: { Accept: 'text/html' } },
+      Math.min(ROUNDS, 3),
+      5000,
+      0,
+    );
+
+    return {
+      status: payload.latency.count > 0 ? 'ok' : 'failed',
+      mode: 'http',
+      reason: payload.latency.count > 0 ? undefined : 'Frontend HTML was not reachable.',
+      htmlFetch: payload,
+      pageResults: [],
+      failedLoads: 0,
+      loadErrors: payload.errors,
+      averages: {
+        htmlFetchMs: payload.latency,
+      },
+    };
+  }
+
   try {
     await requestWithTimeout(FRONTEND_URL, { headers: { Accept: 'text/html' } }, 20000);
   } catch (error) {
@@ -402,6 +429,7 @@ async function main() {
   console.log(`ROUNDS=${ROUNDS} INTERVAL_MS=${INTERVAL_MS} FRONTEND_PAGES=${FRONTEND_PAGES}`);
   console.log(`INCLUDE_CHAT_BENCHMARKS=${INCLUDE_CHAT_BENCHMARKS}`);
   console.log(`INCLUDE_GIT_BENCHMARKS=${INCLUDE_GIT_BENCHMARKS}`);
+  console.log(`INCLUDE_FRONTEND_BROWSER=${INCLUDE_FRONTEND_BROWSER}`);
   console.log(`COMPRESS_BUNDLE_ASSETS=${COMPRESS_BUNDLE_ASSETS}\n`);
 
   const [
@@ -463,6 +491,9 @@ async function main() {
     gitStatusP95: INCLUDE_GIT_BENCHMARKS
       ? warnOrOk('Bridge /git/status p95', results.bridgeGitStatus.payload.latency?.p95, BUDGETS.gitStatusP95)
       : skipped('Bridge /git/status p95', 'Disabled for fast profile.'),
+    frontendFetchP95: INCLUDE_FRONTEND_BROWSER
+      ? skipped('Frontend HTML fetch p95', 'Browser timing enabled for this profile.')
+      : warnOrOk('Frontend HTML fetch p95', frontend.averages?.htmlFetchMs?.p95, BUDGETS.frontendFetchP95),
     frontendLoadP95: warnOrOk(
       'Frontend dom load p95',
       (frontend.averages?.loadMs?.p95 || null),
@@ -485,6 +516,7 @@ async function main() {
       frontendSettleMs: FRONTEND_SETTLE_MS,
       includeChatBenchmarks: INCLUDE_CHAT_BENCHMARKS,
       includeGitBenchmarks: INCLUDE_GIT_BENCHMARKS,
+      includeFrontendBrowser: INCLUDE_FRONTEND_BROWSER,
       compressBundleAssets: COMPRESS_BUNDLE_ASSETS,
       bridgeUrl: BRIDGE_URL,
       frontendUrl: FRONTEND_URL,
