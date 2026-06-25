@@ -16,6 +16,7 @@
     "perf:check:fast": "node scripts/perf-check.mjs --fast"
   },
   "dependencies": {
+    "@google/design.md": "0.3.0",
     "@google/genai": "^1.52.0",
     "@tailwindcss/vite": "^4.3.1",
     "@vitejs/plugin-react": "^5.0.4",
