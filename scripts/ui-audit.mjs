@@ -10,6 +10,7 @@ const jsonOutput = args.has('--json');
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://127.0.0.1:3005';
 const NAVIGATION_TIMEOUT_MS = Number.parseInt(process.env.UI_AUDIT_NAVIGATION_TIMEOUT_MS || '30000', 10);
 const CONTENT_TIMEOUT_MS = Number.parseInt(process.env.UI_AUDIT_CONTENT_TIMEOUT_MS || '12000', 10);
+const LAUNCHER_SETTLE_MS = Number.parseInt(process.env.UI_AUDIT_LAUNCHER_SETTLE_MS || (isFastProfile ? '1800' : '2600'), 10);
 const WORKSPACE_SETTLE_MS = Number.parseInt(process.env.UI_AUDIT_WORKSPACE_SETTLE_MS || (isFastProfile ? '2600' : '4200'), 10);
 const STRICT_CONSOLE = process.env.UI_AUDIT_STRICT_CONSOLE === '1';
 const NORMAL_USER_AGENT = process.env.UI_AUDIT_USER_AGENT ||
@@ -166,6 +167,25 @@ async function waitForWorkspaceText(page) {
   }
 
   return /project workspaces|ai workspace|chat space/i.test(lastText);
+}
+
+async function waitForLauncherReady(page) {
+  const deadline = Date.now() + CONTENT_TIMEOUT_MS;
+  let lastText = '';
+
+  while (Date.now() < deadline) {
+    try {
+      lastText = await readBodyText(page);
+      if (/launch workspace|project workspaces|ai workspace|chat space/i.test(lastText)) {
+        return true;
+      }
+    } catch {
+      // The launcher boot animation can recreate frames during initial render.
+    }
+    await wait(200);
+  }
+
+  return /launch workspace|project workspaces|ai workspace|chat space/i.test(lastText);
 }
 
 async function launchWorkspace(page) {
@@ -353,7 +373,8 @@ async function runViewportAttempt(browser, viewport) {
     await forceLauncherPage(page);
     await gotoWithRetry(page, AUDIT_URL);
     await waitForBodyText(page);
-    await wait(isFastProfile ? 700 : 1200);
+    await wait(LAUNCHER_SETTLE_MS);
+    await waitForLauncherReady(page);
 
     const launcher = await auditPage(page, 'launcher', viewport);
     const clickedLauncher = await launchWorkspace(page);
