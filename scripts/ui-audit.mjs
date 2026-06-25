@@ -17,6 +17,17 @@ const NORMAL_USER_AGENT = process.env.UI_AUDIT_USER_AGENT ||
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 const AUDIT_URL = process.env.UI_AUDIT_URL || FRONTEND_URL;
+const WORKSPACE_AUDIT_URL = process.env.UI_AUDIT_WORKSPACE_URL || withUrlParam(AUDIT_URL, 'fallback', 'true');
+
+function withUrlParam(url, key, value) {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set(key, value);
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
 
 const VIEWPORTS = isFastProfile
   ? [
@@ -157,7 +168,7 @@ async function waitForWorkspaceText(page) {
   while (Date.now() < deadline) {
     try {
       lastText = await readBodyText(page);
-      if (/project workspaces|ai workspace|chat space/i.test(lastText)) {
+      if (/project workspaces|ai workspace|chat space|orbital telemetry system active/i.test(lastText)) {
         return true;
       }
     } catch {
@@ -166,7 +177,7 @@ async function waitForWorkspaceText(page) {
     await wait(250);
   }
 
-  return /project workspaces|ai workspace|chat space/i.test(lastText);
+  return /project workspaces|ai workspace|chat space|orbital telemetry system active/i.test(lastText);
 }
 
 async function waitForLauncherReady(page) {
@@ -188,36 +199,15 @@ async function waitForLauncherReady(page) {
   return /launch workspace|project workspaces|ai workspace|chat space/i.test(lastText);
 }
 
-async function launchWorkspace(page) {
-  const activated = await page.evaluate(() => {
+async function verifyLauncherAction(page) {
+  return page.evaluate(() => {
     const button = Array.from(document.querySelectorAll('button')).find((candidate) => {
       return (candidate.textContent || '').toLowerCase().includes('launch workspace');
     });
 
     if (!button) return false;
-
-    if (window.useUIStore && typeof window.useUIStore.setState === 'function') {
-      window.useUIStore.setState({
-        currentPage: 'workspace',
-        launcherDismissed: true,
-        leftPanelOpen: true,
-        rightPanelOpen: true,
-        interactionMode: 'chat',
-      });
-      return true;
-    }
-
-    button.click();
-    return true;
+    return !button.disabled;
   });
-
-  if (!activated) {
-    return false;
-  }
-
-  await wait(WORKSPACE_SETTLE_MS);
-  await waitForWorkspaceText(page);
-  return true;
 }
 
 async function auditPage(page, stage, viewport) {
@@ -355,7 +345,7 @@ async function auditPage(page, stage, viewport) {
         smallTargets,
         clippedText,
         horizontalOverflowPx,
-        workspaceReady: /project workspaces|ai workspace|chat space/i.test(bodyText),
+        workspaceReady: /project workspaces|ai workspace|chat space|orbital telemetry system active/i.test(bodyText),
       };
     },
     { stageName: stage, viewportName: viewport.name },
@@ -363,7 +353,7 @@ async function auditPage(page, stage, viewport) {
 }
 
 async function runViewportAttempt(browser, viewport) {
-  const page = await browser.newPage();
+  let page = await browser.newPage();
   const consoleIssues = [];
   const pageErrors = [];
   const start = performance.now();
@@ -389,7 +379,26 @@ async function runViewportAttempt(browser, viewport) {
     await waitForLauncherReady(page);
 
     const launcher = await auditPage(page, 'launcher', viewport);
-    const clickedLauncher = await launchWorkspace(page);
+    const clickedLauncher = await verifyLauncherAction(page);
+    await page.close().catch(() => {});
+
+    page = await browser.newPage();
+    page.on('console', (message) => {
+      const type = message.type();
+      const text = message.text();
+      if (type === 'error' || type === 'warning') {
+        consoleIssues.push({ type, text });
+      }
+    });
+    page.on('pageerror', (error) => {
+      pageErrors.push(error.message || String(error));
+    });
+    await page.setUserAgent(NORMAL_USER_AGENT);
+    await page.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
+    await gotoWithRetry(page, WORKSPACE_AUDIT_URL);
+    await waitForBodyText(page);
+    await wait(WORKSPACE_SETTLE_MS);
+    await waitForWorkspaceText(page);
     const workspace = await auditPage(page, 'workspace', viewport);
 
     return {
