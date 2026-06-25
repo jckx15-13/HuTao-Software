@@ -351,10 +351,22 @@ async function measureFrontend() {
       ...(executablePath ? { executablePath } : {}),
       args: ['--no-sandbox', '--disable-dev-shm-usage'],
     });
+  const launchBrowserWithRetry = async (attempts = 3) => {
+    let lastError;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        return await launchBrowser();
+      } catch (error) {
+        lastError = error;
+        await wait(500 * attempt);
+      }
+    }
+    throw lastError;
+  };
 
   let browser;
   try {
-    browser = await launchBrowser();
+    browser = await launchBrowserWithRetry();
     await browser.close().catch(() => {});
     browser = null;
   } catch (error) {
@@ -373,7 +385,7 @@ async function measureFrontend() {
       for (let attempt = 1; attempt <= FRONTEND_PAGE_RETRIES; attempt += 1) {
         let page;
         try {
-          browser = await launchBrowser();
+          browser = await launchBrowserWithRetry();
           page = await browser.newPage();
           await page.setViewport({ width: 1365, height: 1024 });
           const pageLoad = await page.goto(FRONTEND_URL, {

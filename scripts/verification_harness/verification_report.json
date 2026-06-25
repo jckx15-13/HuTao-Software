@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-25T17:22:55.103Z",
+  "timestamp": "2026-06-25T17:30:13.814Z",
   "services": {
     "vite": {
       "status": "online",
@@ -52,7 +52,7 @@
   },
   "feature_reality_ledger": {
     "status": "partial",
-    "integration_score": 78,
+    "integration_score": 66,
     "repository_count": 3,
     "feature_count": 9,
     "runtime_report_status": "FAIL"
@@ -62,26 +62,18 @@
     "response": "Hello! I am a mock LLM response."
   },
   "ui_verification": {
-    "status": "failed",
+    "status": "success",
     "space_tab_found": true,
     "telemetry_view_found": true,
-    "settings_panel_found": false,
-    "ai_key_inputs_found": false,
+    "settings_panel_found": true,
+    "ai_key_inputs_found": true,
     "layout_overlap_check": {
-      "status": "failed",
-      "major_overlap_count": 1,
-      "samples": [
-        {
-          "a": "button:inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/40 ",
-          "b": "button:Refresh WWT",
-          "area": 1166,
-          "ratio": 0.6
-        }
-      ]
+      "status": "success",
+      "major_overlap_count": 0,
+      "samples": []
     }
   },
-  "overall_status": "FAIL",
-  "error": "Foreground layout overlap regression: [{\"a\":\"button:inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/40 \",\"b\":\"button:Refresh WWT\",\"area\":1166,\"ratio\":0.6}]",
+  "overall_status": "PARTIAL",
   "partial_reasons": [
     "no configured Odysseus or server-side AI provider model endpoint"
   ]
