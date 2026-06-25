@@ -18,6 +18,7 @@ const NORMAL_USER_AGENT = process.env.UI_AUDIT_USER_AGENT ||
 
 const AUDIT_URL = process.env.UI_AUDIT_URL || FRONTEND_URL;
 const WORKSPACE_AUDIT_URL = process.env.UI_AUDIT_WORKSPACE_URL || withUrlParam(AUDIT_URL, 'fallback', 'true');
+const KEYBOARD_STEPS = Number.parseInt(process.env.UI_AUDIT_KEYBOARD_STEPS || (isFastProfile ? '8' : '14'), 10);
 
 function withUrlParam(url, key, value) {
   try {
@@ -352,6 +353,125 @@ async function auditPage(page, stage, viewport) {
   );
 }
 
+async function auditKeyboardFlow(page, stage, viewport) {
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    document.body?.focus();
+  });
+
+  const steps = [];
+
+  for (let index = 0; index < KEYBOARD_STEPS; index += 1) {
+    await page.keyboard.press('Tab');
+    await wait(60);
+    steps.push(await page.evaluate(
+      ({ stepIndex, stageName, viewportName }) => {
+        const viewportBounds = {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        };
+        const element = document.activeElement;
+        const normalizedText = (node) => (node?.textContent || '').replace(/\s+/g, ' ').trim();
+        const labelledByText = (node) => {
+          const labelledBy = node?.getAttribute?.('aria-labelledby');
+          if (!labelledBy) return '';
+          return labelledBy
+            .split(/\s+/)
+            .map((id) => document.getElementById(id)?.textContent || '')
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        };
+        const associatedLabelText = (node) => {
+          const labels = node?.labels ? Array.from(node.labels) : [];
+          return labels
+            .map((label) => label.textContent || '')
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        };
+        const accessibleName = (node) => {
+          return (
+            node?.getAttribute?.('aria-label') ||
+            labelledByText(node) ||
+            associatedLabelText(node) ||
+            node?.getAttribute?.('title') ||
+            normalizedText(node) ||
+            node?.getAttribute?.('placeholder') ||
+            ''
+          ).trim();
+        };
+        const selectorFor = (node) => {
+          if (!node || node === document.body) return 'body';
+          if (node.id) return `#${CSS.escape(node.id)}`;
+          const name = accessibleName(node);
+          return `${node.tagName.toLowerCase()}${name ? `[name="${name.slice(0, 60)}"]` : ''}`;
+        };
+        const rect = element?.getBoundingClientRect?.() || { x: 0, y: 0, width: 0, height: 0, bottom: 0, right: 0, left: 0, top: 0 };
+        const style = element && element !== document.body ? window.getComputedStyle(element) : null;
+        const outlineWidth = style ? Number.parseFloat(style.outlineWidth || '0') : 0;
+        const hasVisibleOutline = Boolean(
+          style &&
+            style.outlineStyle !== 'none' &&
+            outlineWidth >= 1 &&
+            style.outlineColor !== 'rgba(0, 0, 0, 0)',
+        );
+        const hasVisibleShadow = Boolean(style && style.boxShadow && style.boxShadow !== 'none');
+        const visible = Boolean(
+          element &&
+            element !== document.body &&
+            rect.width >= 2 &&
+            rect.height >= 2 &&
+            rect.bottom > 0 &&
+            rect.right > 0 &&
+            rect.left < viewportBounds.width &&
+            rect.top < viewportBounds.height &&
+            style &&
+            style.display !== 'none' &&
+            style.visibility !== 'hidden' &&
+            Number.parseFloat(style.opacity || '1') > 0.01
+        );
+
+        return {
+          index: stepIndex,
+          stage: stageName,
+          viewport: viewportName,
+          selector: selectorFor(element),
+          tag: element?.tagName?.toLowerCase?.() || 'none',
+          text: normalizedText(element).slice(0, 120),
+          aria: accessibleName(element).slice(0, 120),
+          visible,
+          hasFocusIndicator: visible && (hasVisibleOutline || hasVisibleShadow),
+          rect: {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+          },
+        };
+      },
+      { stepIndex: index + 1, stageName: stage, viewportName: viewport.name },
+    ));
+  }
+
+  const visibleSteps = steps.filter((step) => step.visible);
+  const namedVisibleSteps = visibleSteps.filter((step) => step.aria || step.text);
+  const uniqueNamedSelectors = new Set(namedVisibleSteps.map((step) => step.selector));
+
+  return {
+    stage,
+    viewport: viewport.name,
+    steps,
+    visibleSteps,
+    namedVisibleSteps,
+    uniqueNamedFocusCount: uniqueNamedSelectors.size,
+    unnamedFocusSteps: visibleSteps.filter((step) => !step.aria && !step.text),
+    focusIndicatorFailures: namedVisibleSteps.filter((step) => !step.hasFocusIndicator),
+  };
+}
+
 async function runViewportAttempt(browser, viewport) {
   let page = await browser.newPage();
   const consoleIssues = [];
@@ -379,6 +499,7 @@ async function runViewportAttempt(browser, viewport) {
     await waitForLauncherReady(page);
 
     const launcher = await auditPage(page, 'launcher', viewport);
+    const launcherKeyboard = await auditKeyboardFlow(page, 'launcher', viewport);
     const clickedLauncher = await verifyLauncherAction(page);
     await page.close().catch(() => {});
 
@@ -400,13 +521,16 @@ async function runViewportAttempt(browser, viewport) {
     await wait(WORKSPACE_SETTLE_MS);
     await waitForWorkspaceText(page);
     const workspace = await auditPage(page, 'workspace', viewport);
+    const workspaceKeyboard = await auditKeyboardFlow(page, 'workspace', viewport);
 
     return {
       viewport,
       durationMs: performance.now() - start,
       clickedLauncher,
       launcher,
+      launcherKeyboard,
       workspace,
+      workspaceKeyboard,
       consoleIssues,
       pageErrors,
     };
@@ -425,6 +549,7 @@ function evaluateResults(results) {
 
   for (const result of results) {
     const snapshots = [result.launcher, result.workspace].filter(Boolean);
+    const keyboardAudits = [result.launcherKeyboard, result.workspaceKeyboard].filter(Boolean);
     for (const snapshot of snapshots) {
       if (snapshot.bodyTextLength < 20) {
         failures.push(buildFailure(`${snapshot.viewport}/${snapshot.stage} rendered too little text`, { bodyTextLength: snapshot.bodyTextLength }));
@@ -469,6 +594,28 @@ function evaluateResults(results) {
       }
     }
 
+    for (const keyboardAudit of keyboardAudits) {
+      if (keyboardAudit.uniqueNamedFocusCount === 0) {
+        failures.push(buildFailure(`${keyboardAudit.viewport}/${keyboardAudit.stage} has no named controls reachable by keyboard`));
+      }
+      if (keyboardAudit.unnamedFocusSteps.length > 0) {
+        failures.push(
+          buildFailure(`${keyboardAudit.viewport}/${keyboardAudit.stage} tabs to visible controls without accessible names`, {
+            examples: summarizeList(keyboardAudit.unnamedFocusSteps),
+            count: keyboardAudit.unnamedFocusSteps.length,
+          }),
+        );
+      }
+      if (keyboardAudit.focusIndicatorFailures.length > 0) {
+        failures.push(
+          buildFailure(`${keyboardAudit.viewport}/${keyboardAudit.stage} has keyboard focus targets without a visible focus indicator`, {
+            examples: summarizeList(keyboardAudit.focusIndicatorFailures),
+            count: keyboardAudit.focusIndicatorFailures.length,
+          }),
+        );
+      }
+    }
+
     if (!result.clickedLauncher) {
       failures.push(buildFailure(`${result.viewport.name} could not activate the launcher primary action`));
     }
@@ -505,6 +652,11 @@ function printReport(report) {
     for (const snapshot of snapshots) {
       console.log(
         `  ${snapshot.stage}: controls=${snapshot.controlsCount}, unnamed=${snapshot.unnamedControls.length}, unlabeledFields=${snapshot.fieldsWithoutProgrammaticLabel.length}, overflow=${snapshot.horizontalOverflowPx}px`,
+      );
+    }
+    for (const keyboardAudit of [result.launcherKeyboard, result.workspaceKeyboard].filter(Boolean)) {
+      console.log(
+        `  ${keyboardAudit.stage} keyboard: namedFocus=${keyboardAudit.uniqueNamedFocusCount}, unnamedFocus=${keyboardAudit.unnamedFocusSteps.length}, missingFocusRing=${keyboardAudit.focusIndicatorFailures.length}`,
       );
     }
   }
