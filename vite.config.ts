@@ -27,6 +27,7 @@ export default defineConfig(({mode}) => {
           '**/bridge/**',
           '**/dist/**',
           '**/logs/**',
+          '**/scripts/**',
           '**/.gemini/**',
           '**/launcher.log',
           '**/*.log',

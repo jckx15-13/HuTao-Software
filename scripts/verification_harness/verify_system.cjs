@@ -166,7 +166,7 @@ function postJson(url, payload, headers = {}) {
 }
 
 function isRetryablePageError(err) {
-  return /detached|destroyed|closed|Target closed/i.test(String(err?.message || err));
+  return /detached|destroyed|closed|Target closed|ERR_CONNECTION_REFUSED|ECONNREFUSED|ERR_ABORTED/i.test(String(err?.message || err));
 }
 
 async function postJsonWithRetry(url, payload, headers = {}, attempts = 3) {

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-25T17:11:04.213Z",
+  "timestamp": "2026-06-25T17:13:18.944Z",
   "services": {
     "vite": {
       "status": "online",
@@ -52,10 +52,10 @@
   },
   "feature_reality_ledger": {
     "status": "partial",
-    "integration_score": 84,
+    "integration_score": 78,
     "repository_count": 3,
     "feature_count": 9,
-    "runtime_report_status": "PARTIAL"
+    "runtime_report_status": "FAIL"
   },
   "proxy_chat_flow": {
     "status": "success",
@@ -74,7 +74,7 @@
     }
   },
   "overall_status": "FAIL",
-  "error": "Navigating frame was detached",
+  "error": "net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3005/?fallback=true",
   "partial_reasons": [
     "no configured Odysseus or server-side AI provider model endpoint"
   ]
