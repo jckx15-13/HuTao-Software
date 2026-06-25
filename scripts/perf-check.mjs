@@ -40,6 +40,9 @@ const INCLUDE_CHAT_BENCHMARKS = process.env.PERF_INCLUDE_CHAT == null
 const INCLUDE_GIT_BENCHMARKS = process.env.PERF_INCLUDE_GIT == null
   ? !isFastProfile
   : process.env.PERF_INCLUDE_GIT !== '0';
+const COMPRESS_BUNDLE_ASSETS = process.env.PERF_BUNDLE_COMPRESS == null
+  ? !isFastProfile
+  : process.env.PERF_BUNDLE_COMPRESS !== '0';
 
 function percentile(values, p) {
   if (!values.length) return null;
@@ -333,17 +336,17 @@ async function measureBundle() {
         const full = file;
         const stat = await fs.stat(full);
         const raw = stat.size;
-        const rawBuf = await fs.readFile(full);
-        const gzip = zlib.gzipSync(rawBuf).length;
-        const brotli = zlib.brotliCompressSync(rawBuf).length;
+        const rawBuf = COMPRESS_BUNDLE_ASSETS ? await fs.readFile(full) : null;
+        const gzip = rawBuf ? zlib.gzipSync(rawBuf).length : null;
+        const brotli = rawBuf ? zlib.brotliCompressSync(rawBuf).length : null;
 
         return {
           file: path.relative(distDir, full),
           bytes: raw,
           gzip,
           brotli,
-          ratioGzip: Number(((1 - gzip / raw) * 100).toFixed(1)),
-          ratioBrotli: Number(((1 - brotli / raw) * 100).toFixed(1)),
+          ratioGzip: gzip == null ? null : Number(((1 - gzip / raw) * 100).toFixed(1)),
+          ratioBrotli: brotli == null ? null : Number(((1 - brotli / raw) * 100).toFixed(1)),
         };
       })
     );
@@ -354,6 +357,7 @@ async function measureBundle() {
 
     return {
       status: 'ok',
+      compressed: COMPRESS_BUNDLE_ASSETS,
       count: assets.length,
       largest,
       topRawOver400KB: assets.filter((asset) => asset.bytes > 400_000).length,
@@ -391,7 +395,8 @@ async function main() {
   console.log(`PROFILE=${PERF_PROFILE}`);
   console.log(`ROUNDS=${ROUNDS} INTERVAL_MS=${INTERVAL_MS} FRONTEND_PAGES=${FRONTEND_PAGES}`);
   console.log(`INCLUDE_CHAT_BENCHMARKS=${INCLUDE_CHAT_BENCHMARKS}`);
-  console.log(`INCLUDE_GIT_BENCHMARKS=${INCLUDE_GIT_BENCHMARKS}\n`);
+  console.log(`INCLUDE_GIT_BENCHMARKS=${INCLUDE_GIT_BENCHMARKS}`);
+  console.log(`COMPRESS_BUNDLE_ASSETS=${COMPRESS_BUNDLE_ASSETS}\n`);
 
   const [
     bridge,
@@ -473,6 +478,7 @@ async function main() {
       frontendSettleMs: FRONTEND_SETTLE_MS,
       includeChatBenchmarks: INCLUDE_CHAT_BENCHMARKS,
       includeGitBenchmarks: INCLUDE_GIT_BENCHMARKS,
+      compressBundleAssets: COMPRESS_BUNDLE_ASSETS,
       bridgeUrl: BRIDGE_URL,
       frontendUrl: FRONTEND_URL,
     },
