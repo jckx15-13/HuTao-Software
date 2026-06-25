@@ -43,10 +43,7 @@ export function useViewportSize(): ViewportSize {
     }
 
     rafIdRef.current = requestAnimationFrame(() => {
-      setViewportSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
+      setViewportSize(resolveViewportSize());
       rafIdRef.current = null;
     });
   };

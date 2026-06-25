@@ -58,6 +58,42 @@ export function buildSpatialPanelGeometry(input: SpatialPanelGeometryInput): Spa
   const edgeInsetPx = buildEdgeInsetPx(viewport.width);
   const topInsetPx = buildVerticalInsetPx(viewport.height, 'top');
   const bottomInsetPx = buildVerticalInsetPx(viewport.height, 'bottom');
+
+  if (viewport.width < 760) {
+    const hasDualPanels = leftPanelOpen && rightPanelOpen;
+    const width = `calc(100vw - ${edgeInsetPx * 2}px)`;
+    const shared = {
+      left: `${edgeInsetPx}px`,
+      right: `${edgeInsetPx}px`,
+      width,
+    };
+
+    if (hasDualPanels && placement === 'left') {
+      return {
+        ...shared,
+        top: `calc(${Math.max(12, topInsetPx - 10)}px + env(safe-area-inset-top))`,
+        bottom: 'calc(52vh + 8px)',
+        maxHeight: '42vh',
+      };
+    }
+
+    if (hasDualPanels && placement === 'right') {
+      return {
+        ...shared,
+        top: 'calc(48vh + 8px)',
+        bottom: `calc(${bottomInsetPx}px + env(safe-area-inset-bottom))`,
+        maxHeight: '42vh',
+      };
+    }
+
+    return {
+      ...shared,
+      top: `calc(${topInsetPx}px + env(safe-area-inset-top))`,
+      bottom: `calc(${bottomInsetPx}px + env(safe-area-inset-bottom))`,
+      maxHeight: `${Math.max(240, viewport.height - topInsetPx - bottomInsetPx)}px`,
+    };
+  }
+
   const widthPx = buildPanelWidthPx(viewport.width, leftPanelOpen, rightPanelOpen);
   const reservedChromePx = 24;
   const maxHeightPx = clampPx(Math.max(0, viewport.height - topInsetPx - bottomInsetPx - reservedChromePx), 0, viewport.height);

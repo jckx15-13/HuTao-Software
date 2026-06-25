@@ -81,6 +81,7 @@ export function MessageBubble({ message, fontSize }: MessageBubbleProps) {
             whileTap={{ scale: 0.95 }}
             onClick={() => pushToMemory(message.content, message.sender)}
             disabled={isPushing || isPushed}
+            aria-label={isPushed ? 'Stored in local memory' : 'Push message to local memory'}
             className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full border transition-all ${
               isPushed 
                 ? 'bg-green-500/20 border-green-500/40 text-green-400' 

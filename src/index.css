@@ -84,6 +84,33 @@ body {
   overflow: hidden;
 }
 
+button,
+input,
+select,
+textarea,
+a,
+[tabindex] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--theme-secondary);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--theme-secondary) 20%, transparent);
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+}
+
 /* Hologram / CRT effect */
 .hologram-overlay {
   background: linear-gradient(

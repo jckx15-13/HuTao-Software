@@ -23,7 +23,7 @@ export function ChatHeader({ onClear }: ChatHeaderProps) {
         </div>
         <div className="flex flex-col leading-none">
           <span>Chat</span>
-          <span className="mt-1 text-[9px] font-medium tracking-[0.28em] text-text-muted/60">AI workspace</span>
+          <span className="mt-1 text-[11px] font-medium tracking-[0.14em] text-text-muted/70">AI workspace</span>
         </div>
       </div>
 

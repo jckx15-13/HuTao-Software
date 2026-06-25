@@ -47,11 +47,11 @@ function CodeBlock({ language, value }: { language: string, value: string }) {
   return (
     <div className="my-6 overflow-hidden rounded-lg border border-panel-border/70 bg-base/70 shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_2px_10px_rgba(255,255,255,0.02)] backdrop-blur-md transition-transform duration-300 hover:-translate-y-0.5">
       <div className="flex items-center justify-between border-b border-panel-border/60 bg-panel/40 px-4 py-2">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-primary">{language}</span>
+        <span className="font-mono text-[11px] uppercase tracking-wider text-primary">{language}</span>
         <button 
           type="button"
           onClick={() => handleCopy().catch(() => undefined)}
-          className="flex min-h-11 items-center gap-2 rounded bg-base/60 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-text-muted transition-colors hover:text-primary"
+          className="flex min-h-11 items-center gap-2 rounded bg-base/60 px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-text-muted transition-colors hover:text-primary"
           aria-label={`Copy ${language} code block`}
         >
           {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}

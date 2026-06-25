@@ -33,6 +33,14 @@ const CustomCursor = React.lazy(() =>
   import('./components/layout/CustomCursor').then((m) => ({ default: m.CustomCursor }))
 );
 
+function WorkspaceFallback({ label = 'Loading workspace' }: { label?: string }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-[#06070a]/80 text-center font-mono text-xs uppercase tracking-wider text-white/70">
+      {label}
+    </div>
+  );
+}
+
 // Lazy load SettingsPage configuration panel to reduce initial bundle size
 const SettingsPage = React.lazy(() =>
   import('./components/settings/SettingsPage').then((m) => ({ default: m.SettingsPage }))
@@ -234,7 +242,7 @@ export default function App() {
 
       {/* ROUTING CONTROLLER: Swaps pages by comparing active page string */}
       {showLauncher ? (
-        <Suspense fallback={null}>
+        <Suspense fallback={<WorkspaceFallback label="Loading launch checks" />}>
           <LauncherPage />
         </Suspense>
       ) : (
@@ -257,7 +265,7 @@ export default function App() {
 
           {/* Core viewport layouts: pt-12 leaves space for the 12-unit top app bar, cleared in spatial modes for full-screen floating HUD */}
           <div className="relative z-10 flex h-full w-full pointer-events-none transition-all duration-300 pt-0">
-            <Suspense fallback={null}>
+            <Suspense fallback={<WorkspaceFallback />}>
               <DockedLayout />
             </Suspense>
           </div>

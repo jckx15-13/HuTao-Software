@@ -145,12 +145,13 @@ export function RightPanel() {
       }
     >
       {/* Header and Tab Switcher */}
-      <div className="flex min-h-14 py-1.5 items-center justify-between gap-2 px-3 border-b border-white/10 bg-black/45">
-        <div className="flex flex-wrap items-center gap-1.5 font-mono text-[8.5px]">
+      <div className="flex min-h-14 items-center justify-between gap-2 border-b border-white/10 bg-black/45 px-3 py-1.5">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pr-1 font-mono text-[10px] scroller">
           <button
             type="button"
             onClick={() => setRightPanelTab('context')}
-            className={`inline-flex min-h-11 items-center rounded px-2 transition-colors ${
+            aria-pressed={rightPanelTab === 'context'}
+            className={`inline-flex min-h-11 shrink-0 items-center rounded px-2 transition-colors ${
               rightPanelTab === 'context' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -159,7 +160,8 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('browser')}
-            className={`inline-flex min-h-11 items-center rounded px-2 transition-colors ${
+            aria-pressed={rightPanelTab === 'browser'}
+            className={`inline-flex min-h-11 shrink-0 items-center rounded px-2 transition-colors ${
               rightPanelTab === 'browser' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -168,7 +170,8 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('changes')}
-            className={`inline-flex min-h-11 items-center rounded px-2 transition-colors ${
+            aria-pressed={rightPanelTab === 'changes'}
+            className={`inline-flex min-h-11 shrink-0 items-center rounded px-2 transition-colors ${
               rightPanelTab === 'changes' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -177,7 +180,8 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('diagnostics')}
-            className={`inline-flex min-h-11 items-center rounded px-2 transition-colors ${
+            aria-pressed={rightPanelTab === 'diagnostics'}
+            className={`inline-flex min-h-11 shrink-0 items-center rounded px-2 transition-colors ${
               rightPanelTab === 'diagnostics' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -186,7 +190,8 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('telemetry')}
-            className={`inline-flex min-h-11 items-center rounded px-2 transition-colors ${
+            aria-pressed={rightPanelTab === 'telemetry'}
+            className={`inline-flex min-h-11 shrink-0 items-center rounded px-2 transition-colors ${
               rightPanelTab === 'telemetry' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >
@@ -195,7 +200,8 @@ export function RightPanel() {
           <button
             type="button"
             onClick={() => setRightPanelTab('odysseus')}
-            className={`inline-flex min-h-11 items-center rounded px-2 transition-colors ${
+            aria-pressed={rightPanelTab === 'odysseus'}
+            className={`inline-flex min-h-11 shrink-0 items-center rounded px-2 transition-colors ${
               rightPanelTab === 'odysseus' ? 'text-primary bg-primary/10 font-bold' : 'text-white/40 hover:text-white/70'
             }`}
           >

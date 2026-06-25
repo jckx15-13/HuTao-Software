@@ -32,6 +32,7 @@ export function ChatComposer({ disabled, fontSize, onSubmit }: ChatComposerProps
         <TextareaAutosize
           minRows={1}
           maxRows={8}
+          aria-label="Message Silver Wolf VI"
           placeholder="Message Silver Wolf VI..."
           value={input}
           onChange={(event) => setInput(event.target.value)}
@@ -45,7 +46,7 @@ export function ChatComposer({ disabled, fontSize, onSubmit }: ChatComposerProps
           style={{ fontSize, cursor: 'text' }}
         />
         <div className="mt-1 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-primary/75">
+          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-primary/75">
             <Lock className="h-3 w-3" />
             <span>Local session</span>
           </div>
@@ -64,7 +65,7 @@ export function ChatComposer({ disabled, fontSize, onSubmit }: ChatComposerProps
           </motion.button>
         </div>
       </motion.div>
-      <div className="mt-3 text-center font-mono text-[10px] uppercase tracking-widest text-text-muted/55">
+      <div className="mt-3 text-center font-mono text-[11px] uppercase tracking-wider text-text-muted/65">
         AI generated content may be inaccurate.
       </div>
     </div>

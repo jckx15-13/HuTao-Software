@@ -84,22 +84,22 @@ export function LauncherPage() {
   }, [addDiagnostic, bridgeBaseUrl, clearDiagnostics, engineUrlOverride]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 bg-[#0a0b10] text-white">
+    <div className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col items-center overflow-y-auto bg-[#0a0b10] px-4 py-8 text-white sm:px-6">
       {/* Background scanline effect */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,6px_100%] pointer-events-none" />
 
-      <div className="w-full max-w-[620px] space-y-8 flex flex-col items-center z-10">
+      <div className="z-10 flex w-full max-w-3xl flex-col items-center gap-5">
 
         {/* Animated Brand Header */}
-        <div className="flex flex-col items-center text-center space-y-3 animate-pulse">
+        <div className="flex max-w-full flex-col items-center space-y-3 text-center animate-pulse">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/30 shadow-[0_0_20px_var(--theme-primary-glow)]">
             <Hexagon className="h-8 w-8 text-primary animate-spin-slow" />
           </div>
-          <div className="space-y-1">
-            <h1 className="text-3xl font-black tracking-[0.4em] uppercase text-white font-sans glow-text cyber-glitch" data-text="SILVER WOLF VI">
+          <div className="max-w-full space-y-1">
+            <h1 className="max-w-full break-words text-2xl font-black uppercase leading-tight tracking-[0.18em] text-white font-sans glow-text cyber-glitch sm:text-3xl sm:tracking-[0.28em]" data-text="SILVER WOLF VI">
               SILVER WOLF VI
             </h1>
-            <p className="text-[9px] font-mono uppercase tracking-[0.25em] text-white/40">
+            <p className="text-xs font-mono uppercase tracking-[0.16em] text-white/55 sm:tracking-[0.22em]">
               Chat, Map, and Astronomy Workspace
             </p>
           </div>
@@ -107,13 +107,13 @@ export function LauncherPage() {
 
         {/* Git Status Warning */}
         {gitStatus.has_changes && (
-          <div className="w-full p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex w-full items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 animate-in fade-in slide-in-from-top-4 duration-500 sm:items-center sm:gap-4">
             <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
               <AlertTriangle className="text-amber-500 h-5 w-5" />
             </div>
-            <div className="flex-1">
-              <div className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Uncommitted Edits Detected</div>
-              <div className="text-[9px] text-amber-500/60 font-mono leading-tight mt-0.5">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-amber-300 uppercase tracking-wider">Uncommitted Edits Detected</div>
+              <div className="mt-1 text-xs text-amber-100/75 font-mono leading-relaxed">
                 {gitStatus.count} files have pending changes. Please ensure work is committed before launching production cycles to prevent data loss or sync drift.
               </div>
             </div>
@@ -124,7 +124,7 @@ export function LauncherPage() {
         <button
           type="button"
           onClick={() => setLauncherDismissed(true)}
-          className="launcher-breathe group relative flex h-14 w-64 items-center justify-center rounded-xl bg-primary text-xs font-mono font-bold uppercase tracking-[0.2em] hover:bg-primary-hover active:scale-95 transition-all cursor-pointer shadow-lg hover-glitch"
+          className="launcher-breathe group relative flex min-h-14 w-full max-w-72 items-center justify-center rounded-xl bg-primary px-5 text-xs font-mono font-bold uppercase tracking-[0.16em] hover:bg-primary-hover active:scale-95 transition-all cursor-pointer shadow-lg hover-glitch"
           data-text="Launch Workspace"
         >
           <span className="flex items-center gap-2">
@@ -134,36 +134,36 @@ export function LauncherPage() {
         </button>
 
         {/* 2x2 Diagnostics Metrics Grid */}
-        <div className="grid grid-cols-2 gap-3 w-full font-mono text-[10px]">
+        <div className="grid w-full grid-cols-1 gap-3 font-mono text-xs sm:grid-cols-2">
           {/* Tile 1: Vite */}
-          <div className="glass-panel p-3 border border-white/5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="glass-panel flex min-h-16 items-center justify-between gap-3 border border-white/5 p-3">
+            <div className="flex min-w-0 items-center gap-2">
               <Cpu className="h-4 w-4 text-white/30" />
-              <div className="flex flex-col">
-                <span className="text-white/40 uppercase text-[8px]">Web Runtime</span>
-                <span className="text-white/80 font-bold">Vite Server</span>
+              <div className="flex min-w-0 flex-col">
+                <span className="text-white/45 uppercase text-[10px] tracking-wider">Web Runtime</span>
+                <span className="text-white/85 font-bold">Vite Server</span>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1.5">
               <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-green-500 uppercase font-bold text-[8px]">ACTIVE</span>
+              <span className="text-green-400 uppercase font-bold text-[10px]">Active</span>
             </div>
           </div>
 
           {/* Tile 2: Assistant Bridge */}
-          <div className="glass-panel p-3 border border-white/5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="glass-panel flex min-h-16 items-center justify-between gap-3 border border-white/5 p-3">
+            <div className="flex min-w-0 items-center gap-2">
               <Wifi className="h-4 w-4 text-white/30" />
-              <div className="flex flex-col">
-                <span className="text-white/40 uppercase text-[8px]">Assistant Bridge</span>
-                <span className="text-white/80 font-bold truncate max-w-[120px]">{bridgeBaseUrl.replace(/^https?:\/\//, '')}</span>
+              <div className="flex min-w-0 flex-col">
+                <span className="text-white/45 uppercase text-[10px] tracking-wider">Assistant Bridge</span>
+                <span className="max-w-full truncate text-white/85 font-bold">{bridgeBaseUrl.replace(/^https?:\/\//, '')}</span>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1.5">
               <div className={`h-2 w-2 rounded-full ${
                 bridgeStatus === 'active' ? 'bg-green-500' : bridgeStatus === 'checking' ? 'bg-yellow-500 animate-ping' : 'bg-red-500'
               }`} />
-              <span className={`uppercase font-bold text-[8px] ${
+              <span className={`uppercase font-bold text-[10px] ${
                 bridgeStatus === 'active' ? 'text-green-500' : bridgeStatus === 'checking' ? 'text-yellow-500' : 'text-red-500'
               }`}>
                 {bridgeStatus === 'active' ? 'ONLINE' : bridgeStatus === 'checking' ? 'SYNCING' : 'OFFLINE'}
@@ -172,27 +172,27 @@ export function LauncherPage() {
           </div>
 
           {/* Tile 3: AI Model */}
-          <div className="glass-panel p-3 border border-white/5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="glass-panel flex min-h-16 items-center justify-between gap-3 border border-white/5 p-3">
+            <div className="flex min-w-0 items-center gap-2">
               <Battery className="h-4 w-4 text-white/30" />
-              <div className="flex flex-col">
-                <span className="text-white/40 uppercase text-[8px]">AI Route</span>
-                <span className="text-white/80 font-bold truncate max-w-[120px]">{aiModel}</span>
+              <div className="flex min-w-0 flex-col">
+                <span className="text-white/45 uppercase text-[10px] tracking-wider">AI Route</span>
+                <span className="max-w-full truncate text-white/85 font-bold">{aiModel}</span>
               </div>
             </div>
-            <span className="text-white/30 uppercase text-[8px]">READY</span>
+            <span className="shrink-0 text-white/45 uppercase text-[10px] font-bold">Ready</span>
           </div>
 
           {/* Tile 4: Local Storage */}
-          <div className="glass-panel p-3 border border-white/5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="glass-panel flex min-h-16 items-center justify-between gap-3 border border-white/5 p-3">
+            <div className="flex min-w-0 items-center gap-2">
               <Database className="h-4 w-4 text-white/30" />
-              <div className="flex flex-col">
-                <span className="text-white/40 uppercase text-[8px]">Zustand Engine</span>
-                <span className="text-white/80 font-bold">IndexedDB</span>
+              <div className="flex min-w-0 flex-col">
+                <span className="text-white/45 uppercase text-[10px] tracking-wider">Zustand Engine</span>
+                <span className="text-white/85 font-bold">IndexedDB</span>
               </div>
             </div>
-            <span className="text-green-500 font-bold uppercase text-[8px]">LOCAL</span>
+            <span className="shrink-0 text-green-400 font-bold uppercase text-[10px]">Local</span>
           </div>
         </div>
 
@@ -201,7 +201,7 @@ export function LauncherPage() {
           <button
             type="button"
             onClick={() => setLogsExpanded(!logsExpanded)}
-            className="flex min-h-11 w-full items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-widest text-white/40 transition-colors hover:text-white/80 cursor-pointer"
+            className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white/55 transition-colors hover:text-white/85 cursor-pointer"
             aria-expanded={logsExpanded}
           >
             <div className="flex items-center gap-2">
@@ -212,10 +212,10 @@ export function LauncherPage() {
           </button>
 
           {logsExpanded && (
-            <div className="glass-panel p-4 font-mono text-[9px] h-32 overflow-y-auto space-y-1.5 border border-white/5 text-left scroller rounded-xl">
+            <div className="glass-panel h-40 space-y-2 overflow-y-auto rounded-xl border border-white/5 p-4 text-left font-mono text-xs scroller">
               {diagnostics.map((log) => (
-                <div key={log.id} className="flex gap-2">
-                  <span className="text-white/20">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+                <div key={log.id} className="flex flex-wrap gap-x-2 gap-y-1">
+                  <span className="text-white/35">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
                   <span className={`font-bold ${
                     log.level === 'success' ? 'text-green-400' : log.level === 'warning' ? 'text-yellow-400' : log.level === 'error' ? 'text-red-400' : 'text-primary'
                   }`}>[{log.source}]</span>
@@ -230,13 +230,14 @@ export function LauncherPage() {
         <button
           type="button"
           onClick={() => setLauncherDismissed(true)}
-          className="absolute flex min-h-11 items-center rounded px-3 font-mono text-[9px] tracking-wider text-white/25 transition-colors hover:bg-white/5 hover:text-white/50 cursor-pointer"
+          className="relative mt-1 flex min-h-11 items-center rounded px-3 font-mono text-xs tracking-wider text-white/45 transition-colors hover:bg-white/5 hover:text-white/75 cursor-pointer sm:absolute sm:mt-0"
+          aria-label="Skip boot interface"
           style={{
             right: 'max(1rem, env(safe-area-inset-right))',
             bottom: 'max(1rem, env(safe-area-inset-bottom))',
           }}
         >
-          SKIP BOOT INTERFACE →
+          Skip boot interface
         </button>
 
       </div>
