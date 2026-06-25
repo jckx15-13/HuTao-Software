@@ -49,7 +49,7 @@ function formatMs(value) {
 
 function isRetryableFrameError(error) {
   const message = error?.message || String(error);
-  return /detached frame|frame was detached|target closed|navigation failed|net::err_aborted/i.test(message);
+  return /connection closed|econnreset|detached frame|frame was detached|target closed|navigation failed|net::err_aborted/i.test(message);
 }
 
 function resolveBrowserExecutable() {
@@ -98,6 +98,9 @@ async function forceLauncherPage(page) {
       launcherDismissed: false,
       leftPanelOpen: true,
       rightPanelOpen: true,
+      interactionMode: 'chat',
+      primaryView: 'chat',
+      spaceInteractionTarget: 'earth',
     };
 
     window.localStorage.setItem(key, JSON.stringify({ state, version: 7 }));
@@ -535,8 +538,7 @@ function printReport(report) {
   }
 }
 
-async function main() {
-  const start = performance.now();
+async function launchAuditBrowser() {
   const executablePath = resolveBrowserExecutable();
   const launchOptions = {
     headless: 'new',
@@ -548,33 +550,57 @@ async function main() {
     launchOptions.executablePath = executablePath;
   }
 
-  const browser = await puppeteer.launch(launchOptions);
+  return puppeteer.launch(launchOptions);
+}
 
-  try {
-    const results = [];
-    for (const viewport of VIEWPORTS) {
-      results.push(await runViewport(browser, viewport));
+async function runViewportWithBrowserIsolation(viewport) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    let browser;
+    try {
+      browser = await launchAuditBrowser();
+      return await runViewport(browser, viewport);
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableFrameError(error) || attempt === 3) {
+        throw error;
+      }
+      await wait(750 * attempt);
+    } finally {
+      if (browser) {
+        await browser.close().catch(() => {});
+      }
     }
+  }
 
-    const { failures, warnings } = evaluateResults(results);
-    const score = Math.max(0, 100 - failures.length * 8 - warnings.length * 2);
-    const report = {
-      profile: isFastProfile ? 'fast' : 'standard',
-      url: AUDIT_URL,
-      durationMs: performance.now() - start,
-      score,
-      failures,
-      warnings,
-      results,
-    };
+  throw lastError;
+}
 
-    printReport(report);
+async function main() {
+  const start = performance.now();
 
-    if (failures.length) {
-      process.exitCode = 1;
-    }
-  } finally {
-    await browser.close().catch(() => {});
+  const results = [];
+  for (const viewport of VIEWPORTS) {
+    results.push(await runViewportWithBrowserIsolation(viewport));
+  }
+
+  const { failures, warnings } = evaluateResults(results);
+  const score = Math.max(0, 100 - failures.length * 8 - warnings.length * 2);
+  const report = {
+    profile: isFastProfile ? 'fast' : 'standard',
+    url: AUDIT_URL,
+    durationMs: performance.now() - start,
+    score,
+    failures,
+    warnings,
+    results,
+  };
+
+  printReport(report);
+
+  if (failures.length) {
+    process.exitCode = 1;
   }
 }
 
