@@ -55,6 +55,11 @@ function formatMs(value) {
   return `${Math.round(value)}ms`;
 }
 
+function isRetryableFrameError(error) {
+  const message = error?.message || String(error);
+  return /detached frame|frame was detached|target closed|navigation failed|net::err_aborted/i.test(message);
+}
+
 async function forceLauncherPage(page) {
   await page.evaluateOnNewDocument(() => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext;
@@ -96,8 +101,7 @@ async function gotoWithRetry(page, url) {
       return;
     } catch (error) {
       lastError = error;
-      const message = error.message || String(error);
-      const retryable = /frame was detached|target closed|navigation failed|net::err_aborted/i.test(message);
+      const retryable = isRetryableFrameError(error);
       if (!retryable || attempt === 3) {
         throw error;
       }
@@ -315,7 +319,7 @@ async function auditPage(page, stage, viewport) {
   );
 }
 
-async function runViewport(browser, viewport) {
+async function runViewportAttempt(browser, viewport) {
   const page = await browser.newPage();
   const consoleIssues = [];
   const pageErrors = [];
@@ -355,6 +359,24 @@ async function runViewport(browser, viewport) {
   } finally {
     await page.close().catch(() => {});
   }
+}
+
+async function runViewport(browser, viewport) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await runViewportAttempt(browser, viewport);
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableFrameError(error) || attempt === 3) {
+        throw error;
+      }
+      await wait(750 * attempt);
+    }
+  }
+
+  throw lastError;
 }
 
 function evaluateResults(results) {
