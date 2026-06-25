@@ -642,15 +642,23 @@ async def chat(req: ChatRequest, request: Request):
 
     client = request.app.state.http_client
     try:
-        model_name, endpoint_url, model_status = await resolve_chat_endpoint(client, headers)
+        model_name, endpoint_url, model_status, provider_headers = await resolve_chat_endpoint(client, headers)
         if not model_name or not endpoint_url:
             return create_local_bridge_response(req, model_status)
 
         if model_status == "verification mock LLM endpoint":
-            response_text = await call_openai_compatible_chat(client, endpoint_url, model_name, req)
+            response_text = await call_openai_compatible_chat(client, endpoint_url, model_name, req, provider_headers)
             return {
                 "response": response_text,
                 "mode": "verification-mock",
+                "reason": model_status,
+            }
+
+        if model_status.startswith("server-side "):
+            response_text = await call_openai_compatible_chat(client, endpoint_url, model_name, req, provider_headers)
+            return {
+                "response": response_text,
+                "mode": "server-provider",
                 "reason": model_status,
             }
 
@@ -812,6 +820,17 @@ async def git_status():
         return payload
     except Exception as e:
         return {"has_changes": False, "error": str(e)}
+
+@app.get("/api/credentials/providers")
+async def api_credential_provider_status():
+    providers = get_server_provider_status()
+    configured = [provider for provider in providers if provider["configured"]]
+    return {
+        "providers": providers,
+        "configured_count": len(configured),
+        "server_side_only": True,
+        "message": "Secrets are read from Bridge environment variables and are never returned by this status endpoint.",
+    }
 
 # Secure Generic Proxy to Odysseus Endpoints
 @app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
