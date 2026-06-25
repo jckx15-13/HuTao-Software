@@ -146,6 +146,8 @@ const connectorEngineSource = read("src/lib/credentials/apiConnectorEngine.ts");
 const weatherServiceSource = read("src/services/weatherService.ts");
 const aiSettingsSource = read("src/components/settings/AiSettings.tsx");
 const verificationHarnessSource = read("scripts/verification_harness/verify_system.cjs");
+const packageJsonSource = read("package.json");
+const uiAuditSource = read("scripts/ui-audit.mjs");
 
 assertFile("package.json", "Silver Wolf root package");
 assertFile("public/config.json", "Browser runtime public config");
@@ -289,6 +291,10 @@ assert.ok(bridgeSource.includes("BRIDGE_CORS_ORIGIN_REGEX"), "Bridge CORS regex 
 assert.ok(bridgeSource.includes("127\\.0\\.0\\.1"), "Bridge CORS regex must allow 127.0.0.1 dev preview origins");
 assert.ok(bridgeSource.includes("localhost"), "Bridge CORS regex must allow localhost dev origins");
 assert.ok(read("scripts/verification_harness/verify_system.cjs").includes("process.env.VITE_PORT || 3005"), "Runtime verifier must target the actual Silver Wolf dev port by default");
+assert.ok(packageJsonSource.includes('"ui:audit:fast": "node scripts/ui-audit.mjs --fast"'), "Package scripts must expose the fast UI audit");
+assert.ok(uiAuditSource.includes("process.env.FRONTEND_URL || 'http://127.0.0.1:3005'"), "UI audit must target the active Silver Wolf Vite port by default");
+assert.ok(uiAuditSource.includes("launcherDismissed: false"), "UI audit must exercise the launcher before entering the workspace");
+assert.ok(uiAuditSource.includes("fieldsWithoutProgrammaticLabel"), "UI audit must catch visible form fields without programmatic labels");
 
 assert.ok(cesiumViewerSource.includes("baseLayer: false"), "Cesium viewer must start without implicit Cesium world imagery");
 assert.ok(!cesiumViewerSource.includes("setupImagery"), "Cesium viewer must not call the legacy duplicate imagery setup");
