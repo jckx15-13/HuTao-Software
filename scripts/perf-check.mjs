@@ -28,6 +28,14 @@ const FRONTEND_FETCH_WARMUP_ROUNDS = Number.parseInt(
   process.env.PERF_FRONTEND_FETCH_WARMUP_ROUNDS || (isFastProfile ? '3' : '2'),
   10,
 );
+const FRONTEND_FETCH_STABILIZE_ATTEMPTS = Number.parseInt(
+  process.env.PERF_FRONTEND_FETCH_STABILIZE_ATTEMPTS || (isFastProfile ? '8' : '4'),
+  10,
+);
+const FRONTEND_FETCH_STABLE_CONSECUTIVE = Number.parseInt(
+  process.env.PERF_FRONTEND_FETCH_STABLE_CONSECUTIVE || (isFastProfile ? '3' : '2'),
+  10,
+);
 const FRONTEND_SETTLE_MS = Number.parseInt(process.env.PERF_FRONTEND_SETTLE_MS || (isFastProfile ? '250' : '1000'), 10);
 const FRONTEND_GOTO_TIMEOUT_MS = Number.parseInt(process.env.PERF_FRONTEND_GOTO_TIMEOUT_MS || (isFastProfile ? '30000' : '45000'), 10);
 const FRONTEND_CONTENT_TIMEOUT_MS = Number.parseInt(process.env.PERF_FRONTEND_CONTENT_TIMEOUT_MS || (isFastProfile ? '5000' : '15000'), 10);
@@ -145,6 +153,30 @@ async function measureApi(url, init = {}, rounds = ROUNDS, timeoutMs = 5000, war
   };
 }
 
+async function waitForStableFetch(url, init = {}, attempts = FRONTEND_FETCH_STABILIZE_ATTEMPTS) {
+  let last = null;
+  let consecutiveStable = 0;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const result = await requestWithTimeout(url, init, Math.max(6000, BUDGETS.frontendFetchP95 * 4));
+      last = { attempt, ok: result.ok, status: result.status, ms: result.ms };
+      if (result.ok && result.ms <= BUDGETS.frontendFetchP95) {
+        consecutiveStable += 1;
+        if (consecutiveStable >= FRONTEND_FETCH_STABLE_CONSECUTIVE) {
+          return { status: 'stable', attempts: attempt, consecutiveStable, last };
+        }
+      } else {
+        consecutiveStable = 0;
+      }
+    } catch (error) {
+      last = { attempt, ok: false, error: error.name === 'AbortError' ? 'timeout' : error.message || String(error) };
+      consecutiveStable = 0;
+    }
+    await wait(Math.min(1500, 250 * attempt));
+  }
+  return { status: 'unstable', attempts, consecutiveStable, last };
+}
+
 async function measureChatStream(url, payload) {
   const start = performance.now();
   try {
@@ -182,7 +214,23 @@ async function measureChatStream(url, payload) {
 }
 
 async function measureFrontend() {
+  const stabilization = await waitForStableFetch(FRONTEND_URL, { headers: { Accept: 'text/html' } });
   if (!INCLUDE_FRONTEND_BROWSER) {
+    if (stabilization.status !== 'stable') {
+      return {
+        status: 'failed',
+        mode: 'http',
+        reason: 'Frontend HTML did not stabilize before sampling.',
+        stabilization,
+        htmlFetch: { url: FRONTEND_URL, latency: { count: 0 }, errors: [stabilization.last?.error || 'unstable'] },
+        pageResults: [],
+        failedLoads: 1,
+        loadErrors: [JSON.stringify(stabilization.last || {})],
+        averages: {
+          htmlFetchMs: { count: 0 },
+        },
+      };
+    }
     const payload = await measureApi(
       FRONTEND_URL,
       { headers: { Accept: 'text/html' } },
@@ -195,6 +243,7 @@ async function measureFrontend() {
       status: payload.latency.count > 0 ? 'ok' : 'failed',
       mode: 'http',
       reason: payload.latency.count > 0 ? undefined : 'Frontend HTML was not reachable.',
+      stabilization,
       htmlFetch: payload,
       pageResults: [],
       failedLoads: 0,
@@ -206,7 +255,13 @@ async function measureFrontend() {
   }
 
   try {
-    await requestWithTimeout(FRONTEND_URL, { headers: { Accept: 'text/html' } }, 20000);
+    if (stabilization.status !== 'stable') {
+      return {
+        status: 'failed',
+        reason: 'Frontend HTML did not stabilize before browser sampling.',
+        stabilization,
+      };
+    }
   } catch (error) {
     return {
       status: 'failed',
@@ -519,6 +574,8 @@ async function main() {
   console.log(`PROFILE=${PERF_PROFILE}`);
   console.log(`ROUNDS=${ROUNDS} INTERVAL_MS=${INTERVAL_MS} FRONTEND_PAGES=${FRONTEND_PAGES}`);
   console.log(`FRONTEND_FETCH_WARMUP_ROUNDS=${FRONTEND_FETCH_WARMUP_ROUNDS}`);
+  console.log(`FRONTEND_FETCH_STABILIZE_ATTEMPTS=${FRONTEND_FETCH_STABILIZE_ATTEMPTS}`);
+  console.log(`FRONTEND_FETCH_STABLE_CONSECUTIVE=${FRONTEND_FETCH_STABLE_CONSECUTIVE}`);
   console.log(`INCLUDE_CHAT_BENCHMARKS=${INCLUDE_CHAT_BENCHMARKS}`);
   console.log(`INCLUDE_GIT_BENCHMARKS=${INCLUDE_GIT_BENCHMARKS}`);
   console.log(`INCLUDE_FRONTEND_BROWSER=${INCLUDE_FRONTEND_BROWSER}`);
@@ -606,6 +663,8 @@ async function main() {
       frontendPages: FRONTEND_PAGES,
       frontendPageRetries: FRONTEND_PAGE_RETRIES,
       frontendFetchWarmupRounds: FRONTEND_FETCH_WARMUP_ROUNDS,
+      frontendFetchStabilizeAttempts: FRONTEND_FETCH_STABILIZE_ATTEMPTS,
+      frontendFetchStableConsecutive: FRONTEND_FETCH_STABLE_CONSECUTIVE,
       frontendSettleMs: FRONTEND_SETTLE_MS,
       includeChatBenchmarks: INCLUDE_CHAT_BENCHMARKS,
       includeGitBenchmarks: INCLUDE_GIT_BENCHMARKS,
