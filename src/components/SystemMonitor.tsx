@@ -55,7 +55,6 @@ export function SystemMonitor() {
       });
       setLastUpdated(new Date());
     },
-    [cpuLoad, updateSystemMetrics],
     cpuLoad > 0.8 ? 500 : 2000,
   );
 

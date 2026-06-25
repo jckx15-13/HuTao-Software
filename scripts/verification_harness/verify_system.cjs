@@ -966,6 +966,39 @@ async function run() {
           '[data-layout-panel]',
         ].join(',');
         const raw = Array.from(document.querySelectorAll(selector));
+        const clipRectToVisibleArea = (el) => {
+          const rect = el.getBoundingClientRect();
+          let left = Math.max(0, rect.left);
+          let top = Math.max(0, rect.top);
+          let right = Math.min(viewport.width, rect.right);
+          let bottom = Math.min(viewport.height, rect.bottom);
+
+          for (let ancestor = el.parentElement; ancestor; ancestor = ancestor.parentElement) {
+            const style = window.getComputedStyle(ancestor);
+            const clipsX = !['visible', 'unset'].includes(style.overflowX);
+            const clipsY = !['visible', 'unset'].includes(style.overflowY);
+            if (!clipsX && !clipsY) continue;
+
+            const ancestorRect = ancestor.getBoundingClientRect();
+            if (clipsX) {
+              left = Math.max(left, ancestorRect.left);
+              right = Math.min(right, ancestorRect.right);
+            }
+            if (clipsY) {
+              top = Math.max(top, ancestorRect.top);
+              bottom = Math.min(bottom, ancestorRect.bottom);
+            }
+          }
+
+          return {
+            left,
+            top,
+            right,
+            bottom,
+            width: right - left,
+            height: bottom - top,
+          };
+        };
         const candidates = raw
           .filter((el) => {
             if (raw.some((other) => other !== el && other.contains(el))) return false;
@@ -979,7 +1012,7 @@ async function run() {
             return true;
           })
           .map((el, index) => {
-            const rect = el.getBoundingClientRect();
+            const rect = clipRectToVisibleArea(el);
             const label = (el.getAttribute('aria-label') || el.textContent || el.id || el.className || el.tagName)
               .toString()
               .replace(/\s+/g, ' ')
@@ -989,12 +1022,12 @@ async function run() {
               index,
               tag: el.tagName.toLowerCase(),
               label,
-              left: Math.max(0, rect.left),
-              top: Math.max(0, rect.top),
-              right: Math.min(viewport.width, rect.right),
-              bottom: Math.min(viewport.height, rect.bottom),
-              width: Math.min(viewport.width, rect.right) - Math.max(0, rect.left),
-              height: Math.min(viewport.height, rect.bottom) - Math.max(0, rect.top),
+              left: rect.left,
+              top: rect.top,
+              right: rect.right,
+              bottom: rect.bottom,
+              width: rect.width,
+              height: rect.height,
             };
           })
           .filter((rect) => rect.width >= 8 && rect.height >= 8);

@@ -7,12 +7,12 @@ type IdleWindow = Window & {
   cancelIdleCallback?: (id: number) => void;
 };
 
-export function useIdleTask(task: () => void, deps: unknown[], intervalMs: number) {
+export function useIdleTask(task: () => void, intervalMs: number) {
   const taskRef = useRef(task);
 
   useEffect(() => {
     taskRef.current = task;
-  });
+  }, [task]);
 
   useEffect(() => {
     const w = window as IdleWindow;
@@ -46,5 +46,5 @@ export function useIdleTask(task: () => void, deps: unknown[], intervalMs: numbe
         w.cancelIdleCallback(idleId);
       }
     };
-  }, [intervalMs, ...deps]);
+  }, [intervalMs]);
 }

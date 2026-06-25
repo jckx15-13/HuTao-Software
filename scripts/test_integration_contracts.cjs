@@ -201,11 +201,12 @@ for (const connectorContract of [
 }
 assert.ok(
   aiSettingsSource.includes("getApiConnectorReadiness") &&
-    aiSettingsSource.includes("bridgeUrl('/api/connectors/providers')") &&
+    aiSettingsSource.includes("bridgeUrl('/api/connectors/providers?probe=true')") &&
     aiSettingsSource.includes("Bridge connector status") &&
+    aiSettingsSource.includes("Probe status:") &&
     aiSettingsSource.includes("Capabilities:") &&
     aiSettingsSource.includes("Backend/Bridge route required"),
-  "AI Settings must surface connector readiness and backend-routing metadata",
+  "AI Settings must surface connector readiness, active probe state, and backend-routing metadata",
 );
 assert.ok(
   weatherServiceSource.includes('getCredentialSecret("openweather")') &&
@@ -215,6 +216,7 @@ assert.ok(
 for (const bridgeProviderContract of [
   "SERVER_AI_PROVIDER_CONFIGS",
   "SERVER_CONNECTOR_PROVIDER_CONFIGS",
+  "BRIDGE_CONNECTOR_PROBE_TIMEOUT",
   "BRIDGE_SKIP_ODYSSEUS_START",
   "OPENAI_API_KEY",
   "OPENAI_MODEL",
@@ -229,7 +231,11 @@ for (const bridgeProviderContract of [
   "OPENWEATHER_API_KEY",
   '@app.get("/api/credentials/providers")',
   '@app.get("/api/connectors/providers")',
+  '@app.get("/api/connectors/probe/{provider_id}")',
   "get_server_connector_provider_status",
+  "probe_connector_provider_config",
+  "probe_status",
+  "secret_returned",
   "connector_providers",
   '"mode": "server-provider"',
 ]) {
