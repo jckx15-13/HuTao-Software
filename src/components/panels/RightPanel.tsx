@@ -899,7 +899,7 @@ function SatelliteTelemetryCard({ satId }: { satId: string }) {
             <img
               src={visualAssetUrl}
               alt=""
-              className="h-9 w-9 shrink-0 rounded border border-white/10 bg-black/40 p-1"
+              className="h-10 w-10 shrink-0 rounded border border-primary/20 bg-black/50 p-1.5 shadow-[0_0_16px_rgba(255,255,255,0.04)]"
               loading="lazy"
             />
           )}
@@ -991,11 +991,14 @@ function SatelliteTelemetryCard({ satId }: { satId: string }) {
               <img
                 src={visualAssetUrl}
                 alt=""
-                className="h-9 w-9 shrink-0 rounded border border-white/10 bg-black/40 p-1"
+                className="h-10 w-10 shrink-0 rounded border border-primary/20 bg-black/50 p-1.5 shadow-[0_0_16px_rgba(255,255,255,0.04)]"
                 loading="lazy"
               />
             )}
-            <h3 className="min-w-0 truncate font-bold text-sm tracking-wide text-white uppercase">{satConfig.name}</h3>
+            <div className="min-w-0">
+              <h3 className="min-w-0 truncate font-bold text-sm tracking-wide text-white uppercase">{satConfig.name}</h3>
+              <span className="block text-[7px] font-mono uppercase tracking-widest text-primary/70">WWV satellite silhouette</span>
+            </div>
           </div>
           <span className="h-2 w-2 shrink-0 rounded-full animate-pulse" style={{ backgroundColor: satConfig.color }} />
         </div>
