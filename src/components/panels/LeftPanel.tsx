@@ -588,18 +588,8 @@ export function LeftPanel() {
 
   return (
     <aside 
-      className={`glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 ${
-        isSpatialMode 
-          ? 'fixed rounded-xl border border-white/10 shadow-2xl z-40 h-auto min-h-0 bg-black/75'
-          : 'fixed inset-y-0 left-0 z-40 w-[min(88vw,22rem)] border-r border-white/5 md:relative md:z-auto md:h-full md:w-[clamp(10rem,22vw,19rem)]'
-      }`} 
-      style={
-        isSpatialMode
-          ? spatialPanelStyle
-          : {
-              borderRadius: 0,
-            }
-      }
+      className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-40 h-auto min-h-0 bg-black/75"
+      style={spatialPanelStyle}
     >
       {/* Header section */}
       <div className="flex h-12 items-center justify-between px-4 border-b border-white/10 shrink-0 bg-black/45">

@@ -131,18 +131,8 @@ export function RightPanel() {
 
   return (
     <aside
-      className={`glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 ${
-        isSpatialMode
-          ? 'fixed rounded-xl border border-white/10 shadow-2xl z-40 h-auto bg-black/75'
-          : 'fixed inset-y-0 right-0 z-40 w-[min(88vw,22rem)] border-l border-white/5 md:relative md:z-auto md:h-full md:w-[clamp(10rem,22vw,19rem)]'
-      }`}
-      style={
-        isSpatialMode
-          ? spatialPanelStyle
-          : {
-              borderRadius: 0,
-            }
-      }
+      className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-40 h-auto bg-black/75"
+      style={spatialPanelStyle}
     >
       {/* Header and Tab Switcher */}
       <div className="flex min-h-14 items-center justify-between gap-2 border-b border-white/10 bg-black/45 px-3 py-1.5">

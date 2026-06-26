@@ -81,7 +81,7 @@ export function useHexagonRendering(
                     outlineColor: Color.BLACK,
                     outlineWidth: 2,
                     pixelOffset: { x: 0, y: -20 } as any,
-                    disableDepthTestDistance: Number.POSITIVE_INFINITY,
+                    disableDepthTestDistance: 0,
                 } : undefined,
             });
 
