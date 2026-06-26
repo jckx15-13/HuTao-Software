@@ -71,7 +71,7 @@ export function CenterPanel() {
       <SidebarTrigger />
 
       {/* Dynamic Segmented Mode Switcher (Pill Style) — always interactive */}
-      <div className="absolute top-[clamp(0.75rem,4vh,1.5rem)] left-1/2 z-30 -translate-x-1/2 pointer-events-auto">
+      <div className="absolute top-[clamp(5.75rem,12vh,8rem)] left-1/2 z-30 -translate-x-1/2 pointer-events-auto">
         <div className="mode-switcher-shell glass-panel flex items-center rounded-full border border-white/5 p-1 shadow-lg">
           <button
             type="button"
@@ -104,7 +104,7 @@ export function CenterPanel() {
       {/* Chat View Container */}
       {interactionMode === 'chat' && (
           <div
-            className="absolute inset-0 z-10 flex flex-col px-[clamp(0.75rem,3vw,1.5rem)] pb-4 pt-[clamp(3.25rem,8vh,6.25rem)] opacity-100 pointer-events-auto"
+            className="absolute inset-0 z-10 flex flex-col px-[clamp(0.75rem,3vw,1.5rem)] pb-4 pt-[clamp(5rem,10vh,7rem)] opacity-100 pointer-events-auto"
             style={workspaceRailVars}
           >
             <div className="mx-auto flex min-h-0 w-full max-w-[78rem] flex-1 flex-col justify-between overflow-hidden rounded-[32px] border border-white/10 bg-[#07090f]/94 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">

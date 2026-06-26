@@ -1225,10 +1225,6 @@ export default function WorldWideTelescopeView({
   };
 
   const renderHUDAndTimeline = () => {
-    if (!telescopeWindowActive) {
-      return null;
-    }
-
     return (
       <div ref={overlayRootRef} className="fixed inset-0 w-full h-full flex overflow-hidden bg-transparent select-none pointer-events-none">
 

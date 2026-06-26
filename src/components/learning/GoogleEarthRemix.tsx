@@ -869,25 +869,189 @@ export default function GoogleEarthRemix() {
             right: rightPanelOpen ? 'min(336px, 70vw)' : '0.75rem',
           }}
         >
-          {/* Futuristic left-side branding/status/coordinates */}
-          <div className="hud-section branding">
-            <button
-              type="button"
-              className="hud-status-node cursor-pointer border-0 bg-transparent text-left flex items-center gap-2"
-              onClick={() => {
-                useUIStore.getState().addChangeLog('ORBITAL', 'Orbital Core diagnostics synced. Status: OPTIMAL.', 'success');
-                alert('Orbital Engine Status: OPTIMAL\nActive Array: WWT/WWV Composite');
-              }}
-            >
-              <div className="hud-indicator active animate-pulse" />
-              <span className="hud-label font-bold text-primary tracking-widest text-[9px]">SILVER_WOLF // ORBITAL_ARRAY</span>
-            </button>
-            <div className="hud-metric text-[8px] text-white/40 hidden sm:block">SYS: <span className="text-[#34a853] font-bold">OPTIMAL</span></div>
-            <div className="hud-metric text-[8px] text-white/40 hidden md:block">GRID: <span className="text-[#00FFF7]">WWV/WWT</span></div>
-            <div className="hud-metric text-[8px] text-white/40 hidden lg:block border-l border-white/10 pl-2">
-              <span className="text-cyan-400 font-mono">
-                {activeLocation ? `${activeLocation.lat.toFixed(4)}°N, ${activeLocation.lng.toFixed(4)}°E` : 'AUTO_TRACKING'}
-              </span>
+          <div className="hud-top-row">
+            <div className="hud-section branding">
+              <button
+                type="button"
+                className="hud-status-node cursor-pointer border-0 bg-transparent text-left flex items-center gap-2"
+                onClick={() => {
+                  useUIStore.getState().addChangeLog('ORBITAL', 'Orbital Core diagnostics synced. Status: OPTIMAL.', 'success');
+                  alert('Orbital Engine Status: OPTIMAL\nActive Array: WWT/WWV Composite');
+                }}
+              >
+                <div className="hud-indicator active animate-pulse" />
+                <span className="hud-label font-bold text-primary tracking-widest text-[9px]">SILVER_WOLF // ORBITAL_ARRAY</span>
+              </button>
+              <div className="hud-metric text-[8px] text-white/40 hidden sm:block">SYS: <span className="text-[#34a853] font-bold">OPTIMAL</span></div>
+              <div className="hud-metric text-[8px] text-white/40 hidden md:block">GRID: <span className="text-[#00FFF7]">WWV/WWT</span></div>
+              <div className="hud-metric text-[8px] text-white/40 hidden lg:block border-l border-white/10 pl-2">
+                <span className="text-cyan-400 font-mono">
+                  {activeLocation ? `${activeLocation.lat.toFixed(4)}°N, ${activeLocation.lng.toFixed(4)}°E` : 'AUTO_TRACKING'}
+                </span>
+              </div>
+            </div>
+
+            <div className="hud-section actions">
+              <button
+                type="button"
+                className="hud-btn"
+                aria-label={leftPanelOpen ? 'Hide spatial HUD sidebar' : 'Show spatial HUD sidebar'}
+                title={leftPanelOpen ? 'Hide Sidebar' : 'Show Sidebar'}
+                onClick={() => {
+                  setLeftPanelOpen(!leftPanelOpen);
+                  useUIStore.getState().addChangeLog('UI', leftPanelOpen ? 'Spatial Control Panel hidden.' : 'Spatial Control Panel shown.', 'info');
+                }}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>{leftPanelOpen ? 'HIDE' : 'SIDEBAR'}</span>
+              </button>
+
+              {hudTab === 'navigation' && (
+                <>
+                  <button
+                    type="button"
+                    className="hud-btn"
+                    aria-label="Reset measurement ruler"
+                    title="Reset Measurement Ruler"
+                    onClick={() => {
+                      setMeasureStart(null);
+                      setMeasureEnd(null);
+                      useUIStore.getState().addChangeLog('MEASUREMENT', 'Geodetic markers cleared.', 'info');
+                    }}
+                  >
+                    <Ruler className="w-3.5 h-3.5" />
+                    <span>RULER</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="hud-btn"
+                    aria-label="Reset camera heading north"
+                    title="Reset Camera Orientation North"
+                    onClick={() => {
+                      handleCompass();
+                      useUIStore.getState().addChangeLog('CAMERA', 'Heading reset to North.', 'info');
+                    }}
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>NORTH</span>
+                  </button>
+                </>
+              )}
+
+              {hudTab === 'layers' && (
+                <>
+                  <button
+                    type="button"
+                    className="hud-btn"
+                    aria-pressed={showBorders}
+                    aria-label="Toggle borders"
+                    title="Toggle Borders"
+                    onClick={() => setShowBorders(!showBorders)}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>BORDERS</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="hud-btn"
+                    aria-pressed={showTerrain}
+                    aria-label="Toggle terrain"
+                    title="Toggle Terrain"
+                    onClick={() => setShowTerrain(!showTerrain)}
+                  >
+                    <Map className="w-3.5 h-3.5" />
+                    <span>TERRAIN</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="hud-btn"
+                    aria-pressed={showRoads}
+                    aria-label="Toggle roads"
+                    title="Toggle Roads"
+                    onClick={() => setShowRoads(!showRoads)}
+                  >
+                    <Pin className="w-3.5 h-3.5" />
+                    <span>ROADS</span>
+                  </button>
+                </>
+              )}
+
+              {hudTab === 'target' && (
+                <>
+                  <div className="hud-metric text-[8px] text-white/40 hidden xl:flex gap-2 mr-2 border-r border-white/10 pr-2">
+                    <span>TARGET: <span className="text-purple-400 font-bold uppercase">{activeSatelliteId ? cleanSatelliteName(selectedSatellite?.name || activeSatelliteId) : (activeLocation ? activeLocation.name.split(',')[0] : 'EARTH')}</span></span>
+                    {activeSatelliteId && <span>ALT: <span className="text-amber-400 font-bold">{(selectedSatellite?.altitudeM || 420000) / 1000}KM</span></span>}
+                  </div>
+                  <button
+                    type="button"
+                    className="hud-btn"
+                    aria-label="Open diagnostics panel"
+                    title="Open Diagnostic System Panel"
+                    onClick={() => {
+                      useUIStore.getState().setRightPanelTab('diagnostics');
+                      useUIStore.getState().setRightPanelOpen(true);
+                      useUIStore.getState().addChangeLog('UI', 'Diagnostics Panel opened.', 'info');
+                    }}
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                    <span>DIAGNOSTICS</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="hud-btn"
+                    aria-label="Open active target details"
+                    title="Open Active Target Details"
+                    onClick={() => {
+                      useUIStore.getState().setRightPanelTab('context');
+                      useUIStore.getState().setRightPanelOpen(true);
+                    }}
+                  >
+                    <Pin className="w-3.5 h-3.5" />
+                    <span>TARGET</span>
+                  </button>
+                </>
+              )}
+
+              {hudTab === 'system' && (
+                <>
+                  <button
+                    type="button"
+                    className="hud-btn"
+                    aria-label="Reload telescope engine"
+                    title="Reload Telescope Engine"
+                    onClick={() => {
+                      const refreshWwtIframe = (window as any).refreshWwtIframe;
+                      if (typeof refreshWwtIframe === 'function') {
+                        refreshWwtIframe();
+                      } else {
+                        const viewer = (window as any).cesiumViewer;
+                        if (viewer && !viewer.isDestroyed?.()) {
+                          viewer.scene.requestRender();
+                        }
+                      }
+                      useUIStore.getState().addChangeLog('SYSTEM', 'Render engine refresh requested.', 'info');
+                    }}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>RELOAD</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="hud-btn"
+                    aria-label="Open help and operator manual"
+                    title="Access Help & User Documentation"
+                    onClick={() => {
+                      useUIStore.getState().setRightPanelTab('browser');
+                      useUIStore.getState().setRightPanelOpen(true);
+                      useUIStore.getState().setBrowserUrl('https://html.duckduckgo.com/html/?q=Silver+Wolf+VI+Operator+Manual');
+                      useUIStore.getState().addChangeLog('HELP', 'Opened manual in system browser.', 'info');
+                    }}
+                  >
+                    <UserCircle className="w-3.5 h-3.5" />
+                    <span>MANUAL</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -913,163 +1077,6 @@ export default function GoogleEarthRemix() {
             </div>
             <div className="hud-tab-caption">{hudTab.toUpperCase()}</div>
           </div>
-
-          <div className="hud-section actions">
-            {hudTab === 'navigation' && (
-              <>
-                <button
-                  type="button"
-                  className="hud-btn"
-                  aria-label="Toggle sidebar control panel"
-                  title="Toggle Sidebar Control Panel"
-                  onClick={() => {
-                    setLeftPanelOpen(!leftPanelOpen);
-                    useUIStore.getState().addChangeLog('UI', 'Spatial Control Panel toggled.', 'info');
-                  }}
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>SIDEBAR</span>
-                </button>
-                <button
-                  type="button"
-                  className="hud-btn"
-                  aria-label="Reset measurement ruler"
-                  title="Reset Measurement Ruler"
-                  onClick={() => {
-                    setMeasureStart(null);
-                    setMeasureEnd(null);
-                    useUIStore.getState().addChangeLog('MEASUREMENT', 'Geodetic markers cleared.', 'info');
-                  }}
-                >
-                  <Ruler className="w-3.5 h-3.5" />
-                  <span>RULER</span>
-                </button>
-                <button
-                  type="button"
-                  className="hud-btn"
-                  aria-label="Reset camera heading north"
-                  title="Reset Camera Orientation North"
-                  onClick={() => {
-                    handleCompass();
-                    useUIStore.getState().addChangeLog('CAMERA', 'Heading reset to North.', 'info');
-                  }}
-                >
-                  <Navigation className="w-3.5 h-3.5" />
-                  <span>NORTH</span>
-                </button>
-              </>
-            )}
-
-            {hudTab === 'layers' && (
-              <>
-                <button
-                  type="button"
-                  className="hud-btn"
-                  aria-pressed={showBorders}
-                  aria-label="Toggle borders"
-                  title="Toggle Borders"
-                  onClick={() => setShowBorders(!showBorders)}
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>BORDERS</span>
-                </button>
-                <button
-                  type="button"
-                  className="hud-btn"
-                  aria-pressed={showTerrain}
-                  aria-label="Toggle terrain"
-                  title="Toggle Terrain"
-                  onClick={() => setShowTerrain(!showTerrain)}
-                >
-                  <Map className="w-3.5 h-3.5" />
-                  <span>TERRAIN</span>
-                </button>
-                <button
-                  type="button"
-                  className="hud-btn"
-                  aria-pressed={showRoads}
-                  aria-label="Toggle roads"
-                  title="Toggle Roads"
-                  onClick={() => setShowRoads(!showRoads)}
-                >
-                  <Pin className="w-3.5 h-3.5" />
-                  <span>ROADS</span>
-                </button>
-              </>
-            )}
-
-            {hudTab === 'target' && (
-              <>
-                <div className="hud-metric text-[8px] text-white/40 hidden xl:flex gap-2 mr-2 border-r border-white/10 pr-2">
-                  <span>TARGET: <span className="text-purple-400 font-bold uppercase">{activeSatelliteId ? cleanSatelliteName(selectedSatellite?.name || activeSatelliteId) : (activeLocation ? activeLocation.name.split(',')[0] : 'EARTH')}</span></span>
-                  {activeSatelliteId && <span>ALT: <span className="text-amber-400 font-bold">{(selectedSatellite?.altitudeM || 420000) / 1000}KM</span></span>}
-                </div>
-                <button
-                  type="button"
-                  className="hud-btn"
-                  aria-label="Open diagnostics panel"
-                  title="Open Diagnostic System Panel"
-                  onClick={() => {
-                    useUIStore.getState().setRightPanelTab('diagnostics');
-                    useUIStore.getState().setRightPanelOpen(true);
-                    useUIStore.getState().addChangeLog('UI', 'Diagnostics Panel opened.', 'info');
-                  }}
-                >
-                  <Settings className="w-3.5 h-3.5" />
-                  <span>DIAGNOSTICS</span>
-                </button>
-                <button
-                  type="button"
-                  className="hud-btn"
-                  aria-label="Open active target details"
-                  title="Open Active Target Details"
-                  onClick={() => {
-                    useUIStore.getState().setRightPanelTab('context');
-                    useUIStore.getState().setRightPanelOpen(true);
-                  }}
-                >
-                  <Pin className="w-3.5 h-3.5" />
-                  <span>TARGET</span>
-                </button>
-              </>
-            )}
-
-            {hudTab === 'system' && (
-              <>
-                <button
-                  type="button"
-                  className="hud-btn"
-                  aria-label="Reload telescope engine"
-                  title="Reload Telescope Engine"
-                  onClick={() => {
-                    const viewer = (window as any).cesiumViewer;
-                    if (viewer && !viewer.isDestroyed?.()) {
-                      viewer.scene.requestRender();
-                    }
-                    useUIStore.getState().addChangeLog('SYSTEM', 'Render engine refresh requested.', 'info');
-                  }}
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>RELOAD</span>
-                </button>
-                <button
-                  type="button"
-                  className="hud-btn"
-                  aria-label="Open help and operator manual"
-                  title="Access Help & User Documentation"
-                  onClick={() => {
-                    useUIStore.getState().setRightPanelTab('browser');
-                    useUIStore.getState().setRightPanelOpen(true);
-                    useUIStore.getState().setBrowserUrl('https://html.duckduckgo.com/html/?q=Silver+Wolf+VI+Operator+Manual');
-                    useUIStore.getState().addChangeLog('HELP', 'Opened manual in system browser.', 'info');
-                  }}
-                >
-                  <UserCircle className="w-3.5 h-3.5" />
-                  <span>MANUAL</span>
-                </button>
-              </>
-            )}
-          </div>
         </header>
       )}
 
@@ -1077,18 +1084,6 @@ export default function GoogleEarthRemix() {
         {/* Core Stage */}
         <div className="earth-stage">
 
-          {/* Spatial HUD Migration Notice */}
-          {!leftPanelOpen && (
-            <button
-              type="button"
-              onClick={() => setLeftPanelOpen(true)}
-              aria-label="Open spatial HUD sidebar"
-              title="Open spatial HUD sidebar"
-              className="absolute top-[clamp(6rem,16vh,7.5rem)] left-[clamp(0.75rem,3vw,1.25rem)] z-50 glass-panel inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-primary/25 bg-black/35 text-primary shadow-lg transition-colors hover:bg-primary/15 hover:text-white pointer-events-auto"
-            >
-              <Compass className="w-4 h-4" aria-hidden="true" />
-            </button>
-          )}
           {/* Fallback 2D Sphere Globe when Cesium has not loaded */}
           {!hasCesium && (
             <div className="earth-globe-fallback pointer-events-auto">

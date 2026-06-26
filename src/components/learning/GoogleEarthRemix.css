@@ -28,16 +28,25 @@
   -webkit-backdrop-filter: blur(24px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.05);
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: space-between;
-  padding: 0 1.25rem;
-  gap: 0.75rem;
+  padding: 0.8rem 1rem 0.85rem;
+  gap: 0.6rem;
   color: #c4c6cf;
   font-size: 0.7rem;
   z-index: 25;
   pointer-events: auto;
   transition: all 0.3s ease;
+}
+
+.hud-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .hud-section {
@@ -52,8 +61,7 @@
   flex-direction: column;
   align-items: center;
   gap: 0.2rem;
-  min-width: min(16rem, 100%);
-  flex: 1 1 16rem;
+  width: 100%;
 }
 
 .hud-tab-strip {
@@ -96,13 +104,14 @@
 }
 
 .hud-section.branding {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   max-width: min(48vw, 620px);
 }
 
 .hud-section.actions {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .hud-status-node {
@@ -221,7 +230,7 @@
 
 @media (max-width: 1540px) {
   .orbital-hud-bar {
-    padding: 0 0.75rem;
+    padding: 0.7rem 0.75rem 0.8rem;
   }
 
   .hud-section {
@@ -261,6 +270,63 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+}
+
+@media (max-width: 980px) {
+  .orbital-hud-bar {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    gap: 0.45rem;
+  }
+
+  .hud-top-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hud-section.branding {
+    max-width: none;
+  }
+
+  .hud-section.actions {
+    justify-content: flex-start;
+  }
+
+  .hud-tab-strip {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .hud-tab {
+    min-width: 4rem;
+    padding: 0 0.7rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .hud-section.branding {
+    flex-wrap: wrap;
+    gap: 0.35rem 0.65rem;
+  }
+
+  .hud-status-node {
+    padding: 0.2rem 0.4rem;
+  }
+
+  .hud-label {
+    max-width: 11rem;
+  }
+
+  .hud-section.actions {
+    gap: 0.35rem;
+  }
+
+  .hud-btn {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0.3rem 0.55rem;
   }
 }
 
@@ -1089,8 +1155,8 @@
   position: absolute;
   left: 1rem;
   bottom: 3.5rem;
-  width: 60px;
-  height: 60px;
+  width: 48px;
+  height: 48px;
   border: 2px solid rgba(255, 255, 255, 0.15);
   border-radius: 50%;
   background: rgba(18, 19, 26, 0.8);
@@ -1124,14 +1190,14 @@
   bottom: 3.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
   z-index: 15;
   pointer-events: auto;
 }
 
 .earth-ctrl-btn {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: rgba(18, 19, 26, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1167,15 +1233,15 @@
   align-items: center;
   background: rgba(18, 19, 26, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  border-radius: 16px;
   overflow: hidden;
   backdrop-filter: blur(12px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
 }
 
 .earth-zoom-cluster button {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border: 0;
   background: transparent;
   color: #fff;
@@ -1191,7 +1257,7 @@
 }
 
 .earth-zoom-bar {
-  width: 20px;
+  width: 16px;
   height: 1px;
   background: rgba(255, 255, 255, 0.1);
 }
@@ -1344,11 +1410,14 @@
     top: 0.5rem;
   }
   .earth-controls {
-    right: 0.5rem;
-    bottom: 2rem;
+    right: 0.75rem;
+    bottom: 1.25rem;
   }
   .earth-minimap {
-    display: none;
+    left: 0.75rem;
+    bottom: 1.25rem;
+    width: 44px;
+    height: 44px;
   }
 }
 

@@ -45,23 +45,23 @@ export function WorkspaceHeader() {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-1.5 text-white/30 transition-colors hover:bg-white/5 hover:text-white/60"
+          className="relative inline-flex min-h-10 min-w-10 items-center justify-center rounded-md p-1.5 text-white/30 transition-colors hover:bg-white/5 hover:text-white/60 sm:min-h-11 sm:min-w-11"
           aria-label="Notifications"
         >
-          <Bell className="h-3.5 w-3.5" />
+          <Bell className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           <div className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-primary" />
         </button>
 
         <button
           type="button"
           onClick={() => setCurrentPage('settings')}
-          className="flex min-h-11 items-center gap-2 rounded-full p-1 pr-3 text-white/40 transition-colors hover:bg-white/5 hover:text-white/60"
+          className="flex min-h-10 items-center gap-1.5 rounded-full p-1 pr-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white/60 sm:min-h-11 sm:gap-2 sm:pr-3"
           aria-label="User profile"
         >
-          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20">
-            <User className="h-3.5 w-3.5 text-primary" />
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 sm:h-6 sm:w-6">
+            <User className="h-3 w-3 text-primary sm:h-3.5 sm:w-3.5" />
           </div>
-          <span className="hidden text-[10px] font-mono uppercase tracking-wider sm:inline">Operator</span>
+          <span className="hidden text-[10px] font-mono uppercase tracking-wider md:inline">Operator</span>
         </button>
       </div>
     </header>
