@@ -123,6 +123,7 @@ export default function GoogleEarthRemix() {
   const setMeasureEnd = useUIStore((s) => s.setMeasureEnd);
   const [activePanorama, setActivePanorama] = useState<string | null>(null);
   const [hasCesium, setHasCesium] = useState(false);
+  const [hudTab, setHudTab] = useState<'navigation' | 'layers' | 'target' | 'system'>('navigation');
 
   // 2. Zustand Store integrations
   const activeLocation = useUIStore((s) => s.activeLocation);
@@ -890,89 +891,184 @@ export default function GoogleEarthRemix() {
             </div>
           </div>
 
-          {/* Center spacing gap reserved for mode switcher */}
-          <div className="hud-center-spacer w-[min(220px,24vw)] hidden lg:block" />
-
-          {/* High-tech glass action buttons & target telemetry */}
-          <div className="hud-section actions">
-            <div className="hud-metric text-[8px] text-white/40 hidden xl:flex gap-2 mr-2 border-r border-white/10 pr-2">
-              <span>TARGET: <span className="text-purple-400 font-bold uppercase">{activeSatelliteId ? cleanSatelliteName(selectedSatellite?.name || activeSatelliteId) : (activeLocation ? activeLocation.name.split(',')[0] : 'EARTH')}</span></span>
-              {activeSatelliteId && <span>ALT: <span className="text-amber-400 font-bold">{(selectedSatellite?.altitudeM || 420000) / 1000}KM</span></span>}
+          <div className="hud-center-stack">
+            <div className="hud-tab-strip" role="tablist" aria-label="Earth overlay modes">
+              {([
+                ['navigation', 'Navigation'],
+                ['layers', 'Layers'],
+                ['target', 'Target'],
+                ['system', 'System'],
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={hudTab === key}
+                  onClick={() => setHudTab(key)}
+                  className={`hud-tab ${hudTab === key ? 'active' : ''}`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
+            <div className="hud-tab-caption">{hudTab.toUpperCase()}</div>
+          </div>
 
-            <button
-              type="button"
-              className="hud-btn"
-              aria-label="Toggle sidebar control panel"
-              title="Toggle Sidebar Control Panel"
-              onClick={() => {
-                setLeftPanelOpen(!leftPanelOpen);
-                useUIStore.getState().addChangeLog('UI', 'Spatial Control Panel toggled.', 'info');
-              }}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>SYS_CONTROL</span>
-            </button>
+          <div className="hud-section actions">
+            {hudTab === 'navigation' && (
+              <>
+                <button
+                  type="button"
+                  className="hud-btn"
+                  aria-label="Toggle sidebar control panel"
+                  title="Toggle Sidebar Control Panel"
+                  onClick={() => {
+                    setLeftPanelOpen(!leftPanelOpen);
+                    useUIStore.getState().addChangeLog('UI', 'Spatial Control Panel toggled.', 'info');
+                  }}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>SIDEBAR</span>
+                </button>
+                <button
+                  type="button"
+                  className="hud-btn"
+                  aria-label="Reset measurement ruler"
+                  title="Reset Measurement Ruler"
+                  onClick={() => {
+                    setMeasureStart(null);
+                    setMeasureEnd(null);
+                    useUIStore.getState().addChangeLog('MEASUREMENT', 'Geodetic markers cleared.', 'info');
+                  }}
+                >
+                  <Ruler className="w-3.5 h-3.5" />
+                  <span>RULER</span>
+                </button>
+                <button
+                  type="button"
+                  className="hud-btn"
+                  aria-label="Reset camera heading north"
+                  title="Reset Camera Orientation North"
+                  onClick={() => {
+                    handleCompass();
+                    useUIStore.getState().addChangeLog('CAMERA', 'Heading reset to North.', 'info');
+                  }}
+                >
+                  <Navigation className="w-3.5 h-3.5" />
+                  <span>NORTH</span>
+                </button>
+              </>
+            )}
 
-            <button
-              type="button"
-              className="hud-btn"
-              aria-label="Reset measurement ruler"
-              title="Reset Measurement Ruler"
-              onClick={() => {
-                setMeasureStart(null);
-                setMeasureEnd(null);
-                useUIStore.getState().addChangeLog('MEASUREMENT', 'Geodetic markers cleared.', 'info');
-              }}
-            >
-              <Ruler className="w-3.5 h-3.5" />
-              <span>CLEAR_RULER</span>
-            </button>
+            {hudTab === 'layers' && (
+              <>
+                <button
+                  type="button"
+                  className="hud-btn"
+                  aria-pressed={showBorders}
+                  aria-label="Toggle borders"
+                  title="Toggle Borders"
+                  onClick={() => setShowBorders(!showBorders)}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>BORDERS</span>
+                </button>
+                <button
+                  type="button"
+                  className="hud-btn"
+                  aria-pressed={showTerrain}
+                  aria-label="Toggle terrain"
+                  title="Toggle Terrain"
+                  onClick={() => setShowTerrain(!showTerrain)}
+                >
+                  <Map className="w-3.5 h-3.5" />
+                  <span>TERRAIN</span>
+                </button>
+                <button
+                  type="button"
+                  className="hud-btn"
+                  aria-pressed={showRoads}
+                  aria-label="Toggle roads"
+                  title="Toggle Roads"
+                  onClick={() => setShowRoads(!showRoads)}
+                >
+                  <Pin className="w-3.5 h-3.5" />
+                  <span>ROADS</span>
+                </button>
+              </>
+            )}
 
-            <button
-              type="button"
-              className="hud-btn"
-              aria-label="Reset camera heading north"
-              title="Reset Camera Orientation North"
-              onClick={() => {
-                handleCompass();
-                useUIStore.getState().addChangeLog('CAMERA', 'Heading reset to North.', 'info');
-              }}
-            >
-              <Navigation className="w-3.5 h-3.5" />
-              <span>ALIGN_NORTH</span>
-            </button>
+            {hudTab === 'target' && (
+              <>
+                <div className="hud-metric text-[8px] text-white/40 hidden xl:flex gap-2 mr-2 border-r border-white/10 pr-2">
+                  <span>TARGET: <span className="text-purple-400 font-bold uppercase">{activeSatelliteId ? cleanSatelliteName(selectedSatellite?.name || activeSatelliteId) : (activeLocation ? activeLocation.name.split(',')[0] : 'EARTH')}</span></span>
+                  {activeSatelliteId && <span>ALT: <span className="text-amber-400 font-bold">{(selectedSatellite?.altitudeM || 420000) / 1000}KM</span></span>}
+                </div>
+                <button
+                  type="button"
+                  className="hud-btn"
+                  aria-label="Open diagnostics panel"
+                  title="Open Diagnostic System Panel"
+                  onClick={() => {
+                    useUIStore.getState().setRightPanelTab('diagnostics');
+                    useUIStore.getState().setRightPanelOpen(true);
+                    useUIStore.getState().addChangeLog('UI', 'Diagnostics Panel opened.', 'info');
+                  }}
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  <span>DIAGNOSTICS</span>
+                </button>
+                <button
+                  type="button"
+                  className="hud-btn"
+                  aria-label="Open active target details"
+                  title="Open Active Target Details"
+                  onClick={() => {
+                    useUIStore.getState().setRightPanelTab('context');
+                    useUIStore.getState().setRightPanelOpen(true);
+                  }}
+                >
+                  <Pin className="w-3.5 h-3.5" />
+                  <span>TARGET</span>
+                </button>
+              </>
+            )}
 
-            <button
-              type="button"
-              className="hud-btn"
-              aria-label="Open diagnostics panel"
-              title="Open Diagnostic System Panel"
-              onClick={() => {
-                useUIStore.getState().setRightPanelTab('diagnostics');
-                useUIStore.getState().setRightPanelOpen(true);
-                useUIStore.getState().addChangeLog('UI', 'Diagnostics Panel opened.', 'info');
-              }}
-            >
-              <Settings className="w-3.5 h-3.5" />
-              <span>DIAGNOSTICS</span>
-            </button>
-
-            <button
-              type="button"
-              className="hud-btn"
-              aria-label="Open help and operator manual"
-              title="Access Help & User Documentation"
-              onClick={() => {
-                useUIStore.getState().setRightPanelTab('browser');
-                useUIStore.getState().setRightPanelOpen(true);
-                useUIStore.getState().setBrowserUrl('https://html.duckduckgo.com/html/?q=Silver+Wolf+VI+Operator+Manual');
-                useUIStore.getState().addChangeLog('HELP', 'Opened manual in system browser.', 'info');
-              }}
-            >
-              <UserCircle className="w-3.5 h-3.5" />
-              <span>SYS_MANUAL</span>
-            </button>
+            {hudTab === 'system' && (
+              <>
+                <button
+                  type="button"
+                  className="hud-btn"
+                  aria-label="Reload telescope engine"
+                  title="Reload Telescope Engine"
+                  onClick={() => {
+                    const viewer = (window as any).cesiumViewer;
+                    if (viewer && !viewer.isDestroyed?.()) {
+                      viewer.scene.requestRender();
+                    }
+                    useUIStore.getState().addChangeLog('SYSTEM', 'Render engine refresh requested.', 'info');
+                  }}
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>RELOAD</span>
+                </button>
+                <button
+                  type="button"
+                  className="hud-btn"
+                  aria-label="Open help and operator manual"
+                  title="Access Help & User Documentation"
+                  onClick={() => {
+                    useUIStore.getState().setRightPanelTab('browser');
+                    useUIStore.getState().setRightPanelOpen(true);
+                    useUIStore.getState().setBrowserUrl('https://html.duckduckgo.com/html/?q=Silver+Wolf+VI+Operator+Manual');
+                    useUIStore.getState().addChangeLog('HELP', 'Opened manual in system browser.', 'info');
+                  }}
+                >
+                  <UserCircle className="w-3.5 h-3.5" />
+                  <span>MANUAL</span>
+                </button>
+              </>
+            )}
           </div>
         </header>
       )}
@@ -988,7 +1084,7 @@ export default function GoogleEarthRemix() {
               onClick={() => setLeftPanelOpen(true)}
               aria-label="Open spatial HUD sidebar"
               title="Open spatial HUD sidebar"
-              className="absolute top-[clamp(3.25rem,12vh,4.75rem)] left-[clamp(0.75rem,3vw,1.25rem)] z-50 glass-panel inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-primary/25 bg-black/35 text-primary shadow-lg transition-colors hover:bg-primary/15 hover:text-white pointer-events-auto"
+              className="absolute top-[clamp(6rem,16vh,7.5rem)] left-[clamp(0.75rem,3vw,1.25rem)] z-50 glass-panel inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-primary/25 bg-black/35 text-primary shadow-lg transition-colors hover:bg-primary/15 hover:text-white pointer-events-auto"
             >
               <Compass className="w-4 h-4" aria-hidden="true" />
             </button>

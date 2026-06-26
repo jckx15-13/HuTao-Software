@@ -380,30 +380,30 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
         if (!p.visible) continue;
 
         // Draw copied/derived WWV orbital silhouette marker.
-        const pulse = (Math.sin(Date.now() / 250) + 1) / 2;
         const iconUrl = WWV_ORBITAL_ASSET_BY_CATEGORY[sat.category] || WWV_ORBITAL_ASSET_BY_CATEGORY.other;
         const iconImage = orbitalIconImages.get(iconUrl);
-        const iconSize = isSelected ? 18 : sat.category === 'starlink' ? 10 : 13;
+        const orbitalScale = Math.max(0.7, Math.min(1.5, 420000 / Math.max(250000, sat.altitudeM)));
+        const iconSize = Math.round((isSelected ? 19 : 14) * orbitalScale);
 
         ctx.save();
-        ctx.shadowColor = sat.color;
-        ctx.shadowBlur = isSelected ? 11 : 5;
-        ctx.globalAlpha = isSelected ? 1 : 0.86;
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
         if (iconImage?.complete && iconImage.naturalWidth > 0) {
           ctx.drawImage(iconImage, p.x - iconSize / 2, p.y - iconSize / 2, iconSize, iconSize);
         } else {
           ctx.fillStyle = sat.color;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, isSelected ? 4 : 2.5, 0, 2 * Math.PI);
+          ctx.arc(p.x, p.y, isSelected ? 4 : 3, 0, 2 * Math.PI);
           ctx.fill();
         }
         ctx.restore();
 
         if (isSelected) {
-          ctx.strokeStyle = sat.color + '80'; // 50% opacity
+          ctx.strokeStyle = sat.color + '66';
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 6 + pulse * 3, 0, 2 * Math.PI);
+          ctx.arc(p.x, p.y, Math.max(6, iconSize * 0.55), 0, 2 * Math.PI);
           ctx.stroke();
 
           // Label
