@@ -33,6 +33,8 @@ export function DockedLayout() {
   // Design logic: Hide the performance meter dashboard if the settings page is docked onto the side layout.
   const hideSystemMonitor = showSettings && settingsDocked;
   const showPassiveTelemetry = interactionMode !== 'chat' && !hideSystemMonitor;
+  const leftRailWidth = leftPanelOpen ? 'clamp(16rem, 18vw, 22rem)' : '0px';
+  const rightRailWidth = rightPanelOpen ? 'clamp(16rem, 18vw, 22rem)' : showPassiveTelemetry && viewportSize.width >= 1280 ? 'clamp(14rem, 16vw, 20rem)' : '0px';
 
   React.useEffect(() => {
     const isNarrowViewport = viewportSize.width < 760;
@@ -50,7 +52,13 @@ export function DockedLayout() {
 
   return (
     // Flexbox row layout spanning full viewport width. Inherits transparency so Cesium canvas is visible behind panels.
-    <div className="flex h-full w-full overflow-hidden bg-transparent">
+    <div
+      className="flex h-full w-full overflow-hidden bg-transparent"
+      style={{
+        ['--workspace-left-rail' as any]: leftRailWidth,
+        ['--workspace-right-rail' as any]: rightRailWidth,
+      }}
+    >
       {/* COLUMN 1: Collapsible navigation bar. Self-manages responsive hide/show states internally. */}
       <Suspense fallback={null}>
         <LeftPanel />
@@ -58,7 +66,13 @@ export function DockedLayout() {
 
       {/* COLUMN 2: Main center area. Sets flex-1 to occupy all remaining width.
           Uses pointer-events-none so mouse interaction drops down to Cesium 3D canvas layer. */}
-      <main className="flex-1 flex flex-col relative z-10 bg-transparent pointer-events-none">
+      <main
+        className="flex-1 flex flex-col relative z-10 bg-transparent pointer-events-none"
+        style={{
+          paddingLeft: 'max(0px, calc(var(--workspace-left-rail, 0px) + 0.75rem))',
+          paddingRight: 'max(0px, calc(var(--workspace-right-rail, 0px) + 0.75rem))',
+        }}
+      >
         <div className="w-full h-full relative pointer-events-none">
           <CenterPanel />
         </div>

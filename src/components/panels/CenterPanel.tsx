@@ -57,6 +57,10 @@ export function CenterPanel() {
   }, [interactionMode, spaceInteractionTarget, setInteractionMode, setSpaceInteractionTarget]);
 
   const isSpaceMode = interactionMode === 'orbital' || interactionMode === 'telescope';
+  const workspaceRailVars = {
+    paddingLeft: 'max(0px, calc(var(--workspace-left-rail, 0px) + 1rem))',
+    paddingRight: 'max(0px, calc(var(--workspace-right-rail, 0px) + 1rem))',
+  } as React.CSSProperties;
 
   return (
     // Root container: ALWAYS pointer-events-none to let Cesium globe receive drags underneath.
@@ -97,10 +101,13 @@ export function CenterPanel() {
 
       {/* Center Panel Content with Slide Transitions */}
       <div className="flex-1 w-full relative overflow-hidden">
-        {/* Chat View Container */}
-        {interactionMode === 'chat' && (
-          <div className="absolute inset-0 z-10 flex flex-col px-[clamp(0.75rem,3vw,1.5rem)] pb-4 pt-[clamp(3rem,8vh,6rem)] opacity-100 pointer-events-auto">
-            <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col justify-between overflow-hidden border-x border-white/10 bg-[#07090f]/95 shadow-2xl">
+      {/* Chat View Container */}
+      {interactionMode === 'chat' && (
+          <div
+            className="absolute inset-0 z-10 flex flex-col px-[clamp(0.75rem,3vw,1.5rem)] pb-4 pt-[clamp(3.25rem,8vh,6.25rem)] opacity-100 pointer-events-auto"
+            style={workspaceRailVars}
+          >
+            <div className="mx-auto flex min-h-0 w-full max-w-[78rem] flex-1 flex-col justify-between overflow-hidden rounded-[32px] border border-white/10 bg-[#07090f]/94 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
               {/* Scrollable messages */}
               <div className="flex-1 overflow-hidden">
                 <ChatPanel />

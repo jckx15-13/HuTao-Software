@@ -24,29 +24,29 @@ const clampPx = (value: number, min: number, max: number): number => {
 };
 
 const buildEdgeInsetPx = (viewportWidth: number): number => {
-  return clampPx(viewportWidth * 0.02, 8, 16);
+  return clampPx(viewportWidth * 0.025, 14, 24);
 };
 
 const buildPanelWidthPx = (viewportWidth: number, leftOpen: boolean, rightOpen: boolean): number => {
   const hasDualPanels = leftOpen && rightOpen;
   const edgeInsetPx = buildEdgeInsetPx(viewportWidth);
-  const preferredWidthPx = clampPx(viewportWidth * 0.33, 84, 340);
+  const preferredWidthPx = clampPx(viewportWidth * 0.29, 280, 420);
 
   const availablePx = hasDualPanels
-    ? Math.max(1, Math.floor((viewportWidth - edgeInsetPx * 2 - 24) / 2))
-    : Math.max(1, viewportWidth - edgeInsetPx * 2 - 16);
+    ? Math.max(1, Math.floor((viewportWidth - edgeInsetPx * 2 - 40) / 2))
+    : Math.max(1, viewportWidth - edgeInsetPx * 2 - 24);
 
   return Math.min(preferredWidthPx, Math.max(1, availablePx));
 };
 
 const buildVerticalInsetPx = (viewportHeight: number, kind: 'top' | 'bottom'): number => {
   const preferredRatios: Record<'top' | 'bottom', number> = {
-    top: 0.07,
-    bottom: 0.065,
+    top: 0.08,
+    bottom: 0.075,
   };
   const insetLimits: Record<'top' | 'bottom', { min: number; max: number }> = {
-    top: { min: 20, max: 88 },
-    bottom: { min: 18, max: 76 },
+    top: { min: 28, max: 96 },
+    bottom: { min: 24, max: 88 },
   };
 
   const { min, max } = insetLimits[kind];
@@ -95,7 +95,7 @@ export function buildSpatialPanelGeometry(input: SpatialPanelGeometryInput): Spa
   }
 
   const widthPx = buildPanelWidthPx(viewport.width, leftPanelOpen, rightPanelOpen);
-  const reservedChromePx = 24;
+  const reservedChromePx = 32;
   const maxHeightPx = clampPx(Math.max(0, viewport.height - topInsetPx - bottomInsetPx - reservedChromePx), 0, viewport.height);
 
   const base: SpatialPanelStyle = {
