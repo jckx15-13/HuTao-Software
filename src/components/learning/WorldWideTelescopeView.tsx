@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Sparkles, Compass, Eye, RefreshCw, X, Maximize2, Minimize2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Play, Pause,
@@ -1638,8 +1639,9 @@ export default function WorldWideTelescopeView({
             telemetryTimelineCollapsed ? 'bottom-2' : 'bottom-4'
           }`}
           style={{
-            left: 'clamp(1rem, 4vw, 2rem)',
-            right: 'clamp(4.75rem, 8vw, 6rem)',
+            left: leftPanelOpen ? `calc(${leftPanelInset}px + 1rem)` : 'clamp(1rem, 4vw, 2rem)',
+            // right: 'clamp(4.75rem, 8vw, 6rem)'
+            right: rightPanelOpen ? `calc(${rightPanelInset}px + 1rem)` : 'clamp(4.75rem, 8vw, 6rem)',
           }}
         >
           <div
@@ -1766,7 +1768,7 @@ export default function WorldWideTelescopeView({
         </div>
 
         {/* Draggable floating Picture-in-Picture window overlay */}
-        {telescopeWindowActive && (
+        {telescopeWindowActive && typeof document !== 'undefined' && createPortal(
           <div
             className="glass-panel border border-primary/20 flex flex-col overflow-hidden shadow-2xl pointer-events-auto absolute z-50"
             style={{
@@ -1839,7 +1841,8 @@ export default function WorldWideTelescopeView({
                 {renderIframe()}
               </div>
             )}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     );
