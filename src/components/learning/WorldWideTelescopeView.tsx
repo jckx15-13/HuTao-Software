@@ -1766,7 +1766,7 @@ export default function WorldWideTelescopeView({
         </div>
 
         {/* Draggable floating Picture-in-Picture window overlay */}
-        {telescopeWindowActive && spaceInteractionTarget === 'telescope' && (
+        {telescopeWindowActive && (
           <div
             className="glass-panel border border-primary/20 flex flex-col overflow-hidden shadow-2xl pointer-events-auto absolute z-50"
             style={{
