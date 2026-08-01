@@ -11,6 +11,22 @@ __pycache__/
 #
 # Local/dev files
 .codex/
+.codex-run/
 scratch/
 correct_changes.patch
 worldwideview/
+
+# Agent scratch, audit output, and one-off logs — not project source
+.agents/
+diagnostics/
+incidents/
+logs/
+test-results/
+eslint_report.json
+eslint_summary.json
+patch_check.txt
+implementation_plan.md
+implementation_plans_log.md
+docs/_archive/
+docs/development_logs/
+docs/progress.md

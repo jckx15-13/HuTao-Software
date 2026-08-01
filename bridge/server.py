@@ -26,6 +26,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, field_validator
 
+# Local-LLM support (Ollama / LM Studio / llama.cpp). Imported defensively:
+# a problem in the local layer must not prevent the bridge from starting,
+# since cloud providers and the rest of the API stay usable without it.
+try:
+    import local_llm
+    LOCAL_LLM_AVAILABLE = True
+    LOCAL_LLM_IMPORT_ERROR = ""
+except Exception as exc:  # pragma: no cover - defensive
+    local_llm = None
+    LOCAL_LLM_AVAILABLE = False
+    LOCAL_LLM_IMPORT_ERROR = str(exc)
+    print(f"[bridge] local LLM support unavailable: {exc}")
+
 MODEL_NAME = os.getenv("HF_MODEL_NAME", "google/gemma-2-27b-it")
 PORT = int(os.getenv("BRIDGE_PORT", "8001"))
 HOST = os.getenv("BRIDGE_HOST", "0.0.0.0")
@@ -45,6 +58,9 @@ CHAT_MODEL_CACHE: dict[str, Any] = {}
 CHAT_MODEL_CACHE_TTL_SECONDS = float(os.getenv("BRIDGE_CHAT_MODEL_CACHE_TTL_SECONDS", "60"))
 CHAT_MODEL_NEGATIVE_CACHE_TTL_SECONDS = float(os.getenv("BRIDGE_CHAT_MODEL_NEGATIVE_CACHE_TTL_SECONDS", "2"))
 CHAT_MODEL_CACHE_TTL: dict[str, float] = {}
+# Cloud providers answer in seconds; a local model on CPU can take minutes for
+# a first token, so this defaults high and is tuned down per-deployment.
+CHAT_REQUEST_TIMEOUT = float(os.getenv("BRIDGE_CHAT_TIMEOUT", "300"))
 BRIDGE_ODYSSEUS_MODELS_TIMEOUT = float(os.getenv("BRIDGE_ODYSSEUS_MODELS_TIMEOUT", "1.2"))
 BRIDGE_MOCK_MODELS_TIMEOUT = float(os.getenv("BRIDGE_MOCK_MODELS_TIMEOUT", "0.5"))
 GIT_STATUS_CACHE_MAX_AGE_SECONDS = float(os.getenv("BRIDGE_GIT_STATUS_CACHE_SECONDS", "10"))
@@ -673,6 +689,7 @@ async def call_openai_compatible_chat(
     model_name: str,
     req: ChatRequest,
     provider_headers: Optional[dict] = None,
+    timeout: Optional[float] = None,
 ) -> str:
     messages = []
     if req.system_instruction:
@@ -687,7 +704,7 @@ async def call_openai_compatible_chat(
             "temperature": 0,
         },
         headers=provider_headers or {},
-        timeout=45.0,
+        timeout=timeout if timeout is not None else CHAT_REQUEST_TIMEOUT,
     )
     response.raise_for_status()
     payload = response.json()
@@ -713,6 +730,18 @@ async def resolve_chat_endpoint(client: httpx.AsyncClient, headers: dict) -> tup
     if cached:
         return cached
 
+    # Local-first: a reachable Ollama/LM Studio/llama.cpp beats a cloud key,
+    # unless BRIDGE_PREFER_LOCAL is explicitly disabled.
+    if LOCAL_LLM_AVAILABLE and local_llm.prefer_local():
+        local_model, local_endpoint, local_status_msg, local_headers = (
+            await local_llm.resolve_local_endpoint(client)
+        )
+        if local_model and local_endpoint:
+            _set_cached_chat_model(
+                local_model, local_endpoint, local_status_msg, local_headers
+            )
+            return local_model, local_endpoint, local_status_msg, local_headers
+
     server_model, server_endpoint, server_status, server_headers = resolve_server_provider_endpoint()
     if server_model and server_endpoint:
         _set_cached_chat_model(
@@ -722,6 +751,18 @@ async def resolve_chat_endpoint(client: httpx.AsyncClient, headers: dict) -> tup
             server_headers,
         )
         return server_model, server_endpoint, server_status, server_headers
+
+    # Cloud unavailable (or deprioritised and then unconfigured): try local as
+    # a fallback before falling through to Odysseus discovery.
+    if LOCAL_LLM_AVAILABLE and not local_llm.prefer_local():
+        local_model, local_endpoint, local_status_msg, local_headers = (
+            await local_llm.resolve_local_endpoint(client)
+        )
+        if local_model and local_endpoint:
+            _set_cached_chat_model(
+                local_model, local_endpoint, local_status_msg, local_headers
+            )
+            return local_model, local_endpoint, local_status_msg, local_headers
 
     try:
         models_resp = await client.get(
@@ -909,21 +950,25 @@ async def chat(req: ChatRequest, request: Request):
         if not model_name or not endpoint_url:
             return create_local_bridge_response(req, model_status)
 
-        if model_status == "verification mock LLM endpoint":
-            response_text = await call_openai_compatible_chat(client, endpoint_url, model_name, req, provider_headers)
-            return {
-                "response": response_text,
-                "mode": "verification-mock",
-                "reason": model_status,
-            }
-
-        if model_status.startswith("server-side "):
-            response_text = await call_openai_compatible_chat(client, endpoint_url, model_name, req, provider_headers)
-            return {
-                "response": response_text,
-                "mode": "server-provider",
-                "reason": model_status,
-            }
+        # Endpoints that speak OpenAI's /chat/completions directly, i.e.
+        # everything except the Odysseus session flow below. Keyed off the
+        # status string that resolve_chat_endpoint() produced.
+        OPENAI_COMPATIBLE_MODES = (
+            ("verification mock LLM endpoint", "verification-mock"),
+            ("server-side ", "server-provider"),
+            ("local ", "local-runtime"),
+        )
+        for prefix, mode in OPENAI_COMPATIBLE_MODES:
+            if model_status.startswith(prefix):
+                response_text = await call_openai_compatible_chat(
+                    client, endpoint_url, model_name, req, provider_headers
+                )
+                return {
+                    "response": response_text,
+                    "mode": mode,
+                    "model": model_name,
+                    "reason": model_status,
+                }
 
         # Reuse an active Odysseus session when possible to reduce chat latency.
         cache_key = _chat_cache_key(model_name, endpoint_url)
@@ -1475,6 +1520,39 @@ def build_feature_reality_ledger() -> dict:
 @app.get("/api/integration/status")
 async def api_integration_status():
     return build_feature_reality_ledger()
+
+# --- Local LLM ------------------------------------------------------------
+# Registered before the /api/{path:path} catch-all so these are not proxied
+# to Odysseus.
+
+@app.get("/api/local/status")
+async def api_local_status():
+    """Local runtimes, hardware tier, active model, and suggested pulls."""
+    if not LOCAL_LLM_AVAILABLE:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "available": False,
+                "error": LOCAL_LLM_IMPORT_ERROR or "local LLM support not loaded",
+            },
+        )
+    async with httpx.AsyncClient() as client:
+        payload = await local_llm.local_status(client)
+    payload["available"] = True
+    return payload
+
+
+@app.get("/api/local/recommend")
+async def api_local_recommend(require_tools: bool = True):
+    """Hardware-tiered model recommendations, independent of what is installed."""
+    if not LOCAL_LLM_AVAILABLE:
+        return JSONResponse(
+            status_code=503,
+            content={"error": LOCAL_LLM_IMPORT_ERROR or "local LLM support not loaded"},
+        )
+    import hardware
+    return hardware.recommend_models(require_tools=require_tools)
+
 
 # Secure Generic Proxy to Odysseus Endpoints
 @app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
