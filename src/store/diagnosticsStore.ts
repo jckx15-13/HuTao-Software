@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { bridgeUrl, getBridgeBaseUrl } from '../lib/bridgeConfig';
+import { bridgeUrl, getBridgeBaseUrl, isBridgeEnabled } from '../lib/bridgeConfig';
 
 export type DiagnosticLevel = 'error' | 'warning' | 'info' | 'debug';
 
@@ -85,7 +85,7 @@ export const useDiagnosticsStore = create<DiagnosticsState>((set, get) => ({
           userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
           url: sanitize(typeof window !== 'undefined' ? window.location.href : null),
           memory: mem,
-          time: new Date().toISOString(),
+          time: new Date().toISOString()
         };
       } catch (e) {
         return null;
@@ -99,21 +99,23 @@ export const useDiagnosticsStore = create<DiagnosticsState>((set, get) => ({
       stack: entry.stack || null,
       message: sanitizedMessage,
       level: entry.level || 'error',
-      suggestion: (entry as any).suggestion || null,
+      suggestion: (entry as any).suggestion || null
     };
 
-    const isHeadless = typeof window !== 'undefined' && (
-      /HeadlessChrome/i.test(navigator.userAgent) ||
-      navigator.webdriver ||
-      window.location.search.includes('fallback')
-    );
+    const isHeadless =
+      typeof window !== 'undefined' &&
+      (/HeadlessChrome/i.test(navigator.userAgent) ||
+        navigator.webdriver ||
+        window.location.search.includes('fallback'));
 
-    if (!isHeadless) {
+    // Skip bridge file-logging when headless, or when no bridge exists for this
+    // build — otherwise every diagnostic entry would fire a doomed request.
+    if (!isHeadless && isBridgeEnabled()) {
       // Asynchronously send to bridge for file logging
       fetch(bridgeUrl('/log'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(full),
+        body: JSON.stringify(full)
       }).catch(() => {
         /* ignore bridge logging failures */
       });
@@ -122,26 +124,36 @@ export const useDiagnosticsStore = create<DiagnosticsState>((set, get) => ({
     set((s) => ({ entries: [full, ...s.entries].slice(0, 500) }));
   },
   clear: () => set({ entries: [] }),
-  export: () => JSON.stringify(get().entries, null, 2),
+  export: () => JSON.stringify(get().entries, null, 2)
 }));
 
 // Auto-capture uncaught exceptions, promise rejections, and client load performance
 if (typeof window !== 'undefined') {
   // 1. Capture phase listener for resource load errors (img, script, link, etc.)
-  window.addEventListener('error', (event) => {
-    try {
-      const target = event.target as any;
-      if (target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK' || target.tagName === 'IMG' || target.tagName === 'VIDEO')) {
-        const src = target.src || target.href || 'unknown source';
-        useDiagnosticsStore.getState().add({
-          level: 'warning',
-          message: `Resource load failure: <${target.tagName.toLowerCase()}> from url "${src}"`,
-          metadata: { tagName: target.tagName, src },
-          suggestion: 'Verify network connection, asset path correctness, or resource CORS policies.'
-        });
-      }
-    } catch (e) {}
-  }, true);
+  window.addEventListener(
+    'error',
+    (event) => {
+      try {
+        const target = event.target as any;
+        if (
+          target &&
+          (target.tagName === 'SCRIPT' ||
+            target.tagName === 'LINK' ||
+            target.tagName === 'IMG' ||
+            target.tagName === 'VIDEO')
+        ) {
+          const src = target.src || target.href || 'unknown source';
+          useDiagnosticsStore.getState().add({
+            level: 'warning',
+            message: `Resource load failure: <${target.tagName.toLowerCase()}> from url "${src}"`,
+            metadata: { tagName: target.tagName, src },
+            suggestion: 'Verify network connection, asset path correctness, or resource CORS policies.'
+          });
+        }
+      } catch (e) {}
+    },
+    true
+  );
 
   // 2. Uncaught runtime exceptions
   window.addEventListener('error', (event) => {
@@ -155,7 +167,7 @@ if (typeof window !== 'undefined') {
       metadata: {
         filename: event.filename,
         lineno: event.lineno,
-        colno: event.colno,
+        colno: event.colno
       },
       suggestion: 'Verify null/undefined checks, verify state initialization, or check imports.'
     });
@@ -176,7 +188,7 @@ if (typeof window !== 'undefined') {
   // 4. Global fetch latency & error interceptor
   const originalFetch = window.fetch;
   window.fetch = async function (input, init) {
-    const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : '');
+    const url = typeof input === 'string' ? input : input instanceof Request ? input.url : '';
     const shouldTrack = shouldTrackFetchLatency(url);
 
     if (!shouldTrack && !isSatelliteTelemetryFetch(url)) {
@@ -229,7 +241,7 @@ if (typeof window !== 'undefined') {
   console.error = function (...args) {
     originalConsoleError.apply(console, args);
     try {
-      const msg = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+      const msg = args.map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ');
       // Filter out redundant logs or log loop triggers
       if (msg.includes('/log') || msg.includes('Script error.') || msg.includes('Cesium')) return;
       useDiagnosticsStore.getState().add({
@@ -243,7 +255,7 @@ if (typeof window !== 'undefined') {
   console.warn = function (...args) {
     originalConsoleWarn.apply(console, args);
     try {
-      const msg = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+      const msg = args.map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ');
       if (msg.includes('/log') || msg.includes('Cesium')) return;
       useDiagnosticsStore.getState().add({
         level: 'warning',
@@ -268,16 +280,17 @@ if (typeof window !== 'undefined') {
             level: 'info',
             message: `Telemetry Vitals initialized. load: ${loadTime.toFixed(0)}ms | dom: ${domReady.toFixed(0)}ms | network: ${dnsTime.toFixed(0)}ms`,
             metadata: { loadTime, domReady, dnsTime, responseTime },
-            suggestion: 'For optimal startup, minimize direct imports, utilize React.lazy, or enable bundle compression.'
+            suggestion:
+              'For optimal startup, minimize direct imports, utilize React.lazy, or enable bundle compression.'
           });
         }
 
         // WebGL capability check
-        const isHeadless = typeof window !== 'undefined' && (
-          /HeadlessChrome/i.test(navigator.userAgent) ||
-          navigator.webdriver ||
-          window.location.search.includes('fallback')
-        );
+        const isHeadless =
+          typeof window !== 'undefined' &&
+          (/HeadlessChrome/i.test(navigator.userAgent) ||
+            navigator.webdriver ||
+            window.location.search.includes('fallback'));
 
         if (isHeadless) {
           useDiagnosticsStore.getState().add({
@@ -298,7 +311,7 @@ if (typeof window !== 'undefined') {
         }
 
         // 7. WebGL Context Loss listener on page canvases
-        document.querySelectorAll('canvas').forEach(c => {
+        document.querySelectorAll('canvas').forEach((c) => {
           c.addEventListener('webglcontextlost', (e) => {
             e.preventDefault();
             useDiagnosticsStore.getState().add({
@@ -327,6 +340,18 @@ if (typeof window !== 'undefined') {
         });
 
         // 9. Periodic Bridge Server Health Checks
+        // Skipped entirely on static/demo builds (e.g. GitHub Pages): there is no
+        // bridge to reach, so polling would only spam failed requests forever.
+        if (!isBridgeEnabled()) {
+          useDiagnosticsStore.getState().add({
+            level: 'info',
+            message: 'Running in static demo mode. The FastAPI bridge is not available in this deployment.',
+            suggestion:
+              'Bridge-backed chat, tasks, and memory are disabled. Run the app locally with "node launch.js" for the full experience.'
+          });
+          return;
+        }
+
         let lastBridgeState = 'unknown';
         const checkBridgeHealth = async () => {
           try {
@@ -356,7 +381,8 @@ if (typeof window !== 'undefined') {
               useDiagnosticsStore.getState().add({
                 level: 'error',
                 message: `FastAPI bridge server is offline or unreachable at ${getBridgeBaseUrl()}.`,
-                suggestion: 'Restart services via "node launch.js" or update the bridge URL override in Developer Settings.'
+                suggestion:
+                  'Restart services via "node launch.js" or update the bridge URL override in Developer Settings.'
               });
               lastBridgeState = 'offline';
             }
@@ -365,7 +391,6 @@ if (typeof window !== 'undefined') {
         // Initial delayed check, then periodic
         setTimeout(checkBridgeHealth, 2000);
         setInterval(checkBridgeHealth, 15000);
-
       } catch (e) {
         // Fallback performance check
       }

@@ -7,10 +7,10 @@ import {
   getCredentialSummaries,
   saveCredentialRecord,
   validateCredentialRecord,
-  type CredentialProviderId,
+  type CredentialProviderId
 } from '@/lib/credentials/apiCredentialEngine';
 import { getApiConnectorReadiness } from '@/lib/credentials/apiConnectorEngine';
-import { bridgeUrl } from '@/lib/bridgeConfig';
+import { bridgeFetch } from '@/lib/bridgeConfig';
 import { SettingsSection } from './SettingsSection';
 
 type CredentialDraft = {
@@ -60,19 +60,19 @@ const emptyDraft: CredentialDraft = {
   endpoint: '',
   projectId: '',
   databaseId: '',
-  accountId: '',
+  accountId: ''
 };
 
 const emptyBridgeConnectorStatus: BridgeConnectorStatus = {
   status: 'idle',
   supportedCount: 0,
   configuredCount: 0,
-  providers: [],
+  providers: []
 };
 
 const apiCredentialPlaceholders = {
   openai: 'OPENAI_API_KEY for server bridge handoff',
-  gemini: 'GEMINI_API_KEY for configured Gemini route',
+  gemini: 'GEMINI_API_KEY for configured Gemini route'
 } as const;
 
 const ModelOptions: { label: string; value: AiModel }[] = [
@@ -83,7 +83,7 @@ const ModelOptions: { label: string; value: AiModel }[] = [
   { label: 'Gemini 3.1 Flash-Lite', value: 'gemini-3.1-flash-lite' },
   { label: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview' },
   { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
-  { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
+  { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' }
 ];
 
 function draftFromRecord(providerId: CredentialProviderId): CredentialDraft {
@@ -93,14 +93,12 @@ function draftFromRecord(providerId: CredentialProviderId): CredentialDraft {
     endpoint: record?.endpoint || '',
     projectId: record?.projectId || '',
     databaseId: record?.databaseId || '',
-    accountId: record?.accountId || '',
+    accountId: record?.accountId || ''
   };
 }
 
 function readDrafts(): Record<string, CredentialDraft> {
-  return Object.fromEntries(
-    API_CREDENTIAL_PROVIDERS.map((provider) => [provider.id, draftFromRecord(provider.id)]),
-  );
+  return Object.fromEntries(API_CREDENTIAL_PROVIDERS.map((provider) => [provider.id, draftFromRecord(provider.id)]));
 }
 export function AiSettings() {
   const aiModel = useUIStore((state) => state.aiModel);
@@ -131,18 +129,18 @@ export function AiSettings() {
     async function refreshBridgeConnectorStatus() {
       setBridgeConnectorStatus((current) => ({ ...current, status: 'checking', error: undefined }));
       try {
-        const response = await fetch(bridgeUrl('/api/connectors/providers?probe=true'));
+        const response = await bridgeFetch('/api/connectors/providers?probe=true');
         if (!response.ok) {
           throw new Error(`Bridge returned ${response.status}`);
         }
-        const payload = await response.json() as BridgeConnectorStatusResponse;
+        const payload = (await response.json()) as BridgeConnectorStatusResponse;
         const providers = Array.isArray(payload.providers) ? payload.providers : [];
         if (!active) return;
         setBridgeConnectorStatus({
           status: 'online',
           supportedCount: Number(payload.supported_count || providers.length),
           configuredCount: Number(payload.configured_count || 0),
-          providers,
+          providers
         });
       } catch (error) {
         if (!active) return;
@@ -151,7 +149,7 @@ export function AiSettings() {
           supportedCount: 0,
           configuredCount: 0,
           providers: [],
-          error: error instanceof Error ? error.message : String(error),
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }
@@ -167,8 +165,8 @@ export function AiSettings() {
       ...current,
       [providerId]: {
         ...(current[providerId] || emptyDraft),
-        [field]: value,
-      },
+        [field]: value
+      }
     }));
   };
 
@@ -219,14 +217,20 @@ export function AiSettings() {
           <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">Model Route</label>
           <select
             value={aiModel}
-            onChange={e => updateSettings({ aiModel: e.target.value as AiModel })}
+            onChange={(e) => updateSettings({ aiModel: e.target.value as AiModel })}
             className="w-full p-4 rounded-xl bg-white/5 border border-white/5 text-[10px] font-bold uppercase tracking-wider outline-none focus:border-primary/50 transition-all appearance-none cursor-pointer"
           >
-            {ModelOptions.map(o => <option key={o.value} value={o.value} className="bg-neutral-900">{o.label}</option>)}
+            {ModelOptions.map((o) => (
+              <option key={o.value} value={o.value} className="bg-neutral-900">
+                {o.label}
+              </option>
+            ))}
           </select>
           <p className="mt-2 text-[8px] text-white/35 font-mono leading-relaxed">
-            Local Diagnostic always replies without a key. Gemini reads from the credential engine or GEMINI_API_KEY.<br />
-            ChatGPT Pro subscription credentials are not valid for this browser UI on their own.<br />
+            Local Diagnostic always replies without a key. Gemini reads from the credential engine or GEMINI_API_KEY.
+            <br />
+            ChatGPT Pro subscription credentials are not valid for this browser UI on their own.
+            <br />
             GPT access requires an OpenAI server-side bridge/service in front of your API key.
           </p>
           <div className="rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-[8px] font-mono leading-relaxed text-white/40">
@@ -234,7 +238,10 @@ export function AiSettings() {
             <ul className="space-y-1 list-disc pl-4">
               <li>Local Diagnostic is the default test path and proves chat state end to end.</li>
               <li>Odysseus Local Bridge uses the credential-engine Bridge URL, defaulting to http://127.0.0.1:8001.</li>
-              <li>Server-side-only provider keys are staged for Bridge/backend handoff, not direct production browser calls.</li>
+              <li>
+                Server-side-only provider keys are staged for Bridge/backend handoff, not direct production browser
+                calls.
+              </li>
             </ul>
           </div>
         </div>
@@ -242,10 +249,13 @@ export function AiSettings() {
         <div className="space-y-3 rounded-2xl border border-primary/15 bg-primary/5 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">API and connector credential engine</label>
+              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">
+                API and connector credential engine
+              </label>
               <p className="mt-1 max-w-3xl text-[8px] font-mono leading-relaxed text-white/40">
-                Handles AI providers, Apify, Google Cloud, GitHub, Notion, weather, and the local Bridge endpoint through one local registry.
-                Browser storage is for local testing and setup handoff only; production secrets should live behind the Bridge or a provider backend.
+                Handles AI providers, Apify, Google Cloud, GitHub, Notion, weather, and the local Bridge endpoint
+                through one local registry. Browser storage is for local testing and setup handoff only; production
+                secrets should live behind the Bridge or a provider backend.
               </p>
             </div>
             <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 font-mono text-[8px] uppercase tracking-wider text-white/45">
@@ -257,13 +267,17 @@ export function AiSettings() {
             <div className="space-y-2 rounded-2xl border border-cyan-300/15 bg-cyan-300/5 p-3 md:col-span-2">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100/80">Bridge connector status</div>
+                  <div className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100/80">
+                    Bridge connector status
+                  </div>
                   <p className="mt-1 max-w-3xl font-mono text-[8px] leading-relaxed text-white/40">
-                    Live redacted status from the Bridge. It reports provider readiness, probe state, and env var names without returning secret values.
+                    Live redacted status from the Bridge. It reports provider readiness, probe state, and env var names
+                    without returning secret values.
                   </p>
                 </div>
                 <div className="rounded-full border border-white/10 bg-black/25 px-3 py-1 font-mono text-[8px] uppercase tracking-wider text-white/45">
-                  {bridgeConnectorStatus.status} / {bridgeConnectorStatus.configuredCount}/{bridgeConnectorStatus.supportedCount} configured
+                  {bridgeConnectorStatus.status} / {bridgeConnectorStatus.configuredCount}/
+                  {bridgeConnectorStatus.supportedCount} configured
                 </div>
               </div>
               {bridgeConnectorStatus.error && (
@@ -274,7 +288,10 @@ export function AiSettings() {
               {bridgeConnectorStatus.providers.length > 0 && (
                 <div className="grid gap-2 md:grid-cols-3">
                   {bridgeConnectorStatus.providers.map((provider) => (
-                    <div key={provider.id} className="rounded-xl border border-white/5 bg-black/20 p-2 font-mono text-[8px] leading-relaxed text-white/35">
+                    <div
+                      key={provider.id}
+                      className="rounded-xl border border-white/5 bg-black/20 p-2 font-mono text-[8px] leading-relaxed text-white/35"
+                    >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-bold uppercase tracking-wider text-white/60">{provider.label}</span>
                         <span className={provider.configured ? 'text-emerald-300/75' : 'text-white/30'}>
@@ -283,14 +300,24 @@ export function AiSettings() {
                       </div>
                       <div className="truncate">Env: {provider.key_env}</div>
                       <div className="truncate">Probe: {provider.probe_url}</div>
-                      <div className={provider.probe_ok ? 'text-emerald-300/75' : provider.probe_status === 'missing_credentials' ? 'text-white/30' : 'text-amber-300/70'}>
+                      <div
+                        className={
+                          provider.probe_ok
+                            ? 'text-emerald-300/75'
+                            : provider.probe_status === 'missing_credentials'
+                              ? 'text-white/30'
+                              : 'text-amber-300/70'
+                        }
+                      >
                         Probe status: {provider.probe_status || 'not checked'}
                         {provider.probe_http_status ? ` / HTTP ${provider.probe_http_status}` : ''}
                       </div>
                       {provider.probe_message && (
                         <div className="line-clamp-2 text-white/30">{provider.probe_message}</div>
                       )}
-                      <div>{provider.requires_backend ? 'Bridge/backend required' : 'Browser-callable or backend optional'}</div>
+                      <div>
+                        {provider.requires_backend ? 'Bridge/backend required' : 'Browser-callable or backend optional'}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -305,14 +332,18 @@ export function AiSettings() {
                 endpoint: draft.endpoint,
                 projectId: draft.projectId,
                 databaseId: draft.databaseId,
-                accountId: draft.accountId,
+                accountId: draft.accountId
               });
               return (
                 <div key={provider.id} className="space-y-2 rounded-2xl border border-white/10 bg-black/20 p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white/75">{provider.label}</div>
-                      <div className="mt-1 font-mono text-[8px] uppercase tracking-wider text-primary/70">{provider.category} / {provider.browserUse}</div>
+                      <div className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white/75">
+                        {provider.label}
+                      </div>
+                      <div className="mt-1 font-mono text-[8px] uppercase tracking-wider text-primary/70">
+                        {provider.category} / {provider.browserUse}
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -392,12 +423,16 @@ export function AiSettings() {
                       </div>
                       <div className="truncate">Probe: {readiness.probeUrl}</div>
                       <div className={readiness.directBrowserAllowed ? 'text-emerald-300/70' : 'text-amber-300/70'}>
-                        {readiness.directBrowserAllowed ? 'Browser-callable for local use' : 'Backend/Bridge route required'}
+                        {readiness.directBrowserAllowed
+                          ? 'Browser-callable for local use'
+                          : 'Backend/Bridge route required'}
                       </div>
                     </div>
                   )}
                   {warnings.map((warning) => (
-                    <p key={warning} className="font-mono text-[8px] leading-relaxed text-amber-300/75">{warning}</p>
+                    <p key={warning} className="font-mono text-[8px] leading-relaxed text-amber-300/75">
+                      {warning}
+                    </p>
                   ))}
                 </div>
               );
@@ -426,10 +461,12 @@ export function AiSettings() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">System Instructions</label>
+          <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">
+            System Instructions
+          </label>
           <textarea
             value={systemInstructions}
-            onChange={e => updateSettings({ systemInstructions: e.target.value })}
+            onChange={(e) => updateSettings({ systemInstructions: e.target.value })}
             className="w-full min-h-[120px] p-4 rounded-xl bg-white/5 border border-white/5 text-[10px] font-mono leading-relaxed outline-none focus:border-primary/50 transition-all resize-none scroller"
             placeholder="DEFINE SYSTEM BEHAVIOR..."
           />

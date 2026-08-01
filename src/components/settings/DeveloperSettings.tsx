@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react';
-import { ToggleLeft, ToggleRight, Database, Code, RefreshCw, Clipboard, Check, Activity, ShieldAlert } from 'lucide-react';
+import {
+  ToggleLeft,
+  ToggleRight,
+  Database,
+  Code,
+  RefreshCw,
+  Clipboard,
+  Check,
+  Activity,
+  ShieldAlert
+} from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
-import { bridgeUrl } from '@/lib/bridgeConfig';
+import { bridgeFetch } from '@/lib/bridgeConfig';
 import { pluginManager } from '../../core/plugins/PluginManager';
 import { dataBus } from '../../core/data/DataBus';
 import { SettingsSection } from './SettingsSection';
@@ -40,7 +50,7 @@ const realityStatusClass: Record<FeatureRealityStatus, string> = {
   'source-backed': 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
   partial: 'border-amber-300/20 bg-amber-300/10 text-amber-100',
   unconfigured: 'border-zinc-300/15 bg-white/5 text-white/45',
-  missing: 'border-red-400/20 bg-red-400/10 text-red-100',
+  missing: 'border-red-400/20 bg-red-400/10 text-red-100'
 };
 
 export function DeveloperSettings() {
@@ -70,11 +80,11 @@ export function DeveloperSettings() {
     async function refreshFeatureLedger() {
       setFeatureLedgerStatus('checking');
       try {
-        const response = await fetch(bridgeUrl('/api/integration/status'));
+        const response = await bridgeFetch('/api/integration/status');
         if (!response.ok) {
           throw new Error(`Bridge returned ${response.status}`);
         }
-        const payload = await response.json() as FeatureRealityLedger;
+        const payload = (await response.json()) as FeatureRealityLedger;
         if (!active) return;
         setFeatureLedger(payload);
         setFeatureLedgerStatus('online');
@@ -113,10 +123,11 @@ export function DeveloperSettings() {
       satelliteSettings: state.satelliteSettings,
       forceFallback: state.forceFallback,
       engineUrlOverride: state.engineUrlOverride,
-      personalisation: state.personalisation,
+      personalisation: state.personalisation
     };
 
-    navigator.clipboard.writeText(JSON.stringify(safeState, null, 2))
+    navigator.clipboard
+      .writeText(JSON.stringify(safeState, null, 2))
       .then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -126,20 +137,23 @@ export function DeveloperSettings() {
 
   return (
     <div className="space-y-6">
-      
       {/* SECTION 1: CORE SIMULATION & API */}
       <SettingsSection title="Execution & Core Simulation API">
         <div className="space-y-4">
-          
           {/* WebGL Force-Fallback Toggle */}
-          <div 
+          <div
             onClick={() => setForceFallback(!forceFallback)}
             className="flex items-center justify-between px-4 py-3.5 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all cursor-pointer group"
           >
             <div className="flex items-center gap-3">
-              <ShieldAlert size={16} className={`transition-colors ${forceFallback ? 'text-primary animate-pulse' : 'text-white/20'}`} />
+              <ShieldAlert
+                size={16}
+                className={`transition-colors ${forceFallback ? 'text-primary animate-pulse' : 'text-white/20'}`}
+              />
               <div className="flex flex-col">
-                <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${forceFallback ? 'text-white/80' : 'text-white/30'}`}>
+                <span
+                  className={`text-[10px] font-black uppercase tracking-wider transition-colors ${forceFallback ? 'text-white/80' : 'text-white/30'}`}
+                >
                   Force 2D Fallback Mode
                 </span>
                 <span className="text-[8px] text-white/30 font-mono mt-0.5">
@@ -180,10 +194,10 @@ export function DeveloperSettings() {
               )}
             </div>
             <span className="text-[8px] text-white/20 block font-mono">
-              Overrides both bridge REST calls and plugin WS streams. Empty uses VITE_BRIDGE_URL for REST and the WorldWideView data-engine default for plugin streams.
+              Overrides both bridge REST calls and plugin WS streams. Empty uses VITE_BRIDGE_URL for REST and the
+              WorldWideView data-engine default for plugin streams.
             </span>
           </div>
-
         </div>
       </SettingsSection>
 
@@ -197,8 +211,9 @@ export function DeveloperSettings() {
                 Runtime evidence, not marketing copy
               </span>
               <p className="max-w-2xl font-mono text-[8px] leading-relaxed text-white/35">
-                This ledger reports verified, source-backed, partial, unconfigured, and missing surfaces from the Bridge runtime.
-                It is intentionally not scored as 100 while external credentials or live provider checks are missing.
+                This ledger reports verified, source-backed, partial, unconfigured, and missing surfaces from the Bridge
+                runtime. It is intentionally not scored as 100 while external credentials or live provider checks are
+                missing.
               </p>
             </div>
             <div className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-mono text-[9px] uppercase tracking-wider text-primary">
@@ -210,7 +225,10 @@ export function DeveloperSettings() {
             <>
               <div className="grid gap-2 md:grid-cols-3">
                 {featureLedger.repositories.map((repo) => (
-                  <div key={repo.id} className={`rounded-xl border p-3 font-mono text-[8px] leading-relaxed ${realityStatusClass[repo.status] || realityStatusClass.partial}`}>
+                  <div
+                    key={repo.id}
+                    className={`rounded-xl border p-3 font-mono text-[8px] leading-relaxed ${realityStatusClass[repo.status] || realityStatusClass.partial}`}
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-bold uppercase tracking-wider">{repo.label}</span>
                       <span className="uppercase">{repo.status}</span>
@@ -225,15 +243,16 @@ export function DeveloperSettings() {
 
               <div className="grid gap-2 md:grid-cols-2">
                 {featureLedger.features.map((feature) => (
-                  <div key={feature.id} className={`rounded-xl border p-3 font-mono text-[8px] leading-relaxed ${realityStatusClass[feature.status] || realityStatusClass.partial}`}>
+                  <div
+                    key={feature.id}
+                    className={`rounded-xl border p-3 font-mono text-[8px] leading-relaxed ${realityStatusClass[feature.status] || realityStatusClass.partial}`}
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-bold uppercase tracking-wider">{feature.label}</span>
                       <span className="uppercase">{feature.status}</span>
                     </div>
                     <div className="mt-2 text-white/45">Evidence: {feature.evidence.join(' / ')}</div>
-                    {feature.limitation && (
-                      <div className="mt-1 text-white/55">{feature.limitation}</div>
-                    )}
+                    {feature.limitation && <div className="mt-1 text-white/55">{feature.limitation}</div>}
                   </div>
                 ))}
               </div>
@@ -241,7 +260,9 @@ export function DeveloperSettings() {
               <div className="rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 font-mono text-[8px] uppercase leading-relaxed text-amber-100/75">
                 <div className="font-bold">Not 100 reason</div>
                 <div>{featureLedger.not_100_reason}</div>
-                {featureLedger.partial_reasons.length > 0 && <div>Runtime partials: {featureLedger.partial_reasons.join(', ')}</div>}
+                {featureLedger.partial_reasons.length > 0 && (
+                  <div>Runtime partials: {featureLedger.partial_reasons.join(', ')}</div>
+                )}
               </div>
             </>
           )}
@@ -276,11 +297,13 @@ export function DeveloperSettings() {
                     </td>
                     <td className="p-2.5 uppercase text-[8px] text-white/40">{managed.plugin.category}</td>
                     <td className="p-2.5">
-                      <span className={`px-1.5 py-0.5 rounded-[4px] text-[7px] font-bold uppercase ${
-                        managed.enabled 
-                          ? 'bg-emerald-500/25 text-emerald-400 border border-emerald-500/10' 
-                          : 'bg-white/5 text-white/30 border border-white/5'
-                      }`}>
+                      <span
+                        className={`px-1.5 py-0.5 rounded-[4px] text-[7px] font-bold uppercase ${
+                          managed.enabled
+                            ? 'bg-emerald-500/25 text-emerald-400 border border-emerald-500/10'
+                            : 'bg-white/5 text-white/30 border border-white/5'
+                        }`}
+                      >
                         {managed.enabled ? 'ACTIVE' : 'IDLE'}
                       </span>
                     </td>
@@ -297,8 +320,8 @@ export function DeveloperSettings() {
       <section className="space-y-4">
         <h3 className="text-[10px] uppercase tracking-widest text-primary font-bold border-b border-primary/20 pb-1 flex justify-between items-center">
           <span>DataBus Live Event Stream Log</span>
-          <button 
-            onClick={() => setRefreshKey(k => k + 1)}
+          <button
+            onClick={() => setRefreshKey((k) => k + 1)}
             className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/40 transition-colors hover:bg-white/5 hover:text-white cursor-pointer"
             title="Refresh stream log history"
             aria-label="Refresh DataBus stream log history"
@@ -306,7 +329,7 @@ export function DeveloperSettings() {
             <RefreshCw size={12} className="animate-spin-slow" />
           </button>
         </h3>
-        
+
         <div className="overflow-x-auto rounded-xl border border-white/5 bg-white/5 max-h-[220px] overflow-y-auto scroller">
           <table className="w-full text-left font-mono text-[9px] border-collapse">
             <thead>
@@ -333,7 +356,10 @@ export function DeveloperSettings() {
                       <Activity size={10} className="text-primary shrink-0" />
                       <span>{item.event}</span>
                     </td>
-                    <td className="p-2.5 text-[8px] max-w-[200px] truncate text-white/40 hover:text-white/80 select-all" title={JSON.stringify(item.data)}>
+                    <td
+                      className="p-2.5 text-[8px] max-w-[200px] truncate text-white/40 hover:text-white/80 select-all"
+                      title={JSON.stringify(item.data)}
+                    >
                       {JSON.stringify(item.data)}
                     </td>
                   </tr>
@@ -376,7 +402,6 @@ export function DeveloperSettings() {
           </button>
         </div>
       </SettingsSection>
-
     </div>
   );
 }

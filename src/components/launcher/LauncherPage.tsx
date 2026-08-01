@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useUIStore } from '@/store/uiStore';
-import { Hexagon, Terminal, ChevronDown, ChevronUp, Cpu, Wifi, Battery, Database, ArrowRight, AlertTriangle } from 'lucide-react';
-import { bridgeUrl, getBridgeBaseUrl } from '@/lib/bridgeConfig';
+import {
+  Hexagon,
+  Terminal,
+  ChevronDown,
+  ChevronUp,
+  Cpu,
+  Wifi,
+  Battery,
+  Database,
+  ArrowRight,
+  AlertTriangle
+} from 'lucide-react';
+import { bridgeUrl, getBridgeBaseUrl, isBridgeEnabled } from '@/lib/bridgeConfig';
 
 export function LauncherPage() {
   const setLauncherDismissed = useUIStore((s) => s.setLauncherDismissed);
@@ -13,7 +24,7 @@ export function LauncherPage() {
   const bridgeBaseUrl = getBridgeBaseUrl();
 
   const [bridgeStatus, setBridgeStatus] = useState<'checking' | 'active' | 'offline'>('checking');
-  const [gitStatus, setGitStatus] = useState<{ has_changes: boolean, count: number }>({ has_changes: false, count: 0 });
+  const [gitStatus, setGitStatus] = useState<{ has_changes: boolean; count: number }>({ has_changes: false, count: 0 });
   const [logsExpanded, setLogsExpanded] = useState(false);
 
   // Initialize diagnostics logs and check bridge health
@@ -21,11 +32,35 @@ export function LauncherPage() {
     clearDiagnostics();
     addDiagnostic({ source: 'BOOT', level: 'info', message: 'SILVER WOLF ENGINE INITIALISING...' });
     addDiagnostic({ source: 'STORE', level: 'success', message: 'State hydration complete.' });
-    addDiagnostic({ source: 'THEME', level: 'success', message: 'Visual profile themes and dynamic theme engine initialised.' });
+    addDiagnostic({
+      source: 'THEME',
+      level: 'success',
+      message: 'Visual profile themes and dynamic theme engine initialised.'
+    });
     addDiagnostic({ source: '3D-MAP', level: 'info', message: 'Cesium map engine bound to canvas background.' });
-    addDiagnostic({ source: 'BRIDGE', level: 'info', message: `Pinging Assistant Bridge at ${bridgeBaseUrl}...` });
 
     let active = true;
+
+    // Static demo builds (GitHub Pages) ship without a bridge. Report that as a
+    // normal state instead of pinging an endpoint that cannot exist.
+    if (!isBridgeEnabled()) {
+      addDiagnostic({
+        source: 'BRIDGE',
+        level: 'info',
+        message: 'Static demo mode: Assistant Bridge disabled for this deployment.'
+      });
+      addDiagnostic({
+        source: 'BRIDGE',
+        level: 'info',
+        message: 'Map, astronomy, and local diagnostic chat remain fully available.'
+      });
+      setBridgeStatus('offline');
+      return () => {
+        active = false;
+      };
+    }
+
+    addDiagnostic({ source: 'BRIDGE', level: 'info', message: `Pinging Assistant Bridge at ${bridgeBaseUrl}...` });
 
     async function checkGit() {
       try {
@@ -33,7 +68,11 @@ export function LauncherPage() {
         const data = await response.json();
         if (data.has_changes && active) {
           setGitStatus({ has_changes: true, count: data.change_count });
-          addDiagnostic({ source: 'GIT', level: 'warning', message: `Found ${data.change_count} uncommitted local changes.` });
+          addDiagnostic({
+            source: 'GIT',
+            level: 'warning',
+            message: `Found ${data.change_count} uncommitted local changes.`
+          });
         }
       } catch (e) {}
     }
@@ -46,7 +85,7 @@ export function LauncherPage() {
         // Simple ping to bridge health endpoint.
         const response = await fetch(bridgeUrl('/status'), {
           method: 'GET',
-          signal: controller.signal,
+          signal: controller.signal
         });
         clearTimeout(timeoutId);
 
@@ -55,7 +94,11 @@ export function LauncherPage() {
 
         if (response.ok && status.ready) {
           setBridgeStatus('active');
-          addDiagnostic({ source: 'BRIDGE', level: 'success', message: `Assistant Bridge verified active at ${bridgeBaseUrl}.` });
+          addDiagnostic({
+            source: 'BRIDGE',
+            level: 'success',
+            message: `Assistant Bridge verified active at ${bridgeBaseUrl}.`
+          });
           checkGit();
         } else {
           setBridgeStatus('offline');
@@ -63,16 +106,24 @@ export function LauncherPage() {
             addDiagnostic({
               source: 'BRIDGE',
               level: 'warning',
-              message: `Bridge is reachable but waiting for odysseus readiness at ${bridgeBaseUrl}.`,
+              message: `Bridge is reachable but waiting for odysseus readiness at ${bridgeBaseUrl}.`
             });
           } else {
-            addDiagnostic({ source: 'BRIDGE', level: 'warning', message: `Bridge returned status ${response.status}.` });
+            addDiagnostic({
+              source: 'BRIDGE',
+              level: 'warning',
+              message: `Bridge returned status ${response.status}.`
+            });
           }
         }
       } catch (err) {
         if (!active) return;
         setBridgeStatus('offline');
-        addDiagnostic({ source: 'BRIDGE', level: 'error', message: `Connection to ${bridgeBaseUrl} failed. Bridge offline or not reachable.` });
+        addDiagnostic({
+          source: 'BRIDGE',
+          level: 'error',
+          message: `Connection to ${bridgeBaseUrl} failed. Bridge offline or not reachable.`
+        });
       }
     }
 
@@ -92,7 +143,6 @@ export function LauncherPage() {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,6px_100%] pointer-events-none" />
 
       <div className="z-10 flex w-full max-w-3xl flex-col items-center gap-5">
-
         {/* Animated Brand Header */}
         <div className="flex max-w-full flex-col items-center space-y-3 text-center animate-pulse">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/30 shadow-[0_0_20px_var(--theme-primary-glow)]">
@@ -118,9 +168,12 @@ export function LauncherPage() {
               <AlertTriangle className="text-amber-500 h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-amber-300 uppercase tracking-wider">Uncommitted Edits Detected</div>
+              <div className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                Uncommitted Edits Detected
+              </div>
               <div className="mt-1 text-xs text-amber-100/75 font-mono leading-relaxed">
-                {gitStatus.count} files have pending changes. Please ensure work is committed before launching production cycles to prevent data loss or sync drift.
+                {gitStatus.count} files have pending changes. Please ensure work is committed before launching
+                production cycles to prevent data loss or sync drift.
               </div>
             </div>
           </div>
@@ -162,16 +215,30 @@ export function LauncherPage() {
               <Wifi className="h-4 w-4 text-white/30" />
               <div className="flex min-w-0 flex-col">
                 <span className="text-white/45 uppercase text-[11px] tracking-wider">Assistant Bridge</span>
-                <span className="max-w-full truncate text-white/85 font-bold">{bridgeBaseUrl.replace(/^https?:\/\//, '')}</span>
+                <span className="max-w-full truncate text-white/85 font-bold">
+                  {bridgeBaseUrl.replace(/^https?:\/\//, '')}
+                </span>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
-              <div className={`h-2 w-2 rounded-full ${
-                bridgeStatus === 'active' ? 'bg-green-500' : bridgeStatus === 'checking' ? 'bg-yellow-500 animate-ping' : 'bg-red-500'
-              }`} />
-              <span className={`uppercase font-bold text-[11px] ${
-                bridgeStatus === 'active' ? 'text-green-500' : bridgeStatus === 'checking' ? 'text-yellow-500' : 'text-red-500'
-              }`}>
+              <div
+                className={`h-2 w-2 rounded-full ${
+                  bridgeStatus === 'active'
+                    ? 'bg-green-500'
+                    : bridgeStatus === 'checking'
+                      ? 'bg-yellow-500 animate-ping'
+                      : 'bg-red-500'
+                }`}
+              />
+              <span
+                className={`uppercase font-bold text-[11px] ${
+                  bridgeStatus === 'active'
+                    ? 'text-green-500'
+                    : bridgeStatus === 'checking'
+                      ? 'text-yellow-500'
+                      : 'text-red-500'
+                }`}
+              >
                 {bridgeStatus === 'active' ? 'ONLINE' : bridgeStatus === 'checking' ? 'SYNCING' : 'OFFLINE'}
               </span>
             </div>
@@ -222,9 +289,19 @@ export function LauncherPage() {
               {diagnostics.map((log) => (
                 <div key={log.id} className="flex flex-wrap gap-x-2 gap-y-1">
                   <span className="text-white/35">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
-                  <span className={`font-bold ${
-                    log.level === 'success' ? 'text-green-400' : log.level === 'warning' ? 'text-yellow-400' : log.level === 'error' ? 'text-red-400' : 'text-primary'
-                  }`}>[{log.source}]</span>
+                  <span
+                    className={`font-bold ${
+                      log.level === 'success'
+                        ? 'text-green-400'
+                        : log.level === 'warning'
+                          ? 'text-yellow-400'
+                          : log.level === 'error'
+                            ? 'text-red-400'
+                            : 'text-primary'
+                    }`}
+                  >
+                    [{log.source}]
+                  </span>
                   <span className="text-white/80">{log.message}</span>
                 </div>
               ))}
@@ -241,7 +318,6 @@ export function LauncherPage() {
         >
           Skip boot interface
         </button>
-
       </div>
     </main>
   );
