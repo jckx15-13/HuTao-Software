@@ -14,10 +14,15 @@ public cameras) on a CesiumJS 3D globe, plus a WorldWide Telescope view for
 orbital/interstellar visualization.
 
 - **Frontend**: `src/` — this file's main subject.
-- **Bridge**: `bridge/server.py` — a Python FastAPI process the frontend
-  talks to at `127.0.0.1:8001` for local-assistant routing, logging, and
-  Odysseus core proxying. Must be running separately (`npm run dev` alone
-  does not start it) or the UI shows "Assistant Bridge: OFFLINE".
+- **Bridge**: `bridge/` — a Python FastAPI process the frontend talks to at
+  `127.0.0.1:8001` for assistant routing, logging, and Odysseus core
+  proxying. Must be running separately (`npm run dev` alone does not start
+  it) or the UI shows "Assistant Bridge: OFFLINE".
+  - `server.py` — routes, provider chain, Odysseus proxy.
+  - `local_llm.py` — Ollama / LM Studio / llama.cpp discovery and model
+    selection. Keyless; preferred over cloud providers by default.
+  - `hardware.py` — RAM/VRAM probing and the tiered model catalog.
+  - See [docs/LOCAL_LLM.md](docs/LOCAL_LLM.md) for the full guide.
 - **Dev server**: `npm run dev` (Vite, port 3005).
 
 ## Directory map (`src/`)
@@ -71,7 +76,21 @@ npm run typecheck     # tsc --noEmit (was previously mislabeled "lint")
 npm run lint           # real ESLint check
 npm run lint:fix       # ESLint --fix
 npm test               # scripts/test_*.cjs smoke tests
+
+# Bridge (separate process; not started by npm run dev)
+cd bridge && ./venv/bin/python3 server.py
+./scripts/setup-local-llm.sh --show   # Ollama low-memory settings
 ```
+
+## Documentation map
+
+| File | Covers |
+|---|---|
+| `AGENTS.md` | This file — architecture, conventions, open issues |
+| `docs/LOCAL_LLM.md` | Local LLM setup, hardware tiers, low-memory tuning |
+| `docs/manual/Operator-Manual.md` | End-user operation |
+| `docs/ARCHITECTURE_LEARNING.md` | Deeper architecture notes |
+| `DESIGN.md` / `design-tokens.tailwind.json` | Visual design system |
 
 ## Known issues / pending cleanup (do not re-discover, just pick up)
 
@@ -96,17 +115,21 @@ This repo went through a cleanup pass; the following remain **open**:
    `tsconfig.json` does not have `"strict": true`; turning it on will
    surface more. Fix incrementally, file by file, not in one sweep.
 5. **`bridge/` startup** — the frontend expects `127.0.0.1:8001` to be
-   reachable; there's no `.env` checked in (only `.env.example`). Copy it
-   and fill in `GEMINI_API_KEY` (or the equivalent for whichever model
-   backend is configured) before relying on AI chat features.
+   reachable. Start it with
+   `cd bridge && ./venv/bin/python3 server.py`. No API key is needed when a
+   local runtime is available — the bridge prefers Ollama/LM Studio/llama.cpp
+   over cloud providers by default. For cloud, copy `.env.example` and fill
+   in a provider key. See [docs/LOCAL_LLM.md](docs/LOCAL_LLM.md).
 6. **Cruft removal pending** — `.agents/`, `_archive/`, `diagnostics/`,
-   `incidents/`, `correct_changes.patch`, `docs/_archive/`,
-   `docs/development_logs/`, `docs/progress.md`, `eslint_report.json`,
-   `eslint_summary.json`, `implementation_plan.md`,
-   `implementation_plans_log.md`, `patch_check.txt`, `src/purescript/` are
-   already excluded in `.gitignore` for anything new, but still exist as
-   tracked files from before the cleanup. Remove with:
-   `git rm -rq .agents _archive diagnostics incidents correct_changes.patch docs/_archive docs/development_logs docs/progress.md eslint_report.json eslint_summary.json implementation_plan.md implementation_plans_log.md patch_check.txt src/purescript`
+   `incidents/`, `logs/`, `test-results/`, `correct_changes.patch`,
+   `docs/_archive/`, `docs/development_logs/`, `docs/progress.md`,
+   `eslint_report.json`, `eslint_summary.json`, `implementation_plan.md`,
+   `implementation_plans_log.md`, `patch_check.txt`, `src/purescript/` (72
+   files) are excluded in `.gitignore` for anything new, but remain tracked
+   from before the cleanup. `src/purescript/` is confirmed dead — nothing
+   references it; its math now lives natively in `src/lib/physics.ts`.
+   Remove with:
+   `git rm -rq --ignore-unmatch .agents _archive diagnostics incidents logs test-results correct_changes.patch docs/_archive docs/development_logs docs/progress.md eslint_report.json eslint_summary.json implementation_plan.md implementation_plans_log.md patch_check.txt src/purescript`
 
 ## Conventions
 
