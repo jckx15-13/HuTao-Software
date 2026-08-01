@@ -19,6 +19,15 @@
     "perf:check": "node scripts/perf-check.mjs",
     "perf:check:fast": "node scripts/perf-check.mjs --fast"
   },
+  "overrides": {
+    "dompurify": "^3.4.12",
+    "js-yaml@4": "^4.3.0",
+    "postcss@8": "^8.5.18",
+    "brace-expansion@1": "^1.1.16",
+    "brace-expansion@2": "^2.1.2",
+    "protobufjs@<8": "^7.6.5",
+    "protobufjs@>=8.0.0": "^8.6.5"
+  },
   "dependencies": {
     "@google/design.md": "0.3.0",
     "@google/genai": "^1.52.0",

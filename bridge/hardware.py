@@ -86,6 +86,36 @@ def detect_system_ram_bytes() -> int:
         return 0
 
 
+def detect_swap_bytes() -> int:
+    """Total swap in bytes. 0 means no swap configured.
+
+    This matters more than it looks: with swap, an oversized model merely
+    thrashes and can be killed. With zero swap, overcommitting RAM invokes
+    the OOM killer, which on a desktop reads as the machine freezing or
+    processes vanishing. The budget is tightened accordingly.
+    """
+    try:
+        with open("/proc/meminfo", "r", encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("SwapTotal:"):
+                    return int(line.split()[1]) * 1024
+    except Exception:
+        pass
+    return 0
+
+
+def detect_available_ram_bytes() -> int:
+    """Currently available RAM (MemAvailable), not total. 0 when unknown."""
+    try:
+        with open("/proc/meminfo", "r", encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1]) * 1024
+    except Exception:
+        pass
+    return 0
+
+
 def detect_gpus() -> list[dict[str, Any]]:
     """Discovered accelerators, each with name/vram_bytes/vendor.
 
@@ -168,6 +198,8 @@ def detect_gpus() -> list[dict[str, Any]]:
 def detect_hardware() -> dict[str, Any]:
     """Full hardware snapshot used for tiering."""
     ram = detect_system_ram_bytes()
+    swap = detect_swap_bytes()
+    available = detect_available_ram_bytes()
     gpus = detect_gpus()
     dedicated_vram = max((g.get("vram_bytes", 0) for g in gpus), default=0)
     unified = any(g.get("unified_memory") for g in gpus)
@@ -186,12 +218,23 @@ def detect_hardware() -> dict[str, Any]:
         budget = max(0, int(ram * 0.55) - 2 * GIB)
         mode = "cpu"
 
+    # Without swap there is no soft failure: overcommitting RAM means the OOM
+    # killer, not thrashing. Cap the budget against memory that is *actually*
+    # free right now (not total), leaving 1.5 GiB of headroom, since the
+    # browser and dev server are already resident when inference starts.
+    if swap == 0 and mode != "gpu" and available > 0:
+        budget = min(budget, max(0, available - int(1.5 * GIB)))
+
     return {
         "platform": platform.system(),
         "arch": platform.machine(),
         "cpu_count": os.cpu_count() or 1,
         "ram_bytes": ram,
         "ram_gib": round(ram / GIB, 1),
+        "ram_available_bytes": available,
+        "ram_available_gib": round(available / GIB, 1),
+        "swap_bytes": swap,
+        "swap_gib": round(swap / GIB, 1),
         "gpus": gpus,
         "dedicated_vram_bytes": dedicated_vram,
         "dedicated_vram_gib": round(dedicated_vram / GIB, 1),
@@ -368,6 +411,15 @@ def _advice(hw: dict[str, Any], tier: int, primary: Optional[dict]) -> list[str]
         tips.append(
             "The best-fitting model lacks native tool calling; agentic "
             "features will be degraded. qwen3 tags support tools at every size."
+        )
+
+    if hw.get("swap_bytes", 0) == 0 and mode != "gpu":
+        tips.append(
+            "No swap configured. There is no soft-failure path here: a model "
+            "that overshoots RAM triggers the OOM killer rather than slowing "
+            f"down. Budget is capped against currently-available memory "
+            f"({hw.get('ram_available_gib', 0)} GiB) with 1.5 GiB reserved. "
+            "Close the browser before loading anything near the limit."
         )
 
     if tier <= 1:
