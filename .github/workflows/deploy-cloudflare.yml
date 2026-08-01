@@ -1,0 +1,54 @@
+# Private deployment: Cloudflare Pages, gated by Cloudflare Access.
+#
+# Why this exists alongside deploy-pages.yml:
+# GitHub Pages is public on Free/Pro/Team plans -- access control is an
+# Enterprise Cloud feature. And no static site can hide a secret, since
+# everything shipped to the browser is readable (VITE_* vars are inlined as
+# plain text at build time). So the gate has to live *in front of* the site.
+#
+# Cloudflare Access authenticates at the edge: an unauthenticated visitor is
+# challenged before receiving any bytes of the bundle, so there is no source
+# for them to inspect. See docs/PRIVATE_HOSTING.md for the policy setup.
+
+name: Deploy to Cloudflare Pages (private)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Skip cleanly on forks, where the secrets are absent, rather than failing.
+    if: github.event_name == 'workflow_dispatch' || github.repository_owner == 'jckx15-13'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Served from the domain root, unlike GitHub Pages' /HuTao-Software/
+      # sub-path -- so GITHUB_PAGES is deliberately NOT set here.
+      # VITE_BRIDGE_URL stays unset: the bridge is local-only, and the app
+      # degrades to its offline path (see src/lib/bridgeConfig.ts).
+      - name: Build
+        run: npm run build
+
+      - name: Publish
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=silver-wolf-vi
