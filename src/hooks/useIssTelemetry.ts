@@ -1,11 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useUIStore } from '../store/uiStore';
-import {
-  propagateCircularOrbit,
-  calculateOrbitalSpeed,
-  ISS_INCLINATION_RAD,
-  ISS_ALTITUDE_M,
-} from '../lib/simulation';
+import { propagateCircularOrbit, calculateOrbitalSpeed, ISS_INCLINATION_RAD, ISS_ALTITUDE_M } from '../lib/simulation';
 
 /** Base poll interval in ms — increased for performance. */
 const BASE_INTERVAL = 10000;
@@ -36,13 +31,17 @@ export function useIssTelemetry() {
     async function poll() {
       if (!active) return;
 
-      const isHeadless = typeof window !== 'undefined' && (
-        /HeadlessChrome/i.test(navigator.userAgent) ||
-        navigator.webdriver ||
-        window.location.search.includes('fallback')
-      );
+      const isHeadless =
+        typeof window !== 'undefined' &&
+        (/HeadlessChrome/i.test(navigator.userAgent) ||
+          navigator.webdriver ||
+          window.location.search.includes('fallback'));
 
-      let lat = 0, lng = 0, alt = 0, vel = 0, simulated = false;
+      let lat = 0,
+        lng = 0,
+        alt = 0,
+        vel = 0,
+        simulated = false;
 
       if (isHeadless) {
         simulated = true;
@@ -58,7 +57,7 @@ export function useIssTelemetry() {
 
         try {
           const res = await fetch('https://api.wheretheiss.at/v1/satellites/25544', {
-            signal: controller.signal,
+            signal: controller.signal
           });
           clearTimeout(timeout);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -107,7 +106,7 @@ export function useIssTelemetry() {
         altitude: alt / 1000,
         velocity: vel,
         timestamp: Date.now(),
-        simulated,
+        simulated
       });
 
       // Schedule next poll with backoff

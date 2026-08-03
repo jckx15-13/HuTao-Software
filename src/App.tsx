@@ -53,16 +53,16 @@ export default function App() {
   const spaceBlendOpacity = useUIStore((state) => state.spaceBlendOpacity);
   const spaceInteractionTarget = useUIStore((state) => state.spaceInteractionTarget);
 
-  const isHeadless = typeof window !== 'undefined' && (
-    /HeadlessChrome/i.test(navigator.userAgent) ||
-    window.location.search.includes('fallback')
-  );
+  const isHeadless =
+    typeof window !== 'undefined' &&
+    (/HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback'));
 
-  const isLowPerformance = typeof window !== 'undefined' && (
-    window.location.search.includes('low-perf') ||
-    (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) ||
-    (navigator.deviceMemory && navigator.deviceMemory <= 4)
-  );
+  const isLowPerformance =
+    typeof window !== 'undefined' &&
+    (window.location.search.includes('low-perf') ||
+      (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) ||
+      ((navigator as { deviceMemory?: number }).deviceMemory !== undefined &&
+        (navigator as { deviceMemory?: number }).deviceMemory! <= 4));
 
   React.useEffect(() => {
     if (isLowPerformance) {
@@ -114,109 +114,102 @@ export default function App() {
   const backgroundStyle = customWallpaper
     ? { backgroundImage: `url(${customWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : undefined;
-  const workspaceIsolationProps = currentPage === 'settings' && !isHeadless
-    ? { inert: true, 'aria-hidden': true }
-    : {};
-  const settingsOverlay = currentPage === 'settings' ? (
-    <Suspense fallback={null}>
-      <ErrorBoundary>
-        <SettingsPage />
-      </ErrorBoundary>
-    </Suspense>
-  ) : null;
+  const workspaceIsolationProps = currentPage === 'settings' && !isHeadless ? { inert: true, 'aria-hidden': true } : {};
+  const settingsOverlay =
+    currentPage === 'settings' ? (
+      <Suspense fallback={null}>
+        <ErrorBoundary>
+          <SettingsPage />
+        </ErrorBoundary>
+      </Suspense>
+    ) : null;
 
   return (
     <ConfigProvider>
-      <MotionConfig reducedMotion={isHeadless ? "always" : "user"}>
-      <div
-        className={`relative flex h-[100dvh] min-h-[100dvh] w-full overflow-hidden bg-base font-sans text-text-main transition-colors duration-500 ${
-          isHighLoad ? 'state-high-load' : ''
-        } ${isHeadless ? 'is-headless' : ''}`}
-        style={{ ...appStyle, ...backgroundStyle }}
-      >
-      {!customWallpaper && (
-        <div className="absolute inset-0 z-0">
-          {isSpaceMode && (!isHeadless || isTelescopeTarget) && (
-            <div
-              className="absolute inset-0 z-0 transition-opacity duration-500"
-              style={{
-                opacity: isTelescopeTarget ? 0.26 : 1,
-                mixBlendMode: isTelescopeTarget ? 'screen' : 'normal'
-              }}
-            >
-              <Suspense fallback={null}>
-                <WorldWideTelescopeView bgOnly />
-              </Suspense>
+      <MotionConfig reducedMotion={isHeadless ? 'always' : 'user'}>
+        <div
+          className={`relative flex h-[100dvh] min-h-[100dvh] w-full overflow-hidden bg-base font-sans text-text-main transition-colors duration-500 ${
+            isHighLoad ? 'state-high-load' : ''
+          } ${isHeadless ? 'is-headless' : ''}`}
+          style={{ ...appStyle, ...backgroundStyle }}
+        >
+          {!customWallpaper && (
+            <div className="absolute inset-0 z-0">
+              {isSpaceMode && (!isHeadless || isTelescopeTarget) && (
+                <div
+                  className="absolute inset-0 z-0 transition-opacity duration-500"
+                  style={{
+                    opacity: isTelescopeTarget ? 0.26 : 1,
+                    mixBlendMode: isTelescopeTarget ? 'screen' : 'normal'
+                  }}
+                >
+                  <Suspense fallback={null}>
+                    <WorldWideTelescopeView bgOnly />
+                  </Suspense>
+                </div>
+              )}
+              <div
+                className="absolute inset-0 transition-all duration-500 ease-in-out"
+                style={{
+                  zIndex: 10,
+                  opacity: isSpaceMode ? (isTelescopeTarget ? Math.max(0.92, spaceBlendOpacity) : 1.0) : 1.0,
+                  pointerEvents: isSpaceMode && isEarthTarget ? 'auto' : 'none'
+                }}
+              >
+                <Suspense fallback={null}>
+                  <CesiumBackground interactive={isSpaceMode && isEarthTarget} />
+                </Suspense>
+              </div>
             </div>
           )}
-          <div 
-            className="absolute inset-0 transition-all duration-500 ease-in-out"
-            style={{
-              zIndex: 10,
-              opacity: isSpaceMode
-                ? (isTelescopeTarget ? Math.max(0.92, spaceBlendOpacity) : 1.0)
-                : 1.0,
-              pointerEvents: isSpaceMode && isEarthTarget ? 'auto' : 'none'
-            }}
-          >
-            <Suspense fallback={null}>
-              <CesiumBackground interactive={isSpaceMode && isEarthTarget} />
+
+          {interactionMode === 'chat' && (
+            <div className="absolute inset-0 bg-[#06070a]/75 backdrop-blur-[2px] pointer-events-none z-0" />
+          )}
+
+          {scanlineOverlay && (
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.12)_50%)] bg-[size:100%_4px] pointer-events-none z-10" />
+          )}
+
+          {showLauncher ? (
+            <Suspense fallback={<WorkspaceFallback label="Loading launch checks" />}>
+              <LauncherPage />
             </Suspense>
-          </div>
+          ) : (
+            <>
+              <div className="contents" {...workspaceIsolationProps}>
+                {!isHighLoad && particleEffects && (
+                  <Suspense fallback={null}>
+                    <ParticleOverlay />
+                    {!motionReduced && animationIntensity > 0.5 && <CustomCursor appHighLoad={isHighLoad} />}
+                  </Suspense>
+                )}
+
+                {scanlineOverlay && <div className="hologram-overlay" />}
+
+                <div className="relative z-10 flex h-full w-full pointer-events-none transition-all duration-300 pt-0">
+                  <Suspense fallback={<WorkspaceFallback />}>
+                    <DockedLayout />
+                  </Suspense>
+                </div>
+
+                {showHarness && (
+                  <Suspense fallback={null}>
+                    <MountUnmountHarness />
+                  </Suspense>
+                )}
+
+                {showDiagnostics && (
+                  <Suspense fallback={null}>
+                    <DiagnosticPanel />
+                  </Suspense>
+                )}
+              </div>
+
+              {isHeadless ? settingsOverlay : <AnimatePresence>{settingsOverlay}</AnimatePresence>}
+            </>
+          )}
         </div>
-      )}
-
-      {interactionMode === 'chat' && (
-        <div className="absolute inset-0 bg-[#06070a]/75 backdrop-blur-[2px] pointer-events-none z-0" />
-      )}
-
-      {scanlineOverlay && (
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.12)_50%)] bg-[size:100%_4px] pointer-events-none z-10" />
-      )}
-
-      {showLauncher ? (
-        <Suspense fallback={<WorkspaceFallback label="Loading launch checks" />}>
-          <LauncherPage />
-        </Suspense>
-      ) : (
-        <>
-          <div className="contents" {...workspaceIsolationProps}>
-          {!isHighLoad && particleEffects && (
-            <Suspense fallback={null}>
-              <ParticleOverlay />
-              {!motionReduced && animationIntensity > 0.5 && <CustomCursor appHighLoad={isHighLoad} />}
-            </Suspense>
-          )}
-          
-          {scanlineOverlay && <div className="hologram-overlay" />}
-
-          <div className="relative z-10 flex h-full w-full pointer-events-none transition-all duration-300 pt-0">
-            <Suspense fallback={<WorkspaceFallback />}>
-              <DockedLayout />
-            </Suspense>
-          </div>
-
-          {showHarness && (
-            <Suspense fallback={null}>
-              <MountUnmountHarness />
-            </Suspense>
-          )}
-
-          {showDiagnostics && (
-            <Suspense fallback={null}>
-              <DiagnosticPanel />
-            </Suspense>
-          )}
-          </div>
-
-          {isHeadless ? settingsOverlay : (
-            <AnimatePresence>
-              {settingsOverlay}
-            </AnimatePresence>
-          )}
-        </>
-      )}
-    </div>
       </MotionConfig>
     </ConfigProvider>
   );

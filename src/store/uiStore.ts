@@ -92,7 +92,8 @@ export type InteractionMode = 'chat' | 'orbital' | 'telescope';
 export type SyncSource = 'cesium' | 'wwt' | 'none';
 export type CurrentPage = 'launcher' | 'workspace' | 'settings';
 export type RightPanelTab = 'context' | 'browser' | 'changes' | 'diagnostics' | 'telemetry' | 'odysseus';
-export type SettingsCategory = 'personalisation' | 'ai' | 'connections' | 'feedback' | 'developer' | 'about' | 'map' | 'plugins';
+export type SettingsCategory =
+  'personalisation' | 'ai' | 'connections' | 'feedback' | 'developer' | 'about' | 'map' | 'plugins';
 
 const defaultPersonalisation: Personalisation = {
   panelOpacity: 0.88,
@@ -109,7 +110,7 @@ const defaultPersonalisation: Personalisation = {
   fontScale: 1.0,
   accentColor: '',
   fontFamily: 'Inter',
-  panelTransitionStyle: 'fade',
+  panelTransitionStyle: 'fade'
 };
 
 const activeAiModels = new Set<AiModel>([
@@ -120,7 +121,7 @@ const activeAiModels = new Set<AiModel>([
   'gemini-3.1-flash-lite',
   'gemini-3-flash-preview',
   'gemini-2.5-flash',
-  'gemini-2.5-pro',
+  'gemini-2.5-pro'
 ]);
 
 function normalizeAiModel(model: unknown): AiModel {
@@ -141,9 +142,15 @@ function normalizePersonalisation(personalisation?: Partial<Personalisation> | n
 
   return {
     ...merged,
-    panelOpacity: Math.max(panelRange.min, Math.min(panelRange.max, merged.panelOpacity ?? defaultPersonalisation.panelOpacity)),
-    blurIntensity: Math.max(blurRange.min, Math.min(blurRange.max, merged.blurIntensity ?? defaultPersonalisation.blurIntensity)),
-    chatBubbleStyle: merged.chatBubbleStyle || defaultPersonalisation.chatBubbleStyle,
+    panelOpacity: Math.max(
+      panelRange.min,
+      Math.min(panelRange.max, merged.panelOpacity ?? defaultPersonalisation.panelOpacity)
+    ),
+    blurIntensity: Math.max(
+      blurRange.min,
+      Math.min(blurRange.max, merged.blurIntensity ?? defaultPersonalisation.blurIntensity)
+    ),
+    chatBubbleStyle: merged.chatBubbleStyle || defaultPersonalisation.chatBubbleStyle
   };
 }
 
@@ -155,7 +162,7 @@ function createGlobalChat(): ChatSession {
     type: 'global',
     messages: createInitialMessages(now),
     lastActive: now,
-    createdAt: now,
+    createdAt: now
   };
 }
 
@@ -272,14 +279,16 @@ export interface UIStore {
     timestamp: number;
     simulated?: boolean;
   } | null;
-  setIssTelemetry: (t: {
-    latitude: number;
-    longitude: number;
-    altitude: number;
-    velocity: number;
-    timestamp: number;
-    simulated?: boolean;
-  } | null) => void;
+  setIssTelemetry: (
+    t: {
+      latitude: number;
+      longitude: number;
+      altitude: number;
+      velocity: number;
+      timestamp: number;
+      simulated?: boolean;
+    } | null
+  ) => void;
 
   // Satellite Ingestion & Tracker State
   activeSatelliteId: string | null;
@@ -310,7 +319,6 @@ export interface UIStore {
   setSpaceBlendOpacity: (v: number) => void;
   spaceInteractionTarget: 'earth' | 'telescope';
   setSpaceInteractionTarget: (v: 'earth' | 'telescope') => void;
-
 
   // Panel State
   leftPanelOpen: boolean;
@@ -391,15 +399,15 @@ export const useUIStore = create<UIStore>()(
             type,
             projectName,
             messages: [
-              { id: `system-${now}-init`, sender: 'system', content: 'SESSION // INITIALIZED.', timestamp: now },
+              { id: `system-${now}-init`, sender: 'system', content: 'SESSION // INITIALIZED.', timestamp: now }
             ],
             lastActive: now,
-            createdAt: now,
+            createdAt: now
           };
           set((s) => ({
             chatSessions: [...s.chatSessions, newSession],
             activeChatId: id,
-            messages: newSession.messages,
+            messages: newSession.messages
           }));
         },
         removeChatSession: (id) => {
@@ -411,10 +419,11 @@ export const useUIStore = create<UIStore>()(
             return { chatSessions: sessions, activeChatId: newActive, messages: activeSession?.messages ?? [] };
           });
         },
-        setActiveChatId: (activeChatId) => set((s) => {
-          const activeSession = s.chatSessions.find((session) => session.id === activeChatId);
-          return { activeChatId, messages: activeSession?.messages ?? [] };
-        }),
+        setActiveChatId: (activeChatId) =>
+          set((s) => {
+            const activeSession = s.chatSessions.find((session) => session.id === activeChatId);
+            return { activeChatId, messages: activeSession?.messages ?? [] };
+          }),
 
         // Active chat messages are stored explicitly so Zustand selectors update reliably.
         isProcessing: false,
@@ -425,10 +434,8 @@ export const useUIStore = create<UIStore>()(
             return {
               messages,
               chatSessions: s.chatSessions.map((cs) =>
-                cs.id === s.activeChatId
-                  ? { ...cs, messages, lastActive: now }
-                  : cs,
-              ),
+                cs.id === s.activeChatId ? { ...cs, messages, lastActive: now } : cs
+              )
             };
           }),
         clearMessages: () =>
@@ -438,10 +445,8 @@ export const useUIStore = create<UIStore>()(
             return {
               messages,
               chatSessions: s.chatSessions.map((cs) =>
-                cs.id === s.activeChatId
-                  ? { ...cs, messages, lastActive: now }
-                  : cs,
-              ),
+                cs.id === s.activeChatId ? { ...cs, messages, lastActive: now } : cs
+              )
             };
           }),
         setIsProcessing: (isProcessing) => set({ isProcessing }),
@@ -459,10 +464,8 @@ export const useUIStore = create<UIStore>()(
             return {
               messages,
               chatSessions: s.chatSessions.map((cs) =>
-                cs.id === s.activeChatId
-                  ? { ...cs, messages, lastActive: now }
-                  : cs,
-              ),
+                cs.id === s.activeChatId ? { ...cs, messages, lastActive: now } : cs
+              )
             };
           }),
         appendToMessage: (messageId, content) =>
@@ -480,10 +483,8 @@ export const useUIStore = create<UIStore>()(
             return {
               messages,
               chatSessions: s.chatSessions.map((cs) =>
-                cs.id === s.activeChatId
-                  ? { ...cs, messages, lastActive: now }
-                  : cs,
-              ),
+                cs.id === s.activeChatId ? { ...cs, messages, lastActive: now } : cs
+              )
             };
           }),
         setMessages: (messages) =>
@@ -493,7 +494,7 @@ export const useUIStore = create<UIStore>()(
               messages,
               chatSessions: s.chatSessions.map((cs) =>
                 cs.id === s.activeChatId ? { ...cs, messages, lastActive: now } : cs
-              ),
+              )
             };
           }),
 
@@ -584,22 +585,22 @@ export const useUIStore = create<UIStore>()(
             timestamp: new Date(Date.now() - 300000).toLocaleTimeString(),
             category: 'SYSTEM',
             message: 'Cesium 3D render engine bound to main viewport.',
-            level: 'success',
+            level: 'success'
           },
           {
             id: 'init-log-2',
             timestamp: new Date(Date.now() - 200000).toLocaleTimeString(),
             category: 'WORK_SPACE',
             message: 'UI layout transitioned to 3-panel space shell.',
-            level: 'primary',
+            level: 'primary'
           },
           {
             id: 'init-log-3',
             timestamp: new Date(Date.now() - 100000).toLocaleTimeString(),
             category: 'ORBITAL_ARRAY',
             message: 'ISS Satcom live telemetry active.',
-            level: 'info',
-          },
+            level: 'info'
+          }
         ],
         addChangeLog: (category, message, level = 'info') => {
           const newEntry: ChangeLogEntry = {
@@ -607,7 +608,7 @@ export const useUIStore = create<UIStore>()(
             timestamp: new Date().toLocaleTimeString(),
             category: category.toUpperCase().replace(/\s+/g, '_'),
             message,
-            level,
+            level
           };
           set((s) => ({ changeLogs: [newEntry, ...s.changeLogs].slice(0, 100) }));
         },
@@ -630,28 +631,31 @@ export const useUIStore = create<UIStore>()(
           earthObs: true,
           starlink: true,
           military: true,
-          other: true,
+          other: true
         },
-        toggleSatelliteCategory: (category) => set((s) => ({
-          satelliteCategories: {
-            ...s.satelliteCategories,
-            [category]: !s.satelliteCategories[category],
-          }
-        })),
+        toggleSatelliteCategory: (category) =>
+          set((s) => ({
+            satelliteCategories: {
+              ...s.satelliteCategories,
+              [category]: !s.satelliteCategories[category]
+            }
+          })),
         satelliteSettings: {
           showTrails: true,
           showAllTrails: false,
           occludeByGlobe: true,
           trailLength: 40,
-          iconSize: 18,
+          iconSize: 18
         },
-        updateSatelliteSettings: (settings) => set((s) => ({
-          satelliteSettings: { ...s.satelliteSettings, ...settings }
-        })),
+        updateSatelliteSettings: (settings) =>
+          set((s) => ({
+            satelliteSettings: { ...s.satelliteSettings, ...settings }
+          })),
         satelliteData: {},
-        setSatelliteData: (id, data) => set((s) => ({
-          satelliteData: { ...s.satelliteData, [id]: data }
-        })),
+        setSatelliteData: (id, data) =>
+          set((s) => ({
+            satelliteData: { ...s.satelliteData, [id]: data }
+          })),
         weatherData: null,
         setWeatherData: (weatherData) => set({ weatherData }),
 
@@ -666,7 +670,6 @@ export const useUIStore = create<UIStore>()(
         setSpaceBlendOpacity: (spaceBlendOpacity) => set({ spaceBlendOpacity }),
         spaceInteractionTarget: 'earth',
         setSpaceInteractionTarget: (spaceInteractionTarget) => set({ spaceInteractionTarget }),
-
 
         // Panel State
         leftPanelOpen: true,
@@ -689,8 +692,8 @@ export const useUIStore = create<UIStore>()(
           set((s) => ({
             diagnostics: [
               ...s.diagnostics,
-              { ...entry, id: `diag-${Date.now()}-${diagCounter}`, timestamp: Date.now() },
-            ],
+              { ...entry, id: `diag-${Date.now()}-${diagCounter}`, timestamp: Date.now() }
+            ]
           }));
         },
         clearDiagnostics: () => set({ diagnostics: [] }),
@@ -702,10 +705,9 @@ export const useUIStore = create<UIStore>()(
           ramUsage: 0.35,
           networkLatency: 0.6,
           storageUsage: 0.45,
-          batteryLevel: 0.9,
+          batteryLevel: 0.9
         },
-        updateSystemMetrics: (m) =>
-          set((s) => ({ systemMetrics: { ...s.systemMetrics, ...m } })),
+        updateSystemMetrics: (m) => set((s) => ({ systemMetrics: { ...s.systemMetrics, ...m } })),
 
         // Odysseus Engine
         odysseusReady: false,
@@ -750,8 +752,8 @@ export const useUIStore = create<UIStore>()(
             aiModel: settings.aiModel ? normalizeAiModel(settings.aiModel) : s.aiModel,
             personalisation: settings.personalisation
               ? normalizePersonalisation(settings.personalisation)
-              : s.personalisation,
-          })),
+              : s.personalisation
+          }))
       };
     },
     {
@@ -769,7 +771,8 @@ export const useUIStore = create<UIStore>()(
         migrated.rightPanelOpen = true;
         migrated.scanlineOverlay = false;
         migrated.showBorders = true;
-        migrated.imageryProvider = migrated.imageryProvider === 'cesium' ? 'arcgis-world' : (migrated.imageryProvider || 'arcgis-world');
+        migrated.imageryProvider =
+          migrated.imageryProvider === 'cesium' ? 'arcgis-world' : migrated.imageryProvider || 'arcgis-world';
         migrated.personalisation = normalizePersonalisation({
           ...migrated.personalisation,
           minimalMode: false,
@@ -781,7 +784,7 @@ export const useUIStore = create<UIStore>()(
           shadowIntensity: 0.45,
           borderStyle: 'glow',
           chatBubbleStyle: 'glass',
-          uiDensity: 'compact',
+          uiDensity: 'compact'
         });
         return migrated;
       },
@@ -815,10 +818,10 @@ export const useUIStore = create<UIStore>()(
         imageryProvider: s.imageryProvider,
         cursorDesign: s.cursorDesign,
         spaceBlendOpacity: s.spaceBlendOpacity,
-        spaceInteractionTarget: s.spaceInteractionTarget,
-      }),
-    },
-  ),
+        spaceInteractionTarget: s.spaceInteractionTarget
+      })
+    }
+  )
 );
 
 if (typeof window !== 'undefined') {

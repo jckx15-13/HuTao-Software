@@ -32,10 +32,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
   const [webglError] = useState<string | null>(() => {
     try {
       if (typeof window === 'undefined') return null;
-      if (
-        /HeadlessChrome/i.test(navigator.userAgent) ||
-        window.location.search.includes('fallback')
-      ) {
+      if (/HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback')) {
         return 'WebGL disabled in headless browser environment';
       }
       const canvas = document.createElement('canvas');
@@ -103,7 +100,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
 
         // useImageryManager owns all imagery. Starting with no implicit base
         // layer avoids duplicate tile requests and startup layer flicker.
-        baseLayer: false,
+        baseLayer: false
       });
 
       (window as any).cesiumViewer = activeViewer;
@@ -158,28 +155,22 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     viewerInstance.scene.globe.lightingFadeOutDistance = 1e7;
     viewerInstance.scene.globe.lightingFadeInDistance = 2e7;
 
-
     // --- Camera controller improvements (from WWV) ---
     const sscc = viewerInstance.scene.screenSpaceCameraController;
     // Intuitive mapping: left-drag = rotate/orbit, right-drag = translate/pan, pinch = zoom/tilt
     // Keep a ctrl+left modifier available for tilt when desired.
-    sscc.rotateEventTypes = [
-      Cesium.CameraEventType.LEFT_DRAG,
-      Cesium.CameraEventType.PINCH,
-    ];
-    sscc.translateEventTypes = [
-      Cesium.CameraEventType.RIGHT_DRAG,
-      Cesium.CameraEventType.MIDDLE_DRAG,
-    ];
+    sscc.rotateEventTypes = [Cesium.CameraEventType.LEFT_DRAG, Cesium.CameraEventType.PINCH];
+    sscc.translateEventTypes = [Cesium.CameraEventType.RIGHT_DRAG, Cesium.CameraEventType.MIDDLE_DRAG];
     sscc.tiltEventTypes = [
       Cesium.CameraEventType.RIGHT_DRAG,
       Cesium.CameraEventType.PINCH,
-      { eventType: Cesium.CameraEventType.LEFT_DRAG, modifier: Cesium.KeyboardEventModifier.CTRL },
+      { eventType: Cesium.CameraEventType.LEFT_DRAG, modifier: Cesium.KeyboardEventModifier.CTRL }
     ];
 
     // Camera sensitivity tuning (user-controlled via UI store)
     try {
-      const sensitivity = typeof useUIStore?.getState === 'function' ? useUIStore.getState().cameraSensitivity ?? 1.0 : 1.0;
+      const sensitivity =
+        typeof useUIStore?.getState === 'function' ? (useUIStore.getState().cameraSensitivity ?? 1.0) : 1.0;
       const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
       // Higher sensitivity => faster response, less inertia, stronger zoom
@@ -195,7 +186,11 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     // Ensure pointer interactions request a render when using requestRenderMode
     canvas = viewerInstance.scene.canvas as HTMLCanvasElement;
     requestRender = () => {
-      try { viewerInstance.scene.requestRender(); } catch (err) { /* ignore */ }
+      try {
+        viewerInstance.scene.requestRender();
+      } catch (err) {
+        /* ignore */
+      }
     };
     pointerHandler = () => {
       if (requestRender) requestRender();
@@ -213,7 +208,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
 
     // Initial camera: wide Earth view at 20,000 km
     viewerInstance.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(0, 20, 20_000_000),
+      destination: Cesium.Cartesian3.fromDegrees(0, 20, 20_000_000)
     });
     if (active && !viewerInstance.isDestroyed()) {
       setViewer(viewerInstance);
@@ -233,7 +228,9 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
         }
         const camera = viewerInstance?.camera as Cesium.Camera & { changed: Cesium.Event };
         if (camera?.changed?.removeEventListener && requestRender) {
-          try { camera.changed.removeEventListener(requestRender); } catch (e) {}
+          try {
+            camera.changed.removeEventListener(requestRender);
+          } catch (e) {}
         }
       } catch (e) {}
 

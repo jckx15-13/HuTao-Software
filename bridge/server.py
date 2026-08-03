@@ -1364,6 +1364,8 @@ def repository_status(repo_id: str, label: str, relative_path: str, required_fil
         "missing_files": [item for item in required_files if item not in present_files],
     }
 
+VERIFICATION_REPORT_STALE_AFTER_SECONDS = 24 * 60 * 60
+
 def build_feature_reality_ledger() -> dict:
     report = read_latest_verification_report()
     services = report.get("services") if isinstance(report.get("services"), dict) else {}
@@ -1373,6 +1375,23 @@ def build_feature_reality_ledger() -> dict:
     configured_models = int((report.get("ai_model_endpoint") or {}).get("configured_count") or 0)
     server_provider_count = int((report.get("ai_model_endpoint") or {}).get("server_provider_count") or 0)
     runtime_partial = report.get("overall_status") == "PARTIAL"
+
+    report_age_seconds = None
+    report_timestamp = report.get("timestamp")
+    if isinstance(report_timestamp, str):
+        try:
+            parsed_timestamp = datetime.datetime.fromisoformat(report_timestamp.replace("Z", "+00:00"))
+            report_age_seconds = (datetime.datetime.now(datetime.timezone.utc) - parsed_timestamp).total_seconds()
+        except ValueError:
+            report_age_seconds = None
+    report_is_stale = report_age_seconds is None or report_age_seconds > VERIFICATION_REPORT_STALE_AFTER_SECONDS
+
+    def live_checked(status: str) -> str:
+        # Downgrade report-derived "verified" claims once the underlying
+        # verification_report.json is missing or older than the stale
+        # threshold, since verify_system.cjs is a manual, not auto-rerun,
+        # script and this ledger must not imply a live re-check happened.
+        return "partial" if report_is_stale and status == "verified" else status
 
     repositories = [
         repository_status("silver-wolf-vi", "Silver Wolf VI root app", ".", [
@@ -1397,23 +1416,23 @@ def build_feature_reality_ledger() -> dict:
         feature_status(
             "chat-loop",
             "Chat input and assistant response loop",
-            "verified" if (report.get("proxy_chat_flow") or {}).get("status") == "success" else "partial",
+            live_checked("verified" if (report.get("proxy_chat_flow") or {}).get("status") == "success" else "partial"),
             [
                 "verification_report.proxy_chat_flow",
                 "bridge /chat route",
                 "src/hooks/useAIChat.ts",
             ],
-            "" if (report.get("proxy_chat_flow") or {}).get("status") == "success" else "Latest runtime report has not proven chat flow.",
+            "" if (report.get("proxy_chat_flow") or {}).get("status") == "success" and not report_is_stale else "Latest runtime report has not proven chat flow, or the report is stale (run scripts/verification_harness/verify_system.cjs to re-check).",
         ),
         feature_status(
             "ui-overlap-budget",
             "Workspace foreground overlap budget",
-            "verified" if (ui.get("layout_overlap_check") or {}).get("status") == "success" else "partial",
+            live_checked("verified" if (ui.get("layout_overlap_check") or {}).get("status") == "success" else "partial"),
             [
                 "verification_report.ui_verification.layout_overlap_check",
                 "scripts/verification_harness/verify_system.cjs",
             ],
-            "" if (ui.get("layout_overlap_check") or {}).get("status") == "success" else "Latest runtime report has not proven overlap budget.",
+            "" if (ui.get("layout_overlap_check") or {}).get("status") == "success" and not report_is_stale else "Latest runtime report has not proven overlap budget, or the report is stale (run scripts/verification_harness/verify_system.cjs to re-check).",
         ),
         feature_status(
             "globe-imagery",
@@ -1484,14 +1503,14 @@ def build_feature_reality_ledger() -> dict:
         feature_status(
             "runtime-services",
             "Local Vite, Bridge, Odysseus, and ChromaDB services",
-            "verified" if all((services.get(name) or {}).get("status") == "online" for name in ["vite", "bridge", "odysseus", "chromadb"]) else "partial",
+            live_checked("verified" if all((services.get(name) or {}).get("status") == "online" for name in ["vite", "bridge", "odysseus", "chromadb"]) else "partial"),
             [
                 "verification_report.services.vite",
                 "verification_report.services.bridge",
                 "verification_report.services.odysseus",
                 "verification_report.services.chromadb",
             ],
-            "Service health is local-runtime evidence, not proof of remote deployment readiness.",
+            "Service health is local-runtime evidence, not proof of remote deployment readiness." if not report_is_stale else "Service health comes from a stale verification report; run scripts/verification_harness/verify_system.cjs to re-check.",
         ),
     ]
 
@@ -1515,6 +1534,9 @@ def build_feature_reality_ledger() -> dict:
         "runtime_report_status": report.get("overall_status") or "missing",
         "partial_reasons": report.get("partial_reasons") or [],
         "not_100_reason": "External model/provider credentials and some live visual/provider checks remain unconfigured or source-backed.",
+        "verification_report_timestamp": report_timestamp,
+        "verification_report_age_seconds": report_age_seconds,
+        "verification_report_stale": report_is_stale,
     }
 
 @app.get("/api/integration/status")

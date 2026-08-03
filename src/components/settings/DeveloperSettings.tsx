@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ToggleLeft,
   ToggleRight,
@@ -43,7 +43,21 @@ type FeatureRealityLedger = {
   runtime_report_status: string;
   partial_reasons: string[];
   not_100_reason: string;
+  verification_report_timestamp: string | null;
+  verification_report_age_seconds: number | null;
+  verification_report_stale: boolean;
 };
+
+function formatReportAge(seconds: number | null): string {
+  if (seconds === null || Number.isNaN(seconds)) return 'no verification report on disk';
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
 
 const realityStatusClass: Record<FeatureRealityStatus, string> = {
   verified: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200',
@@ -65,9 +79,14 @@ export function DeveloperSettings() {
   const [featureLedger, setFeatureLedger] = useState<FeatureRealityLedger | null>(null);
   const [featureLedgerStatus, setFeatureLedgerStatus] = useState('checking');
 
-  // Poll DataBus event log history periodically for live updates
+  // Poll DataBus event log history periodically for live updates.
+  // Paused while the tab is hidden/backgrounded so this panel can't pile up
+  // re-renders behind the scenes (this settings panel previously kept polling
+  // every 1s indefinitely, including while backgrounded, stacking with live
+  // WWV plugin re-renders and reproducibly hanging the tab).
   useEffect(() => {
     const updateHistory = () => {
+      if (document.hidden) return;
       setBusHistory([...dataBus.history]);
     };
     updateHistory();
@@ -100,8 +119,9 @@ export function DeveloperSettings() {
     };
   }, [refreshKey]);
 
-  // Active Plugins list
-  const plugins = pluginManager.getAllPlugins();
+  // Active Plugins list — recomputed only when the stream log refreshes,
+  // not on every render of this panel.
+  const plugins = useMemo(() => pluginManager.getAllPlugins(), [busHistory]);
 
   const handleCopyState = () => {
     const state = useUIStore.getState();
@@ -220,6 +240,21 @@ export function DeveloperSettings() {
               {featureLedger ? `${featureLedger.integration_score}/100` : featureLedgerStatus}
             </div>
           </div>
+
+          {featureLedger && (
+            <div
+              className={`rounded-xl border p-3 font-mono text-[8px] uppercase leading-relaxed ${
+                featureLedger.verification_report_stale
+                  ? 'border-amber-300/20 bg-amber-300/10 text-amber-100/80'
+                  : 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200/80'
+              }`}
+            >
+              Last verified: {formatReportAge(featureLedger.verification_report_age_seconds)}
+              {featureLedger.verification_report_stale && (
+                <span> — stale. Run `node scripts/verification_harness/verify_system.cjs` to re-check before trusting "verified" statuses below.</span>
+              )}
+            </div>
+          )}
 
           {featureLedger && (
             <>
