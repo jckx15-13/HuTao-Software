@@ -96,19 +96,19 @@ export type SettingsCategory = 'personalisation' | 'ai' | 'connections' | 'feedb
 
 const defaultPersonalisation: Personalisation = {
   panelOpacity: 0.88,
-  blurIntensity: 10,
-  animationIntensity: 0.65,
+  blurIntensity: 6,
+  animationIntensity: 0.35,
   motionReduced: false,
   cornerRadius: 20,
-  borderStyle: 'glow',
-  shadowIntensity: 0.45,
-  chatBubbleStyle: 'glass',
+  borderStyle: 'solid',
+  shadowIntensity: 0.2,
+  chatBubbleStyle: 'solid',
   minimalMode: false,
   iconStyle: 'outlined',
   uiDensity: 'compact',
   fontScale: 1.0,
   accentColor: '',
-  fontFamily: 'Outfit',
+  fontFamily: 'Inter',
   panelTransitionStyle: 'fade',
 };
 
@@ -523,7 +523,7 @@ export const useUIStore = create<UIStore>()(
         // Sensory
         audioFeedback: false,
         setAudioFeedback: (audioFeedback) => set({ audioFeedback }),
-        particleEffects: true,
+        particleEffects: false,
         setParticleEffects: (particleEffects) => set({ particleEffects }),
         terminalFontSize: 15,
         setTerminalFontSize: (terminalFontSize) => set({ terminalFontSize }),
@@ -541,9 +541,9 @@ export const useUIStore = create<UIStore>()(
         // Camera sensitivity (1.0 = default)
         cameraSensitivity: 1.0,
         setCameraSensitivity: (cameraSensitivity) => set({ cameraSensitivity }),
-        showBorders: true,
+        showBorders: false,
         setShowBorders: (showBorders) => set({ showBorders }),
-        showTerrain: true,
+        showTerrain: false,
         setShowTerrain: (showTerrain) => set({ showTerrain }),
         showRoads: false,
         setShowRoads: (showRoads) => set({ showRoads }),

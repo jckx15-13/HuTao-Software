@@ -52,10 +52,24 @@ export default function App() {
   const animationIntensity = useUIStore((state) => state.personalisation.animationIntensity);
   const spaceBlendOpacity = useUIStore((state) => state.spaceBlendOpacity);
   const spaceInteractionTarget = useUIStore((state) => state.spaceInteractionTarget);
+
   const isHeadless = typeof window !== 'undefined' && (
     /HeadlessChrome/i.test(navigator.userAgent) ||
     window.location.search.includes('fallback')
   );
+
+  const isLowPerformance = typeof window !== 'undefined' && (
+    window.location.search.includes('low-perf') ||
+    (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) ||
+    (navigator.deviceMemory && navigator.deviceMemory <= 4)
+  );
+
+  React.useEffect(() => {
+    if (isLowPerformance) {
+      useUIStore.getState().setParticleEffects(false);
+      useUIStore.getState().updatePersonalisation({ animationIntensity: 0.2 });
+    }
+  }, [isLowPerformance]);
 
   const showHarness = typeof window !== 'undefined' && window.location.search.includes('mountharness');
   const showDiagnostics = typeof window !== 'undefined' && window.location.search.includes('diagnostics');

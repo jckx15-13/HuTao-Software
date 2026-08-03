@@ -122,6 +122,13 @@ export default defineConfig(({ mode }) => {
             }
     },
     build: {
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: isGithubPages,
+          passes: 2
+        }
+      },
       rollupOptions: {
         output: {
           manualChunks: {
@@ -131,10 +138,14 @@ export default defineConfig(({ mode }) => {
             motion: ['motion'],
             lucide: ['lucide-react'],
             virtualization: ['react-virtuoso'],
-            satellite: ['satellite.js']
+            satellite: ['satellite.js'],
+            wwv: ['@wwtelescope/engine', '@wwtelescope/engine-types']
           }
         }
-      }
+      },
+      cssCodeSplit: true,
+      reportCompressedSize: false,
+      chunkSizeWarningLimit: 1000
     }
   };
 });

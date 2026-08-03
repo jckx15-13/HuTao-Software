@@ -122,10 +122,10 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     // --- Performance tuning (WWV patterns) ---
 
     // Resolution scale: lower quality on low-end devices to reduce GPU load
-    viewerInstance.resolutionScale = lowEndDevice ? 0.65 : 0.85;
+    viewerInstance.resolutionScale = lowEndDevice ? 0.5 : 0.75;
 
     // Globe polygon detail: coarser on low-end devices
-    viewerInstance.scene.globe.maximumScreenSpaceError = lowEndDevice ? 4.5 : 2.5;
+    viewerInstance.scene.globe.maximumScreenSpaceError = lowEndDevice ? 6.0 : 3.0;
 
     // Disable expensive FXAA post-process (we use MSAA instead)
     if (viewerInstance.scene.postProcessStages.fxaa) {

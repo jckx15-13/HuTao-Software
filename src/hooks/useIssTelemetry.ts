@@ -7,8 +7,8 @@ import {
   ISS_ALTITUDE_M,
 } from '../lib/simulation';
 
-/** Base poll interval in ms. */
-const BASE_INTERVAL = 5000;
+/** Base poll interval in ms — increased for performance. */
+const BASE_INTERVAL = 10000;
 /** Maximum backoff multiplier on consecutive failures. */
 const MAX_BACKOFF = 4;
 /** API timeout in ms — relaxed from 1.5s to 3s to reduce spurious fallbacks. */
