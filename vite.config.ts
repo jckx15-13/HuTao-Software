@@ -101,7 +101,21 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src')
       }
     },
+    // Strip console/debugger from the static Pages build only. The app logs
+    // verbosely at debug level (plugin manager, WS client), which is useful
+    // locally and noise in a published build.
+    esbuild: isGithubPages ? { drop: ['console', 'debugger'] } : undefined,
     server: {
+      // Dev-server host allowlist. Vite blocks unknown Host headers by default
+      // (DNS-rebinding protection), which rejects tunnelled origins used to view
+      // this dev server from another device. Opt in explicitly via
+      // VITE_DEV_ALLOWED_HOSTS (comma-separated); a leading '.' matches
+      // subdomains, e.g. VITE_DEV_ALLOWED_HOSTS=".trycloudflare.com".
+      // Unset by default, so normal local dev keeps Vite's protection intact.
+      allowedHosts: (env.VITE_DEV_ALLOWED_HOSTS || '')
+        .split(',')
+        .map((host) => host.trim())
+        .filter(Boolean),
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // File watching can be disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
@@ -122,13 +136,12 @@ export default defineConfig(({ mode }) => {
             }
     },
     build: {
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: isGithubPages,
-          passes: 2
-        }
-      },
+      // Vite's default esbuild minifier. Terser was configured here but is an
+      // optional peer dependency that is not installed, which broke
+      // `npm run build` outright. esbuild needs no extra dependency, is far
+      // faster, and `esbuild.drop` below covers the console-stripping that
+      // motivated terser in the first place.
+      minify: 'esbuild',
       rollupOptions: {
         output: {
           manualChunks: {
