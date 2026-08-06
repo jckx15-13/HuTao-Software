@@ -167,12 +167,17 @@ async function run() {
   assert.equal(store.aiModel, "local-assistant");
   assert.equal(store.leftPanelOpen, true);
   assert.equal(store.rightPanelOpen, true);
-  assert.equal(store.particleEffects, true);
+  // Performance defaults (see PERFORMANCE.md): particle effects ship OFF so the
+  // app does not saturate the GPU on low-spec laptops. Users re-enable them in
+  // Settings -> Personalisation. Pinned here so the default cannot drift back
+  // silently.
+  assert.equal(store.particleEffects, false);
   assert.equal(store.imageryProvider, "arcgis-world");
   assert.equal(store.personalisation.panelOpacity, 0.88);
   assert.equal(store.personalisation.minimalMode, false);
   assert.equal(store.personalisation.motionReduced, false);
-  assert.equal(store.personalisation.chatBubbleStyle, "glass");
+  // Also a performance default: solid bubbles avoid a per-message backdrop-filter.
+  assert.equal(store.personalisation.chatBubbleStyle, "solid");
 
   store.updatePersonalisation({ panelOpacity: 0.2, blurIntensity: 40, chatBubbleStyle: "glass" });
   assert.equal(useUIStore.getState().personalisation.panelOpacity, 0.72);

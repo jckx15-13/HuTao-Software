@@ -202,7 +202,10 @@ for (const connectorContract of [
 }
 assert.ok(
   aiSettingsSource.includes("getApiConnectorReadiness") &&
-    aiSettingsSource.includes("bridgeUrl(") &&
+    // Either the raw URL builder or bridgeFetch(), which wraps bridgeUrl() and
+    // adds the offline guard + timeout. Asserting only on bridgeUrl( pinned an
+    // implementation detail and broke when callers moved to the safer wrapper.
+    (aiSettingsSource.includes("bridgeUrl(") || aiSettingsSource.includes("bridgeFetch(")) &&
     aiSettingsSource.includes("/api/connectors/providers") &&
     aiSettingsSource.includes("Bridge connector status") &&
     aiSettingsSource.includes("Probe status:") &&
@@ -212,7 +215,10 @@ assert.ok(
 );
 assert.ok(
   developerSettingsSource.includes("Feature Reality Ledger") &&
-    developerSettingsSource.includes("bridgeUrl('/api/integration/status')") &&
+    // Same wrapper migration as AI Settings above: assert the endpoint is
+    // reached, not which helper reaches it.
+    (developerSettingsSource.includes("bridgeUrl('/api/integration/status')") ||
+      developerSettingsSource.includes("bridgeFetch('/api/integration/status')")) &&
     developerSettingsSource.includes("integration_score") &&
     developerSettingsSource.includes("not_100_reason") &&
     developerSettingsSource.includes("verified") &&
@@ -254,7 +260,12 @@ for (const bridgeProviderContract of [
   "probe_status",
   "secret_returned",
   "connector_providers",
-  '"mode": "server-provider"',
+  // The mode VALUE, not an inline dict literal. /chat now dispatches every
+  // OpenAI-compatible endpoint through one table (OPENAI_COMPATIBLE_MODES),
+  // so "mode" is a variable; the old '"mode": "server-provider"' spelling
+  // asserted on formatting rather than on the route existing.
+  '"server-provider"',
+  '"local-runtime"',
 ]) {
   assert.ok(bridgeSource.includes(bridgeProviderContract), `Bridge credential provider contract missing ${bridgeProviderContract}`);
 }
