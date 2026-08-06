@@ -40,7 +40,7 @@ export function SettingsPage() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex h-[100dvh] min-h-[100dvh] w-full bg-[#06070a]/92 backdrop-blur-2xl overflow-hidden settings-enter"
+      className="fixed inset-0 z-overlay flex h-[100dvh] min-h-[100dvh] w-full bg-[#06070a]/92 backdrop-blur-2xl overflow-hidden settings-enter"
       role="dialog"
       aria-modal="true"
       aria-label="Settings"
@@ -51,7 +51,7 @@ export function SettingsPage() {
         <button
           type="button"
           onClick={() => setCurrentPage('workspace')}
-          className="absolute top-6 right-6 z-10 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 p-2 text-white/40 hover:bg-white/10 hover:text-white/80 transition-all cursor-pointer shadow-lg"
+          className="absolute top-6 right-6 z-content inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 p-2 text-white/40 hover:bg-white/10 hover:text-white/80 transition-all cursor-pointer shadow-lg"
           aria-label="Exit Settings"
           title="Exit Settings"
         >

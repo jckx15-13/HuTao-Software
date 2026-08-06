@@ -82,7 +82,7 @@ async function toggleFullscreen() {
 
 function ChatHeader({ onClear }: ChatHeaderProps) {
   return (
-    <header className="panel-glass relative z-20 flex h-16 shrink-0 items-center justify-between border-b border-primary/15 bg-gradient-to-r from-panel/85 via-panel/65 to-background/30 px-5 shadow-[0_12px_30px_color-mix(in_srgb,var(--theme-primary)_8%,transparent)]">
+    <header className="panel-glass relative z-chrome flex h-16 shrink-0 items-center justify-between border-b border-primary/15 bg-gradient-to-r from-panel/85 via-panel/65 to-background/30 px-5 shadow-[0_12px_30px_color-mix(in_srgb,var(--theme-primary)_8%,transparent)]">
       <div className="flex items-center gap-3 font-mono text-xs font-bold uppercase tracking-widest text-primary">
         <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/25 bg-primary/10 shadow-[0_0_18px_color-mix(in_srgb,var(--theme-primary)_18%,transparent)]">
           <TerminalSquare className="h-4 w-4" />
@@ -124,7 +124,7 @@ function ChatFeed({ messages, isProcessing, fontSize }: ChatFeedProps) {
   }, [messages.length]);
 
   return (
-    <div className="relative z-10 flex-1 overflow-hidden">
+    <div className="relative z-content flex-1 overflow-hidden">
       <Virtuoso
         ref={virtuosoRef}
         data={messages}
@@ -271,7 +271,7 @@ function ChatComposer({ disabled, fontSize, onSubmit }: ChatComposerProps) {
   };
 
   return (
-    <div className="relative z-20 shrink-0 bg-gradient-to-t from-background/85 via-background/45 to-transparent px-4 pb-5 pt-3 sm:px-6">
+    <div className="relative z-chrome shrink-0 bg-gradient-to-t from-background/85 via-background/45 to-transparent px-4 pb-5 pt-3 sm:px-6">
       <motion.div className="panel-glass relative flex flex-col gap-2 overflow-hidden rounded-[28px] border border-primary/25 bg-panel/78 p-3 shadow-[0_18px_45px_rgba(0,0,0,0.35),0_0_24px_color-mix(in_srgb,var(--theme-primary)_10%,transparent)_inset] transition-all focus-within:border-primary/60 focus-within:shadow-[0_18px_45px_rgba(0,0,0,0.35),0_0_30px_color-mix(in_srgb,var(--theme-primary)_18%,transparent)_inset]">
         <TextareaAutosize
           minRows={1}

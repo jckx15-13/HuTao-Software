@@ -27,7 +27,7 @@ import {
   FolderGit,
   MessageSquare,
   ChevronRight,
-  Radio,
+  Radio
 } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '@/core/state/store';
@@ -40,10 +40,9 @@ import { projectTelescopeTargetToEarth } from '@/lib/earthObserverProjection';
 const Cesium = {
   Cartesian3: {
     fromDegrees: (lng: number, lat: number, alt: number) => {
-      const isHeadless = typeof window !== 'undefined' && (
-        /HeadlessChrome/i.test(navigator.userAgent) ||
-        window.location.search.includes('fallback')
-      );
+      const isHeadless =
+        typeof window !== 'undefined' &&
+        (/HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback'));
       if (isHeadless) {
         return { x: lng, y: lat, z: alt };
       }
@@ -60,6 +59,22 @@ import { WWV_ORBITAL_ASSET_BY_CATEGORY } from '@/assets/wwvVisualAssets';
 import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { buildSpatialPanelGeometry } from './panelGeometry';
+
+const COSMOS_BACKGROUND_OPTIONS = [
+  { id: 'deep-black', label: 'DEEP BLACK', description: 'A clean, lightless cosmos.' },
+  { id: 'sparkling', label: 'SPARKLING', description: 'Dark space with moving star points.' },
+  { id: 'wwt-milkyway', label: 'WWT MILKY WAY', description: 'WorldWide Telescope sky surveys.' },
+] as const;
+
+const WWT_BACKGROUND_OPTIONS = [
+  { value: '3D Solar System View', label: '3D Solar System (Earth-centered)' },
+  { value: 'Visible Imagery', label: 'Visible Imagery' },
+  { value: 'Digitized Sky Survey (Color)', label: 'Digitized Sky Survey' },
+  { value: 'Hubble Space Telescope Imagery', label: 'Hubble' },
+  { value: 'RASS: ROSAT All Sky Survey (X-ray)', label: 'Chandra X-Ray / ROSAT' },
+  { value: 'Planck Dust & Gas', label: 'Planck Dust & Gas' },
+  { value: 'VLSS: VLA Low-frequency Sky Survey (Radio)', label: 'Radio VLSS' },
+] as const;
 
 // ============================================================================
 // CONSOLIDATED SUB-COMPONENTS
@@ -93,11 +108,7 @@ export function FileTreeSection({ title, icon: Icon, defaultOpen = false, itemCo
         )}
       </button>
 
-      {isOpen && (
-        <div className="flex flex-col border-l border-white/5 ml-3.5 pl-1.5 mt-0.5 mb-1.5">
-          {children}
-        </div>
-      )}
+      {isOpen && <div className="flex flex-col border-l border-white/5 ml-3.5 pl-1.5 mt-0.5 mb-1.5">{children}</div>}
     </div>
   );
 }
@@ -126,7 +137,9 @@ export function TreeItem({ label, icon: Icon, depth = 0, selected = false, onCli
         <span className="truncate">{label}</span>
       </div>
       {badge !== undefined && (
-        <span className={`rounded px-1 text-xs ${selected ? 'bg-primary/20 text-primary' : 'bg-white/5 text-white/40'}`}>
+        <span
+          className={`rounded px-1 text-xs ${selected ? 'bg-primary/20 text-primary' : 'bg-white/5 text-white/40'}`}
+        >
           {badge}
         </span>
       )}
@@ -237,10 +250,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -255,7 +265,7 @@ interface CollapsibleSectionProps {
 
 function CollapsibleSection({ title, icon: Icon, isOpen, onToggle, children }: CollapsibleSectionProps) {
   return (
-    <div className="relative z-0 border-b border-white/5 last:border-0 overflow-hidden">
+    <div className="relative z-base border-b border-white/5 last:border-0 overflow-hidden">
       <button
         type="button"
         onClick={onToggle}
@@ -267,10 +277,14 @@ function CollapsibleSection({ title, icon: Icon, isOpen, onToggle, children }: C
           <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
           <span className="truncate font-bold uppercase tracking-wider">{title}</span>
         </div>
-        {isOpen ? <ChevronUp className="h-3 w-3 shrink-0 text-white/30" /> : <ChevronDown className="h-3 w-3 shrink-0 text-white/30" />}
+        {isOpen ? (
+          <ChevronUp className="h-3 w-3 shrink-0 text-white/30" />
+        ) : (
+          <ChevronDown className="h-3 w-3 shrink-0 text-white/30" />
+        )}
       </button>
       {isOpen && (
-        <div className="relative z-0 p-3 bg-black/15 border-t border-white/5 space-y-3 overflow-hidden animate-fade-in">
+        <div className="relative z-base p-3 bg-black/15 border-t border-white/5 space-y-3 overflow-hidden animate-fade-in">
           {children}
         </div>
       )}
@@ -286,7 +300,7 @@ export function LeftPanel() {
   const setCurrentPage = useUIStore((s) => s.setCurrentPage);
   const activeLocation = useUIStore((s) => s.activeLocation);
   const setActiveLocation = useUIStore((s) => s.setActiveLocation);
-  
+
   const interactionMode = useUIStore((s) => s.interactionMode);
 
   // Global uiStore states
@@ -307,6 +321,10 @@ export function LeftPanel() {
   const setInteractionMode = useUIStore((s) => s.setInteractionMode);
   const spaceBlendOpacity = useUIStore((s) => s.spaceBlendOpacity);
   const setSpaceBlendOpacity = useUIStore((s) => s.setSpaceBlendOpacity);
+  const cosmosBackgroundMode = useUIStore((s) => s.cosmosBackgroundMode);
+  const setCosmosBackgroundMode = useUIStore((s) => s.setCosmosBackgroundMode);
+  const wwtBackgroundLayer = useUIStore((s) => s.wwtBackgroundLayer);
+  const setWwtBackgroundLayer = useUIStore((s) => s.setWwtBackgroundLayer);
   const spaceInteractionTarget = useUIStore((s) => s.spaceInteractionTarget);
   const setSpaceInteractionTarget = useUIStore((s) => s.setSpaceInteractionTarget);
 
@@ -335,7 +353,7 @@ export function LeftPanel() {
     plugins: false,
     presets: false,
     telemetry: false,
-    synopsis: false,
+    synopsis: false
   });
 
   const toggleSection = (key: string) => {
@@ -367,7 +385,7 @@ export function LeftPanel() {
           if (!node) return;
           node.scrollTo({
             top: scrollTarget === 'bottom' ? node.scrollHeight : 0,
-            behavior: 'auto',
+            behavior: 'auto'
           });
         });
       });
@@ -388,9 +406,9 @@ export function LeftPanel() {
         placement: 'left',
         viewport: viewportSize,
         leftPanelOpen,
-        rightPanelOpen,
+        rightPanelOpen
       }),
-    [leftPanelOpen, rightPanelOpen, viewportSize],
+    [leftPanelOpen, rightPanelOpen, viewportSize]
   );
 
   const SATELLITE_CATEGORIES_METADATA = {
@@ -401,7 +419,7 @@ export function LeftPanel() {
     earthObs: { label: 'Earth Obs', color: '#F97316' },
     starlink: { label: 'Starlink', color: '#FFFFFF' },
     military: { label: 'Military', color: '#3B82F6' },
-    other: { label: 'Other', color: '#94A3B8' },
+    other: { label: 'Other', color: '#94A3B8' }
   };
 
   const activePreset = useMemo(() => {
@@ -412,11 +430,7 @@ export function LeftPanel() {
     const parsedTime = currentTime instanceof Date ? currentTime : new Date(currentTime ?? Date.now());
     const projectionDate = Number.isNaN(parsedTime.getTime()) ? new Date() : parsedTime;
     const coordinates = resolveTelescopePresetCoordinates(activePreset, projectionDate);
-    const projection = projectTelescopeTargetToEarth(
-      coordinates.raHours,
-      coordinates.decDegrees,
-      projectionDate
-    );
+    const projection = projectTelescopeTargetToEarth(coordinates.raHours, coordinates.decDegrees, projectionDate);
 
     return {
       longitude: projection.longitudeLabel,
@@ -427,14 +441,15 @@ export function LeftPanel() {
       dec: coordinates.dec,
       source: coordinates.source,
       distanceAu: coordinates.distanceAu,
-      lightTimeMinutes: coordinates.lightTimeMinutes,
+      lightTimeMinutes: coordinates.lightTimeMinutes
     };
   }, [activePreset, currentTime]);
 
   const filteredSatellites = useMemo(() => {
     return satellites.filter((sat) => {
-      const matchesSearch = sat.name.toLowerCase().includes(satelliteSearchQuery.toLowerCase()) || 
-                            sat.category.toLowerCase().includes(satelliteSearchQuery.toLowerCase());
+      const matchesSearch =
+        sat.name.toLowerCase().includes(satelliteSearchQuery.toLowerCase()) ||
+        sat.category.toLowerCase().includes(satelliteSearchQuery.toLowerCase());
       const isCategoryVisible = satelliteCategories[sat.category] !== false;
       return matchesSearch && isCategoryVisible;
     });
@@ -452,7 +467,7 @@ export function LeftPanel() {
       useUIStore.getState().setRightPanelTab('context');
       useUIStore.getState().setRightPanelOpen(true);
     }
-    
+
     const viewer = (window as { cesiumViewer?: any }).cesiumViewer;
     if (viewer) {
       const ent = viewer.entities.getById(entityId) || viewer.entities.getById(id);
@@ -491,7 +506,7 @@ export function LeftPanel() {
     const term = orbitalSearchQuery.trim().toLowerCase();
 
     // Map static locations
-    const staticMatches = locations.map(l => ({
+    const staticMatches = locations.map((l) => ({
       id: l.id,
       name: l.name,
       country: l.country,
@@ -503,7 +518,16 @@ export function LeftPanel() {
     }));
 
     // Map plugin entities
-    const pluginMatches: { id: string, name: string, country: string, category: string, lat: number, lng: number, type: 'entity', raw: any }[] = [];
+    const pluginMatches: {
+      id: string;
+      name: string;
+      country: string;
+      category: string;
+      lat: number;
+      lng: number;
+      type: 'entity';
+      raw: any;
+    }[] = [];
     const entitiesByPlugin = useStore.getState().entitiesByPlugin;
     if (entitiesByPlugin) {
       Object.entries(entitiesByPlugin).forEach(([pluginId, entities]) => {
@@ -527,9 +551,9 @@ export function LeftPanel() {
     const allItems = [...staticMatches, ...pluginMatches];
     if (!term) return allItems.slice(0, 2);
 
-    return allItems.filter((item) =>
-      `${item.name} ${item.country} ${item.category}`.toLowerCase().includes(term)
-    ).slice(0, 3);
+    return allItems
+      .filter((item) => `${item.name} ${item.country} ${item.category}`.toLowerCase().includes(term))
+      .slice(0, 3);
   }, [orbitalSearchQuery, layers]);
 
   const applyGraphicsPreset = (preset: 'low' | 'high') => {
@@ -544,7 +568,9 @@ export function LeftPanel() {
       });
       setShowBorders(true);
       setShowTerrain(true);
-      useUIStore.getState().addChangeLog('GRAPHICS', 'Performance Preset Applied: shadows off, 0.7x scale, AA off.', 'info');
+      useUIStore
+        .getState()
+        .addChangeLog('GRAPHICS', 'Performance Preset Applied: shadows off, 0.7x scale, AA off.', 'info');
     } else {
       updateMapConfig({
         shadowsEnabled: true,
@@ -556,17 +582,23 @@ export function LeftPanel() {
       });
       setShowBorders(true);
       setShowTerrain(true);
-      useUIStore.getState().addChangeLog('GRAPHICS', 'Cinematic Preset Applied: shadows on, 1.0x scale, MSAA 4x, OSM buildings active.', 'success');
+      useUIStore
+        .getState()
+        .addChangeLog(
+          'GRAPHICS',
+          'Cinematic Preset Applied: shadows on, 1.0x scale, MSAA 4x, OSM buildings active.',
+          'success'
+        );
     }
   };
 
-  const flyToTourStep = (step: { lng: number, lat: number }) => {
+  const flyToTourStep = (step: { lng: number; lat: number }) => {
     const viewer = (window as { cesiumViewer?: any }).cesiumViewer;
     if (viewer) {
       viewer.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(step.lng, step.lat, 250000), // Fly close (250km)
         duration: 2.0,
-        complete: () => viewer.scene.requestRender(),
+        complete: () => viewer.scene.requestRender()
       });
       const listener = viewer.scene.preUpdate.addEventListener(() => viewer.scene.requestRender());
       setTimeout(() => listener(), 2500);
@@ -587,15 +619,17 @@ export function LeftPanel() {
   if (!leftPanelOpen) return null;
 
   return (
-    <aside 
-      className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-40 h-auto min-h-0 bg-black/75"
+    <aside
+      className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-panel h-auto min-h-0 bg-black/75"
       style={spatialPanelStyle}
     >
       {/* Header section */}
       <div className="flex h-12 items-center justify-between px-4 border-b border-white/10 shrink-0 bg-black/45">
         <div className="flex items-center gap-2">
-          <Hexagon className="h-5 w-5 text-primary animate-pulse" />
-          <span 
+          {/* Static: this hexagon is the panel's brand mark, not a status
+              indicator, so it should not pulse. */}
+          <Hexagon className="h-5 w-5 text-primary" />
+          <span
             className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-white/90 glitch-target hover-glitch cursor-pointer"
             data-text={isSpatialMode ? 'SPATIAL HUD' : 'SILVER WOLF'}
           >
@@ -664,7 +698,6 @@ export function LeftPanel() {
         ) : (
           // SPATIAL AND COSMIC MODE (Accordion Controls)
           <div className="flex flex-col">
-            
             {/* --- ORBITAL CONTROL HUB --- */}
             <div className="p-2.5 border-b border-white/5 bg-primary/5 text-xs font-mono uppercase tracking-[0.2em] font-bold text-primary flex items-center gap-1.5">
               <Compass className="h-3.5 w-3.5 animate-spin-slow text-primary" />
@@ -690,7 +723,9 @@ export function LeftPanel() {
                         setInteractionMode('orbital');
                         setSpaceInteractionTarget('telescope');
                         setSpaceBlendOpacity(0.0);
-                        useUIStore.getState().addChangeLog('TELESCOPE', `Telescope target pointed: ${preset.name}`, 'success');
+                        useUIStore
+                          .getState()
+                          .addChangeLog('TELESCOPE', `Telescope target pointed: ${preset.name}`, 'success');
                       }}
                       className={`min-h-11 rounded border px-2 py-1.5 text-left transition-all cursor-pointer ${
                         isActive
@@ -731,9 +766,10 @@ export function LeftPanel() {
               </div>
               <div className="space-y-1 overflow-y-auto scroller font-mono text-xs" style={{ maxHeight: 132 }}>
                 {filteredOrbitalResults.map((result) => {
-                  const isSelected = result.type === 'landmark'
-                    ? activeLocation && result.id === activeLocation.id
-                    : useStore.getState().selectedEntity && result.id === useStore.getState().selectedEntity?.id;
+                  const isSelected =
+                    result.type === 'landmark'
+                      ? activeLocation && result.id === activeLocation.id
+                      : useStore.getState().selectedEntity && result.id === useStore.getState().selectedEntity?.id;
 
                   return (
                     <button
@@ -753,18 +789,26 @@ export function LeftPanel() {
                           const viewer = (window as { cesiumViewer?: any }).cesiumViewer;
                           if (viewer) {
                             viewer.camera.flyTo({
-                              destination: Cesium.Cartesian3.fromDegrees(result.lng, result.lat, result.raw.altitude ? result.raw.altitude * 2.5 + 20000 : 250000),
+                              destination: Cesium.Cartesian3.fromDegrees(
+                                result.lng,
+                                result.lat,
+                                result.raw.altitude ? result.raw.altitude * 2.5 + 20000 : 250000
+                              ),
                               duration: 2.0
                             });
                           }
                         }
                       }}
                       className={`min-h-11 w-full text-left p-2 rounded transition-all cursor-pointer block border border-transparent ${
-                        isSelected ? 'bg-primary/20 text-primary font-bold border-primary/20' : 'hover:bg-white/5 text-white/60'
+                        isSelected
+                          ? 'bg-primary/20 text-primary font-bold border-primary/20'
+                          : 'hover:bg-white/5 text-white/60'
                       }`}
                     >
                       <div className="truncate font-bold">{result.name}</div>
-                      <div className="text-xs text-white/30 truncate">{result.country} · {result.category}</div>
+                      <div className="text-xs text-white/30 truncate">
+                        {result.country} · {result.category}
+                      </div>
                     </button>
                   );
                 })}
@@ -813,7 +857,9 @@ export function LeftPanel() {
                 {tours.map((tour) => (
                   <div key={tour.id} className="p-2 rounded border border-white/5 bg-white/5 space-y-1">
                     <div className="font-mono text-xs font-bold text-white/80 truncate uppercase">{tour.title}</div>
-                    <p className="text-xs text-white/40 leading-normal line-clamp-2 uppercase font-mono">{tour.description}</p>
+                    <p className="text-xs text-white/40 leading-normal line-clamp-2 uppercase font-mono">
+                      {tour.description}
+                    </p>
                     <button
                       type="button"
                       onClick={() => handleStartTour(tour)}
@@ -839,7 +885,9 @@ export function LeftPanel() {
                     type="button"
                     onClick={() => applyGraphicsPreset('low')}
                     className={`min-h-11 py-1.5 rounded transition-all cursor-pointer ${
-                      mapConfig.resolutionScale < 0.85 ? 'bg-primary text-white font-bold' : 'text-white/40 hover:text-white/70'
+                      mapConfig.resolutionScale < 0.85
+                        ? 'bg-primary text-white font-bold'
+                        : 'text-white/40 hover:text-white/70'
                     }`}
                   >
                     LOW (PERF)
@@ -848,12 +896,65 @@ export function LeftPanel() {
                     type="button"
                     onClick={() => applyGraphicsPreset('high')}
                     className={`min-h-11 py-1.5 rounded transition-all cursor-pointer ${
-                      mapConfig.resolutionScale >= 0.85 ? 'bg-primary text-white font-bold' : 'text-white/40 hover:text-white/70'
+                      mapConfig.resolutionScale >= 0.85
+                        ? 'bg-primary text-white font-bold'
+                        : 'text-white/40 hover:text-white/70'
                     }`}
                   >
                     HIGH (CINEMA)
                   </button>
                 </div>
+
+                  {isSpatialMode && (
+                    <div className="space-y-2 border-t border-white/5 pt-3">
+                      <div>
+                        <span className="text-xs font-bold uppercase tracking-wider text-primary block">
+                          Cosmos Background
+                        </span>
+                        <span className="text-[8px] uppercase tracking-wide text-white/35">
+                          Non-Earth space renderer
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5 rounded border border-white/5 bg-black/30 p-0.5">
+                        {COSMOS_BACKGROUND_OPTIONS.map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            title={option.description}
+                            onClick={() => setCosmosBackgroundMode(option.id)}
+                            className={`min-h-11 rounded px-1 py-1 text-[9px] font-bold transition-all cursor-pointer ${
+                              cosmosBackgroundMode === option.id
+                                ? 'bg-primary text-white'
+                                : 'text-white/40 hover:text-white/75'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[8px] leading-relaxed text-white/35">
+                        {COSMOS_BACKGROUND_OPTIONS.find((option) => option.id === cosmosBackgroundMode)?.description}
+                      </p>
+                      {cosmosBackgroundMode === 'wwt-milkyway' && (
+                        <div className="space-y-1">
+                            <label htmlFor="cosmos-wwt-background-layer" className="text-white/40 block text-[9px] uppercase">WWT Layer</label>
+                          <select
+                            id="cosmos-wwt-background-layer"
+                            name="cosmos-wwt-background-layer"
+                            value={wwtBackgroundLayer}
+                            onChange={(e) => setWwtBackgroundLayer(e.target.value)}
+                            className="min-h-11 w-full rounded border border-white/5 bg-[#111217] px-2 py-1 text-xs text-white focus:border-primary focus:outline-none cursor-pointer"
+                          >
+                            {WWT_BACKGROUND_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                 <div className="space-y-1">
                   <label className="text-white/40 block text-xs uppercase">Imagery Source</label>
@@ -885,7 +986,8 @@ export function LeftPanel() {
                     <span>WWV Static Borders</span>
                   </label>
                   <p className="pl-10 text-[8px] uppercase leading-relaxed text-white/35">
-                    WorldWide Telescope country borders from the public mirror; political status and labels are static dataset records.
+                    WorldWide Telescope country borders from the public mirror; political status and labels are static
+                    dataset records.
                   </p>
                   <label className="flex min-h-11 items-center gap-2 cursor-pointer rounded px-1 hover:bg-white/5 hover:text-white transition-colors">
                     <input
@@ -932,8 +1034,10 @@ export function LeftPanel() {
                 {/* Viewport Blend Controls (Space Mode only) */}
                 {isSpatialMode && (
                   <div className="border-t border-white/5 pt-3 space-y-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-primary block">Viewport Blend</span>
-                    
+                    <span className="text-xs font-bold uppercase tracking-wider text-primary block">
+                      Viewport Blend
+                    </span>
+
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
                         <span>Globe Opacity</span>
@@ -959,7 +1063,9 @@ export function LeftPanel() {
                           type="button"
                           onClick={() => setSpaceInteractionTarget('earth')}
                           className={`min-h-11 rounded py-1 font-bold transition-all cursor-pointer ${
-                            spaceInteractionTarget === 'earth' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'
+                            spaceInteractionTarget === 'earth'
+                              ? 'bg-primary text-white'
+                              : 'text-white/40 hover:text-white/70'
                           }`}
                         >
                           EARTH
@@ -968,7 +1074,9 @@ export function LeftPanel() {
                           type="button"
                           onClick={() => setSpaceInteractionTarget('telescope')}
                           className={`min-h-11 rounded py-1 font-bold transition-all cursor-pointer ${
-                            spaceInteractionTarget === 'telescope' ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'
+                            spaceInteractionTarget === 'telescope'
+                              ? 'bg-primary text-white'
+                              : 'text-white/40 hover:text-white/70'
                           }`}
                         >
                           TELESCOPE
@@ -1002,7 +1110,9 @@ export function LeftPanel() {
                   >
                     <option value="">-- Select Point A --</option>
                     {locations.map((l) => (
-                      <option key={l.id} value={l.id}>{l.name}</option>
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1021,14 +1131,18 @@ export function LeftPanel() {
                   >
                     <option value="">-- Select Point B --</option>
                     {locations.map((l) => (
-                      <option key={l.id} value={l.id}>{l.name}</option>
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 {measureDistance !== null && (
                   <div className="p-2 rounded bg-primary/10 border border-primary/20 text-center space-y-0.5 animate-pulse">
-                    <span className="text-xs text-white/30 block uppercase font-bold tracking-widest">Calculated Distance</span>
+                    <span className="text-xs text-white/30 block uppercase font-bold tracking-widest">
+                      Calculated Distance
+                    </span>
                     <span className="text-xs text-primary font-bold">{measureDistance.toFixed(2)} km</span>
                   </div>
                 )}
@@ -1072,22 +1186,22 @@ export function LeftPanel() {
                   <div className="grid grid-cols-4 gap-1 text-[10px]">
                     {Object.entries(SATELLITE_CATEGORIES_METADATA).map(([key, meta]) => {
                       const isToggled = satelliteCategories[key] !== false;
-                      const count = satellites.filter(s => s.category === key).length;
+                      const count = satellites.filter((s) => s.category === key).length;
                       return (
                         <button
                           key={key}
                           type="button"
                           onClick={() => toggleSatelliteCategory(key)}
                           className={`flex min-h-11 items-center justify-between gap-1 px-1.5 py-1 rounded border transition-colors cursor-pointer text-left ${
-                            isToggled 
-                              ? 'bg-white/5 text-white border-white/10' 
+                            isToggled
+                              ? 'bg-white/5 text-white border-white/10'
                               : 'bg-transparent text-white/30 border-white/5 hover:border-white/10'
                           }`}
                         >
                           <div className="flex items-center gap-1 truncate">
-                            <span 
-                              className="h-1.5 w-1.5 rounded-full shrink-0 animate-pulse" 
-                              style={{ backgroundColor: isToggled ? meta.color : 'rgba(255,255,255,0.1)' }} 
+                            <span
+                              className="h-1.5 w-1.5 rounded-full shrink-0 animate-pulse"
+                              style={{ backgroundColor: isToggled ? meta.color : 'rgba(255,255,255,0.1)' }}
                             />
                             <span className="truncate max-w-[42px] uppercase font-bold">{meta.label}</span>
                           </div>
@@ -1125,17 +1239,23 @@ export function LeftPanel() {
                 </div>
 
                 {/* Satellite List */}
-                <div id="satellite-list" className="space-y-1 max-h-[172px] overflow-y-auto scroller border-t border-white/5 pt-1.5">
+                <div
+                  id="satellite-list"
+                  className="space-y-1 max-h-[172px] overflow-y-auto scroller border-t border-white/5 pt-1.5"
+                >
                   {filteredSatellites.map((sat) => {
                     const isSelected = activeSatelliteId === sat.id;
-                    const visualAssetUrl = WWV_ORBITAL_ASSET_BY_CATEGORY[sat.category] || WWV_ORBITAL_ASSET_BY_CATEGORY.other;
+                    const visualAssetUrl =
+                      WWV_ORBITAL_ASSET_BY_CATEGORY[sat.category] || WWV_ORBITAL_ASSET_BY_CATEGORY.other;
                     return (
                       <button
                         key={sat.id}
                         type="button"
                         onClick={() => handleSelectSatellite(sat.id, sat.altitudeM)}
                         className={`flex min-h-11 w-full items-center justify-between gap-2 rounded border border-transparent px-2 py-1 text-left transition-all cursor-pointer ${
-                          isSelected ? 'bg-primary/20 text-primary font-bold border-primary/20' : 'hover:bg-white/5 text-white/60'
+                          isSelected
+                            ? 'bg-primary/20 text-primary font-bold border-primary/20'
+                            : 'hover:bg-white/5 text-white/60'
                         }`}
                       >
                         <span className="flex min-w-0 items-center gap-2">
@@ -1173,7 +1293,10 @@ export function LeftPanel() {
                   const layerState = layers[pId] || { enabled: false, entityCount: 0, loading: false };
                   const Icon = managed.plugin.icon || FolderKanban;
                   return (
-                    <div key={pId} className="p-1.5 rounded border border-white/5 bg-black/30 font-mono text-xs space-y-1">
+                    <div
+                      key={pId}
+                      className="p-1.5 rounded border border-white/5 bg-black/30 font-mono text-xs space-y-1"
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -1194,13 +1317,14 @@ export function LeftPanel() {
                           />
                         </button>
                       </div>
-                      <p className="truncate text-[7.5px] text-white/40 leading-relaxed uppercase">{managed.plugin.description}</p>
+                      <p className="truncate text-[7.5px] text-white/40 leading-relaxed uppercase">
+                        {managed.plugin.description}
+                      </p>
                     </div>
                   );
                 })}
               </div>
             </CollapsibleSection>
-
 
             {/* --- COSMIC TELESCOPE HUB --- */}
             {isSpatialMode && (
@@ -1224,7 +1348,9 @@ export function LeftPanel() {
                     </div>
                     <div className="flex justify-between gap-3">
                       <span className="text-white/30 uppercase">Projection</span>
-                      <span className="text-right text-primary">{earthFrame.latitude}, {earthFrame.longitude}</span>
+                      <span className="text-right text-primary">
+                        {earthFrame.latitude}, {earthFrame.longitude}
+                      </span>
                     </div>
                     <div className="flex justify-between gap-3">
                       <span className="text-white/30 uppercase">Relation</span>
@@ -1259,14 +1385,20 @@ export function LeftPanel() {
                             setInteractionMode('orbital');
                             setSpaceInteractionTarget('telescope');
                             setSpaceBlendOpacity(0.0);
-                            useUIStore.getState().addChangeLog('TELESCOPE', `Telescope target pointed: ${preset.name}`, 'success');
+                            useUIStore
+                              .getState()
+                              .addChangeLog('TELESCOPE', `Telescope target pointed: ${preset.name}`, 'success');
                           }}
                           className={`w-full min-h-11 text-left p-2 rounded transition-all cursor-pointer flex items-center justify-between gap-1.5 border border-transparent ${
-                            isActive ? 'bg-primary/20 text-primary font-bold border-primary/20' : 'hover:bg-white/5 text-white/60'
+                            isActive
+                              ? 'bg-primary/20 text-primary font-bold border-primary/20'
+                              : 'hover:bg-white/5 text-white/60'
                           }`}
                         >
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <Star className={`h-2.5 w-2.5 shrink-0 ${isActive ? 'fill-primary text-primary' : 'text-white/20'}`} />
+                            <Star
+                              className={`h-2.5 w-2.5 shrink-0 ${isActive ? 'fill-primary text-primary' : 'text-white/20'}`}
+                            />
                             <span className="truncate uppercase text-xs">{preset.name}</span>
                           </div>
                           <span className="text-xs text-white/30 shrink-0 font-normal">{preset.fov}</span>
@@ -1299,7 +1431,9 @@ export function LeftPanel() {
                     <div className="col-span-2 border-t border-white/5 pt-1.5 mt-1.5">
                       <span className="text-white/20 block text-xs uppercase">Coordinate Source</span>
                       <span className="text-white/70 font-bold">
-                        {earthFrame.source === 'kepler-planet' ? 'Light-time Keplerian ephemeris' : 'Fixed catalog coordinate'}
+                        {earthFrame.source === 'kepler-planet'
+                          ? 'Light-time Keplerian ephemeris'
+                          : 'Fixed catalog coordinate'}
                         {earthFrame.distanceAu ? ` · ${earthFrame.distanceAu.toFixed(2)} AU` : ''}
                         {earthFrame.lightTimeMinutes ? ` · LT ${earthFrame.lightTimeMinutes.toFixed(1)} min` : ''}
                       </span>
@@ -1320,7 +1454,6 @@ export function LeftPanel() {
                 </CollapsibleSection>
               </div>
             )}
-
           </div>
         )}
       </div>

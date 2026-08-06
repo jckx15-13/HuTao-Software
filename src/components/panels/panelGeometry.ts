@@ -42,16 +42,44 @@ const buildPanelWidthPx = (viewportWidth: number, leftOpen: boolean, rightOpen: 
 const buildVerticalInsetPx = (viewportHeight: number, kind: 'top' | 'bottom'): number => {
   const preferredRatios: Record<'top' | 'bottom', number> = {
     top: 0.08,
-    bottom: 0.075,
+    bottom: 0.075
   };
   const insetLimits: Record<'top' | 'bottom', { min: number; max: number }> = {
     top: { min: 28, max: 96 },
-    bottom: { min: 24, max: 88 },
+    bottom: { min: 24, max: 88 }
   };
 
   const { min, max } = insetLimits[kind];
   return clampPx(viewportHeight * preferredRatios[kind], min, max);
 };
+
+/**
+ * Horizontal space a docked side panel actually consumes, in px.
+ *
+ * The side panels render as `position: fixed` overlays, so the workspace has to
+ * reserve this much padding itself or the centre column slides underneath them.
+ * Both the panels and that reservation must derive from THIS function — when the
+ * reservation was computed independently (a `clamp(16rem,18vw,22rem)` CSS var)
+ * it disagreed with the real panel width by ~152px at 1366px wide, and the chat
+ * surface rendered beneath the sidebars.
+ *
+ * Returns 0 below the 760px breakpoint, where panels are full-width sheets
+ * stacked over the workspace by design rather than docked beside it.
+ */
+export function buildWorkspaceRailPx(
+  viewport: ViewportSize,
+  leftPanelOpen: boolean,
+  rightPanelOpen: boolean,
+  placement: SpatialPanelPlacement
+): number {
+  const isOpen = placement === 'left' ? leftPanelOpen : rightPanelOpen;
+  if (!isOpen) return 0;
+  if (viewport.width < 760) return 0;
+
+  const edgeInsetPx = buildEdgeInsetPx(viewport.width);
+  const widthPx = buildPanelWidthPx(viewport.width, leftPanelOpen, rightPanelOpen);
+  return edgeInsetPx + widthPx;
+}
 
 export function buildSpatialPanelGeometry(input: SpatialPanelGeometryInput): SpatialPanelStyle {
   const { placement, viewport, leftPanelOpen, rightPanelOpen } = input;
@@ -65,7 +93,7 @@ export function buildSpatialPanelGeometry(input: SpatialPanelGeometryInput): Spa
     const shared = {
       left: `${edgeInsetPx}px`,
       right: `${edgeInsetPx}px`,
-      width,
+      width
     };
 
     if (hasDualPanels && placement === 'left') {
@@ -73,7 +101,7 @@ export function buildSpatialPanelGeometry(input: SpatialPanelGeometryInput): Spa
         ...shared,
         top: `calc(${Math.max(12, topInsetPx - 10)}px + env(safe-area-inset-top))`,
         bottom: 'calc(52vh + 8px)',
-        maxHeight: '42vh',
+        maxHeight: '42vh'
       };
     }
 
@@ -82,7 +110,7 @@ export function buildSpatialPanelGeometry(input: SpatialPanelGeometryInput): Spa
         ...shared,
         top: 'calc(48vh + 8px)',
         bottom: `calc(${bottomInsetPx}px + env(safe-area-inset-bottom))`,
-        maxHeight: '42vh',
+        maxHeight: '42vh'
       };
     }
 
@@ -90,30 +118,34 @@ export function buildSpatialPanelGeometry(input: SpatialPanelGeometryInput): Spa
       ...shared,
       top: `calc(${topInsetPx}px + env(safe-area-inset-top))`,
       bottom: `calc(${bottomInsetPx}px + env(safe-area-inset-bottom))`,
-      maxHeight: `${Math.max(240, viewport.height - topInsetPx - bottomInsetPx)}px`,
+      maxHeight: `${Math.max(240, viewport.height - topInsetPx - bottomInsetPx)}px`
     };
   }
 
   const widthPx = buildPanelWidthPx(viewport.width, leftPanelOpen, rightPanelOpen);
   const reservedChromePx = 32;
-  const maxHeightPx = clampPx(Math.max(0, viewport.height - topInsetPx - bottomInsetPx - reservedChromePx), 0, viewport.height);
+  const maxHeightPx = clampPx(
+    Math.max(0, viewport.height - topInsetPx - bottomInsetPx - reservedChromePx),
+    0,
+    viewport.height
+  );
 
   const base: SpatialPanelStyle = {
     top: `calc(${topInsetPx}px + env(safe-area-inset-top))`,
     bottom: `calc(${bottomInsetPx}px + env(safe-area-inset-bottom))`,
     width: `${widthPx}px`,
-    maxHeight: `${maxHeightPx}px`,
+    maxHeight: `${maxHeightPx}px`
   };
 
   if (placement === 'left') {
     return {
       ...base,
-      left: `${edgeInsetPx}px`,
+      left: `${edgeInsetPx}px`
     };
   }
 
   return {
     ...base,
-    right: `${edgeInsetPx}px`,
+    right: `${edgeInsetPx}px`
   };
 }

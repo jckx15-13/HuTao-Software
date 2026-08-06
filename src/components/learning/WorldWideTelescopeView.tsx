@@ -21,6 +21,7 @@ import {
 } from '@/lib/earthObserverProjection';
 
 const BACKGROUND_LAYERS = [
+  { id: 'solar-system', name: '3D Solar System (Earth-centered)', value: '3D Solar System View', desc: 'WWT solar-system view tracked on Earth.' },
   { id: 'dss', name: 'Digitized Sky Survey (Color)', value: 'Digitized Sky Survey (Color)', desc: 'Visible light survey mapping the sky.' },
   { id: 'visible', name: 'Visible Imagery', value: 'Visible Imagery', desc: 'Default visible spectrum optical composite.' },
   { id: 'hubble', name: 'Hubble Space Telescope', value: 'Hubble Space Telescope Imagery', desc: 'Ultra-high-res deep space observations.' },
@@ -72,6 +73,8 @@ type WwtRuntimeState = 'Connecting' | 'Static fallback' | 'WWT iframe loaded' | 
 const WWT_RUNTIME_STATE_EVENT = 'silver-wolf-wwt-runtime-state';
 const WWT_LOAD_WATCHDOG_MS = 45_000;
 const WWT_RESEARCH_APP_URL = 'https://web.wwtassets.org/research/latest/';
+const WWT_SOLAR_SYSTEM_LAYER = '3D Solar System View';
+const WWT_EARTH_TRACK_CODE = 19;
 
 const clampPx = (value: number, min: number, max: number): number => {
   const normalized = Math.round(value);
@@ -122,6 +125,8 @@ export default function WorldWideTelescopeView({
   const interactionMode = useUIStore((s) => s.interactionMode);
   const telescopeTelemetry = useUIStore((s) => s.telescopeTelemetry);
   const syncSource = useUIStore((s) => s.syncSource);
+  const wwtBackgroundLayer = useUIStore((s) => s.wwtBackgroundLayer);
+  const setWwtBackgroundLayer = useUIStore((s) => s.setWwtBackgroundLayer);
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -442,6 +447,14 @@ export default function WorldWideTelescopeView({
     postToWWT({ event: 'modify_setting', setting: 'showGrid', value: showGrid });
   }, [showGrid]);
 
+  useEffect(() => {
+    if (!wwtBackgroundLayer || !wwtRuntimeHealthy) return;
+    postToWWT({ event: 'set_background_by_name', name: wwtBackgroundLayer });
+    if (wwtBackgroundLayer === WWT_SOLAR_SYSTEM_LAYER) {
+      postToWWT({ event: 'track_object', code: WWT_EARTH_TRACK_CODE });
+    }
+  }, [wwtBackgroundLayer, wwtRuntimeHealthy, refreshKey]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     // Trigger drag if clicking title bar or details inside header
@@ -631,6 +644,7 @@ export default function WorldWideTelescopeView({
 
   // Set Background Image Set layer
   const handleSetBackground = (layerName: string) => {
+      setWwtBackgroundLayer(layerName);
     if (!wwtRuntimeHealthy) {
       useUIStore.getState().addChangeLog('TELESCOPE', `Cannot change WWT background imagery while client is ${wwtRuntimeState}.`, 'warning');
       return;
@@ -665,9 +679,11 @@ export default function WorldWideTelescopeView({
     /HeadlessChrome/i.test(navigator.userAgent) ||
     window.location.search.includes('fallback')
   );
-  const iframeUrl = isHeadless
-    ? 'about:blank'
-    : WWT_RESEARCH_APP_URL;
+    const iframeUrl = isHeadless
+      ? 'about:blank'
+      : typeof window !== 'undefined'
+        ? `${WWT_RESEARCH_APP_URL}?origin=${encodeURIComponent(window.location.origin)}`
+        : WWT_RESEARCH_APP_URL;
   const safeIframeUrl = isValidUrl(iframeUrl) ? iframeUrl : null;
   const safeExternalWwtUrl = isValidUrl(telescopeTarget?.url) ? telescopeTarget.url : null;
   const customWtmlValidation = useMemo(() => validateWtmlUrl(customWtml), [customWtml]);
@@ -1100,7 +1116,7 @@ export default function WorldWideTelescopeView({
             </g>
           </svg>
 
-            <div className="absolute inset-x-4 bottom-4 z-10 rounded border border-primary/20 bg-black/65 p-3 font-mono text-[8px] uppercase tracking-wider text-white/55 backdrop-blur-md">
+            <div className="absolute inset-x-4 bottom-4 z-content rounded border border-primary/20 bg-black/65 p-3 font-mono text-[8px] uppercase tracking-wider text-white/55 backdrop-blur-md">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <span className="font-bold text-primary">Earth Observer Frame</span>
                 <span className="text-right text-white/70">{activePreset.name}</span>
@@ -1130,7 +1146,7 @@ export default function WorldWideTelescopeView({
               WWT iframe unavailable in this audit mode. This Earth-facing fallback projects WWT preset coordinates onto a local observer frame: center means zenith above the subpoint, solid objects are near-side, and dashed objects are beyond the Earth limb. It is not live WWT imagery.
             </div>
             </div>
-            <div className="absolute left-4 top-4 z-10 rounded border border-white/10 bg-black/50 px-3 py-2 font-mono text-[7px] uppercase tracking-wider text-white/45 backdrop-blur-md">
+            <div className="absolute left-4 top-4 z-content rounded border border-white/10 bg-black/50 px-3 py-2 font-mono text-[7px] uppercase tracking-wider text-white/45 backdrop-blur-md">
               <div className="font-bold text-white/70">Projected WWT Objects</div>
               <div>{projectedPresetTargets.length} presets in observer frame</div>
               <div>{projectedPresetSummary.nearSide} near side / {projectedPresetSummary.farSide} far limb</div>
@@ -1145,7 +1161,7 @@ export default function WorldWideTelescopeView({
 
     if (iframeError) {
       return (
-        <div className="text-center p-6 max-w-[85%] space-y-3 pointer-events-auto select-text z-10">
+        <div className="text-center p-6 max-w-[85%] space-y-3 pointer-events-auto select-text z-content">
           <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg">⚠</div>
           <div className="text-amber-400 font-mono text-[10px] font-bold uppercase tracking-wider">WWT Connection Failed</div>
           <div className="text-white/50 font-mono text-[8px] leading-relaxed">
@@ -1157,7 +1173,7 @@ export default function WorldWideTelescopeView({
               type="button"
               aria-label="Retry embedded WorldWide Telescope connection"
               onClick={() => { setIframeError(false); setIframeLoaded(false); setRefreshKey(k => k + 1); }}
-              className="min-h-11 bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-4 py-1.5 rounded text-[9px] font-bold font-mono uppercase transition-all cursor-pointer pointer-events-auto z-20"
+              className="min-h-11 bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-4 py-1.5 rounded text-[9px] font-bold font-mono uppercase transition-all cursor-pointer pointer-events-auto z-chrome"
             >
               Retry Connection
             </button>
@@ -1179,7 +1195,7 @@ export default function WorldWideTelescopeView({
     return (
       <>
         {!iframeLoaded && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/80">
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-content bg-black/80">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             <span className="mt-2 font-mono text-[8px] uppercase tracking-[0.2em] text-primary/60 animate-pulse">
               Connecting to WWT...
@@ -1230,7 +1246,7 @@ export default function WorldWideTelescopeView({
 
         {/* --- Real-time Telescope Telemetry Overlay --- */}
         {telescopeTelemetry && (
-          <div className="absolute top-4 right-4 z-50 pointer-events-auto">
+          <div className="absolute top-4 right-4 z-popover pointer-events-auto">
             <div className="glass-panel-strong border border-primary/20 p-2.5 px-4 font-mono text-[9px] uppercase tracking-wider space-y-1 shadow-xl">
               <div className="flex items-center justify-between gap-6">
                 <span className="text-white/40">Right Ascension</span>
@@ -1254,7 +1270,7 @@ export default function WorldWideTelescopeView({
           </div>
         )}
 
-        <div className="absolute right-[clamp(1rem,4vw,2rem)] top-[clamp(4.75rem,10vh,6rem)] z-40 w-[min(88vw,18rem)] pointer-events-none">
+        <div className="absolute right-[clamp(1rem,4vw,2rem)] top-[clamp(4.75rem,10vh,6rem)] z-panel w-[min(88vw,18rem)] pointer-events-none">
           <div className="glass-panel-strong border border-primary/15 px-3 py-2 font-mono text-[9px] uppercase tracking-wider shadow-xl">
             <div className="flex items-center justify-between gap-3">
               <span className="text-primary font-bold">Earth Observer Frame</span>
@@ -1290,7 +1306,7 @@ export default function WorldWideTelescopeView({
         {/* Space HUD / Controls Panel (Collapsible Drawer on Left) */}
         {spaceInteractionTarget === 'telescope' && (
           <div
-            className="absolute z-30 flex flex-col pointer-events-auto"
+            className="absolute z-floating flex flex-col pointer-events-auto"
             style={{
               left: workspaceInsets.left,
               top: drawerTop,
@@ -1542,7 +1558,11 @@ export default function WorldWideTelescopeView({
                           key={layer.id}
                           onClick={() => handleSetBackground(layer.value)}
                           disabled={!wwtRuntimeHealthy}
-                          className="w-full min-h-11 text-left p-2 rounded border border-white/5 bg-black/25 hover:border-primary/30 transition-all cursor-pointer flex items-center justify-between disabled:cursor-not-allowed disabled:opacity-45"
+                            className={`w-full min-h-11 text-left p-2 rounded border transition-all cursor-pointer flex items-center justify-between disabled:cursor-not-allowed disabled:opacity-45 ${
+                              layer.value === wwtBackgroundLayer
+                                ? 'border-primary/50 bg-primary/10'
+                                : 'border-white/5 bg-black/25 hover:border-primary/30'
+                            }`}
                         >
                           <div>
                             <div className="text-[10px] text-white/80 font-bold">{layer.name}</div>
@@ -1631,7 +1651,7 @@ export default function WorldWideTelescopeView({
 
         {/* Floating Telemetry Timeline Playback Controller (Bottom Center) */}
         <div
-          className={`absolute z-40 pointer-events-auto transition-all duration-200 ${
+          className={`absolute z-panel pointer-events-auto transition-all duration-200 ${
             telemetryTimelineCollapsed ? 'bottom-2' : 'bottom-4'
           }`}
           style={{
@@ -1648,7 +1668,7 @@ export default function WorldWideTelescopeView({
             <button
               type="button"
               onClick={() => setTelemetryTimelineCollapsed((value) => !value)}
-              className="absolute left-1/2 top-0 z-10 flex min-h-8 min-w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-primary/25 bg-[#0f111a] text-primary shadow-lg transition-colors hover:bg-primary/20 hover:text-white"
+              className="absolute left-1/2 top-0 z-content flex min-h-8 min-w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-primary/25 bg-[#0f111a] text-primary shadow-lg transition-colors hover:bg-primary/20 hover:text-white"
               aria-label={telemetryTimelineCollapsed ? 'Expand telemetry timeline' : 'Collapse telemetry timeline to bottom bar'}
               aria-expanded={!telemetryTimelineCollapsed}
               title={telemetryTimelineCollapsed ? 'Expand telemetry timeline' : 'Collapse telemetry timeline to bottom bar'}
@@ -1766,7 +1786,7 @@ export default function WorldWideTelescopeView({
         {/* Draggable floating Picture-in-Picture window overlay */}
         {telescopeWindowActive && typeof document !== 'undefined' && createPortal(
           <div
-            className="glass-panel border border-primary/20 flex flex-col overflow-hidden shadow-2xl pointer-events-auto absolute z-50"
+            className="glass-panel border border-primary/20 flex flex-col overflow-hidden shadow-2xl pointer-events-auto absolute z-popover"
             style={{
               left: pos.x,
               top: pos.y,

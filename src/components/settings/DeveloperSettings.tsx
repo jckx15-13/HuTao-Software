@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ToggleLeft,
   ToggleRight,
@@ -119,9 +119,12 @@ export function DeveloperSettings() {
     };
   }, [refreshKey]);
 
-  // Active Plugins list — recomputed only when the stream log refreshes,
-  // not on every render of this panel.
-  const plugins = useMemo(() => pluginManager.getAllPlugins(), [busHistory]);
+  // Read straight from the registry. A useMemo keyed on busHistory was tried
+  // here, but busHistory is only a re-render trigger — it is not read by
+  // getAllPlugins() — so the memo never actually skipped work and tripped
+  // react-hooks/exhaustive-deps. The real fix for this panel's render churn is
+  // the document.hidden guard on the poll above.
+  const plugins = pluginManager.getAllPlugins();
 
   const handleCopyState = () => {
     const state = useUIStore.getState();
@@ -251,7 +254,11 @@ export function DeveloperSettings() {
             >
               Last verified: {formatReportAge(featureLedger.verification_report_age_seconds)}
               {featureLedger.verification_report_stale && (
-                <span> — stale. Run `node scripts/verification_harness/verify_system.cjs` to re-check before trusting "verified" statuses below.</span>
+                <span>
+                  {' '}
+                  — stale. Run `node scripts/verification_harness/verify_system.cjs` to re-check before trusting
+                  &ldquo;verified&rdquo; statuses below.
+                </span>
               )}
             </div>
           )}
@@ -368,7 +375,7 @@ export function DeveloperSettings() {
         <div className="overflow-x-auto rounded-xl border border-white/5 bg-white/5 max-h-[220px] overflow-y-auto scroller">
           <table className="w-full text-left font-mono text-[9px] border-collapse">
             <thead>
-              <tr className="bg-black/35 text-white/40 border-b border-white/5 sticky top-0 z-10">
+              <tr className="bg-black/35 text-white/40 border-b border-white/5 sticky top-0 z-content">
                 <th className="p-2.5 uppercase tracking-wider">Timestamp</th>
                 <th className="p-2.5 uppercase tracking-wider">Event ID</th>
                 <th className="p-2.5 uppercase tracking-wider">Payload</th>

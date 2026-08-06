@@ -8,7 +8,7 @@ interface SessionSidebarProps {
 
 export function SessionSidebar({ onNewSession, onOpenSettings }: SessionSidebarProps) {
   return (
-    <aside className="relative z-20 hidden w-64 shrink-0 flex-col border-r border-panel-border bg-panel panel-glass ambient-glow md:flex">
+    <aside className="relative z-chrome hidden w-64 shrink-0 flex-col border-r border-panel-border bg-panel panel-glass ambient-glow md:flex">
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="mb-2 font-mono text-xs uppercase tracking-widest text-primary/80">Workspace</div>
         <button

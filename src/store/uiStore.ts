@@ -90,6 +90,8 @@ export interface TelescopeTelemetry {
 
 export type InteractionMode = 'chat' | 'orbital' | 'telescope';
 export type SyncSource = 'cesium' | 'wwt' | 'none';
+export type CosmosBackgroundMode = 'deep-black' | 'sparkling' | 'wwt-milkyway';
+export type WwtBackgroundLayer = string;
 export type CurrentPage = 'launcher' | 'workspace' | 'settings';
 export type RightPanelTab = 'context' | 'browser' | 'changes' | 'diagnostics' | 'telemetry' | 'odysseus';
 export type SettingsCategory =
@@ -317,6 +319,10 @@ export interface UIStore {
   setImageryProvider: (v: string) => void;
   spaceBlendOpacity: number;
   setSpaceBlendOpacity: (v: number) => void;
+  cosmosBackgroundMode: CosmosBackgroundMode;
+  setCosmosBackgroundMode: (v: CosmosBackgroundMode) => void;
+  wwtBackgroundLayer: WwtBackgroundLayer;
+  setWwtBackgroundLayer: (v: WwtBackgroundLayer) => void;
   spaceInteractionTarget: 'earth' | 'telescope';
   setSpaceInteractionTarget: (v: 'earth' | 'telescope') => void;
 
@@ -668,6 +674,10 @@ export const useUIStore = create<UIStore>()(
         setImageryProvider: (imageryProvider) => set({ imageryProvider }),
         spaceBlendOpacity: 0.35,
         setSpaceBlendOpacity: (spaceBlendOpacity) => set({ spaceBlendOpacity }),
+          cosmosBackgroundMode: 'wwt-milkyway',
+          setCosmosBackgroundMode: (cosmosBackgroundMode) => set({ cosmosBackgroundMode }),
+          wwtBackgroundLayer: '3D Solar System View',
+          setWwtBackgroundLayer: (wwtBackgroundLayer) => set({ wwtBackgroundLayer }),
         spaceInteractionTarget: 'earth',
         setSpaceInteractionTarget: (spaceInteractionTarget) => set({ spaceInteractionTarget }),
 
@@ -758,7 +768,7 @@ export const useUIStore = create<UIStore>()(
     },
     {
       name: 'silver-wolf-v6-core',
-      version: 7,
+      version: 9,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') return persistedState;
         const { notionApiKey: _notionApiKey, ...safeState } = persistedState as Partial<UIStore> & {
@@ -773,6 +783,11 @@ export const useUIStore = create<UIStore>()(
         migrated.showBorders = true;
         migrated.imageryProvider =
           migrated.imageryProvider === 'cesium' ? 'arcgis-world' : migrated.imageryProvider || 'arcgis-world';
+          migrated.cosmosBackgroundMode = migrated.cosmosBackgroundMode || 'wwt-milkyway';
+          migrated.wwtBackgroundLayer =
+            migrated.wwtBackgroundLayer && migrated.wwtBackgroundLayer !== 'Visible Imagery'
+              ? migrated.wwtBackgroundLayer
+              : '3D Solar System View';
         migrated.personalisation = normalizePersonalisation({
           ...migrated.personalisation,
           minimalMode: false,
@@ -818,6 +833,8 @@ export const useUIStore = create<UIStore>()(
         imageryProvider: s.imageryProvider,
         cursorDesign: s.cursorDesign,
         spaceBlendOpacity: s.spaceBlendOpacity,
+          cosmosBackgroundMode: s.cosmosBackgroundMode,
+          wwtBackgroundLayer: s.wwtBackgroundLayer,
         spaceInteractionTarget: s.spaceInteractionTarget
       })
     }

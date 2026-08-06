@@ -9,7 +9,7 @@ import { projectTelescopeTargetToEarth } from '@/lib/earthObserverProjection';
 const EARTH_RADIUS_METERS = 6_378_137;
 const TARGET_SHELL_RADIUS_METERS = 8_600_000;
 const EARTH_ANCHOR_RADIUS_METERS = EARTH_RADIUS_METERS * 1.018;
-const CAMERA_STANDOFF_METERS = 18_500_000;
+const CAMERA_STANDOFF_METERS = 192_200_000;
 const ENTITY_UPDATE_MS = 500;
 
 interface TelescopeEntityBundle {

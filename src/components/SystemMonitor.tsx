@@ -30,7 +30,7 @@ const SvgRing = ({ value, color, label }: { value: number, color: string, label:
             strokeLinecap="round"
           />
         </svg>
-        <span className="text-[10px] font-mono font-bold tracking-widest relative z-10 text-white shadow-black drop-shadow-md">
+        <span className="text-[10px] font-mono font-bold tracking-widest relative z-content text-white shadow-black drop-shadow-md">
           {(value * 100).toFixed(0)}%
         </span>
       </div>
@@ -73,7 +73,7 @@ export function SystemMonitor() {
       </div>
 
       {/* SVG Rings: RAM & Network */}
-      <div className="flex justify-around items-center mb-8 bg-base/30 backdrop-blur-md rounded-lg p-4 shadow-[inset_0_4px_20px_rgba(0,0,0,0.3)] border border-primary/10 relative z-10">
+      <div className="flex justify-around items-center mb-8 bg-base/30 backdrop-blur-md rounded-lg p-4 shadow-[inset_0_4px_20px_rgba(0,0,0,0.3)] border border-primary/10 relative z-content">
         <SvgRing value={systemMetrics.ramUsage} color="var(--theme-accent-triad-1)" label="RAM" />
         <SvgRing value={systemMetrics.networkLatency} color="var(--theme-accent-phi-1)" label="Network" />
       </div>
@@ -110,7 +110,7 @@ export function SystemMonitor() {
       </div>
       
       {/* Forensic Marginalia */}
-      <div className="mt-auto pt-6 flex flex-col gap-1 text-[8px] text-text-muted/50 border-t border-primary/20 relative z-10">
+      <div className="mt-auto pt-6 flex flex-col gap-1 text-[8px] text-text-muted/50 border-t border-primary/20 relative z-content">
         <span className="tracking-[0.3em]">STATE: LOCAL SESSION</span>
         <span className="tracking-[0.3em]">UPDATED: {lastUpdated.toLocaleTimeString()}</span>
       </div>

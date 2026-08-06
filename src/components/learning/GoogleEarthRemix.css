@@ -35,7 +35,7 @@
   gap: 0.6rem;
   color: #c4c6cf;
   font-size: 0.7rem;
-  z-index: 25;
+  z-index: var(--theme-z-floating); /* floating: .orbital-hud-bar must stay over the in-view panels/place cards (was 25 > 20/15/10) */
   pointer-events: auto;
   transition: all 0.3s ease;
 }
@@ -62,6 +62,12 @@
   align-items: center;
   gap: 0.2rem;
   width: 100%;
+  /* Clear the floating Chat/Space mode switcher, which is centred over this
+     same region at `top: clamp(5.75rem, 12vh, 8rem)` with a ~3.4rem tall pill.
+     Without this the pill sits on top of the tab strip — measured 50% overlap
+     on Layers and 54% on Target — making those tabs partly unclickable.
+     Derived from the same clamp so the two scale together. */
+  padding-top: calc(clamp(5.75rem, 12vh, 8rem) + 3.5rem);
 }
 
 .hud-tab-strip {
@@ -351,7 +357,7 @@
   align-items: center;
   padding: 0.75rem 0;
   gap: 0.5rem;
-  z-index: 20;
+  z-index: var(--theme-z-chrome); /* chrome: persistent view-local rail */
   pointer-events: auto;
 }
 
@@ -477,7 +483,7 @@
 
 .earth-marker {
   position: absolute;
-  z-index: 5;
+  z-index: calc(var(--theme-z-content) + 1); /* content +1: on-globe marker paints over its own label */
   width: 10px;
   height: 10px;
   transform: translate(-50%, -50%);
@@ -497,7 +503,7 @@
 
 .earth-label {
   position: absolute;
-  z-index: 4;
+  z-index: var(--theme-z-content); /* content: on-globe label */
   transform: translate(-50%, -50%);
   color: rgba(255, 255, 255, 0.9);
   font-size: 0.7rem;
@@ -520,7 +526,7 @@
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  z-index: 10;
+  z-index: var(--theme-z-chrome); /* chrome: view-local docked panel */
   pointer-events: auto;
   overflow: hidden;
 }
@@ -890,7 +896,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  z-index: 10;
+  z-index: var(--theme-z-chrome); /* chrome: view-local docked card */
   pointer-events: auto;
 }
 
@@ -898,7 +904,7 @@
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
-  z-index: 12;
+  z-index: calc(var(--theme-z-chrome) + 1); /* chrome +1: close button over its own card */
   background: rgba(0, 0, 0, 0.5);
   border: 0;
   color: rgba(255, 255, 255, 0.6);
@@ -1022,7 +1028,7 @@
   border-radius: 12px;
   backdrop-filter: blur(20px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-  z-index: 10;
+  z-index: var(--theme-z-chrome); /* chrome: view-local docked card */
   pointer-events: auto;
   overflow: hidden;
 }
@@ -1163,7 +1169,7 @@
   backdrop-filter: blur(8px);
   display: grid;
   place-items: center;
-  z-index: 5;
+  z-index: var(--theme-z-content); /* content: sits under the status bar (was 5 < 10), over the globe */
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   pointer-events: auto;
@@ -1191,7 +1197,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  z-index: 15;
+  z-index: var(--theme-z-floating); /* floating: in-surface globe nav controls */
   pointer-events: auto;
 }
 
@@ -1266,7 +1272,7 @@
 .earth-panorama-overlay {
   position: absolute;
   inset: 0;
-  z-index: 100;
+  z-index: var(--theme-z-overlay); /* overlay: full-surface takeover of the stage */
   background: #000;
   display: flex;
   flex-direction: column;
@@ -1276,7 +1282,7 @@
   position: absolute;
   top: 1rem;
   right: 1rem;
-  z-index: 102;
+  z-index: calc(var(--theme-z-overlay) + 1); /* overlay +1: close button over its own panorama */
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -1353,7 +1359,7 @@
   font-size: 0.65rem;
   color: rgba(255, 255, 255, 0.5);
   font-family: monospace;
-  z-index: 10;
+  z-index: var(--theme-z-chrome); /* chrome: view-local status bar */
   pointer-events: auto;
   transition: all 0.3s ease;
 }
@@ -1424,7 +1430,7 @@
 .earth-cesium-proxy-layer {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: calc(var(--theme-z-base) + 1); /* base +1: transparent hit-proxy must sit directly over the Cesium canvas (was literally 1) */
   background: transparent;
   cursor: grab;
   pointer-events: auto;

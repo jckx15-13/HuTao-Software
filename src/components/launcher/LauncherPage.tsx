@@ -136,17 +136,25 @@ export function LauncherPage() {
 
   return (
     <main
-      className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col items-center overflow-y-auto bg-[#0a0b10] px-4 py-8 text-white sm:px-6"
+      className="fixed inset-0 z-overlay flex min-h-[100dvh] flex-col items-center overflow-y-auto bg-[#0a0b10] px-4 py-8 text-white sm:px-6"
       aria-labelledby="launcher-title"
     >
-      {/* Background scanline effect */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,6px_100%] pointer-events-none" />
+      {/* Background scanline effect. Purely decorative: hidden from the a11y
+          tree, non-interactive, and pinned to the base tier so it can never
+          paint over — or intercept a click meant for — anything above it. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 z-base bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,6px_100%] pointer-events-none"
+      />
 
-      <div className="z-10 flex w-full max-w-3xl flex-col items-center gap-5">
+      <div className="z-content flex w-full max-w-3xl flex-col items-center gap-5">
         {/* Animated Brand Header */}
-        <div className="flex max-w-full flex-col items-center space-y-3 text-center animate-pulse">
+        {/* Static brand mark. A pulsing title block and a spinning hexagon read
+            as "still loading" even once boot completes, and continuous motion on
+            a non-status element is unnecessary distraction (WCAG 2.2.2). */}
+        <div className="flex max-w-full flex-col items-center space-y-3 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/30 shadow-[0_0_20px_var(--theme-primary-glow)]">
-            <Hexagon className="h-8 w-8 text-primary animate-spin-slow" />
+            <Hexagon className="h-8 w-8 text-primary" />
           </div>
           <div className="max-w-full space-y-1">
             <h1
@@ -179,17 +187,23 @@ export function LauncherPage() {
           </div>
         )}
 
-        {/* Core Launch Action CTA */}
+        {/* Core Launch Action CTA.
+            The label is a DIRECT text child of the button so its accessible
+            name is computed from its own contents — no wrapper element and no
+            `data-text` attribute in between. `data-text` used to live here even
+            though this button carries `hover-glitch`, not `cyber-glitch`; had
+            that sibling class ever been applied, index.css's
+            `.cyber-glitch::before/::after { content: attr(data-text) }` would
+            have injected the label twice more and the name would have read
+            "Launch Workspace Launch Workspace Launch Workspace". The icon is
+            aria-hidden by lucide-react, so it contributes nothing. */}
         <button
           type="button"
           onClick={() => setLauncherDismissed(true)}
-          className="launcher-breathe group relative flex min-h-14 w-full max-w-72 items-center justify-center rounded-xl bg-primary px-5 text-xs font-mono font-bold uppercase tracking-[0.16em] hover:bg-primary-hover active:scale-95 transition-all cursor-pointer shadow-lg hover-glitch"
-          data-text="Launch Workspace"
+          className="group relative flex min-h-14 w-full max-w-72 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-xs font-mono font-bold uppercase tracking-[0.16em] hover:bg-primary-hover active:scale-95 transition-all cursor-pointer shadow-lg hover-glitch"
         >
-          <span className="flex items-center gap-2">
-            Launch Workspace
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </span>
+          Launch Workspace
+          <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
         </button>
 
         {/* 2x2 Diagnostics Metrics Grid */}
@@ -276,16 +290,26 @@ export function LauncherPage() {
             onClick={() => setLogsExpanded(!logsExpanded)}
             className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white/55 transition-colors hover:text-white/85 cursor-pointer"
             aria-expanded={logsExpanded}
+            aria-controls={logsExpanded ? 'launcher-diagnostic-log' : undefined}
           >
-            <div className="flex items-center gap-2">
-              <Terminal className="h-3.5 w-3.5" />
-              <span>Diagnostic Output Terminal</span>
-            </div>
-            {logsExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            <span className="flex items-center gap-2">
+              <Terminal className="h-3.5 w-3.5 shrink-0" />
+              <span id="launcher-diagnostic-label">Diagnostic Output Terminal</span>
+            </span>
+            {logsExpanded ? (
+              <ChevronUp className="h-3 w-3 shrink-0" />
+            ) : (
+              <ChevronDown className="h-3 w-3 shrink-0" />
+            )}
           </button>
 
           {logsExpanded && (
-            <div className="glass-panel h-40 space-y-2 overflow-y-auto rounded-xl border border-white/5 p-4 text-left font-mono text-xs scroller">
+            <div
+              id="launcher-diagnostic-log"
+              role="group"
+              aria-labelledby="launcher-diagnostic-label"
+              className="glass-panel h-40 space-y-2 overflow-y-auto rounded-xl border border-white/5 p-4 text-left font-mono text-xs scroller"
+            >
               {diagnostics.map((log) => (
                 <div key={log.id} className="flex flex-wrap gap-x-2 gap-y-1">
                   <span className="text-white/35">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
@@ -309,12 +333,25 @@ export function LauncherPage() {
           )}
         </div>
 
-        {/* Skip button in corner */}
+        {/* Skip control.
+            It used to corner-pin from `sm` (640px) up with `sm:absolute`. Two
+            problems, both measured: (1) `absolute` resolved against <main>'s
+            padding box, and <main> is the scroll container, so the button rode
+            the scroll and landed on the diagnostics panel; (2) the content
+            column is max-w-3xl (768px) and centred, so a 172px corner control
+            only clears it once the gutter exceeds ~204px — i.e. from ~1176px
+            of viewport. At 1024px it covered the bottom-right corner of the
+            expanded log panel.
+            So: stay in normal flow (no overlap possible) until `xl` (1280px),
+            where the gutter is 256px and the corner is genuinely free, and pin
+            with `fixed` rather than `absolute` so scrolling can never drag it
+            back over the content. The chrome tier keeps it above the content
+            column it shares a stacking context with.
+            No aria-label: the visible text is the accessible name. */}
         <button
           type="button"
           onClick={() => setLauncherDismissed(true)}
-          className="relative mt-1 flex min-h-11 items-center rounded px-3 font-mono text-xs tracking-wider text-white/45 transition-colors hover:bg-white/5 hover:text-white/75 cursor-pointer sm:absolute sm:bottom-4 sm:right-4 sm:mt-0"
-          aria-label="Skip boot interface"
+          className="relative mt-1 flex min-h-11 items-center rounded-lg px-3 font-mono text-xs tracking-wider text-white/45 transition-colors hover:bg-white/5 hover:text-white/75 cursor-pointer xl:fixed xl:bottom-4 xl:right-4 xl:mt-0 xl:z-chrome xl:bg-[#0a0b10]/85"
         >
           Skip boot interface
         </button>

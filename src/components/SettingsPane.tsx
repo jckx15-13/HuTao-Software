@@ -184,7 +184,7 @@ export function SettingsPane() {
       <div className="flex max-w-2xl flex-col gap-10 p-5 text-[15px] text-text-main sm:p-8">
         <section>
           <SectionHeader title="Appearance" eyebrow="Theme" />
-          <div className="relative z-20 mb-5 flex flex-col gap-3">
+          <div className="relative z-chrome mb-5 flex flex-col gap-3">
             {(Object.keys(palettes) as PaletteKey[]).map((paletteKey) => (
               <PaletteOption key={paletteKey} paletteKey={paletteKey} />
             ))}

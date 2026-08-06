@@ -206,9 +206,14 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
       } catch (e) {}
     }
 
-    // Initial camera: wide Earth view at 20,000 km
+      // Start halfway between Earth and the Moon, looking back at Earth's center.
     viewerInstance.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(0, 20, 20_000_000)
+        destination: Cesium.Cartesian3.fromDegrees(0, 0, 192_200_000),
+        orientation: {
+          heading: 0,
+          pitch: Cesium.Math.toRadians(-90),
+          roll: 0,
+        },
     });
     if (active && !viewerInstance.isDestroyed()) {
       setViewer(viewerInstance);

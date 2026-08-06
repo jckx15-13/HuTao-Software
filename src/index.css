@@ -46,6 +46,66 @@
   --theme-space-md: 16px;
   --theme-space-lg: 24px;
   --theme-space-xl: 32px;
+
+  /* ──────────────────────────────────────────────────────────────────────────
+     LAYERING SCALE — THE SINGLE SOURCE OF TRUTH
+     ──────────────────────────────────────────────────────────────────────────
+     This block is the ONLY place in the codebase where a z-index NUMBER may be
+     written. Ad-hoc z-index values are forbidden everywhere else: no numeric
+     `z-index: 42`, no Tailwind `z-30`, no arbitrary `z-[100]`.
+
+       • Plain CSS  ->  z-index: var(--theme-z-<tier>);
+       • Tailwind   ->  class="z-<tier>"   (see the @theme block below)
+
+     Ordering, bottom to top. Every tier is 100 apart so a new tier can be
+     inserted between any two without renumbering anything:
+
+       below     -100  Decorative pseudo-elements painted behind their own
+                       parent's content (e.g. .mode-switcher-shell::before).
+                       Only meaningful inside an isolated stacking context.
+       base         0  Background surfaces: the Cesium/globe canvas wrappers,
+                       particle canvas, fade + vignette overlays.
+       content    100  Ordinary content flow and the full-bleed wrappers that
+                       carry it (absolute inset-0 view layers, scroll regions).
+       chrome     200  The persistent app frame: header bar, bottom composer
+                       gradient bar, docked in-flow sidebars, sticky table
+                       headers, view-local rails.
+       floating   300  Floating in-surface controls that sit over content but
+                       under the workspace panels: the centred mode switcher,
+                       edge collapse handles, globe nav controls, HUD cards,
+                       in-view loading/error scrims.
+       panel      400  The fixed workspace side panels (.glass-panel-strong
+                       ASIDEs). These are position:fixed and must clear every
+                       floating control above.
+       popover    500  Detached, non-modal floating windows anchored to the
+                       frame: the diagnostics panel, tear-off view windows.
+                       Above the side panels, below any full-surface takeover.
+       overlay    600  Full-surface takeovers that replace the workspace:
+                       launcher, settings page, Street View panorama.
+       modal      700  Dialogs with their own backdrop. Must out-rank a
+                       takeover, because a dialog can open on top of one.
+       effects    800  Non-interactive, pointer-events:none screen film drawn
+                       over absolutely everything (hologram / CRT scanlines).
+
+     REMINDER: a z-index only competes inside its own stacking context. These
+     elements create one at z-index:auto and will trap their descendants:
+       .mode-switcher-shell.glass-panel   (backdrop-filter)
+       button.mode-tab                    (transform)
+       .panel-glass                       (backdrop-filter)
+       rounded-full icon buttons          (opacity < 1)
+     If a child "won't come to the front", raise the ANCESTOR's tier — raising
+     the child is what produces the classic "my z-50 renders behind" bug.
+     ────────────────────────────────────────────────────────────────────────── */
+  --theme-z-below: -100;
+  --theme-z-base: 0;
+  --theme-z-content: 100;
+  --theme-z-chrome: 200;
+  --theme-z-floating: 300;
+  --theme-z-panel: 400;
+  --theme-z-popover: 500;
+  --theme-z-overlay: 600;
+  --theme-z-modal: 700;
+  --theme-z-effects: 800;
 }
 
 @theme {
@@ -73,6 +133,22 @@
 
   --shadow-2-5d: var(--theme-shadow-2-5d);
   --shadow-2-5d-hover: var(--theme-shadow-2-5d-hover);
+
+  /* Layering scale -> Tailwind utilities.
+     Tailwind 4's `z-*` utility reads the `--z-index-*` theme namespace, so each
+     token below produces a real class: `z-below`, `z-base`, `z-content`,
+     `z-chrome`, `z-floating`, `z-panel`, `z-popover`, `z-overlay`, `z-modal`,
+     `z-effects`. Numbers live in :root above — never edit them here. */
+  --z-index-below: var(--theme-z-below);
+  --z-index-base: var(--theme-z-base);
+  --z-index-content: var(--theme-z-content);
+  --z-index-chrome: var(--theme-z-chrome);
+  --z-index-floating: var(--theme-z-floating);
+  --z-index-panel: var(--theme-z-panel);
+  --z-index-popover: var(--theme-z-popover);
+  --z-index-overlay: var(--theme-z-overlay);
+  --z-index-modal: var(--theme-z-modal);
+  --z-index-effects: var(--theme-z-effects);
 }
 
 body {
@@ -120,7 +196,7 @@ textarea:disabled {
   );
   background-size: 100% 4px;
   pointer-events: none;
-  z-index: 1000;
+  z-index: var(--theme-z-effects);
   position: absolute;
   inset: 0;
 }
@@ -139,7 +215,7 @@ textarea:disabled {
   content: "";
   position: absolute;
   inset: -1px;
-  z-index: -1;
+  z-index: var(--theme-z-below);
   border-radius: inherit;
   background:
     radial-gradient(circle at var(--mode-glow-x, 28%) 50%, color-mix(in srgb, var(--theme-primary) 24%, transparent), transparent 34%),

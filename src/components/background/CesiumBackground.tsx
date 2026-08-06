@@ -486,7 +486,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
 
   if (hasError) {
     return (
-      <div className={`absolute inset-0 h-full w-full bg-[#05060b] flex flex-col items-center justify-center overflow-hidden z-0 select-none ${
+      <div className={`absolute inset-0 h-full w-full bg-[#05060b] flex flex-col items-center justify-center overflow-hidden z-base select-none ${
         interactive ? 'pointer-events-auto' : 'pointer-events-none'
       }`}>
         {/* Animated Cyberpunk Grid Space */}
@@ -505,7 +505,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
         />
 
         {/* 2D Vector Globe Display */}
-        <div className="relative flex flex-col items-center gap-8 z-10">
+        <div className="relative flex flex-col items-center gap-8 z-content">
           <div
             className="relative flex min-h-64 min-w-64 items-center justify-center rounded-full border border-primary/10 bg-[#08090f]/60 shadow-[0_0_60px_rgba(138,91,199,0.06),inset_0_0_20px_rgba(138,91,199,0.03)] backdrop-blur-md"
             style={{ width: 'min(68vmin, 520px)', height: 'min(68vmin, 520px)' }}
@@ -544,10 +544,10 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
   }
 
   return (
-    <div className={`absolute inset-0 h-full w-full ${interactive ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ zIndex: 0 }}>
+    <div className={`absolute inset-0 h-full w-full ${interactive ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ zIndex: 'var(--theme-z-base)' }}>
       <Suspense
         fallback={
-          <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md z-30">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md z-floating">
             <div className="flex flex-col items-center gap-4">
               <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-primary animate-pulse">

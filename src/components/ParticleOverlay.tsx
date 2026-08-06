@@ -25,8 +25,9 @@ function createParticle(width: number, height: number): MainThreadParticle {
   };
 }
 
-export function ParticleOverlay() {
+export function ParticleOverlay({ forceEnabled = false }: { forceEnabled?: boolean }) {
   const particleEffects = useUIStore((s) => s.particleEffects);
+  const particlesEnabled = particleEffects || forceEnabled;
 
   const isHeadless = typeof window !== 'undefined' && (
     /HeadlessChrome/i.test(navigator.userAgent) ||
@@ -38,7 +39,7 @@ export function ParticleOverlay() {
   const frameRef = useRef<Float32Array | null>(null);
 
   useEffect(() => {
-    if (isHeadless || !particleEffects || !canvasRef.current) return;
+    if (isHeadless || !particlesEnabled || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -195,9 +196,9 @@ export function ParticleOverlay() {
         worker.terminate();
       }
     };
-  }, [particleEffects]);
+  }, [particlesEnabled]);
 
-  if (isHeadless || !particleEffects) return null;
+  if (isHeadless || !particlesEnabled) return null;
 
-  return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0 opacity-50" />;
+  return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-base opacity-50" />;
 }

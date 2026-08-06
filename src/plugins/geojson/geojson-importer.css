@@ -62,7 +62,13 @@
 .geojson-modal-overlay {
     position: fixed;
     inset: 0;
-    z-index: 9999;
+    /* Dialog backdrop. Was a bare `9999` — a "win at all costs" value that never
+       actually won anything: this overlay renders inline inside the workspace
+       ASIDE (.glass-panel-strong), whose backdrop-filter makes it the containing
+       block AND the stacking context for position:fixed descendants. Any value
+       here only ever competed against the ASIDE's own children, so 9999 and 700
+       behave identically. Modal tier is the honest label. */
+    z-index: var(--theme-z-modal);
     display: flex;
     align-items: center;
     justify-content: center;

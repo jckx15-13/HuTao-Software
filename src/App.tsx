@@ -51,6 +51,7 @@ export default function App() {
   const motionReduced = useUIStore((state) => state.personalisation.motionReduced);
   const animationIntensity = useUIStore((state) => state.personalisation.animationIntensity);
   const spaceBlendOpacity = useUIStore((state) => state.spaceBlendOpacity);
+  const cosmosBackgroundMode = useUIStore((state) => state.cosmosBackgroundMode);
   const spaceInteractionTarget = useUIStore((state) => state.spaceInteractionTarget);
 
   const isHeadless =
@@ -110,6 +111,9 @@ export default function App() {
   }, []);
 
   const { appStyle, isHighLoad } = useThemeVariables();
+  const shouldShowParticleOverlay = !isHighLoad && (
+    isSpaceMode ? cosmosBackgroundMode === 'sparkling' : particleEffects
+  );
 
   const backgroundStyle = customWallpaper
     ? { backgroundImage: `url(${customWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -134,10 +138,16 @@ export default function App() {
           style={{ ...appStyle, ...backgroundStyle }}
         >
           {!customWallpaper && (
-            <div className="absolute inset-0 z-0">
-              {isSpaceMode && (!isHeadless || isTelescopeTarget) && (
+            <div className="absolute inset-0 z-base">
+                {isSpaceMode && (
+                  <div
+                    className={`absolute inset-0 ${cosmosBackgroundMode === 'deep-black' ? 'bg-black' : 'bg-[#02040a]'}`}
+                    aria-hidden="true"
+                  />
+                )}
+                {isSpaceMode && cosmosBackgroundMode === 'wwt-milkyway' && (!isHeadless || isTelescopeTarget) && (
                 <div
-                  className="absolute inset-0 z-0 transition-opacity duration-500"
+                  className="absolute inset-0 z-base transition-opacity duration-500"
                   style={{
                     opacity: isTelescopeTarget ? 0.26 : 1,
                     mixBlendMode: isTelescopeTarget ? 'screen' : 'normal'
@@ -151,7 +161,7 @@ export default function App() {
               <div
                 className="absolute inset-0 transition-all duration-500 ease-in-out"
                 style={{
-                  zIndex: 10,
+                  zIndex: 'calc(var(--theme-z-base) + 1)',
                   opacity: isSpaceMode ? (isTelescopeTarget ? Math.max(0.92, spaceBlendOpacity) : 1.0) : 1.0,
                   pointerEvents: isSpaceMode && isEarthTarget ? 'auto' : 'none'
                 }}
@@ -164,11 +174,11 @@ export default function App() {
           )}
 
           {interactionMode === 'chat' && (
-            <div className="absolute inset-0 bg-[#06070a]/75 backdrop-blur-[2px] pointer-events-none z-0" />
+            <div className="absolute inset-0 bg-[#06070a]/75 backdrop-blur-[2px] pointer-events-none z-base" />
           )}
 
           {scanlineOverlay && (
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.12)_50%)] bg-[size:100%_4px] pointer-events-none z-10" />
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.12)_50%)] bg-[size:100%_4px] pointer-events-none z-content" />
           )}
 
           {showLauncher ? (
@@ -178,16 +188,16 @@ export default function App() {
           ) : (
             <>
               <div className="contents" {...workspaceIsolationProps}>
-                {!isHighLoad && particleEffects && (
+                {shouldShowParticleOverlay && (
                   <Suspense fallback={null}>
-                    <ParticleOverlay />
+                    <ParticleOverlay forceEnabled={isSpaceMode && cosmosBackgroundMode === 'sparkling'} />
                     {!motionReduced && animationIntensity > 0.5 && <CustomCursor appHighLoad={isHighLoad} />}
                   </Suspense>
                 )}
 
                 {scanlineOverlay && <div className="hologram-overlay" />}
 
-                <div className="relative z-10 flex h-full w-full pointer-events-none transition-all duration-300 pt-0">
+                <div className="relative z-content flex h-full w-full pointer-events-none transition-all duration-300 pt-0">
                   <Suspense fallback={<WorkspaceFallback />}>
                     <DockedLayout />
                   </Suspense>
