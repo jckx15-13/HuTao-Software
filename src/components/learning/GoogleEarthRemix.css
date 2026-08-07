@@ -17,8 +17,14 @@
 .orbital-hud-bar {
   position: absolute;
   top: 12px;
-  left: 12px;
-  right: 12px;
+  /* Read the same workspace-rail vars DockedLayout sets on its root (this
+     element inherits them, being a descendant). Without this the bar spans
+     the FULL viewport regardless of docked panels, so .hud-center-stack
+     centers on total width -- when the right panel is open, its rightmost
+     tabs (Target, System) land underneath it. Confirmed via screenshot +
+     DOM measurement: reproducible whenever the right panel is docked open. */
+  left: calc(12px + var(--workspace-left-rail, 0px));
+  right: calc(12px + var(--workspace-right-rail, 0px));
   min-height: 56px;
   height: auto;
   border-radius: 12px;
