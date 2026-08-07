@@ -781,6 +781,7 @@ export const useUIStore = create<UIStore>()(
         migrated.rightPanelOpen = true;
         migrated.scanlineOverlay = false;
         migrated.showBorders = true;
+        migrated.activeSatelliteId = migrated.activeSatelliteId || 'iss';
         migrated.imageryProvider =
           migrated.imageryProvider === 'cesium' ? 'arcgis-world' : migrated.imageryProvider || 'arcgis-world';
           migrated.cosmosBackgroundMode = migrated.cosmosBackgroundMode || 'wwt-milkyway';
