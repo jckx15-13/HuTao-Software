@@ -57,7 +57,7 @@ export function useAudioFeedback() {
       // Playback boundaries: Trigger start and schedule automatic stop at 0.05s.
       osc.start();
       osc.stop(audioCtx.current.currentTime + 0.05);
-    } catch(e) {}
+    } catch(e) { /* ignore audio playback errors */ }
   }, [audioFeedback]);
 
   // Action: Generates a dual-pitch notification chime sound.
@@ -88,7 +88,7 @@ export function useAudioFeedback() {
       // Playback boundaries: Trigger start and stop at 0.1s.
       osc.start();
       osc.stop(audioCtx.current.currentTime + 0.1);
-    } catch(e) {}
+    } catch(e) { /* ignore audio playback errors */ }
   }, [audioFeedback]);
 
   return { playClick, playBlip };

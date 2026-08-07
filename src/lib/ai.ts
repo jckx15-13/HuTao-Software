@@ -331,5 +331,5 @@ export async function syncToBridge(message: string, role: string) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, role })
     });
-  } catch {}
+  } catch { /* ignore bridge sync failures */ }
 }

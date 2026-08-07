@@ -134,8 +134,8 @@ export function PersonalisationSettings() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Palette Selector */}
           <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase text-white/40 block">Visual Profile Palette</label>
-            <div className="grid grid-cols-2 gap-2">
+            <label htmlFor="visual-profile-palette" className="text-[10px] font-mono uppercase text-white/40 block">Visual Profile Palette</label>
+            <div id="visual-profile-palette" className="grid grid-cols-2 gap-2">
               {(Object.keys(palettes) as PaletteKey[]).map((pk) => {
                 const isSelected = activePalette === pk;
                 const paletteColors = palettes[pk];
@@ -166,7 +166,7 @@ export function PersonalisationSettings() {
 
           {/* Accent Override */}
           <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase text-white/40 block">Accent Color Override</label>
+            <label htmlFor="accent-color-picker" className="text-[10px] font-mono uppercase text-white/40 block">Accent Color Override</label>
             <div className="flex gap-2">
               <input
                 id="accent-color-picker"
@@ -199,7 +199,7 @@ export function PersonalisationSettings() {
 
           {/* Theme Profile Dropdown */}
           <div className="space-y-2 col-span-1 md:col-span-2 mt-2">
-            <label className="text-[10px] font-mono uppercase text-white/40 block">Theme Profile Dropdown</label>
+            <label htmlFor="theme-profile-select" className="text-[10px] font-mono uppercase text-white/40 block">Theme Profile Dropdown</label>
             <select
               id="theme-profile-select"
               name="theme-profile-select"
@@ -326,8 +326,8 @@ export function PersonalisationSettings() {
 
           {/* Border Styles */}
           <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase text-white/40 block">Border Style</label>
-            <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 gap-1 text-[9px] font-mono">
+            <label htmlFor="border-style-group" className="text-[10px] font-mono uppercase text-white/40 block">Border Style</label>
+            <div id="border-style-group" className="flex bg-white/5 p-1 rounded-lg border border-white/5 gap-1 text-[9px] font-mono">
               {['subtle', 'glow', 'solid', 'none'].map((style) => (
                 <button
                   key={style}
@@ -345,8 +345,8 @@ export function PersonalisationSettings() {
 
           {/* UI Density */}
           <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase text-white/40 block">UI Spacing Density</label>
-            <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 gap-1 text-[9px] font-mono">
+            <label htmlFor="ui-spacing-density-group" className="text-[10px] font-mono uppercase text-white/40 block">UI Spacing Density</label>
+            <div id="ui-spacing-density-group" className="flex bg-white/5 p-1 rounded-lg border border-white/5 gap-1 text-[9px] font-mono">
               {['compact', 'comfortable', 'spacious'].map((density) => (
                 <button
                   key={density}
@@ -364,8 +364,8 @@ export function PersonalisationSettings() {
 
           {/* Chat Bubble Style */}
           <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase text-white/40 block">Chat Bubble Appearance</label>
-            <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 gap-1 text-[9px] font-mono">
+            <label htmlFor="chat-bubble-appearance-group" className="text-[10px] font-mono uppercase text-white/40 block">Chat Bubble Appearance</label>
+            <div id="chat-bubble-appearance-group" className="flex bg-white/5 p-1 rounded-lg border border-white/5 gap-1 text-[9px] font-mono">
               {['solid', 'minimal'].map((style) => (
                 <button
                   key={style}
@@ -383,8 +383,8 @@ export function PersonalisationSettings() {
 
           {/* Icon Style */}
           <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase text-white/40 block">System Icon Style</label>
-            <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 gap-1 text-[9px] font-mono">
+            <label htmlFor="system-icon-style-group" className="text-[10px] font-mono uppercase text-white/40 block">System Icon Style</label>
+            <div id="system-icon-style-group" className="flex bg-white/5 p-1 rounded-lg border border-white/5 gap-1 text-[9px] font-mono">
               {['outlined', 'filled'].map((style) => (
                 <button
                   key={style}
@@ -402,8 +402,8 @@ export function PersonalisationSettings() {
 
           {/* Panel Transition Style */}
           <div className="space-y-2 col-span-1 md:col-span-2">
-            <label className="text-[10px] font-mono uppercase text-white/40 block">Panel Transition Animation</label>
-            <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 gap-1 text-[9px] font-mono">
+            <label htmlFor="panel-transition-animation-group" className="text-[10px] font-mono uppercase text-white/40 block">Panel Transition Animation</label>
+            <div id="panel-transition-animation-group" className="flex bg-white/5 p-1 rounded-lg border border-white/5 gap-1 text-[9px] font-mono">
               {[
                 { key: 'slide', label: 'Slide Out' },
                 { key: 'swing-3d', label: 'Swing 3D' },
@@ -453,7 +453,7 @@ export function PersonalisationSettings() {
 
           {/* Font Family selection */}
           <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase text-white/40 block">Font Family</label>
+            <label htmlFor="personalisation-font-family" className="text-[10px] font-mono uppercase text-white/40 block">Font Family</label>
             <select
               id="personalisation-font-family"
               name="personalisation-font-family"

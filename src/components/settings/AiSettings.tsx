@@ -121,7 +121,9 @@ export function AiSettings() {
   };
 
   useEffect(() => {
-    refreshCredentialState();
+    queueMicrotask(() => {
+      refreshCredentialState();
+    });
   }, []);
 
   useEffect(() => {
@@ -214,8 +216,9 @@ export function AiSettings() {
     <SettingsSection title="Intelligence">
       <div className="space-y-4">
         <div className="space-y-2">
-          <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">Model Route</label>
+          <label htmlFor="model-route-select" className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">Model Route</label>
           <select
+            id="model-route-select"
             value={aiModel}
             onChange={(e) => updateSettings({ aiModel: e.target.value as AiModel })}
             className="w-full p-4 rounded-xl bg-white/5 border border-white/5 text-[10px] font-bold uppercase tracking-wider outline-none focus:border-primary/50 transition-all appearance-none cursor-pointer"
@@ -249,9 +252,9 @@ export function AiSettings() {
         <div className="space-y-3 rounded-2xl border border-primary/15 bg-primary/5 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">
+              <div className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">
                 API and connector credential engine
-              </label>
+              </div>
               <p className="mt-1 max-w-3xl text-[8px] font-mono leading-relaxed text-white/40">
                 Handles AI providers, Apify, Google Cloud, GitHub, Notion, weather, and the local Bridge endpoint
                 through one local registry. Browser storage is for local testing and setup handoff only; production
@@ -461,10 +464,11 @@ export function AiSettings() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">
+          <label htmlFor="system-instructions-textarea" className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">
             System Instructions
           </label>
           <textarea
+            id="system-instructions-textarea"
             value={systemInstructions}
             onChange={(e) => updateSettings({ systemInstructions: e.target.value })}
             className="w-full min-h-[120px] p-4 rounded-xl bg-white/5 border border-white/5 text-[10px] font-mono leading-relaxed outline-none focus:border-primary/50 transition-all resize-none scroller"

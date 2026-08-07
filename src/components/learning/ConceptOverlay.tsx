@@ -9,10 +9,24 @@ interface ConceptOverlayProps {
 
 export const ConceptOverlay: React.FC<ConceptOverlayProps> = ({ concept, onClose }) => (
   <div
+    role="button"
+    tabIndex={0}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        onClose();
+      }
+    }}
     className="fixed inset-0 z-modal flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm"
     onClick={onClose}
   >
     <div
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.stopPropagation();
+        }
+      }}
       className="w-full max-w-lg bg-bg-card border border-secondary/30 rounded-2xl p-8 shadow-2xl relative"
       onClick={e => e.stopPropagation()}
     >

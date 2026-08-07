@@ -166,6 +166,9 @@ export function DeveloperSettings() {
           {/* WebGL Force-Fallback Toggle */}
           <div
             onClick={() => setForceFallback(!forceFallback)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setForceFallback(!forceFallback); } }}
             className="flex items-center justify-between px-4 py-3.5 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all cursor-pointer group"
           >
             <div className="flex items-center gap-3">
@@ -195,11 +198,12 @@ export function DeveloperSettings() {
 
           {/* Custom API Endpoint Override */}
           <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-2">
-            <label className="text-[10px] font-mono uppercase text-white/40 block">
+            <label htmlFor="engine-url-override" className="text-[10px] font-mono uppercase text-white/40 block">
               Data Engine API Endpoint URL Override
             </label>
             <div className="flex gap-2">
               <input
+                id="engine-url-override"
                 type="text"
                 value={engineUrlOverride}
                 onChange={(e) => setEngineUrlOverride(e.target.value)}

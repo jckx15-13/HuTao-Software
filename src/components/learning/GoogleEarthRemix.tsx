@@ -1315,6 +1315,11 @@ function PanoramaViewer({ imageUrl, onClose }: { imageUrl: string; onClose: () =
         ✕
       </button>
       <div
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') e.preventDefault();
+        }}
         ref={containerRef}
         className="earth-panorama-container"
         onMouseDown={handleMouseDown}

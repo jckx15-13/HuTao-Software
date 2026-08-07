@@ -92,18 +92,20 @@ export function RightPanel() {
   );
 
   useEffect(() => {
-    setAddressInput(browserUrl);
-    setHistory((previousHistory) => {
-      const existingIndex = previousHistory.lastIndexOf(browserUrl);
-      if (existingIndex >= 0) {
-        setHistoryIndex(existingIndex);
-        return previousHistory;
-      }
+    queueMicrotask(() => {
+      setAddressInput(browserUrl);
+      setHistory((previousHistory) => {
+        const existingIndex = previousHistory.lastIndexOf(browserUrl);
+        if (existingIndex >= 0) {
+          setHistoryIndex(existingIndex);
+          return previousHistory;
+        }
 
-      const nextHistory =
-        previousHistory[previousHistory.length - 1] === browserUrl ? previousHistory : [...previousHistory, browserUrl];
-      setHistoryIndex(nextHistory.length - 1);
-      return nextHistory;
+        const nextHistory =
+          previousHistory[previousHistory.length - 1] === browserUrl ? previousHistory : [...previousHistory, browserUrl];
+        setHistoryIndex(nextHistory.length - 1);
+        return nextHistory;
+      });
     });
   }, [browserUrl]);
 
@@ -123,7 +125,7 @@ export function RightPanel() {
     let target = url.trim();
     if (!target) return;
 
-    const isUrl = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/i.test(target);
+    const isUrl = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i.test(target);
     if (!isUrl) {
       target = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(target)}`;
     } else if (!target.startsWith('http://') && !target.startsWith('https://')) {
@@ -600,7 +602,7 @@ export function RightPanel() {
                     <div key={log.id} className="relative">
                       <div className={`absolute -left-[19.5px] top-1 h-2 w-2 rounded-full ${badgeBg}`} />
                       <div className="text-white/30">
-                        {log.timestamp} // {log.category}
+                        {log.timestamp} {' // '} {log.category}
                       </div>
                       <div className="text-white/80 mt-0.5">{log.message}</div>
                     </div>

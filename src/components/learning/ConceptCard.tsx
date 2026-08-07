@@ -10,6 +10,11 @@ interface ConceptCardProps {
 export function ConceptCard({ concept, index, onClick }: ConceptCardProps) {
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onClick();
+      }}
       onClick={onClick}
       style={{ animationDelay: `${index * 40}ms` }}
       className="group relative p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all cursor-pointer overflow-hidden panel-glass"

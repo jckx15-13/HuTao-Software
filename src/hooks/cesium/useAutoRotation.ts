@@ -58,7 +58,7 @@ export function useAutoRotation(viewer: Cesium.Viewer | null, interactive: boole
           viewer.camera.moveStart.removeEventListener(onMoveStart);
           viewer.camera.moveEnd.removeEventListener(onMoveEnd);
         }
-      } catch (cleanupErr) {}
+      } catch (cleanupErr) { /* ignore cleanup error */ }
     };
   }, [viewer, interactive]);
 }

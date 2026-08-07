@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Hexagon,
   ChevronLeft,
@@ -399,6 +399,16 @@ export function LeftPanel() {
   const satelliteSettings = useUIStore((s) => s.satelliteSettings);
   const updateSatelliteSettings = useUIStore((s) => s.updateSatelliteSettings);
   const { satellites } = useSatelliteCatalog();
+  const [trackedEntity, setTrackedEntity] = useState<any>(null);
+
+  useEffect(() => {
+    if (trackedEntity) {
+      const viewer = (window as { cesiumViewer?: any }).cesiumViewer;
+      if (viewer) {
+        viewer.trackedEntity = trackedEntity;
+      }
+    }
+  }, [trackedEntity]);
   const viewportSize = useViewportSize();
   const spatialPanelStyle = useMemo(
     () =>
@@ -426,8 +436,13 @@ export function LeftPanel() {
     return presets.find((preset) => preset.name === telescopeTarget.name) || presets[0];
   }, [telescopeTarget]);
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    queueMicrotask(() => setNow(Date.now()));
+  }, [currentTime]);
+
   const earthFrame = useMemo(() => {
-    const parsedTime = currentTime instanceof Date ? currentTime : new Date(currentTime ?? Date.now());
+    const parsedTime = currentTime instanceof Date ? currentTime : new Date(currentTime ?? now);
     const projectionDate = Number.isNaN(parsedTime.getTime()) ? new Date() : parsedTime;
     const coordinates = resolveTelescopePresetCoordinates(activePreset, projectionDate);
     const projection = projectTelescopeTargetToEarth(coordinates.raHours, coordinates.decDegrees, projectionDate);
@@ -470,7 +485,7 @@ export function LeftPanel() {
     if (viewer) {
       const ent = viewer.entities.getById(entityId) || viewer.entities.getById(id);
       if (ent) {
-        viewer.trackedEntity = ent;
+        setTrackedEntity(ent);
       } else if (selectedSatellite) {
         viewer.camera.flyTo({
           destination: Cesium.Cartesian3.fromDegrees(
@@ -958,7 +973,7 @@ export function LeftPanel() {
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-xs uppercase">Imagery Source</label>
+                  <label htmlFor="imagery-source" className="text-white/40 block text-xs uppercase">Imagery Source</label>
                   <select
                     id="imagery-source"
                     name="imagery-source"
@@ -1058,7 +1073,7 @@ export function LeftPanel() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-white/40 block text-xs uppercase">Active Input Focus</label>
+                      <span className="text-white/40 block text-xs uppercase">Active Input Focus</span>
                       <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded border border-white/5 bg-black/30 text-xs text-center">
                         <button
                           type="button"
@@ -1098,7 +1113,7 @@ export function LeftPanel() {
             >
               <div className="space-y-2 font-mono text-xs">
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-xs uppercase">Point A (Start):</label>
+                  <label htmlFor="measure-point-a" className="text-white/40 block text-xs uppercase">Point A (Start):</label>
                   <select
                     id="measure-point-a"
                     name="measure-point-a"
@@ -1119,7 +1134,7 @@ export function LeftPanel() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-xs uppercase">Point B (End):</label>
+                  <label htmlFor="measure-point-b" className="text-white/40 block text-xs uppercase">Point B (End):</label>
                   <select
                     id="measure-point-b"
                     name="measure-point-b"
@@ -1183,7 +1198,7 @@ export function LeftPanel() {
 
                 {/* Category Toggles (Grid) */}
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-[10px] uppercase tracking-wider">Categories</label>
+                  <span className="text-white/40 block text-[10px] uppercase tracking-wider">Categories</span>
                   <div className="grid grid-cols-4 gap-1 text-[10px]">
                     {Object.entries(SATELLITE_CATEGORIES_METADATA).map(([key, meta]) => {
                       const isToggled = satelliteCategories[key] !== false;

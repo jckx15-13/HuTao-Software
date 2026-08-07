@@ -19,7 +19,7 @@ export function useChatPersistence(messages: Message[], setMessages: (messages: 
               console.error('Failed to load chat history', error);
               try {
                 localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
-              } catch {}
+              } catch { /* intentionally empty */ }
             }
           }
         }

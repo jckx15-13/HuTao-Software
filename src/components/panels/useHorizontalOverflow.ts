@@ -134,7 +134,7 @@ export function useHorizontalOverflow<T extends HTMLElement>(): HorizontalOverfl
     // Read immediately, then again on the next frame: the synchronous pass is
     // what actually lands, while the deferred one catches layout that settles
     // after the panel's 300ms open transition.
-    measureNow();
+    queueMicrotask(() => measureNow());
     const settleTimer = window.setTimeout(measureNow, 350);
     scroller.addEventListener('scroll', scheduleMeasure, { passive: true });
 

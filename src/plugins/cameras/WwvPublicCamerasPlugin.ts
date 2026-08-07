@@ -37,6 +37,11 @@ const cameraIconUrl = createSvgIconUrl(Camera, {
 });
 
 function cleanText(value: unknown, fallback = "Unknown"): string {
+    // Matching control characters is the point: this strips C0 controls and DEL out
+    // of untrusted upstream feed text before it is rendered as a map label. The
+    // no-control-regex rule guards against them appearing by accident, which is the
+    // opposite of what is intended here.
+    // eslint-disable-next-line no-control-regex
     const text = String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
     if (!text) return fallback;
     return text.length > MAX_LABEL_LENGTH ? `${text.slice(0, MAX_LABEL_LENGTH - 1)}...` : text;

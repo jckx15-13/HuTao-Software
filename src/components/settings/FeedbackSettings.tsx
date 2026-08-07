@@ -28,6 +28,9 @@ export function FeedbackSettings() {
         {items.map((item, i) => (
           <div 
             key={i} 
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); updateSettings({ [item.key]: !item.val }); } }}
             className="flex items-center justify-between px-4 py-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all cursor-pointer group"
             onClick={() => updateSettings({ [item.key]: !item.val })}
           >

@@ -54,7 +54,7 @@ export function LauncherPage() {
         level: 'info',
         message: 'Map, astronomy, and local diagnostic chat remain fully available.'
       });
-      setBridgeStatus('offline');
+      queueMicrotask(() => setBridgeStatus('offline'));
       return () => {
         active = false;
       };
@@ -74,7 +74,9 @@ export function LauncherPage() {
             message: `Found ${data.change_count} uncommitted local changes.`
           });
         }
-      } catch (e) {}
+      } catch (e) {
+        // Ignore git status check error in static demo
+      }
     }
 
     async function checkBridge() {

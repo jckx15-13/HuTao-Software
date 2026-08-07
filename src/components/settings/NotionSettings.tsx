@@ -11,13 +11,15 @@ export function NotionSettings() {
 
   useEffect(() => {
     const record = getCredentialRecord('notion');
-    if (record?.secret) {
-      setNotionSecret(record.secret);
-      s.setNotionApiKey(record.secret);
-    }
-    if (record?.databaseId && !s.notionDatabaseId) {
-      s.setNotionDatabaseId(record.databaseId);
-    }
+    queueMicrotask(() => {
+      if (record?.secret) {
+        setNotionSecret(record.secret);
+        s.setNotionApiKey(record.secret);
+      }
+      if (record?.databaseId && !s.notionDatabaseId) {
+        s.setNotionDatabaseId(record.databaseId);
+      }
+    });
   }, []);
 
   const saveNotionCredential = () => {

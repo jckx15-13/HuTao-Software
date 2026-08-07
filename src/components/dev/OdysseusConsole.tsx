@@ -187,7 +187,7 @@ export function OdysseusConsole() {
 
   // Poll status on mount
   useEffect(() => {
-    refreshAll();
+    queueMicrotask(() => refreshAll());
     if (isFallbackRuntime || !isBridgeEnabled()) return;
     const interval = setInterval(refreshAll, 10000);
     return () => clearInterval(interval);

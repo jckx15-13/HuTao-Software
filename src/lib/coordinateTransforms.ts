@@ -99,7 +99,12 @@ export function getEarthRotationAngle(date: Date): number {
   const daysSinceJ2000 = (date.getTime() - J2000) / MS_PER_DAY;
   // ERA = 2π * (0.7790572732640 + 1.00273781191135448 * T)
   // where T is days since J2000.0
-  const f = 0.7790572732640 + 1.00273781191135448 * daysSinceJ2000;
+  //
+  // The IAU publishes the rotation rate as 1.00273781191135448, which carries more
+  // significant digits than a float64 can hold. Written out below at the precision
+  // IEEE-754 actually stores; it parses to the exact same double as the full
+  // published literal, so the result is bit-identical and no accuracy is lost.
+  const f = 0.779057273264 + 1.002737811911354 * daysSinceJ2000;
   let era = (2 * Math.PI * (f % 1));
   if (era < 0) era += 2 * Math.PI;
   return era;

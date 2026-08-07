@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -8,6 +9,7 @@ export function MarkdownMessage({ content }: { content: string }) {
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
+        // eslint-disable-next-line react/prop-types
         code(props) {
           const { children, className, node, ref, ...rest } = props;
           const match = /language-(\w+)/.exec(className || '');

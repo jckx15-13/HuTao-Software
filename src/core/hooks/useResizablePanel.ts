@@ -31,7 +31,7 @@ export function useResizablePanel(initialWidth: number, minWidth: number, maxWid
   }, [direction, minWidth, maxWidth]);
 
   useEffect(() => {
-    applyWidth(initialWidth);
+    queueMicrotask(() => applyWidth(initialWidth));
   }, [applyWidth, initialWidth]);
 
   useEffect(() => {

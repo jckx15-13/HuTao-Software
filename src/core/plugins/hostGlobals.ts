@@ -28,8 +28,8 @@ export interface WWVHostGlobals {
 }
 
 declare global {
-
-    var __WWV_HOST__: WWVHostGlobals | undefined;
+  // eslint-disable-next-line no-var
+  var __WWV_HOST__: WWVHostGlobals | undefined;
 }
 
 /**

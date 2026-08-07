@@ -37,7 +37,7 @@ export default function MountUnmountHarness() {
       if (typeof window !== 'undefined' && window.location.search.includes('autorun')) {
         startCycles();
       }
-    } catch (e) {}
+    } catch (e) { /* intentionally empty */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

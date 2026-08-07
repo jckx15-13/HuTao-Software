@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Sparkles,
@@ -649,7 +649,7 @@ export default function WorldWideTelescopeView({
   }, [controlsOnly]);
 
   useEffect(() => {
-    setPos((current) => clampPipPosition(current.x, current.y));
+    queueMicrotask(() => setPos((current) => clampPipPosition(current.x, current.y)));
   }, [windowPixelDimensions, windowSize, workspaceInsets, pipSafeLeft, viewportSize]);
 
   useEffect(() => {
@@ -715,13 +715,17 @@ export default function WorldWideTelescopeView({
 
     const iframeMounted = bgOnly || !controlsOnly || telescopeWindowActive;
     if (!iframeMounted) {
-      setIframeLoaded(false);
-      setIframeError(false);
+      queueMicrotask(() => {
+        setIframeLoaded(false);
+        setIframeError(false);
+      });
       return;
     }
 
-    setIframeLoaded(false);
-    setIframeError(false);
+    queueMicrotask(() => {
+      setIframeLoaded(false);
+      setIframeError(false);
+    });
     if (bgOnly) {
       publishWwtRuntimeState('Connecting');
     }
@@ -750,7 +754,7 @@ export default function WorldWideTelescopeView({
   }, [bgOnly, controlsOnly, refreshKey, telescopeTarget?.url, telescopeWindowActive]);
 
   // Load WTML collection event trigger
-  const handleLoadCollection = (url: string, name: string) => {
+  const handleLoadCollection = useCallback((url: string, name: string) => {
     if (!url) return;
     const validation = validateWtmlUrl(url);
     if (!validation.url) {
@@ -781,7 +785,7 @@ export default function WorldWideTelescopeView({
       setWtmlStatus('error');
       setTimeout(() => setWtmlStatus('idle'), 3000);
     }
-  };
+  }, [wwtRuntimeHealthy, wwtRuntimeState, postToWWT]);
 
   // Set Background Image Set layer
   const handleSetBackground = (layerName: string) => {
@@ -1494,6 +1498,14 @@ export default function WorldWideTelescopeView({
   };
 
   const renderHUDAndTimeline = () => {
+    // CenterPanel mounts this with `controlsOnly` for the whole of space mode, which
+    // covers Earth navigation as well as the telescope. Telescope chrome (telemetry
+    // readout, HUD panels, timeline) must not render while the user is navigating
+    // Earth, so bail out before emitting any of it.
+    if (!telescopeWindowActive) {
+      return null;
+    }
+
     return (
       <div
         ref={overlayRootRef}
@@ -1849,6 +1861,7 @@ export default function WorldWideTelescopeView({
                         {PHOTO_COLLECTIONS.map((col) => (
                           <button
                             key={col.id}
+                            // eslint-disable-next-line react-hooks/refs
                             onClick={() => handleLoadCollection(col.url, col.name)}
                             disabled={!wwtRuntimeHealthy}
                             className="w-full min-h-11 text-left p-2.5 rounded border border-white/5 bg-black/25 hover:border-primary/30 transition-all cursor-pointer block disabled:cursor-not-allowed disabled:opacity-45"
@@ -2074,6 +2087,11 @@ export default function WorldWideTelescopeView({
           typeof document !== 'undefined' &&
           createPortal(
             <div
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') e.preventDefault();
+              }}
               className="glass-panel border border-primary/20 flex flex-col overflow-hidden shadow-2xl pointer-events-auto absolute z-popover"
               style={{
                 left: pos.x,

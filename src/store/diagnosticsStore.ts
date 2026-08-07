@@ -150,7 +150,7 @@ if (typeof window !== 'undefined') {
             suggestion: 'Verify network connection, asset path correctness, or resource CORS policies.'
           });
         }
-      } catch (e) {}
+      } catch (e) { /* ignore error listener error */ }
     },
     true
   );
@@ -187,19 +187,20 @@ if (typeof window !== 'undefined') {
 
   // 4. Global fetch latency & error interceptor
   const originalFetch = window.fetch;
-  window.fetch = async function (input, init) {
+  window.fetch = async function (...args) {
+    const input = args[0];
     const url = typeof input === 'string' ? input : input instanceof Request ? input.url : '';
     const shouldTrack = shouldTrackFetchLatency(url);
 
     if (!shouldTrack && !isSatelliteTelemetryFetch(url)) {
-      return originalFetch.apply(window, arguments as any);
+      return originalFetch.apply(window, args);
     }
 
     const startTime = performance.now();
     const isSatelliteTelemetryRequest = isSatelliteTelemetryFetch(url);
 
     try {
-      const response = await originalFetch.apply(window, arguments as any);
+      const response = await originalFetch.apply(window, args);
       const duration = performance.now() - startTime;
 
       if (!response.ok && !isSatelliteTelemetryRequest) {
@@ -249,7 +250,7 @@ if (typeof window !== 'undefined') {
         message: `Console Error: ${msg.substring(0, 300)}`,
         suggestion: 'Trace this error using browser devtools stack trace or check related components.'
       });
-    } catch (e) {}
+    } catch (e) { /* ignore console intercept error */ }
   };
 
   console.warn = function (...args) {
@@ -262,7 +263,7 @@ if (typeof window !== 'undefined') {
         message: `Console Warning: ${msg.substring(0, 300)}`,
         suggestion: 'Resolve warnings to ensure optimal performance and standard-compliant rendering.'
       });
-    } catch (e) {}
+    } catch (e) { /* ignore console intercept error */ }
   };
 
   // 6. Navigation Performance and Vitals check

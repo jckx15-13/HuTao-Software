@@ -22,11 +22,11 @@ export function MapSettings() {
           
           {/* Imagery Provider Selection */}
           <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-3">
-            <label className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-2">
+            <label htmlFor="base-imagery-provider" className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-2">
               <ImageIcon size={14} className="text-primary" />
               Base Imagery Provider
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div id="base-imagery-provider" className="grid grid-cols-2 gap-2">
               {[
                 { id: 'cesium', name: 'Cesium Ion (Default)' },
                 { id: 'google-3d', name: 'Google 3D Tiles' },
@@ -54,6 +54,9 @@ export function MapSettings() {
           {/* Borders Toggle */}
           <div 
             onClick={() => setShowBorders(!showBorders)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowBorders(!showBorders); } }}
             className="flex items-center justify-between px-4 py-3.5 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all cursor-pointer group"
           >
             <div className="flex items-center gap-3">
@@ -79,6 +82,9 @@ export function MapSettings() {
           {/* Terrain Toggle */}
           <div 
             onClick={() => setShowTerrain(!showTerrain)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowTerrain(!showTerrain); } }}
             className="flex items-center justify-between px-4 py-3.5 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all cursor-pointer group"
           >
             <div className="flex items-center gap-3">
@@ -104,7 +110,7 @@ export function MapSettings() {
           {/* Onion Skinning / Space Blend */}
           <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-2">
+              <label htmlFor="space-blend-slider" className="text-[10px] font-mono uppercase text-white/40 flex items-center gap-2">
                 <Layers size={14} className="text-primary" />
                 Onion Skinning: Space/Earth Blend
               </label>

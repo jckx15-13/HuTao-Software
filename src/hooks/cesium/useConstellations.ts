@@ -136,7 +136,7 @@ export function useConstellations(viewer: Cesium.Viewer | null) {
             constellationMap.clear();
             viewer.scene.requestRender();
           }
-        } catch (_) {}
+        } catch (_) { /* ignore cleanup error */ }
       };
     } catch (err) {
       console.warn('[useConstellations] Failed to create constellation entities:', err);

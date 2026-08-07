@@ -83,7 +83,7 @@ export function useLandmarks(viewer: Cesium.Viewer | null) {
           entities.forEach((e) => {
             try {
               if (viewer.entities) viewer.entities.remove(e);
-            } catch (e) {}
+            } catch (e) { /* ignore entity removal error */ }
           });
           if (handler && typeof handler.destroy === 'function') handler.destroy();
         }

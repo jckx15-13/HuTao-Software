@@ -109,9 +109,11 @@ export function useIssTelemetry() {
         simulated
       });
 
-      // Schedule next poll with backoff
-      const delay = BASE_INTERVAL * Math.pow(2, failCountRef.current - 1);
-      timer = setTimeout(poll, Math.max(BASE_INTERVAL, delay));
+      // Schedule next poll with backoff (failCount 0 = success → BASE_INTERVAL)
+      const delay = failCountRef.current > 0
+        ? BASE_INTERVAL * Math.pow(2, failCountRef.current - 1)
+        : BASE_INTERVAL;
+      timer = setTimeout(poll, delay);
     }
 
     poll();

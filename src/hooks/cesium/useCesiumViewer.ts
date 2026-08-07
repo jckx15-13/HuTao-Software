@@ -189,21 +189,33 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
       try {
         viewerInstance.scene.requestRender();
       } catch (err) {
-        /* ignore */
+        // Viewer may be destroyed; ignore
       }
+    };
+    // Throttle pointermove to ~60fps to avoid excessive WebGL re-renders
+    let moveRafPending = false;
+    const throttledMoveHandler = () => {
+      if (moveRafPending) return;
+      moveRafPending = true;
+      requestAnimationFrame(() => {
+        moveRafPending = false;
+        if (requestRender) requestRender();
+      });
     };
     pointerHandler = () => {
       if (requestRender) requestRender();
     };
     canvas.addEventListener('pointerdown', pointerHandler);
     canvas.addEventListener('pointerup', pointerHandler);
-    canvas.addEventListener('pointermove', pointerHandler);
+    canvas.addEventListener('pointermove', throttledMoveHandler);
     canvas.addEventListener('wheel', pointerHandler, { passive: true } as AddEventListenerOptions);
     const camera = viewerInstance.camera as Cesium.Camera & { changed: Cesium.Event };
     if (camera.changed?.addEventListener) {
       try {
         camera.changed.addEventListener(requestRender);
-      } catch (e) {}
+      } catch (e) {
+        // Event may not support this listener; ignore
+      }
     }
 
       // Start halfway between Earth and the Moon, looking back at Earth's center.
@@ -228,16 +240,20 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
         if (canvas && pointerHandler) {
           canvas.removeEventListener('pointerdown', pointerHandler);
           canvas.removeEventListener('pointerup', pointerHandler);
-          canvas.removeEventListener('pointermove', pointerHandler);
+          canvas.removeEventListener('pointermove', throttledMoveHandler);
           canvas.removeEventListener('wheel', pointerHandler as EventListenerOrEventListenerObject);
         }
         const camera = viewerInstance?.camera as Cesium.Camera & { changed: Cesium.Event };
         if (camera?.changed?.removeEventListener && requestRender) {
           try {
             camera.changed.removeEventListener(requestRender);
-          } catch (e) {}
+          } catch (e) {
+            // Listener may have already been removed; ignore
+          }
         }
-      } catch (e) {}
+      } catch (e) {
+        // Canvas may have been detached; ignore cleanup errors
+      }
 
       if (!viewerInstance.isDestroyed()) {
         viewerInstance.destroy();

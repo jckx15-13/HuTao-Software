@@ -1,4 +1,5 @@
 import type { ViewportSize } from '@/hooks/useViewportSize';
+import { resolveDeviceProfile, type DeviceProfile } from '@/core/layout/deviceProfile';
 
 export type SpatialPanelPlacement = 'left' | 'right';
 
@@ -16,6 +17,8 @@ export type SpatialPanelGeometryInput = {
   viewport: ViewportSize;
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
+  /** Precomputed profile. Supply it to avoid resolving twice in one render. */
+  profile?: DeviceProfile;
 };
 
 const clampPx = (value: number, min: number, max: number): number => {
@@ -23,35 +26,14 @@ const clampPx = (value: number, min: number, max: number): number => {
   return Math.min(Math.max(Math.round(value), min), max);
 };
 
-const buildEdgeInsetPx = (viewportWidth: number): number => {
-  return clampPx(viewportWidth * 0.025, 14, 24);
-};
-
-const buildPanelWidthPx = (viewportWidth: number, leftOpen: boolean, rightOpen: boolean): number => {
-  const hasDualPanels = leftOpen && rightOpen;
-  const edgeInsetPx = buildEdgeInsetPx(viewportWidth);
-  const preferredWidthPx = clampPx(viewportWidth * 0.29, 280, 420);
-
-  const availablePx = hasDualPanels
-    ? Math.max(1, Math.floor((viewportWidth - edgeInsetPx * 2 - 40) / 2))
-    : Math.max(1, viewportWidth - edgeInsetPx * 2 - 24);
-
-  return Math.min(preferredWidthPx, Math.max(1, availablePx));
-};
-
-const buildVerticalInsetPx = (viewportHeight: number, kind: 'top' | 'bottom'): number => {
-  const preferredRatios: Record<'top' | 'bottom', number> = {
-    top: 0.08,
-    bottom: 0.075
-  };
-  const insetLimits: Record<'top' | 'bottom', { min: number; max: number }> = {
-    top: { min: 28, max: 96 },
-    bottom: { min: 24, max: 88 }
-  };
-
-  const { min, max } = insetLimits[kind];
-  return clampPx(viewportHeight * preferredRatios[kind], min, max);
-};
+function profileFor(
+  viewport: ViewportSize,
+  leftPanelOpen: boolean,
+  rightPanelOpen: boolean,
+  provided?: DeviceProfile
+): DeviceProfile {
+  return provided ?? resolveDeviceProfile(viewport, { dualPanels: leftPanelOpen && rightPanelOpen });
+}
 
 /**
  * Horizontal space a docked side panel actually consumes, in px.
@@ -63,37 +45,52 @@ const buildVerticalInsetPx = (viewportHeight: number, kind: 'top' | 'bottom'): n
  * it disagreed with the real panel width by ~152px at 1366px wide, and the chat
  * surface rendered beneath the sidebars.
  *
- * Returns 0 below the 760px breakpoint, where panels are full-width sheets
- * stacked over the workspace by design rather than docked beside it.
+ * Returns 0 wherever panels present as sheets rather than docking (phones,
+ * watches, short landscape tablets), since a sheet floats over the workspace by
+ * design and reserving a rail for it would strand the centre column off-screen.
  */
 export function buildWorkspaceRailPx(
   viewport: ViewportSize,
   leftPanelOpen: boolean,
   rightPanelOpen: boolean,
-  placement: SpatialPanelPlacement
+  placement: SpatialPanelPlacement,
+  profile?: DeviceProfile
 ): number {
   const isOpen = placement === 'left' ? leftPanelOpen : rightPanelOpen;
   if (!isOpen) return 0;
-  if (viewport.width < 760) return 0;
 
-  const edgeInsetPx = buildEdgeInsetPx(viewport.width);
-  const widthPx = buildPanelWidthPx(viewport.width, leftPanelOpen, rightPanelOpen);
-  return edgeInsetPx + widthPx;
+  const resolved = profileFor(viewport, leftPanelOpen, rightPanelOpen, profile);
+  if (!resolved.reservesRail) return 0;
+
+  return resolved.edgeInsetPx + resolved.panelWidthPx;
 }
 
 export function buildSpatialPanelGeometry(input: SpatialPanelGeometryInput): SpatialPanelStyle {
   const { placement, viewport, leftPanelOpen, rightPanelOpen } = input;
-  const edgeInsetPx = buildEdgeInsetPx(viewport.width);
-  const topInsetPx = buildVerticalInsetPx(viewport.height, 'top');
-  const bottomInsetPx = buildVerticalInsetPx(viewport.height, 'bottom');
+  const profile = profileFor(viewport, leftPanelOpen, rightPanelOpen, input.profile);
+  const { edgeInsetPx, topInsetPx, bottomInsetPx, panelWidthPx, panelPresentation } = profile;
 
-  if (viewport.width < 760) {
-    const hasDualPanels = leftPanelOpen && rightPanelOpen;
-    const width = `calc(100vw - ${edgeInsetPx * 2}px)`;
+  // Fullbleed: the panel IS the screen. No maxHeight cap short of the viewport —
+  // a watch face has no room to give away to decorative inset.
+  if (panelPresentation === 'fullbleed-sheet') {
+    return {
+      left: `${edgeInsetPx}px`,
+      right: `${edgeInsetPx}px`,
+      width: `${panelWidthPx}px`,
+      top: `calc(${topInsetPx}px + env(safe-area-inset-top))`,
+      bottom: `calc(${bottomInsetPx}px + env(safe-area-inset-bottom))`,
+      maxHeight: `${Math.max(1, viewport.height - topInsetPx - bottomInsetPx)}px`
+    };
+  }
+
+  if (panelPresentation === 'stacked-sheet') {
+    // Only split the height when the profile actually permits two panels; below
+    // 560px tall `maxConcurrentPanels` drops to 1 and the survivor takes it all.
+    const hasDualPanels = leftPanelOpen && rightPanelOpen && profile.maxConcurrentPanels === 2;
     const shared = {
       left: `${edgeInsetPx}px`,
       right: `${edgeInsetPx}px`,
-      width
+      width: `${panelWidthPx}px`
     };
 
     if (hasDualPanels && placement === 'left') {
@@ -122,7 +119,6 @@ export function buildSpatialPanelGeometry(input: SpatialPanelGeometryInput): Spa
     };
   }
 
-  const widthPx = buildPanelWidthPx(viewport.width, leftPanelOpen, rightPanelOpen);
   const reservedChromePx = 32;
   const maxHeightPx = clampPx(
     Math.max(0, viewport.height - topInsetPx - bottomInsetPx - reservedChromePx),
@@ -133,7 +129,7 @@ export function buildSpatialPanelGeometry(input: SpatialPanelGeometryInput): Spa
   const base: SpatialPanelStyle = {
     top: `calc(${topInsetPx}px + env(safe-area-inset-top))`,
     bottom: `calc(${bottomInsetPx}px + env(safe-area-inset-bottom))`,
-    width: `${widthPx}px`,
+    width: `${panelWidthPx}px`,
     maxHeight: `${maxHeightPx}px`
   };
 
