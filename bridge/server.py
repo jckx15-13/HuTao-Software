@@ -15,6 +15,29 @@ import urllib.request
 import urllib.parse
 import json
 
+# ─── Sentry SDK Initialization ─────────────────────────────────────────────
+_SENTRY_DSN = os.environ.get("SENTRY_DSN")
+if _SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.starlette import StarletteIntegration
+
+        sentry_sdk.init(
+            dsn=_SENTRY_DSN,
+            traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.2")),
+            profiles_sample_rate=float(os.environ.get("SENTRY_PROFILES_SAMPLE_RATE", "0.1")),
+            environment=os.environ.get("SENTRY_ENVIRONMENT", "development"),
+            integrations=[
+                FastApiIntegration(transaction_style="endpoint"),
+                StarletteIntegration(transaction_style="endpoint"),
+            ],
+            send_default_pii=False,
+        )
+    except ImportError:
+        print("[bridge] sentry-sdk not installed; telemetry disabled.", file=sys.stderr)
+# ────────────────────────────────────────────────────────────────────────────
+
 if sys.platform == 'win32':
     asyncio.WindowsProactorEventLoopPolicy = asyncio.WindowsSelectorEventLoopPolicy
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
