@@ -31,3 +31,6 @@ implementation_plans_log.md
 docs/_archive/
 docs/development_logs/
 docs/progress.md
+
+*storybook.log
+storybook-static
