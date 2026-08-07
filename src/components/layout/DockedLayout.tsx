@@ -9,7 +9,7 @@
 
 import React, { Suspense } from 'react';
 import { CenterPanel } from '../panels/CenterPanel'; // Middle container coordinating workspace and telescope targets.
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, MessageSquare, PanelLeft, PanelRight } from 'lucide-react';
 const LeftPanel = React.lazy(() => import('../panels/LeftPanel').then((m) => ({ default: m.LeftPanel })));
 const RightPanel = React.lazy(() => import('../panels/RightPanel').then((m) => ({ default: m.RightPanel })));
 import { SystemMonitor } from '../SystemMonitor'; // Nested system metrics tracker widget.
@@ -26,7 +26,8 @@ export function DockedLayout() {
     setLeftPanelOpen,
     rightPanelOpen,
     setRightPanelOpen,
-    interactionMode
+    interactionMode,
+    setInteractionMode
   } = useUIStore();
   const viewportSize = useViewportSize();
   const collapsedForNarrowViewportRef = React.useRef(false);
@@ -75,7 +76,7 @@ export function DockedLayout() {
       {/* COLUMN 2: Main center area. Sets flex-1 to occupy all remaining width.
           Uses pointer-events-none so mouse interaction drops down to Cesium 3D canvas layer. */}
       <main
-        className="flex-1 flex flex-col relative z-content bg-transparent pointer-events-none"
+        className="mobile-workspace-main flex-1 flex flex-col relative z-content bg-transparent pointer-events-none"
         // Consumes the CSS vars set on the row above. Without this, the
         // vars are computed but nothing reads them, and the centre column
         // renders flush against the container edge behind the fixed side
@@ -121,6 +122,49 @@ export function DockedLayout() {
           <ChevronLeft className="h-4 w-4" />
         </button>
       )}
+
+      <nav className="mobile-workspace-nav" aria-label="Mobile workspace navigation">
+        <button
+          type="button"
+          className="mobile-workspace-nav-button"
+          onClick={() => {
+            setRightPanelOpen(false);
+            setLeftPanelOpen(!leftPanelOpen);
+          }}
+          aria-label={leftPanelOpen ? 'Close navigation panel' : 'Open navigation panel'}
+          aria-pressed={leftPanelOpen}
+        >
+          <PanelLeft className="h-4 w-4" />
+          <span>Layers</span>
+        </button>
+        <button
+          type="button"
+          className={`mobile-workspace-nav-button ${interactionMode === 'chat' ? 'active' : ''}`}
+          onClick={() => {
+            setLeftPanelOpen(false);
+            setRightPanelOpen(false);
+            setInteractionMode('chat');
+          }}
+          aria-label="Open chat"
+          aria-pressed={interactionMode === 'chat'}
+        >
+          <MessageSquare className="h-4 w-4" />
+          <span>Chat</span>
+        </button>
+        <button
+          type="button"
+          className="mobile-workspace-nav-button"
+          onClick={() => {
+            setLeftPanelOpen(false);
+            setRightPanelOpen(!rightPanelOpen);
+          }}
+          aria-label={rightPanelOpen ? 'Close details panel' : 'Open details panel'}
+          aria-pressed={rightPanelOpen}
+        >
+          <PanelRight className="h-4 w-4" />
+          <span>Details</span>
+        </button>
+      </nav>
     </div>
   );
 }
