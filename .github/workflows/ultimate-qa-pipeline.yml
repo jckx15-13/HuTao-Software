@@ -18,7 +18,8 @@ jobs:
   snyk-frontend:
     name: Snyk – Frontend
     runs-on: ubuntu-latest
-    if: secrets.SNYK_TOKEN != ''
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -30,6 +31,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - uses: snyk/actions/node@master
+        if: env.SNYK_TOKEN != ''
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -38,7 +40,8 @@ jobs:
   snyk-backend:
     name: Snyk – Python Bridge
     runs-on: ubuntu-latest
-    if: secrets.SNYK_TOKEN != ''
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -46,6 +49,7 @@ jobs:
           python-version: '3.12'
       - run: pip install -r bridge/requirements.txt
       - uses: snyk/actions/python@master
+        if: env.SNYK_TOKEN != ''
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -55,7 +59,8 @@ jobs:
   chromatic:
     name: Chromatic – Visual Regression
     runs-on: ubuntu-latest
-    if: secrets.CHROMATIC_PROJECT_TOKEN != ''
+    env:
+      CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -69,6 +74,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - uses: chromaui/action@latest
+        if: env.CHROMATIC_PROJECT_TOKEN != ''
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           buildScriptName: build-storybook
@@ -82,12 +88,10 @@ jobs:
   sentry-sourcemaps:
     name: Sentry – Upload Source Maps
     runs-on: ubuntu-latest
-    if: >-
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      secrets.SENTRY_AUTH_TOKEN != '' &&
-      secrets.SENTRY_ORG != '' &&
-      secrets.SENTRY_PROJECT != ''
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -99,6 +103,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:sourcemaps
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          env.SENTRY_AUTH_TOKEN != '' &&
+          env.SENTRY_ORG != '' &&
+          env.SENTRY_PROJECT != ''
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
