@@ -182,31 +182,37 @@ export function RightPanel() {
   const isSpatialMode = interactionMode === 'orbital' || interactionMode === 'telescope';
 
   return (
-    <aside
-      className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-panel h-auto bg-black/75"
-      style={spatialPanelStyle}
-    >
-      {/* Header and Tab Switcher */}
-      <div className="flex min-h-14 items-center justify-between gap-2 border-b border-white/10 bg-black/45 px-3 py-1.5">
-        {/* Tab strip: horizontally scrollable, with edge fades and paging arrows
-            that appear ONLY while the row actually overflows. The arrows sit
-            outside the measured scroller on purpose — an overlay affordance is
-            what buried "Telemetry" and "Odysseus" under un-clickable pixels, and
-            an in-flow control can only ever shrink the box, so it cannot flip the
-            overflow measurement back and forth. */}
-        <div className="flex min-w-0 flex-1 items-center gap-1">
-          {hasOverflow && (
-            <button
-              type="button"
-              onClick={() => scrollByPage(-1)}
-              disabled={!canScrollStart}
-              className="inline-flex min-h-11 w-7 shrink-0 items-center justify-center rounded text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-20"
-              aria-label="Scroll section tabs left"
-              title="Scroll tabs left"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-          )}
+    <>
+      <div
+        onClick={() => setRightPanelOpen(false)}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-backdrop pointer-events-auto min-[760px]:hidden"
+        aria-hidden="true"
+      />
+      <aside
+        className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-panel h-auto bg-black/75"
+        style={spatialPanelStyle}
+      >
+        {/* Header and Tab Switcher */}
+        <div className="flex min-h-14 items-center justify-between gap-2 border-b border-white/10 bg-black/45 px-3 py-1.5">
+          {/* Tab strip: horizontally scrollable, with edge fades and paging arrows
+              that appear ONLY while the row actually overflows. The arrows sit
+              outside the measured scroller on purpose — an overlay affordance is
+              what buried "Telemetry" and "Odysseus" under un-clickable pixels, and
+              an in-flow control can only ever shrink the box, so it cannot flip the
+              overflow measurement back and forth. */}
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            {hasOverflow && (
+              <button
+                type="button"
+                onClick={() => scrollByPage(-1)}
+                disabled={!canScrollStart}
+                className="inline-flex min-h-11 w-8 min-w-[32px] shrink-0 items-center justify-center rounded text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-20"
+                aria-label="Scroll section tabs left"
+                title="Scroll tabs left"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+            )}
 
           <div className="relative min-w-0 flex-1">
             <div
@@ -257,7 +263,7 @@ export function RightPanel() {
               type="button"
               onClick={() => scrollByPage(1)}
               disabled={!canScrollEnd}
-              className="inline-flex min-h-11 w-7 shrink-0 items-center justify-center rounded text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-20"
+              className="inline-flex min-h-11 w-8 min-w-[32px] shrink-0 items-center justify-center rounded text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-20"
               aria-label="Scroll section tabs right"
               title="Scroll tabs right"
             >
@@ -637,6 +643,7 @@ export function RightPanel() {
         )}
       </div>
     </aside>
+    </>
   );
 }
 

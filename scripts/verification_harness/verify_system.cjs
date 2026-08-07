@@ -28,9 +28,7 @@ function checkEndpointHealth(url, timeoutMs = 2000) {
 
     const req = http.request(options, (res) => {
       res.resume();
-      res.on('end', () => {
-        resolve(res.statusCode >= 200 && res.statusCode < 400);
-      });
+      resolve(res.statusCode >= 200 && res.statusCode < 400);
     });
 
     req.on('error', () => {
@@ -710,8 +708,10 @@ async function run() {
 
   // Determine Python path for db_helper
   const rootDir = path.resolve(__dirname, '../..');
-  const pythonVenvPath = path.join(rootDir, 'odysseus', 'venv', 'Scripts', 'python.exe');
-  const pythonExec = fs.existsSync(pythonVenvPath) ? `"${pythonVenvPath}"` : 'python';
+  const pythonVenvPath = process.platform === 'win32'
+    ? path.join(rootDir, 'odysseus', 'venv', 'Scripts', 'python.exe')
+    : path.join(rootDir, 'odysseus', 'venv', 'bin', 'python');
+  const pythonExec = fs.existsSync(pythonVenvPath) ? `"${pythonVenvPath}"` : 'python3';
   const dbHelperPath = path.join(__dirname, 'db_helper.py');
 
   try {

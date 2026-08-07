@@ -61,7 +61,7 @@ export function CenterPanel() {
       <SidebarTrigger />
 
       {/* Dynamic Segmented Mode Switcher (Pill Style) — always interactive */}
-      <div className="absolute top-[clamp(5.75rem,12vh,8rem)] left-1/2 z-floating -translate-x-1/2 pointer-events-auto">
+      <div className="absolute top-[clamp(3.5rem,7vh,5.75rem)] sm:top-[clamp(5.75rem,12vh,8rem)] left-1/2 z-floating -translate-x-1/2 pointer-events-auto">
         <div className="mode-switcher-shell glass-panel flex items-center rounded-full border border-white/5 p-1 shadow-lg">
           <button
             type="button"

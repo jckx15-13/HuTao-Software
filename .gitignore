@@ -36,3 +36,4 @@ docs/progress.md
 storybook-static
 tokens.json
 qa-tokens.json
+scripts/verification_harness/ui_error*

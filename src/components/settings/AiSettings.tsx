@@ -10,7 +10,7 @@ import {
   type CredentialProviderId
 } from '@/lib/credentials/apiCredentialEngine';
 import { getApiConnectorReadiness } from '@/lib/credentials/apiConnectorEngine';
-import { bridgeFetch } from '@/lib/bridgeConfig';
+import { bridgeFetch, bridgeUrl } from '@/lib/bridgeConfig';
 import { SettingsSection } from './SettingsSection';
 
 type CredentialDraft = {
@@ -131,7 +131,8 @@ export function AiSettings() {
     async function refreshBridgeConnectorStatus() {
       setBridgeConnectorStatus((current) => ({ ...current, status: 'checking', error: undefined }));
       try {
-        const response = await bridgeFetch('/api/connectors/providers?probe=true');
+        const endpoint = bridgeUrl('/api/connectors/providers?probe=true');
+        const response = await bridgeFetch(endpoint);
         if (!response.ok) {
           throw new Error(`Bridge returned ${response.status}`);
         }

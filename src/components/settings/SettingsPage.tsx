@@ -45,27 +45,27 @@ export function SettingsPage() {
       aria-modal="true"
       aria-label="Settings"
     >
-      <div className="w-full h-full flex overflow-hidden relative">
+      <div className="w-full h-full flex flex-col sm:flex-row overflow-hidden relative">
         
         {/* Close Button */}
         <button
           type="button"
           onClick={() => setCurrentPage('workspace')}
-          className="absolute top-6 right-6 z-content inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 p-2 text-white/40 hover:bg-white/10 hover:text-white/80 transition-all cursor-pointer shadow-lg"
+          className="absolute top-3 right-3 sm:top-6 sm:right-6 z-content inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 p-2 text-white/40 hover:bg-white/10 hover:text-white/80 transition-all cursor-pointer shadow-lg"
           aria-label="Exit Settings"
           title="Exit Settings"
         >
-          <X className="h-6 w-6" />
+          <X className="h-5 w-5 sm:h-6 sm:w-6" />
         </button>
 
         {/* Sidebar Nav */}
-        <aside className="w-[clamp(11rem,24vw,13.75rem)] bg-black/30 border-r border-white/5 p-4 flex flex-col font-mono shrink-0">
-          <div className="mb-6 px-2">
+        <aside className="w-full sm:w-[clamp(11rem,24vw,13.75rem)] bg-black/30 border-b sm:border-b-0 sm:border-r border-white/5 p-3 sm:p-4 flex flex-row sm:flex-col font-mono shrink-0 overflow-x-auto sm:overflow-x-visible scroller-none">
+          <div className="mb-0 sm:mb-6 px-2 shrink-0 flex flex-col justify-center">
             <span className="text-[10px] font-bold text-primary block tracking-[0.2em] uppercase">SYSTEM PANEL</span>
-            <span className="text-[8px] text-white/20 block tracking-widest mt-0.5">SILVER WOLF v6.5</span>
+            <span className="text-[8px] text-white/20 hidden sm:block tracking-widest mt-0.5">SILVER WOLF v6.5</span>
           </div>
 
-          <div className="flex-1 space-y-1">
+          <div className="flex flex-row sm:flex-col gap-1.5 sm:gap-1 flex-1 min-w-0 pr-12 sm:pr-0">
             {categories.map((cat) => {
               const Icon = cat.icon;
               const isActive = settingsCategory === cat.key;
@@ -74,14 +74,14 @@ export function SettingsPage() {
                   key={cat.key}
                   type="button"
                   onClick={() => setSettingsCategory(cat.key)}
-                  className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  className={`flex min-h-11 shrink-0 sm:shrink items-center gap-2 sm:gap-3 rounded-lg px-3 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-primary/20 text-primary border-l-2 border-primary font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
+                      ? 'bg-primary/20 text-primary border-b-2 sm:border-b-0 sm:border-l-2 border-primary font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
                       : 'text-white/40 hover:bg-white/5 hover:text-white/70'
                   }`}
                 >
                   <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : 'text-white/30'}`} />
-                  <span>{cat.label}</span>
+                  <span className="whitespace-nowrap">{cat.label}</span>
                 </button>
               );
             })}
@@ -89,16 +89,16 @@ export function SettingsPage() {
         </aside>
 
         {/* Content Viewport */}
-        <main className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 flex flex-col min-w-0 min-h-0">
           {/* Active section header */}
-          <div className="h-14 flex items-center px-6 border-b border-white/5 bg-black/10 shrink-0">
-            <h2 className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-white">
+          <div className="h-12 sm:h-14 flex items-center px-4 sm:px-6 border-b border-white/5 bg-black/10 shrink-0">
+            <h2 className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-white truncate pr-10 sm:pr-0">
               {categories.find((c) => c.key === settingsCategory)?.label}
             </h2>
           </div>
 
           {/* Section Body */}
-          <div className="flex-1 overflow-y-auto p-6 scroller">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 scroller">
             <Suspense fallback={<div className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/35">Loading settings...</div>}>
               {settingsCategory === 'personalisation' && (<>
                   <PersonalisationSettings />

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-25T17:30:13.814Z",
+  "timestamp": "2026-08-07T14:44:15.808Z",
   "services": {
     "vite": {
       "status": "online",
@@ -18,7 +18,7 @@
       "port": 8100
     }
   },
-  "database_seeding": "success",
+  "database_seeding": "failed",
   "mock_llm_server": "success",
   "ai_model_endpoint": {
     "status": "missing",
@@ -27,9 +27,9 @@
     "server_provider_count": 0
   },
   "server_provider_route": {
-    "status": "success",
-    "configured_count": 1,
-    "mode": "server-provider"
+    "status": "failed",
+    "configured_count": 0,
+    "error": "temporary provider Bridge did not become ready on port 8191"
   },
   "connector_provider_status": {
     "status": "success",
@@ -52,29 +52,33 @@
   },
   "feature_reality_ledger": {
     "status": "partial",
-    "integration_score": 66,
+    "integration_score": 72,
     "repository_count": 3,
     "feature_count": 9,
     "runtime_report_status": "FAIL"
   },
   "proxy_chat_flow": {
-    "status": "success",
-    "response": "Hello! I am a mock LLM response."
+    "status": "invalid_response",
+    "response": "Hello! Welcome to the system verification test. To better assist you, could you please provide the following details?  \n\n### **What is the system you're verifying?**  \n- **Type**: Software, hardware, process, algorithm, etc.  \n- **Purpose**: Functional validation, performance testing, security checks, compliance, etc.  \n\n### **What specific requirements or goals are you aiming to verify?**  \n- **Functional requirements**: Are the system features working as intended?  \n- **Performance**: Does it meet speed, scalability, or resource constraints?  \n- **Security**: Is it protected against vulnerabilities or threats?  \n- **Compliance**: Does it adhere to industry standards or regulations?  \n\n### **What tools or methodologies are you using?**  \n- Example: Agile, Waterfall, DevOps, CI/CD, etc.  \n\n---\n\n### **Example Scenario** (if you share details, I’ll tailor the response):  \n- **System**: A cloud-based payment gateway.  \n- **Goal**: Verify transaction processing speed and error handling.  \n- **Tools**: Postman for API testing, JMeter for load testing.  \n\n---\n\nLet me know your specifics, and I’ll guide you through the verification process! 🔍✨"
   },
   "ui_verification": {
-    "status": "success",
+    "status": "failed",
     "space_tab_found": true,
     "telemetry_view_found": true,
-    "settings_panel_found": true,
-    "ai_key_inputs_found": true,
+    "settings_panel_found": false,
+    "ai_key_inputs_found": false,
     "layout_overlap_check": {
       "status": "success",
       "major_overlap_count": 0,
       "samples": []
     }
   },
-  "overall_status": "PARTIAL",
+  "overall_status": "FAIL",
+  "error": "AI Settings panel not verified: {\"hasSettingsShell\":true,\"hasAiControls\":true,\"hasApiKeyInputs\":true,\"hasBridgeConnectorStatus\":false,\"hasSupportedConnectorCount\":true,\"hasProbeStatus\":true,\"hasApifyEnv\":true,\"hasNotionEnv\":true,\"hasSecretLeak\":false}",
   "partial_reasons": [
-    "no configured Odysseus or server-side AI provider model endpoint"
+    "no configured Odysseus or server-side AI provider model endpoint",
+    "server-provider route self-test failed: temporary provider Bridge did not become ready on port 8191",
+    "database seed failed: Command failed: python \"/home/admin/Documents/silver-wolf-vi/silver-wolf-vi/scripts/verification_harness/db_helper.py\" seed",
+    "unexpected proxy response: {\"response\":\"Hello! Welcome to the system verification test. To better assist you, could you please provide the following details?  \\n\\n### **What is the system you're verifying?**  \\n- **Type**: Software, hardware, process, algorithm, etc.  \\n- **Purpose**: Functional validation, performance testing, security checks, compliance, etc.  \\n\\n### **What specific requirements or goals are you aiming to verify?**  \\n- **Functional requirements**: Are the system features working as intended?  \\n- **Performance**: Does it meet speed, scalability, or resource constraints?  \\n- **Security**: Is it protected against vulnerabilities or threats?  \\n- **Compliance**: Does it adhere to industry standards or regulations?  \\n\\n### **What tools or methodologies are you using?**  \\n- Example: Agile, Waterfall, DevOps, CI/CD, etc.  \\n\\n---\\n\\n### **Example Scenario** (if you share details, I’ll tailor the response):  \\n- **System**: A cloud-based payment gateway.  \\n- **Goal**: Verify transaction processing speed and error handling.  \\n- **Tools**: Postman for API testing, JMeter for load testing.  \\n\\n---\\n\\nLet me know your specifics, and I’ll guide you through the verification process! 🔍✨\",\"mode\":\"local-runtime\",\"model\":\"qwen3:1.7b\",\"reason\":\"local Ollama endpoint\"}"
   ]
 }

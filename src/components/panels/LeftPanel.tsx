@@ -632,10 +632,16 @@ export function LeftPanel() {
   if (!leftPanelOpen) return null;
 
   return (
-    <aside
-      className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-panel h-auto min-h-0 bg-black/75"
-      style={spatialPanelStyle}
-    >
+    <>
+      <div
+        onClick={() => setLeftPanelOpen(false)}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-backdrop pointer-events-auto min-[760px]:hidden"
+        aria-hidden="true"
+      />
+      <aside
+        className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-panel h-auto min-h-0 bg-black/75"
+        style={spatialPanelStyle}
+      >
       {/* Header section */}
       <div className="flex h-12 items-center justify-between px-4 border-b border-white/10 shrink-0 bg-black/45">
         <div className="flex items-center gap-2">
@@ -1492,5 +1498,6 @@ export function LeftPanel() {
         </div>
       )}
     </aside>
+    </>
   );
 }

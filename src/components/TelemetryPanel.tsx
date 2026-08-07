@@ -27,8 +27,9 @@ export function TelemetryPanel() {
         </div>
         <button
           onClick={clearHistory}
-          className="p-1.5 rounded bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 transition-colors"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center p-2 rounded bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 transition-colors"
           title="Clear History"
+          aria-label="Clear telemetry history"
         >
           <Trash2 size={14} />
         </button>
