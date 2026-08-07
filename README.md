@@ -4,7 +4,30 @@
 
 An adaptive cyberpunk chat and astronomy workspace with a local diagnostic AI path, Gemini responses when configured, an optional Odysseus bridge, local chat history, ArcGIS/OSM globe imagery, Keplerian planet targeting, simulated telemetry, wallpaper-based theme extraction, and configurable interface controls.
 
+## Live Demo
+
+**[Open Silver Wolf VI on GitHub Pages](https://jckx15-13.github.io/HuTao-Software/)**
+
+The live demo is the static browser version of the app. It does not include the
+local Odysseus bridge, server-side API keys, or backend-only integrations.
+
 View your app in AI Studio: https://ai.studio/apps/d14a70cc-0c1f-444d-86d9-625b54096fee
+
+## GitHub Pages Deployment
+
+The site is deployed by
+[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) when
+changes are pushed to `main`. To enable or repair deployment:
+
+1. Open the repository's **Settings → Pages**.
+2. Set **Source** to **GitHub Actions**.
+3. Open **Actions → Deploy to GitHub Pages** and select **Run workflow**.
+4. Wait for both the **build** and **deploy** jobs to finish, then open the live
+   demo link above.
+
+If the link shows a 404, confirm that the repository is named
+`HuTao-Software`, the workflow has completed successfully, and Pages is
+configured to use GitHub Actions rather than a branch folder.
 
 ## Run Locally
 
