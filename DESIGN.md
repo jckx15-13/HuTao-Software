@@ -84,10 +84,43 @@ components:
     textColor: "{colors.text-muted}"
     padding: 4px 8px
     rounded: "{rounded.sm}"
+  status-pill-accent:
+    backgroundColor: "{colors.surface-strong}"
+    textColor: "{colors.accent}"
+    padding: 4px 8px
+    rounded: "{rounded.sm}"
+  status-pill-danger:
+    backgroundColor: "{colors.surface-strong}"
+    textColor: "{colors.danger}"
+    padding: 4px 8px
+    rounded: "{rounded.sm}"
   icon-button:
     size: 36
     backgroundColor: "rgba(11, 17, 34, 0.72)"
     textColor: "{colors.text-main}"
+    rounded: "{rounded.sm}"
+  button-primary-hover:
+    backgroundColor: "{colors.primary-hover}"
+    textColor: "{colors.on-primary}"
+  badge-accent:
+    backgroundColor: "{colors.accent-soft}"
+    textColor: "{colors.surface-strong}"
+    padding: 4px 8px
+    rounded: "{rounded.sm}"
+  badge-success:
+    backgroundColor: "{colors.success}"
+    textColor: "{colors.background}"
+    padding: 4px 8px
+    rounded: "{rounded.sm}"
+  badge-warning:
+    backgroundColor: "{colors.warning}"
+    textColor: "{colors.background}"
+    padding: 4px 8px
+    rounded: "{rounded.sm}"
+  badge-danger:
+    backgroundColor: "{colors.danger-soft}"
+    textColor: "{colors.surface-strong}"
+    padding: 4px 8px
     rounded: "{rounded.sm}"
 ---
 

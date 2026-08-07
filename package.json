@@ -17,7 +17,7 @@
     "lint:fix": "node ./node_modules/eslint/bin/eslint.js . --ext .ts,.tsx --fix",
     "test": "node scripts/test_cursor_engine.cjs && node scripts/test_physics_and_runtime.cjs && node scripts/test_integration_contracts.cjs",
     "design:lint": "node_modules/.bin/design.md lint DESIGN.md",
-    "design:spec": "node_modules/.bin/design.md spec",
+    "design:spec": "cp -n node_modules/@google/design.md/dist/linter/spec.md node_modules/@google/design.md/dist/spec.md 2>/dev/null || true; node_modules/.bin/design.md spec",
     "ui:audit": "node scripts/ui-audit.mjs",
     "ui:audit:fast": "node scripts/ui-audit.mjs --fast",
     "perf:check": "node scripts/perf-check.mjs",
