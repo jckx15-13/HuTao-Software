@@ -114,9 +114,18 @@ export function CenterPanel() {
           </div>
         )}
 
-        {/* Combined Space & Telescope Viewport Container */}
+        {/* Combined Space & Telescope Viewport Container. `fixed`, not
+            `absolute`: this is meant to be a full-bleed viewport background
+            with docked panels floating on top of it, but it sits inside
+            <main>'s now-padded content box (DockedLayout reserves rail space
+            there for Chat mode). As a normal-flow descendant it inherited
+            that narrowed width -- measured live at 26x395px instead of
+            spanning the screen, which is what made .orbital-hud-bar (a
+            child) render as a vertical sliver instead of a wide bar. `fixed`
+            escapes the padded flow entirely and anchors to the true
+            viewport. */}
         <div
-          className={`absolute inset-0 ${isSpaceMode ? 'z-content' : 'hidden pointer-events-none z-base'}`}
+          className={`fixed inset-0 ${isSpaceMode ? 'z-content' : 'hidden pointer-events-none z-base'}`}
           aria-hidden={!isSpaceMode}
         >
           {/* WorldWide Telescope controls overlay — wrapped in inline ErrorBoundary for graceful degradation */}
