@@ -93,47 +93,6 @@ export function computeFrustumEdges(params: FrustumParams): FrustumEdges {
 };
 }
 
-// ─── Cardinal direction helper ───────────────────────────────
-
-const CARDINAL_MAP: Record<string, number> = {
-    n: 0,
-north: 0,
-nb: 0,
-northbound: 0,
-    ne: 45,
-northeast: 45,
-neb: 45,
-    e: 90,
-east: 90,
-eb: 90,
-eastbound: 90,
-    se: 135,
-southeast: 135,
-seb: 135,
-    s: 180,
-south: 180,
-sb: 180,
-southbound: 180,
-    sw: 225,
-southwest: 225,
-swb: 225,
-    w: 270,
-west: 270,
-wb: 270,
-westbound: 270,
-    nw: 315,
-northwest: 315,
-nwb: 315,
-};
-
-/**
- * Convert a cardinal direction string to degrees.
- * Returns `undefined` if not recognised.
- */
-export function cardinalToHeading(dir: string): number | undefined {
-    return CARDINAL_MAP[dir.trim().toLowerCase()];
-}
-
 // ─── Internal math ───────────────────────────────────────────
 
 /**

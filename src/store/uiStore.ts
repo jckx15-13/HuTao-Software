@@ -627,7 +627,7 @@ export const useUIStore = create<UIStore>()(
         setIssTelemetry: (issTelemetry) => set({ issTelemetry }),
 
         // Satellite Ingestion & Tracker State
-        activeSatelliteId: null,
+        activeSatelliteId: 'iss',
         setActiveSatelliteId: (activeSatelliteId) => set({ activeSatelliteId }),
         satelliteCategories: {
           spaceStations: true,

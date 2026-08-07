@@ -32,6 +32,7 @@ import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
 import { propagateCircularOrbit, calculateOrbitalSpeed, calculateOrbitalPeriod } from '../../lib/simulation';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { buildSpatialPanelGeometry } from './panelGeometry';
+import { useResizablePanel } from '@/core/hooks/useResizablePanel';
 
 /**
  * Tab strip contents. Data-driven so the row has exactly one markup path — the
@@ -89,6 +90,14 @@ export function RightPanel() {
         rightPanelOpen
       }),
     [leftPanelOpen, rightPanelOpen, viewportSize]
+  );
+  const defaultPanelWidth = Math.min(420, Math.max(280, Math.round(viewportSize.width * 0.29)));
+  const { startResizing } = useResizablePanel(
+    defaultPanelWidth,
+    240,
+    Math.max(420, viewportSize.width - 80),
+    'right',
+    viewportSize.width >= 760
   );
 
   useEffect(() => {
@@ -182,8 +191,19 @@ export function RightPanel() {
   return (
     <aside
       className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-panel h-auto bg-black/75"
-      style={spatialPanelStyle}
+      style={{
+        ...spatialPanelStyle,
+        width: viewportSize.width >= 760
+          ? 'var(--right-sidebar-width, ' + spatialPanelStyle.width + ')'
+          : spatialPanelStyle.width
+      }}
     >
+      <div
+        aria-label="Resize right panel"
+        role="separator"
+        onMouseDown={startResizing}
+        className="absolute inset-y-0 -left-2 z-floating hidden w-4 cursor-col-resize md:block"
+      />
       {/* Header and Tab Switcher */}
       <div className="flex min-h-14 items-center justify-between gap-2 border-b border-white/10 bg-black/45 px-3 py-1.5">
         {/* Tab strip: horizontally scrollable, with edge fades and paging arrows

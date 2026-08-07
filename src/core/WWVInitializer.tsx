@@ -62,14 +62,16 @@ export function WWVInitializer({ children }: { children: React.ReactNode }) {
       await pluginManager.registerPlugin(wwvPublicCameras);
       pluginRegistry.register(wwvPublicCameras);
       
-      // Enable them by default
-      pluginManager.enablePlugin(earthquakes.id);
-      pluginManager.enablePlugin(weather.id);
-      pluginManager.enablePlugin(satellites.id);
-      pluginManager.enablePlugin(entityDensity.id);
-      pluginManager.enablePlugin(militaryBases.id);
-      pluginManager.enablePlugin(wwvAviation.id);
-      pluginManager.enablePlugin(wwvPublicCameras.id);
+      // Enable all built-in layers before revealing the application shell.
+      await Promise.all([
+        pluginManager.enablePlugin(earthquakes.id),
+        pluginManager.enablePlugin(weather.id),
+        pluginManager.enablePlugin(satellites.id),
+        pluginManager.enablePlugin(entityDensity.id),
+        pluginManager.enablePlugin(militaryBases.id),
+        pluginManager.enablePlugin(wwvAviation.id),
+        pluginManager.enablePlugin(wwvPublicCameras.id)
+      ]);
       
       // 3. Start Background Ingestion Services
       satelliteService.start();

@@ -59,6 +59,7 @@ import { WWV_ORBITAL_ASSET_BY_CATEGORY } from '@/assets/wwvVisualAssets';
 import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { buildSpatialPanelGeometry } from './panelGeometry';
+import { useResizablePanel } from '@/core/hooks/useResizablePanel';
 
 const COSMOS_BACKGROUND_OPTIONS = [
   { id: 'deep-black', label: 'DEEP BLACK', description: 'A clean, lightless cosmos.' },
@@ -410,6 +411,14 @@ export function LeftPanel() {
       }),
     [leftPanelOpen, rightPanelOpen, viewportSize]
   );
+  const defaultPanelWidth = Math.min(420, Math.max(280, Math.round(viewportSize.width * 0.29)));
+  const { startResizing } = useResizablePanel(
+    defaultPanelWidth,
+    240,
+    Math.max(420, viewportSize.width - 80),
+    'left',
+    viewportSize.width >= 760
+  );
 
   const SATELLITE_CATEGORIES_METADATA = {
     spaceStations: { label: 'Stations', color: '#00FFF7' },
@@ -619,8 +628,19 @@ export function LeftPanel() {
   return (
     <aside
       className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-panel h-auto min-h-0 bg-black/75"
-      style={spatialPanelStyle}
+      style={{
+        ...spatialPanelStyle,
+        width: viewportSize.width >= 760
+          ? 'var(--left-sidebar-width, ' + spatialPanelStyle.width + ')'
+          : spatialPanelStyle.width
+      }}
     >
+      <div
+        aria-label="Resize left panel"
+        role="separator"
+        onMouseDown={startResizing}
+        className="absolute inset-y-0 -right-2 z-floating hidden w-4 cursor-col-resize md:block"
+      />
       {/* Header section */}
       <div className="flex h-12 items-center justify-between px-4 border-b border-white/10 shrink-0 bg-black/45">
         <div className="flex items-center gap-2">

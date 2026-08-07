@@ -17,7 +17,13 @@ const clampWidthToViewport = (value: number, direction: 'left' | 'right') => {
     : value;
 };
 
-export function useResizablePanel(initialWidth: number, minWidth: number, maxWidth: number, direction: 'left' | 'right') {
+export function useResizablePanel(
+  initialWidth: number,
+  minWidth: number,
+  maxWidth: number,
+  direction: 'left' | 'right',
+  enabled = true
+) {
   const [width, setWidth] = useState(initialWidth);
   const currentWidthRef = useRef(initialWidth);
   const isResizing = useRef(false);
@@ -31,8 +37,12 @@ export function useResizablePanel(initialWidth: number, minWidth: number, maxWid
   }, [direction, minWidth, maxWidth]);
 
   useEffect(() => {
+    if (!enabled) {
+      document.documentElement.style.removeProperty(`--${direction}-sidebar-width`);
+      return;
+    }
     applyWidth(initialWidth);
-  }, [applyWidth, initialWidth]);
+  }, [applyWidth, direction, enabled, initialWidth]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -68,6 +78,7 @@ export function useResizablePanel(initialWidth: number, minWidth: number, maxWid
   }, [applyWidth, direction, minWidth, maxWidth]);
 
   const startResizing = (e: React.MouseEvent) => {
+    if (!enabled) return;
     e.preventDefault();
     isResizing.current = true;
     document.body.style.cursor = 'col-resize';

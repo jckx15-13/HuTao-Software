@@ -1,6 +1,7 @@
 import { useEffect, useRef, useMemo } from 'react';
 import type { Viewer } from 'cesium';
 import { useStore } from '@/core/state/store';
+import { useUIStore } from '@/store/uiStore';
 import { pluginManager } from '@/core/plugins/PluginManager';
 import { initPrimitiveCollections, AnimatableItem } from '@/core/globe/EntityRenderer';
 import { setupInteractionHandlers } from '@/core/globe/InteractionHandler';
@@ -24,6 +25,7 @@ export function useWWVGlobe(viewer: Viewer | null) {
   const entitiesByPlugin = useStore((s) => s.entitiesByPlugin);
   const mapConfig = useStore((s) => s.mapConfig);
   const selectedEntity = useStore((s) => s.selectedEntity);
+  const activeSatelliteId = useUIStore((s) => s.activeSatelliteId);
 
   // Initialize primitive collections once when viewer is ready
   useEffect(() => {
@@ -66,6 +68,16 @@ export function useWWVGlobe(viewer: Viewer | null) {
     return visibleEntities.filter((item) => item.options.type === 'hexagon');
   }, [visibleEntities]);
 
+  const activeSatelliteEntity = useMemo(() => {
+    if (!activeSatelliteId) return null;
+    return visibleEntities.find(({ entity }) => entity.id === `sat-${activeSatelliteId}`)?.entity ?? null;
+  }, [activeSatelliteId, visibleEntities]);
+
+  const frustumEntity =
+    selectedEntity && selectedEntity.pluginId === 'satellites'
+      ? selectedEntity
+      : activeSatelliteEntity;
+
   // Hook up standard billboard rendering loop
   useEntityRendering(
     viewer,
@@ -90,7 +102,7 @@ export function useWWVGlobe(viewer: Viewer | null) {
   useTrailRendering(viewer, isReady, animatablesMapRef);
 
   // Hook up selected satellite sensor frustums (conical footprint projection)
-  useSatelliteFrustum(viewer, isReady, selectedEntity, animatablesMapRef);
+  useSatelliteFrustum(viewer, isReady, frustumEntity, animatablesMapRef);
 
   // Hook up 3D hexagonal markers (seismic cylinders with slices: 6)
   useHexagonRendering(viewer, isReady, hexagonEntities);
