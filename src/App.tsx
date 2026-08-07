@@ -50,7 +50,6 @@ export default function App() {
   const particleEffects = useUIStore((state) => state.particleEffects);
   const motionReduced = useUIStore((state) => state.personalisation.motionReduced);
   const animationIntensity = useUIStore((state) => state.personalisation.animationIntensity);
-  const spaceBlendOpacity = useUIStore((state) => state.spaceBlendOpacity);
   const cosmosBackgroundMode = useUIStore((state) => state.cosmosBackgroundMode);
   const spaceInteractionTarget = useUIStore((state) => state.spaceInteractionTarget);
 
@@ -162,7 +161,10 @@ export default function App() {
                 className="absolute inset-0 transition-all duration-500 ease-in-out"
                 style={{
                   zIndex: 'calc(var(--theme-z-base) + 1)',
-                  opacity: isSpaceMode ? (isTelescopeTarget ? Math.max(0.92, spaceBlendOpacity) : 1.0) : 1.0,
+                  // Telescope mode belongs to WWT. Keeping Cesium's imagery
+                  // visible here paints its geographic survey tiles over the
+                  // WWT solar-system canvas.
+                  opacity: isSpaceMode && isTelescopeTarget ? 0 : 1.0,
                   pointerEvents: isSpaceMode && isEarthTarget ? 'auto' : 'none'
                 }}
               >

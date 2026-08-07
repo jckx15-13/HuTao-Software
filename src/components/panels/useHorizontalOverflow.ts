@@ -91,6 +91,18 @@ export function useHorizontalOverflow<T extends HTMLElement>(): HorizontalOverfl
     setScroller(node);
   }, []);
 
+  // Synchronous read, used for the FIRST measurement after the scroller attaches.
+  // Deferring that one to requestAnimationFrame left `hasOverflow` false forever
+  // in practice — the affordance never mounted despite 140px of real overflow —
+  // because the frame could be cancelled by the effect cleanup (or go unserviced
+  // while the panel was still transitioning) with nothing re-triggering it.
+  // Event-driven re-measures stay coalesced through scheduleMeasure below.
+  const measureNow = useCallback(() => {
+    if (!scroller) return;
+    const next = readOverflowState(scroller);
+    setState((previous) => (isSameState(previous, next) ? previous : next));
+  }, [scroller]);
+
   const scheduleMeasure = useCallback(() => {
     if (!scroller) return;
 
@@ -119,7 +131,11 @@ export function useHorizontalOverflow<T extends HTMLElement>(): HorizontalOverfl
     // harmless because nothing renders, and remounting re-measures below.
     if (!scroller) return;
 
-    scheduleMeasure();
+    // Read immediately, then again on the next frame: the synchronous pass is
+    // what actually lands, while the deferred one catches layout that settles
+    // after the panel's 300ms open transition.
+    measureNow();
+    const settleTimer = window.setTimeout(measureNow, 350);
     scroller.addEventListener('scroll', scheduleMeasure, { passive: true });
 
     let resizeObserver: ResizeObserver | undefined;
@@ -134,6 +150,7 @@ export function useHorizontalOverflow<T extends HTMLElement>(): HorizontalOverfl
     }
 
     return () => {
+      window.clearTimeout(settleTimer);
       scroller.removeEventListener('scroll', scheduleMeasure);
       resizeObserver?.disconnect();
       if (frameRef.current !== null) {
@@ -141,7 +158,7 @@ export function useHorizontalOverflow<T extends HTMLElement>(): HorizontalOverfl
         frameRef.current = null;
       }
     };
-  }, [scheduleMeasure, scroller]);
+  }, [measureNow, scheduleMeasure, scroller]);
 
   const scrollByPage = useCallback(
     (direction: -1 | 1) => {

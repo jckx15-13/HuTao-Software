@@ -296,11 +296,7 @@ export function LauncherPage() {
               <Terminal className="h-3.5 w-3.5 shrink-0" />
               <span id="launcher-diagnostic-label">Diagnostic Output Terminal</span>
             </span>
-            {logsExpanded ? (
-              <ChevronUp className="h-3 w-3 shrink-0" />
-            ) : (
-              <ChevronDown className="h-3 w-3 shrink-0" />
-            )}
+            {logsExpanded ? <ChevronUp className="h-3 w-3 shrink-0" /> : <ChevronDown className="h-3 w-3 shrink-0" />}
           </button>
 
           {logsExpanded && (

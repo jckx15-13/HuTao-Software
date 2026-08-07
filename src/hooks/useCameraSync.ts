@@ -24,10 +24,7 @@ function cameraHeightToWwtFovDegrees(camera: Cesium.Camera): number {
  * Handles bidirectional synchronization between Cesium (Earth) and WWT (Stars).
  * Implements a Mutex lock to prevent infinite feedback loops.
  */
-export function useCameraSync(
-  viewer: Cesium.Viewer | null,
-  postToWWT: (msg: any) => void
-) {
+export function useCameraSync(viewer: Cesium.Viewer | null, postToWWT: (msg: any) => void, enabled: boolean = true) {
   const syncSource = useUIStore((s) => s.syncSource);
   const setSyncSource = useUIStore((s) => s.setSyncSource);
   const setTelescopeTelemetry = useUIStore((s) => s.setTelescopeTelemetry);
@@ -38,7 +35,11 @@ export function useCameraSync(
 
   // 1. Sync from Cesium to WWT
   useEffect(() => {
-    if (!viewer) return;
+    // Disabled while WWT holds the fixed Earth-Moon vantage: that view's
+    // position/FOV is a deliberate constant (see WWT_EARTH_MOON_ORBIT_FOV_DEGREES
+    // in WorldWideTelescopeView.tsx), and piping Cesium's independent globe
+    // camera in here would immediately overwrite it.
+    if (!viewer || !enabled) return;
 
     const handleCesiumChange = () => {
       // If WWT is currently the master, ignore Cesium updates
@@ -54,12 +55,9 @@ export function useCameraSync(
 
       const camera = viewer.camera;
       const dir = camera.direction;
-      
+
       // Convert ECEF direction to Celestial RA/Dec
-      const celestial = ecefToCelestial(
-        { x: dir.x, y: dir.y, z: dir.z },
-        new Date()
-      );
+      const celestial = ecefToCelestial({ x: dir.x, y: dir.y, z: dir.z }, new Date());
 
       const roll = Cesium.Math.toDegrees(camera.roll);
 
@@ -73,7 +71,7 @@ export function useCameraSync(
         dec: celestial.dec,
         roll: roll,
         fov: cameraHeightToWwtFovDegrees(camera),
-        instant: true,
+        instant: true
       });
 
       lastSyncTimeRef.current = now;
@@ -96,21 +94,21 @@ export function useCameraSync(
         viewer.camera.moveEnd.removeEventListener(handleMoveEnd);
       }
     };
-  }, [viewer, syncSource, setSyncSource, setTelescopeTelemetry, postToWWT]);
+  }, [viewer, enabled, syncSource, setSyncSource, setTelescopeTelemetry, postToWWT]);
 
   // 2. Sync from WWT to Cesium
-  // This side is triggered when telescopeTelemetry changes AND syncSource is 'wwt'
+  // This side is triggered when telescopeTelemetry changes AND syncSource is 'wwt'.
+  // Also disabled in fixed-vantage mode: dragging within WWT to orbit around
+  // Earth still emits ra/dec/roll via useWWTListener, but that should not spin
+  // the unrelated Cesium globe camera.
   useEffect(() => {
-    if (!viewer || syncSource !== 'wwt' || !telescopeTelemetry) return;
+    if (!viewer || !enabled || syncSource !== 'wwt' || !telescopeTelemetry) return;
 
     const now = Date.now();
     if (now - lastSyncTimeRef.current < SYNC_THROTTLE_MS) return;
 
     // Convert Celestial RA/Dec back to ECEF direction
-    const dir = celestialToEcef(
-      { ra: telescopeTelemetry.ra, dec: telescopeTelemetry.dec },
-      new Date()
-    );
+    const dir = celestialToEcef({ ra: telescopeTelemetry.ra, dec: telescopeTelemetry.dec }, new Date());
 
     // Update Cesium camera direction
     // Note: We keep the current position and just change orientation
@@ -120,10 +118,10 @@ export function useCameraSync(
       orientation: {
         direction: new Cesium.Cartesian3(dir.x, dir.y, dir.z),
         up: viewer.camera.up, // Keep current UP vector to prevent unwanted tilting
-        roll: Cesium.Math.toRadians(telescopeTelemetry.roll),
-      },
+        roll: Cesium.Math.toRadians(telescopeTelemetry.roll)
+      }
     });
 
     lastSyncTimeRef.current = now;
-  }, [viewer, syncSource, telescopeTelemetry]);
+  }, [viewer, enabled, syncSource, telescopeTelemetry]);
 }

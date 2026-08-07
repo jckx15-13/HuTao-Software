@@ -1,17 +1,10 @@
 import type { TelescopePreset as UITelescopePreset } from '@/store/uiStore';
-import {
-  apparentPlanetEquatorialCoordinates,
-  formatDecDegrees,
-  formatRaHours,
-  type PlanetId,
-} from '@/lib/astronomy';
 
 export interface TelescopePreset extends UITelescopePreset {
   id: string;
   raHours: number;
   decDegrees: number;
   color: string;
-  planetId?: PlanetId;
 }
 
 export interface ResolvedTelescopeCoordinates {
@@ -19,31 +12,24 @@ export interface ResolvedTelescopeCoordinates {
   decDegrees: number;
   ra: string;
   dec: string;
-  distanceAu?: number;
-  lightTimeMinutes?: number;
-  source: 'fixed-catalog' | 'kepler-planet';
+  source: 'fixed-catalog';
 }
 
+// Planet targets (Mercury..Neptune) were removed: this view is a fixed vantage
+// between Earth and the Moon, not a solar-system navigator, so "fly to and
+// zoom into a planet" is intentionally out of scope. All remaining presets
+// resolve from the fixed deep-sky catalog below. `date` is kept as a parameter
+// for call-site compatibility even though this catalog path ignores it.
 export function resolveTelescopePresetCoordinates(
   preset: TelescopePreset,
-  date: Date = new Date(),
+  _date: Date = new Date()
 ): ResolvedTelescopeCoordinates {
-  if (preset.planetId) {
-    const resolved = apparentPlanetEquatorialCoordinates(preset.planetId, date);
-    return {
-      ...resolved,
-      ra: formatRaHours(resolved.raHours),
-      dec: formatDecDegrees(resolved.decDegrees),
-      source: 'kepler-planet',
-    };
-  }
-
   return {
     raHours: preset.raHours,
     decDegrees: preset.decDegrees,
     ra: preset.ra,
     dec: preset.dec,
-    source: 'fixed-catalog',
+    source: 'fixed-catalog'
   };
 }
 
@@ -58,7 +44,7 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     description: 'Panoramic multi-wavelength view of the celestial sphere.',
     raHours: 0,
     decDegrees: 0,
-    color: '#88d2ff',
+    color: '#88d2ff'
   },
   {
     id: 'andromeda',
@@ -70,7 +56,7 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     description: 'Our nearest major galactic neighbor, located 2.5 million light-years away.',
     raHours: 0.712,
     decDegrees: 41.27,
-    color: '#FF00AA',
+    color: '#FF00AA'
   },
   {
     id: 'orion',
@@ -82,7 +68,7 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     description: 'A massive star-forming nursery located in the Orion Constellation.',
     raHours: 5.58,
     decDegrees: -5.38,
-    color: '#FF5500',
+    color: '#FF5500'
   },
   {
     id: 'pillars-of-creation',
@@ -94,7 +80,7 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     description: 'Eagle Nebula interstellar gas clouds imaged by Hubble/JWST.',
     raHours: 18.314,
     decDegrees: -13.82,
-    color: '#00FFCC',
+    color: '#00FFCC'
   },
   {
     id: 'crab-nebula',
@@ -106,101 +92,7 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     description: 'Supernova remnant from the stellar explosion recorded in 1054 AD.',
     raHours: 5.575,
     decDegrees: 22.01,
-    color: '#FFAA00',
-  },
-  {
-    id: 'mercury',
-    name: 'Planet Mercury',
-    url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Mercury',
-    ra: '00h 00m 00s',
-    dec: '00° 00\' 00"',
-    fov: '60.00°',
-    description: 'Fast inner planet target resolved from light-time-corrected Keplerian ephemeris.',
-    raHours: 0,
-    decDegrees: 0,
-    color: '#B8B1A6',
-    planetId: 'mercury',
-  },
-  {
-    id: 'venus',
-    name: 'Planet Venus',
-    url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Venus',
-    ra: '00h 00m 00s',
-    dec: '00° 00\' 00"',
-    fov: '60.00°',
-    description: 'Bright inner planet target resolved from light-time-corrected Keplerian ephemeris.',
-    raHours: 0,
-    decDegrees: 0,
-    color: '#F6DFA8',
-    planetId: 'venus',
-  },
-  {
-    id: 'mars',
-    name: 'Planet Mars',
-    url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Mars',
-    ra: '00h 00m 00s',
-    dec: '00° 00\' 00"',
-    fov: '60.00°',
-    description: 'Orthographic geological surface mapping of the Red Planet.',
-    raHours: 9.3,
-    decDegrees: 15.6,
-    color: '#FF3333',
-    planetId: 'mars',
-  },
-  {
-    id: 'jupiter',
-    name: 'Planet Jupiter',
-    url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Jupiter',
-    ra: '00h 00m 00s',
-    dec: '00° 00\' 00"',
-    fov: '60.00°',
-    description: 'Gas giant atmospheric bands and Jovian satellite orbit tracks.',
-    raHours: 13.8,
-    decDegrees: -8.4,
-    color: '#EAA67B',
-    planetId: 'jupiter',
-  },
-  {
-    id: 'saturn',
-    name: 'Planet Saturn',
-    url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Saturn',
-    ra: '00h 00m 00s',
-    dec: '00° 00\' 00"',
-    fov: '60.00°',
-    description: 'Ringed gas giant planet and its complex satellite system.',
-    raHours: 15.3,
-    decDegrees: -16.5,
-    color: '#F4E3B1',
-    lookAt: 'Saturn',
-    planetId: 'saturn',
-  },
-  {
-    id: 'uranus',
-    name: 'Planet Uranus',
-    url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Uranus',
-    ra: '00h 00m 00s',
-    dec: '00° 00\' 00"',
-    fov: '60.00°',
-    description: 'Ice giant target resolved from light-time-corrected Keplerian ephemeris.',
-    raHours: 0,
-    decDegrees: 0,
-    color: '#8FD8D8',
-    lookAt: 'Uranus',
-    planetId: 'uranus',
-  },
-  {
-    id: 'neptune',
-    name: 'Planet Neptune',
-    url: 'https://worldwidetelescope.org/webclient/?ra=0&dec=0&fov=60&lookAt=Neptune',
-    ra: '00h 00m 00s',
-    dec: '00° 00\' 00"',
-    fov: '60.00°',
-    description: 'Distant ice giant planet known for its deep blue color and active winds.',
-    raHours: 23.5,
-    decDegrees: -4.5,
-    color: '#4B70DD',
-    lookAt: 'Neptune',
-    planetId: 'neptune',
+    color: '#FFAA00'
   },
   {
     id: 'ring-nebula',
@@ -212,7 +104,7 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     description: 'Archetypal planetary nebula in the Lyra constellation formed by a dying star.',
     raHours: 18.885,
     decDegrees: 33.03,
-    color: '#E5C158',
+    color: '#E5C158'
   },
   {
     id: 'sombrero-galaxy',
@@ -224,7 +116,7 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     description: 'Unusually large central bulge and prominent dark dust lane in Virgo.',
     raHours: 12.667,
     decDegrees: -11.62,
-    color: '#A370F7',
+    color: '#A370F7'
   },
   {
     id: 'pleiades',
@@ -236,6 +128,6 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     description: 'Bright open cluster of blue B-type stars in Taurus, enveloped in reflection nebulae.',
     raHours: 3.78,
     decDegrees: 24.1,
-    color: '#5BFFD2',
-  },
+    color: '#5BFFD2'
+  }
 ];

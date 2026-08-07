@@ -76,10 +76,6 @@ export function DockedLayout() {
           Uses pointer-events-none so mouse interaction drops down to Cesium 3D canvas layer. */}
       <main
         className="flex-1 flex flex-col relative z-content bg-transparent pointer-events-none"
-        style={{
-          paddingLeft: 'max(0px, calc(var(--workspace-left-rail, 0px) + 0.75rem))',
-          paddingRight: 'max(0px, calc(var(--workspace-right-rail, 0px) + 0.75rem))'
-        }}
       >
         <div className="w-full h-full relative pointer-events-none">
           <CenterPanel />

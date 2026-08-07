@@ -181,7 +181,7 @@ export function RightPanel() {
 
   return (
     <aside
-      className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-40 h-auto bg-black/75"
+      className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-panel h-auto bg-black/75"
       style={spatialPanelStyle}
     >
       {/* Header and Tab Switcher */}

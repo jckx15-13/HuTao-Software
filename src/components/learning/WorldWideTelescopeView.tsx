@@ -1,10 +1,32 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Sparkles, Compass, Eye, RefreshCw, X, Maximize2, Minimize2,
-  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Play, Pause,
-  Calendar, Clock, Image as ImageIcon, Layers, Search,
-  MapPin, Grid, Plus, Check, Info, Radio, Star
+  Sparkles,
+  Compass,
+  Eye,
+  RefreshCw,
+  X,
+  Maximize2,
+  Minimize2,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Play,
+  Pause,
+  Calendar,
+  Clock,
+  Image as ImageIcon,
+  Layers,
+  Search,
+  MapPin,
+  Grid,
+  Plus,
+  Check,
+  Info,
+  Radio,
+  Star
 } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '@/core/state/store';
@@ -15,26 +37,78 @@ import { pluginManager } from '@/core/plugins/PluginManager';
 import { useCameraSync } from '@/hooks/useCameraSync';
 import { useWWTListener } from '@/hooks/useWWTListener';
 import { formatRA, formatDec, precessEquatorialJ2000ToDate, raHoursToDegrees } from '@/lib/coordinateTransforms';
-import {
-  projectTelescopeTargetToEarth,
-  projectTelescopeTargetToObserverView,
-} from '@/lib/earthObserverProjection';
+import { projectTelescopeTargetToEarth, projectTelescopeTargetToObserverView } from '@/lib/earthObserverProjection';
 
 const BACKGROUND_LAYERS = [
-  { id: 'solar-system', name: '3D Solar System (Earth-centered)', value: '3D Solar System View', desc: 'WWT solar-system view tracked on Earth.' },
-  { id: 'dss', name: 'Digitized Sky Survey (Color)', value: 'Digitized Sky Survey (Color)', desc: 'Visible light survey mapping the sky.' },
-  { id: 'visible', name: 'Visible Imagery', value: 'Visible Imagery', desc: 'Default visible spectrum optical composite.' },
-  { id: 'hubble', name: 'Hubble Space Telescope', value: 'Hubble Space Telescope Imagery', desc: 'Ultra-high-res deep space observations.' },
-  { id: 'chandra', name: 'Chandra (X-Ray)', value: 'RASS: ROSAT All Sky Survey (X-ray)', desc: 'High-energy X-ray universe scan.' },
-  { id: 'planck', name: 'Planck Dust & Gas', value: 'Planck Dust & Gas', desc: 'Interstellar dust and CMB microwave spectrum.' },
-  { id: 'radio', name: 'Radio (VLSS)', value: 'VLSS: VLA Low-frequency Sky Survey (Radio)', desc: 'Low-frequency radio sky map.' }
+  {
+    id: 'solar-system',
+    name: '3D Solar System (Earth-centered)',
+    value: '3D Solar System View',
+    desc: 'WWT solar-system view tracked on Earth.'
+  },
+  {
+    id: 'dss',
+    name: 'Digitized Sky Survey (Color)',
+    value: 'Digitized Sky Survey (Color)',
+    desc: 'Visible light survey mapping the sky.'
+  },
+  {
+    id: 'visible',
+    name: 'Visible Imagery',
+    value: 'Visible Imagery',
+    desc: 'Default visible spectrum optical composite.'
+  },
+  {
+    id: 'hubble',
+    name: 'Hubble Space Telescope',
+    value: 'Hubble Space Telescope Imagery',
+    desc: 'Ultra-high-res deep space observations.'
+  },
+  {
+    id: 'chandra',
+    name: 'Chandra (X-Ray)',
+    value: 'RASS: ROSAT All Sky Survey (X-ray)',
+    desc: 'High-energy X-ray universe scan.'
+  },
+  {
+    id: 'planck',
+    name: 'Planck Dust & Gas',
+    value: 'Planck Dust & Gas',
+    desc: 'Interstellar dust and CMB microwave spectrum.'
+  },
+  {
+    id: 'radio',
+    name: 'Radio (VLSS)',
+    value: 'VLSS: VLA Low-frequency Sky Survey (Radio)',
+    desc: 'Low-frequency radio sky map.'
+  }
 ];
 
 const PHOTO_COLLECTIONS = [
-  { id: 'hubble', name: 'Hubble Heritage', url: 'https://worldwidetelescope.org/webclient/docs/wtml/hubbleheritage.wtml', desc: 'Panoramic collections of star fields and nebulae.' },
-  { id: 'spitzer', name: 'Spitzer Infrared', url: 'https://worldwidetelescope.org/webclient/docs/wtml/spitzer.wtml', desc: 'Infrared penetrations of stellar nurseries.' },
-  { id: 'chandra', name: 'Chandra X-Ray', url: 'https://worldwidetelescope.org/webclient/docs/wtml/chandra.wtml', desc: 'Hot gas remnants of supernovas.' },
-  { id: 'astrophoto', name: 'Astrophotography', url: 'https://worldwidetelescope.org/webclient/docs/wtml/astrophoto.wtml', desc: 'Top images from worldwide observatories.' }
+  {
+    id: 'hubble',
+    name: 'Hubble Heritage',
+    url: 'https://worldwidetelescope.org/webclient/docs/wtml/hubbleheritage.wtml',
+    desc: 'Panoramic collections of star fields and nebulae.'
+  },
+  {
+    id: 'spitzer',
+    name: 'Spitzer Infrared',
+    url: 'https://worldwidetelescope.org/webclient/docs/wtml/spitzer.wtml',
+    desc: 'Infrared penetrations of stellar nurseries.'
+  },
+  {
+    id: 'chandra',
+    name: 'Chandra X-Ray',
+    url: 'https://worldwidetelescope.org/webclient/docs/wtml/chandra.wtml',
+    desc: 'Hot gas remnants of supernovas.'
+  },
+  {
+    id: 'astrophoto',
+    name: 'Astrophotography',
+    url: 'https://worldwidetelescope.org/webclient/docs/wtml/astrophoto.wtml',
+    desc: 'Top images from worldwide observatories.'
+  }
 ];
 
 const FALLBACK_STAR_FIELD = Array.from({ length: 96 }, (_, index) => ({
@@ -42,7 +116,7 @@ const FALLBACK_STAR_FIELD = Array.from({ length: 96 }, (_, index) => ({
   x: ((index * 37) % 1000) / 10,
   y: ((index * 83) % 1000) / 10,
   radius: index % 11 === 0 ? 0.24 : index % 5 === 0 ? 0.16 : 0.1,
-  opacity: 0.18 + ((index * 19) % 50) / 100,
+  opacity: 0.18 + ((index * 19) % 50) / 100
 }));
 
 type ProjectedConstellationStar = {
@@ -65,7 +139,7 @@ type ProjectedConstellationOverlay = {
 };
 
 function CrashComponent(): any {
-  throw new Error("Simulated Telescope Crash");
+  throw new Error('Simulated Telescope Crash');
 }
 
 type WwtRuntimeState = 'Connecting' | 'Static fallback' | 'WWT iframe loaded' | 'WWT unavailable';
@@ -75,6 +149,30 @@ const WWT_LOAD_WATCHDOG_MS = 45_000;
 const WWT_RESEARCH_APP_URL = 'https://web.wwtassets.org/research/latest/';
 const WWT_SOLAR_SYSTEM_LAYER = '3D Solar System View';
 const WWT_EARTH_TRACK_CODE = 19;
+
+// Fixed Earth-Moon vantage. This view is a locked orbit position between
+// Earth and the Moon, not a solar-system navigator: Earth is the pivot, and
+// there is no camera flight to other planets (see the removed planetId
+// entries in data/telescopePresets.ts).
+//
+// R_E = Earth equatorial radius (km), matches EARTH_RADIUS_METERS in
+//       useCameraSync.ts so both files agree on the same body.
+// d_EM = mean Earth-Moon center-to-center distance (km), IAU mean value.
+// d    = camera distance from Earth's center. Default is the geometric
+//        midpoint of (R_E, d_EM); a bounded slider can vary this later
+//        without changing the formula below.
+//
+// Angular radius of a sphere of radius R viewed from distance d (from its
+// center) is the exact relation theta = arcsin(R / d), not the small-angle
+// approximation 2*atan(R/h) already used for near-Earth framing in
+// cameraHeightToWwtFovDegrees (useCameraSync.ts) -- that approximation
+// carries a ~3.4% systematic error at these distances, since it substitutes
+// altitude-above-surface for true center-distance.
+const WWT_EARTH_MOON_R_E_KM = 6_378.137;
+const WWT_EARTH_MOON_D_EM_KM = 384_400;
+const WWT_EARTH_MOON_ORBIT_DISTANCE_KM = WWT_EARTH_MOON_D_EM_KM / 2; // 192,200 km
+const WWT_EARTH_MOON_ORBIT_FOV_DEGREES =
+  2 * (Math.asin(WWT_EARTH_MOON_R_E_KM / WWT_EARTH_MOON_ORBIT_DISTANCE_KM) * (180 / Math.PI)); // 3.8034°
 
 const clampPx = (value: number, min: number, max: number): number => {
   const normalized = Math.round(value);
@@ -95,7 +193,7 @@ function readSharedWwtRuntimeState(): WwtRuntimeState {
 
 export default function WorldWideTelescopeView({
   bgOnly = false,
-  controlsOnly = false,
+  controlsOnly = false
 }: {
   bgOnly?: boolean;
   controlsOnly?: boolean;
@@ -135,7 +233,7 @@ export default function WorldWideTelescopeView({
   // Resolve telescopeTarget to data-level TelescopePreset
   const activePreset = useMemo(() => {
     if (!telescopeTarget || !telescopeTarget.name) return presets[0];
-    return presets.find(p => p.name === telescopeTarget.name) || presets[0];
+    return presets.find((p) => p.name === telescopeTarget.name) || presets[0];
   }, [telescopeTarget]);
 
   // Core Zustand state for timeline syncing
@@ -156,7 +254,7 @@ export default function WorldWideTelescopeView({
   const coordinateDate = useMemo(() => safeCurrentTime || new Date(defaultTime), [defaultTime, safeCurrentTime]);
   const activePresetCoordinates = useMemo(
     () => resolveTelescopePresetCoordinates(activePreset, coordinateDate),
-    [activePreset, coordinateDate],
+    [activePreset, coordinateDate]
   );
   const earthReferenceFrame = useMemo(() => {
     const projection = projectTelescopeTargetToEarth(
@@ -170,42 +268,43 @@ export default function WorldWideTelescopeView({
       longitude: projection.longitudeLabel,
       latitude: projection.latitudeLabel,
       frameLabel: spaceInteractionTarget === 'telescope' ? 'Telescope focus' : 'Earth focus',
-      coordinateSource: activePresetCoordinates.source,
-      lightTimeMinutes: activePresetCoordinates.lightTimeMinutes,
+      coordinateSource: activePresetCoordinates.source
     };
   }, [activePresetCoordinates, coordinateDate, spaceInteractionTarget]);
 
   const [viewportSize, setViewportSize] = useState(() => ({
     width: typeof window !== 'undefined' ? window.innerWidth : 1440,
-    height: typeof window !== 'undefined' ? window.innerHeight : 900,
+    height: typeof window !== 'undefined' ? window.innerHeight : 900
   }));
   const initialWindowSize = spaceInteractionTarget === 'telescope' ? 'minimized' : 'normal';
   const [windowSize, setWindowSize] = useState<'normal' | 'large' | 'minimized'>(initialWindowSize);
 
   // Floating Space Control Drawer State
   const [drawerOpen, setDrawerOpen] = useState(() => spaceInteractionTarget !== 'telescope');
-  const [activeControlTab, setActiveControlTab] = useState<'navigator' | 'overlays' | 'imagery' | 'photos'>('navigator');
+  const [activeControlTab, setActiveControlTab] = useState<'navigator' | 'overlays' | 'imagery' | 'photos'>(
+    'navigator'
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [telemetryTimelineCollapsed, setTelemetryTimelineCollapsed] = useState(true);
 
   const panelInsetPx = clampPx(viewportSize.width * 0.22, 160, 360);
-  const leftPanelInset = leftPanelOpen
-    ? clampPx(panelInsetPx, 176, 336)
-    : clampPx(viewportSize.width * 0.025, 12, 20);
-  const rightPanelInset = rightPanelOpen
-    ? clampPx(panelInsetPx, 180, 344)
-    : clampPx(panelInsetPx * 0.96, 140, 328);
+  const leftPanelInset = leftPanelOpen ? clampPx(panelInsetPx, 176, 336) : clampPx(viewportSize.width * 0.025, 12, 20);
+  const rightPanelInset = rightPanelOpen ? clampPx(panelInsetPx, 180, 344) : clampPx(panelInsetPx * 0.96, 140, 328);
 
-  const workspaceInsets = useMemo(() => ({
-    left: leftPanelInset,
-    right: rightPanelInset,
-    top: clampPx(viewportSize.height * 0.075, 56, 88),
-    bottom: spaceInteractionTarget === 'telescope'
-      ? (telemetryTimelineCollapsed
-        ? clampPx(viewportSize.height * 0.11, 84, 108)
-        : clampPx(viewportSize.height * 0.205, 132, 206))
-      : clampPx(viewportSize.height * 0.075, 62, 84),
-  }), [leftPanelInset, rightPanelInset, spaceInteractionTarget, telemetryTimelineCollapsed]);
+  const workspaceInsets = useMemo(
+    () => ({
+      left: leftPanelInset,
+      right: rightPanelInset,
+      top: clampPx(viewportSize.height * 0.075, 56, 88),
+      bottom:
+        spaceInteractionTarget === 'telescope'
+          ? telemetryTimelineCollapsed
+            ? clampPx(viewportSize.height * 0.11, 84, 108)
+            : clampPx(viewportSize.height * 0.205, 132, 206)
+          : clampPx(viewportSize.height * 0.075, 62, 84)
+    }),
+    [leftPanelInset, rightPanelInset, spaceInteractionTarget, telemetryTimelineCollapsed]
+  );
 
   const drawerWidth = clampPx(
     Math.min(
@@ -219,21 +318,24 @@ export default function WorldWideTelescopeView({
   const pipSafeLeft = workspaceInsets.left + drawerReserveWidth + (drawerReserveWidth ? 16 : 0);
   const pipViewportBounds = {
     width: Math.max(viewportSize.width, typeof window !== 'undefined' ? window.innerWidth : viewportSize.width),
-    height: Math.max(viewportSize.height, typeof window !== 'undefined' ? window.innerHeight : viewportSize.height),
+    height: Math.max(viewportSize.height, typeof window !== 'undefined' ? window.innerHeight : viewportSize.height)
   };
   const pipAvailableWidth = Math.max(320, pipViewportBounds.width - pipSafeLeft - workspaceInsets.right);
   const pipAvailableHeight = Math.max(300, pipViewportBounds.height - workspaceInsets.top - workspaceInsets.bottom);
   const drawerTopPadding = {
     collapsed: clampPx(viewportSize.height * 0.065, 52, 78),
-    expanded: clampPx(viewportSize.height * 0.11, 76, 96),
+    expanded: clampPx(viewportSize.height * 0.11, 76, 96)
   };
   const drawerContentReserve = clampPx(viewportSize.height * 0.19, 170, 224);
 
-  const windowPixelDimensions = useMemo(() => ({
-    normal: { width: Math.min(480, pipAvailableWidth), height: Math.min(320, pipAvailableHeight) },
-    large: { width: Math.min(720, pipAvailableWidth), height: Math.min(480, pipAvailableHeight) },
-    minimized: { width: Math.min(320, pipAvailableWidth), height: 48 },
-  }), [pipAvailableHeight, pipAvailableWidth]);
+  const windowPixelDimensions = useMemo(
+    () => ({
+      normal: { width: Math.min(480, pipAvailableWidth), height: Math.min(320, pipAvailableHeight) },
+      large: { width: Math.min(720, pipAvailableWidth), height: Math.min(480, pipAvailableHeight) },
+      minimized: { width: Math.min(320, pipAvailableWidth), height: 48 }
+    }),
+    [pipAvailableHeight, pipAvailableWidth]
+  );
 
   const clampPipPosition = (x: number, y: number, size: 'normal' | 'large' | 'minimized' = windowSize) => {
     const dimensions = windowPixelDimensions[size];
@@ -241,16 +343,17 @@ export default function WorldWideTelescopeView({
     const maxY = Math.max(workspaceInsets.top, pipViewportBounds.height - workspaceInsets.bottom - dimensions.height);
     return {
       x: Math.max(pipSafeLeft, Math.min(maxX, x)),
-      y: Math.max(workspaceInsets.top, Math.min(maxY, y)),
+      y: Math.max(workspaceInsets.top, Math.min(maxY, y))
     };
   };
 
   // Floating PiP Dragging State
-  const getDefaultPos = (size: 'normal' | 'large' | 'minimized' = windowSize) => clampPipPosition(
-    pipViewportBounds.width - workspaceInsets.right - windowPixelDimensions[size].width,
-    workspaceInsets.top,
-    size
-  );
+  const getDefaultPos = (size: 'normal' | 'large' | 'minimized' = windowSize) =>
+    clampPipPosition(
+      pipViewportBounds.width - workspaceInsets.right - windowPixelDimensions[size].width,
+      workspaceInsets.top,
+      size
+    );
   const [pos, setPos] = useState(() => getDefaultPos(initialWindowSize));
   const [isDragging, setIsDragging] = useState(false);
 
@@ -299,11 +402,8 @@ export default function WorldWideTelescopeView({
     }
   };
 
-  const isLoopbackHost = (hostname: string) => (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === '[::1]'
-  );
+  const isLoopbackHost = (hostname: string) =>
+    hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
 
   const validateWtmlUrl = (value: string): { url: string | null; error: string | null } => {
     const trimmed = value.trim();
@@ -316,13 +416,20 @@ export default function WorldWideTelescopeView({
       return { url: null, error: 'Use a complete URL, for example https://example.com/collection.wtml.' };
     }
 
-    const allowedProtocol = parsed.protocol === 'https:' || (parsed.protocol === 'http:' && isLoopbackHost(parsed.hostname));
+    const allowedProtocol =
+      parsed.protocol === 'https:' || (parsed.protocol === 'http:' && isLoopbackHost(parsed.hostname));
     if (!allowedProtocol) {
-      return { url: null, error: 'Use HTTPS for WTML collections. Localhost HTTP is allowed only for local development.' };
+      return {
+        url: null,
+        error: 'Use HTTPS for WTML collections. Localhost HTTP is allowed only for local development.'
+      };
     }
 
     if (!parsed.pathname.toLowerCase().endsWith('.wtml')) {
-      return { url: null, error: 'The collection URL must end in .wtml so WWT receives a real image collection manifest.' };
+      return {
+        url: null,
+        error: 'The collection URL must end in .wtml so WWT receives a real image collection manifest.'
+      };
     }
 
     return { url: parsed.toString(), error: null };
@@ -335,7 +442,9 @@ export default function WorldWideTelescopeView({
     iframeLoadedRef.current = iframeLoaded;
   }, [iframeLoaded]);
   const [iframeError, setIframeError] = useState(false);
-  const [sharedWwtRuntimeState, setSharedWwtRuntimeState] = useState<WwtRuntimeState>(() => readSharedWwtRuntimeState());
+  const [sharedWwtRuntimeState, setSharedWwtRuntimeState] = useState<WwtRuntimeState>(() =>
+    readSharedWwtRuntimeState()
+  );
   const watchdogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFallbackRuntime = typeof window !== 'undefined' && window.location.search.includes('fallback');
   const localWwtRuntimeState: WwtRuntimeState = isFallbackRuntime
@@ -384,10 +493,29 @@ export default function WorldWideTelescopeView({
     }
   };
 
+  // Establishes the fixed Earth-Moon vantage: track_object sets Earth as the
+  // pivot, and the follow-up center_on_coordinates sets the framing distance
+  // via WWT_EARTH_MOON_ORBIT_FOV_DEGREES (derived above). ra/dec are inert
+  // while an object is tracked -- WWT overrides pointing with the tracked
+  // body's actual sky position -- so 0/0 here only sets the fov/zoom.
+  const postEarthMoonVantage = () => {
+    postToWWT({ event: 'track_object', code: WWT_EARTH_TRACK_CODE });
+    postToWWT({
+      event: 'center_on_coordinates',
+      ra: 0,
+      dec: 0,
+      fov: WWT_EARTH_MOON_ORBIT_FOV_DEGREES,
+      instant: true
+    });
+  };
+
   // --- Camera Sync Integration ---
-  // Connects WWT and Cesium via the useCameraSync Mutex and postMessage listener
+  // Connects WWT and Cesium via the useCameraSync Mutex and postMessage listener.
+  // Disabled while the fixed Earth-Moon vantage is active, so Cesium's
+  // independent globe camera can't overwrite the locked framing.
   const cesiumViewer = typeof window !== 'undefined' ? (window as any).cesiumViewer : null;
-  useCameraSync(cesiumViewer, postToWWT);
+  const isEarthMoonVantageActive = wwtBackgroundLayer === WWT_SOLAR_SYSTEM_LAYER;
+  useCameraSync(cesiumViewer, postToWWT, !isEarthMoonVantageActive);
   useWWTListener();
 
   // Sync Coordinates on activePreset change (smooth pans!)
@@ -410,7 +538,13 @@ export default function WorldWideTelescopeView({
         fov: parseFloat(activePreset.fov) || 1.0,
         instant: false
       });
-      useUIStore.getState().addChangeLog('TELESCOPE', `Telescope panned to ${activePreset.name} (RA: ${activePresetCoordinates.ra}, DEC: ${activePresetCoordinates.dec})`, 'success');
+      useUIStore
+        .getState()
+        .addChangeLog(
+          'TELESCOPE',
+          `Telescope panned to ${activePreset.name} (RA: ${activePresetCoordinates.ra}, DEC: ${activePresetCoordinates.dec})`,
+          'success'
+        );
     }
   }, [activePreset, activePresetCoordinates, refreshKey]);
 
@@ -451,7 +585,7 @@ export default function WorldWideTelescopeView({
     if (!wwtBackgroundLayer || !wwtRuntimeHealthy) return;
     postToWWT({ event: 'set_background_by_name', name: wwtBackgroundLayer });
     if (wwtBackgroundLayer === WWT_SOLAR_SYSTEM_LAYER) {
-      postToWWT({ event: 'track_object', code: WWT_EARTH_TRACK_CODE });
+      postEarthMoonVantage();
     }
   }, [wwtBackgroundLayer, wwtRuntimeHealthy, refreshKey]);
 
@@ -495,7 +629,7 @@ export default function WorldWideTelescopeView({
       const rootRect = controlsOnly ? overlayRootRef.current?.getBoundingClientRect() : null;
       setViewportSize({
         width: rootRect?.width || window.innerWidth,
-        height: rootRect?.height || window.innerHeight,
+        height: rootRect?.height || window.innerHeight
       });
     };
 
@@ -538,8 +672,7 @@ export default function WorldWideTelescopeView({
 
   useEffect(() => {
     const enteredTelescopeMode =
-      previousSpaceInteractionTarget.current !== 'telescope' &&
-      spaceInteractionTarget === 'telescope';
+      previousSpaceInteractionTarget.current !== 'telescope' && spaceInteractionTarget === 'telescope';
 
     if (enteredTelescopeMode) {
       setDrawerOpen(false);
@@ -555,6 +688,10 @@ export default function WorldWideTelescopeView({
     setIframeLoaded(true);
     setIframeError(false);
     publishWwtRuntimeState('WWT iframe loaded');
+    postToWWT({ event: 'set_background_by_name', name: wwtBackgroundLayer || WWT_SOLAR_SYSTEM_LAYER });
+    if ((wwtBackgroundLayer || WWT_SOLAR_SYSTEM_LAYER) === WWT_SOLAR_SYSTEM_LAYER) {
+      postEarthMoonVantage();
+    }
     if (watchdogTimerRef.current) {
       clearTimeout(watchdogTimerRef.current);
       watchdogTimerRef.current = null;
@@ -597,7 +734,9 @@ export default function WorldWideTelescopeView({
       if (!iframeLoadedRef.current) {
         setIframeError(true);
         publishWwtRuntimeState('WWT unavailable');
-        console.warn(`[WorldWideTelescopeView] WWT iframe failed to load within ${Math.round(WWT_LOAD_WATCHDOG_MS / 1000)} seconds`);
+        console.warn(
+          `[WorldWideTelescopeView] WWT iframe failed to load within ${Math.round(WWT_LOAD_WATCHDOG_MS / 1000)} seconds`
+        );
         useUIStore.getState().addChangeLog('TELESCOPE', 'WWT connection timed out — showing degraded mode', 'warning');
       }
     }, WWT_LOAD_WATCHDOG_MS);
@@ -623,7 +762,9 @@ export default function WorldWideTelescopeView({
 
     if (!wwtRuntimeHealthy) {
       setWtmlStatus('error');
-      useUIStore.getState().addChangeLog('TELESCOPE', `Cannot load ${name}: WWT client is ${wwtRuntimeState}.`, 'warning');
+      useUIStore
+        .getState()
+        .addChangeLog('TELESCOPE', `Cannot load ${name}: WWT client is ${wwtRuntimeState}.`, 'warning');
       setTimeout(() => setWtmlStatus('idle'), 3000);
       return;
     }
@@ -644,9 +785,15 @@ export default function WorldWideTelescopeView({
 
   // Set Background Image Set layer
   const handleSetBackground = (layerName: string) => {
-      setWwtBackgroundLayer(layerName);
+    setWwtBackgroundLayer(layerName);
     if (!wwtRuntimeHealthy) {
-      useUIStore.getState().addChangeLog('TELESCOPE', `Cannot change WWT background imagery while client is ${wwtRuntimeState}.`, 'warning');
+      useUIStore
+        .getState()
+        .addChangeLog(
+          'TELESCOPE',
+          `Cannot change WWT background imagery while client is ${wwtRuntimeState}.`,
+          'warning'
+        );
       return;
     }
     postToWWT({
@@ -661,7 +808,7 @@ export default function WorldWideTelescopeView({
     if (bgOnly && typeof window !== 'undefined') {
       publishWwtRuntimeState(isFallbackRuntime ? 'Static fallback' : localWwtRuntimeState);
       (window as any).postToWWTBackground = postToWWT;
-      (window as any).refreshWwtIframe = () => setRefreshKey(k => k + 1);
+      (window as any).refreshWwtIframe = () => setRefreshKey((k) => k + 1);
       (window as any).wwtLoadCollection = handleLoadCollection;
       (window as any).wwtSetBackground = handleSetBackground;
     }
@@ -675,15 +822,14 @@ export default function WorldWideTelescopeView({
     };
   }, [bgOnly, refreshKey, telescopeTarget]);
 
-  const isHeadless = typeof window !== 'undefined' && (
-    /HeadlessChrome/i.test(navigator.userAgent) ||
-    window.location.search.includes('fallback')
-  );
-    const iframeUrl = isHeadless
-      ? 'about:blank'
-      : typeof window !== 'undefined'
-        ? `${WWT_RESEARCH_APP_URL}?origin=${encodeURIComponent(window.location.origin)}`
-        : WWT_RESEARCH_APP_URL;
+  const isHeadless =
+    typeof window !== 'undefined' &&
+    (/HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback'));
+  const iframeUrl = isHeadless
+    ? 'about:blank'
+    : typeof window !== 'undefined'
+      ? `${WWT_RESEARCH_APP_URL}?origin=${encodeURIComponent(window.location.origin)}`
+      : WWT_RESEARCH_APP_URL;
   const safeIframeUrl = isValidUrl(iframeUrl) ? iframeUrl : null;
   const safeExternalWwtUrl = isValidUrl(telescopeTarget?.url) ? telescopeTarget.url : null;
   const customWtmlValidation = useMemo(() => validateWtmlUrl(customWtml), [customWtml]);
@@ -691,7 +837,7 @@ export default function WorldWideTelescopeView({
   // Window size CSS styling mapping, constrained to the desktop shell safe area.
   const dim = {
     width: `${windowPixelDimensions[windowSize].width}px`,
-    height: `${windowPixelDimensions[windowSize].height}px`,
+    height: `${windowPixelDimensions[windowSize].height}px`
   };
   const drawerTop = drawerOpen
     ? workspaceInsets.top + drawerTopPadding.expanded
@@ -705,9 +851,8 @@ export default function WorldWideTelescopeView({
   const filteredPresets = useMemo(() => {
     const term = searchQuery.trim().toLowerCase();
     if (!term) return presets;
-    return presets.filter(p =>
-      p.name.toLowerCase().includes(term) ||
-      (p.description && p.description.toLowerCase().includes(term))
+    return presets.filter(
+      (p) => p.name.toLowerCase().includes(term) || (p.description && p.description.toLowerCase().includes(term))
     );
   }, [searchQuery]);
   const drawerVisiblePresets = useMemo(() => filteredPresets.slice(0, 3), [filteredPresets]);
@@ -741,7 +886,7 @@ export default function WorldWideTelescopeView({
       x: 50,
       y: 50,
       orbitTilt: earthReferenceFrame.latitudeDegrees >= 0 ? -14 : 14,
-      color: activePreset.color || '#00fff7',
+      color: activePreset.color || '#00fff7'
     };
   }, [activePreset, earthReferenceFrame]);
 
@@ -768,7 +913,7 @@ export default function WorldWideTelescopeView({
         visibleHemisphere: observerProjection.visibleHemisphere,
         relation: observerProjection.relation,
         horizonClass: observerProjection.horizonClass,
-        isActive: preset.name === activePreset.name,
+        isActive: preset.name === activePreset.name
       };
     });
   }, [activePreset.name, activePresetCoordinates, coordinateDate]);
@@ -780,7 +925,7 @@ export default function WorldWideTelescopeView({
       nearSide,
       farSide: projectedPresetTargets.length - nearSide,
       activeAltitude: activeTarget?.altitudeAngleDegrees ?? 90,
-      activeHorizonClass: activeTarget?.horizonClass ?? 'zenith',
+      activeHorizonClass: activeTarget?.horizonClass ?? 'zenith'
     };
   }, [projectedPresetTargets]);
 
@@ -804,7 +949,7 @@ export default function WorldWideTelescopeView({
           x: projection.x,
           y: projection.y,
           magnitude: star.magnitude ?? 3,
-          visibleHemisphere: projection.visibleHemisphere,
+          visibleHemisphere: projection.visibleHemisphere
         };
       });
 
@@ -825,15 +970,20 @@ export default function WorldWideTelescopeView({
         visibleStarCount: visibleStars.length,
         isActiveRegion:
           activePresetId.includes(normalizedConstellationId) ||
-          activePresetName.includes(normalizedConstellationName.split(' ')[0]),
+          activePresetName.includes(normalizedConstellationName.split(' ')[0])
       };
     });
   }, [activePreset, activePresetCoordinates, coordinateDate]);
 
-  const projectedConstellationSummary = useMemo(() => ({
-    visibleConstellations: projectedConstellationOverlays.filter((constellation) => constellation.visibleStarCount > 0).length,
-    activeRegion: projectedConstellationOverlays.find((constellation) => constellation.isActiveRegion)?.name || 'none',
-  }), [projectedConstellationOverlays]);
+  const projectedConstellationSummary = useMemo(
+    () => ({
+      visibleConstellations: projectedConstellationOverlays.filter(
+        (constellation) => constellation.visibleStarCount > 0
+      ).length,
+      activeRegion: projectedConstellationOverlays.find((constellation) => constellation.isActiveRegion)?.name || 'none'
+    }),
+    [projectedConstellationOverlays]
+  );
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
@@ -905,21 +1055,23 @@ export default function WorldWideTelescopeView({
 
             <rect x="0" y="0" width="100" height="100" fill="#03070b" />
             {FALLBACK_STAR_FIELD.map((star) => (
-              <circle
-                key={star.id}
-                cx={star.x}
-                cy={star.y}
-                r={star.radius}
-                fill="#dff7ff"
-                opacity={star.opacity}
-              />
+              <circle key={star.id} cx={star.x} cy={star.y} r={star.radius} fill="#dff7ff" opacity={star.opacity} />
             ))}
 
             {showGrid && (
               <g aria-label="Fallback celestial grid">
                 <circle cx="50" cy="50" r="30" fill="none" stroke="#0ea5e9" strokeOpacity="0.09" strokeWidth="0.6" />
                 <circle cx="50" cy="50" r="38" fill="none" stroke="#0ea5e9" strokeOpacity="0.07" strokeWidth="0.45" />
-                <circle cx="50" cy="50" r="45" fill="none" stroke="#ffffff" strokeOpacity="0.045" strokeWidth="0.35" strokeDasharray="0.9 2.2" />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeOpacity="0.045"
+                  strokeWidth="0.35"
+                  strokeDasharray="0.9 2.2"
+                />
                 <ellipse
                   cx="50"
                   cy="50"
@@ -931,7 +1083,15 @@ export default function WorldWideTelescopeView({
                   strokeWidth="0.55"
                   transform={`rotate(${earthViewportTarget.orbitTilt} 50 50)`}
                 />
-                <line x1="50" y1="50" x2={earthViewportTarget.x} y2={earthViewportTarget.y} stroke={earthViewportTarget.color} strokeOpacity="0.55" strokeWidth="0.35" />
+                <line
+                  x1="50"
+                  y1="50"
+                  x2={earthViewportTarget.x}
+                  y2={earthViewportTarget.y}
+                  stroke={earthViewportTarget.color}
+                  strokeOpacity="0.55"
+                  strokeWidth="0.35"
+                />
                 <g opacity="0.3">
                   <ellipse cx="50" cy="50" rx="24" ry="8.2" fill="none" stroke="#b6f3ff" strokeWidth="0.25" />
                   <ellipse cx="50" cy="50" rx="24" ry="15.8" fill="none" stroke="#b6f3ff" strokeWidth="0.18" />
@@ -941,121 +1101,182 @@ export default function WorldWideTelescopeView({
                 </g>
               </g>
             )}
-            <circle cx="50" cy="50" r="24" fill="url(#wwtFallbackEarth)" stroke="#6ee7ff" strokeOpacity="0.34" strokeWidth="0.7" />
-            <path d="M 35 41 C 39 36 47 36 50 42 C 45 44 42 48 36 47 C 33 45 32 43 35 41 Z" fill="#39a66b" fillOpacity="0.48" />
-            <path d="M 56 35 C 64 37 69 43 68 49 C 63 47 60 45 56 47 C 53 44 52 39 56 35 Z" fill="#39a66b" fillOpacity="0.42" />
-            <path d="M 49 55 C 54 53 61 56 62 62 C 57 66 49 65 47 60 C 46 58 47 56 49 55 Z" fill="#39a66b" fillOpacity="0.38" />
+            <circle
+              cx="50"
+              cy="50"
+              r="24"
+              fill="url(#wwtFallbackEarth)"
+              stroke="#6ee7ff"
+              strokeOpacity="0.34"
+              strokeWidth="0.7"
+            />
+            <path
+              d="M 35 41 C 39 36 47 36 50 42 C 45 44 42 48 36 47 C 33 45 32 43 35 41 Z"
+              fill="#39a66b"
+              fillOpacity="0.48"
+            />
+            <path
+              d="M 56 35 C 64 37 69 43 68 49 C 63 47 60 45 56 47 C 53 44 52 39 56 35 Z"
+              fill="#39a66b"
+              fillOpacity="0.42"
+            />
+            <path
+              d="M 49 55 C 54 53 61 56 62 62 C 57 66 49 65 47 60 C 46 58 47 56 49 55 Z"
+              fill="#39a66b"
+              fillOpacity="0.38"
+            />
             <circle cx="50" cy="50" r="24" fill="url(#wwtFallbackTerminator)" />
-            <circle cx="50" cy="50" r="25.2" fill="none" stroke="#67e8f9" strokeOpacity="0.18" strokeWidth="2.2" filter="url(#wwtFallbackGlow)" />
+            <circle
+              cx="50"
+              cy="50"
+              r="25.2"
+              fill="none"
+              stroke="#67e8f9"
+              strokeOpacity="0.18"
+              strokeWidth="2.2"
+              filter="url(#wwtFallbackGlow)"
+            />
             <circle cx="50" cy="50" r="24" fill="none" stroke="#dff7ff" strokeOpacity="0.18" strokeWidth="0.35" />
-            <circle cx="50" cy="50" r="31.5" fill="none" stroke="#fbbf24" strokeOpacity="0.22" strokeWidth="0.34" strokeDasharray="1 1.8" />
-            <text x="25" y="22.5" fill="#dff7ff" opacity="0.42" fontSize="1.85" fontFamily="monospace" letterSpacing="0">
+            <circle
+              cx="50"
+              cy="50"
+              r="31.5"
+              fill="none"
+              stroke="#fbbf24"
+              strokeOpacity="0.22"
+              strokeWidth="0.34"
+              strokeDasharray="1 1.8"
+            />
+            <text
+              x="25"
+              y="22.5"
+              fill="#dff7ff"
+              opacity="0.42"
+              fontSize="1.85"
+              fontFamily="monospace"
+              letterSpacing="0"
+            >
               near-side sky objects
             </text>
-            <text x="58.5" y="82.5" fill="#fbbf24" opacity="0.48" fontSize="1.85" fontFamily="monospace" letterSpacing="0">
+            <text
+              x="58.5"
+              y="82.5"
+              fill="#fbbf24"
+              opacity="0.48"
+              fontSize="1.85"
+              fontFamily="monospace"
+              letterSpacing="0"
+            >
               far-side limb
             </text>
 
             {showConstellationSelection && (
               <g aria-label="Active constellation region">
-                {projectedConstellationOverlays.filter((constellation) => constellation.isActiveRegion).map((constellation) => (
-                  <circle
-                    key={`${constellation.id}-active-region`}
-                    cx={constellation.labelX}
-                    cy={constellation.labelY}
-                    r="9.2"
-                    fill="none"
-                    stroke={earthViewportTarget.color}
-                    strokeOpacity="0.28"
-                    strokeWidth="0.42"
-                    strokeDasharray="1.4 1.2"
-                  />
-                ))}
+                {projectedConstellationOverlays
+                  .filter((constellation) => constellation.isActiveRegion)
+                  .map((constellation) => (
+                    <circle
+                      key={`${constellation.id}-active-region`}
+                      cx={constellation.labelX}
+                      cy={constellation.labelY}
+                      r="9.2"
+                      fill="none"
+                      stroke={earthViewportTarget.color}
+                      strokeOpacity="0.28"
+                      strokeWidth="0.42"
+                      strokeDasharray="1.4 1.2"
+                    />
+                  ))}
               </g>
             )}
 
             {(showConstellationLines || showConstellationFigures) && (
               <g aria-label="Projected constellation context">
-                {showConstellationLines && projectedConstellationOverlays.map((constellation) => (
-                  <g key={`${constellation.id}-lines`} opacity={constellation.isActiveRegion ? 0.86 : 0.5}>
-                    {constellation.connections.map(([startIndex, endIndex]) => {
-                      const start = constellation.stars[startIndex];
-                      const end = constellation.stars[endIndex];
-                      if (!start || !end) return null;
-                      const nearSegment = start.visibleHemisphere && end.visibleHemisphere;
-                      return (
-                        <line
-                          key={`${constellation.id}-${startIndex}-${endIndex}`}
-                          x1={start.x}
-                          y1={start.y}
-                          x2={end.x}
-                          y2={end.y}
-                          stroke={constellation.isActiveRegion ? earthViewportTarget.color : '#dff7ff'}
-                          strokeOpacity={nearSegment ? 0.42 : 0.18}
-                          strokeWidth={constellation.isActiveRegion ? 0.42 : 0.24}
-                          strokeDasharray={nearSegment ? undefined : '0.8 1.1'}
+                {showConstellationLines &&
+                  projectedConstellationOverlays.map((constellation) => (
+                    <g key={`${constellation.id}-lines`} opacity={constellation.isActiveRegion ? 0.86 : 0.5}>
+                      {constellation.connections.map(([startIndex, endIndex]) => {
+                        const start = constellation.stars[startIndex];
+                        const end = constellation.stars[endIndex];
+                        if (!start || !end) return null;
+                        const nearSegment = start.visibleHemisphere && end.visibleHemisphere;
+                        return (
+                          <line
+                            key={`${constellation.id}-${startIndex}-${endIndex}`}
+                            x1={start.x}
+                            y1={start.y}
+                            x2={end.x}
+                            y2={end.y}
+                            stroke={constellation.isActiveRegion ? earthViewportTarget.color : '#dff7ff'}
+                            strokeOpacity={nearSegment ? 0.42 : 0.18}
+                            strokeWidth={constellation.isActiveRegion ? 0.42 : 0.24}
+                            strokeDasharray={nearSegment ? undefined : '0.8 1.1'}
+                          />
+                        );
+                      })}
+                      {constellation.stars.map((star) => (
+                        <circle
+                          key={`${constellation.id}-${star.name}`}
+                          cx={star.x}
+                          cy={star.y}
+                          r={Math.max(0.38, 1.35 - star.magnitude * 0.22)}
+                          fill={constellation.isActiveRegion ? earthViewportTarget.color : '#eefbff'}
+                          opacity={star.visibleHemisphere ? 0.82 : 0.36}
                         />
-                      );
-                    })}
-                    {constellation.stars.map((star) => (
-                      <circle
-                        key={`${constellation.id}-${star.name}`}
-                        cx={star.x}
-                        cy={star.y}
-                        r={Math.max(0.38, 1.35 - star.magnitude * 0.22)}
-                        fill={constellation.isActiveRegion ? earthViewportTarget.color : '#eefbff'}
-                        opacity={star.visibleHemisphere ? 0.82 : 0.36}
-                      />
-                    ))}
-                  </g>
-                ))}
-                {showConstellationFigures && projectedConstellationOverlays.map((constellation) => (
-                  <text
-                    key={`${constellation.id}-label`}
-                    x={constellation.labelX + 1.8}
-                    y={constellation.labelY - 1.8}
-                    fill={constellation.isActiveRegion ? earthViewportTarget.color : '#dff7ff'}
-                    opacity={constellation.visibleStarCount > 0 ? 0.64 : 0.24}
-                    fontSize={constellation.isActiveRegion ? 2.1 : 1.75}
-                    fontFamily="monospace"
-                    letterSpacing="0"
-                  >
-                    {constellation.name}
-                  </text>
-                ))}
+                      ))}
+                    </g>
+                  ))}
+                {showConstellationFigures &&
+                  projectedConstellationOverlays.map((constellation) => (
+                    <text
+                      key={`${constellation.id}-label`}
+                      x={constellation.labelX + 1.8}
+                      y={constellation.labelY - 1.8}
+                      fill={constellation.isActiveRegion ? earthViewportTarget.color : '#dff7ff'}
+                      opacity={constellation.visibleStarCount > 0 ? 0.64 : 0.24}
+                      fontSize={constellation.isActiveRegion ? 2.1 : 1.75}
+                      fontFamily="monospace"
+                      letterSpacing="0"
+                    >
+                      {constellation.name}
+                    </text>
+                  ))}
               </g>
             )}
 
             <g aria-label="Projected WWT telescope objects">
               {projectedPresetTargets.map((target) => (
-                <g
-                  key={target.id}
-                  opacity={target.isActive ? 1 : target.visibleHemisphere ? 0.62 : 0.36}
-                >
+                <g key={target.id} opacity={target.isActive ? 1 : target.visibleHemisphere ? 0.62 : 0.36}>
                   {target.isActive && (
                     <>
                       <circle cx="50" cy="50" r="12" fill="url(#wwtFallbackLineOfSight)" />
-                      <circle cx="50" cy="50" r="6.6" fill="none" stroke={target.color} strokeOpacity="0.36" strokeWidth="0.35" strokeDasharray="1.2 1.2" />
-                      <circle cx="50" cy="50" r="10.8" fill="none" stroke={target.color} strokeOpacity="0.22" strokeWidth="0.3" strokeDasharray="0.8 1.6" />
-                      <text
-                        x="53.2"
-                        y="45.4"
-                        fill="#eefbff"
-                        fontSize="2.1"
-                        fontFamily="monospace"
-                        letterSpacing="0"
-                      >
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="6.6"
+                        fill="none"
+                        stroke={target.color}
+                        strokeOpacity="0.36"
+                        strokeWidth="0.35"
+                        strokeDasharray="1.2 1.2"
+                      />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="10.8"
+                        fill="none"
+                        stroke={target.color}
+                        strokeOpacity="0.22"
+                        strokeWidth="0.3"
+                        strokeDasharray="0.8 1.6"
+                      />
+                      <text x="53.2" y="45.4" fill="#eefbff" fontSize="2.1" fontFamily="monospace" letterSpacing="0">
                         zenith subpoint
                       </text>
                     </>
                   )}
                   {!target.isActive && (
-                    <circle
-                      cx={target.x}
-                      cy={target.y}
-                      r={target.visibleHemisphere ? 0.9 : 0.72}
-                      fill={target.color}
-                    />
+                    <circle cx={target.x} cy={target.y} r={target.visibleHemisphere ? 0.9 : 0.72} fill={target.color} />
                   )}
                   <circle
                     cx={target.x}
@@ -1106,7 +1327,16 @@ export default function WorldWideTelescopeView({
 
             <g filter="url(#wwtFallbackGlow)">
               <circle cx={earthViewportTarget.x} cy={earthViewportTarget.y} r="2.2" fill={earthViewportTarget.color} />
-              <circle cx={earthViewportTarget.x} cy={earthViewportTarget.y} r="5" fill="none" stroke={earthViewportTarget.color} strokeOpacity="0.55" strokeWidth="0.55" strokeDasharray="1.2 1.1" />
+              <circle
+                cx={earthViewportTarget.x}
+                cy={earthViewportTarget.y}
+                r="5"
+                fill="none"
+                stroke={earthViewportTarget.color}
+                strokeOpacity="0.55"
+                strokeWidth="0.55"
+                strokeDasharray="1.2 1.1"
+              />
               <path
                 d={`M ${earthViewportTarget.x - 5} ${earthViewportTarget.y} L ${earthViewportTarget.x + 5} ${earthViewportTarget.y} M ${earthViewportTarget.x} ${earthViewportTarget.y - 5} L ${earthViewportTarget.x} ${earthViewportTarget.y + 5}`}
                 stroke={earthViewportTarget.color}
@@ -1116,11 +1346,11 @@ export default function WorldWideTelescopeView({
             </g>
           </svg>
 
-            <div className="absolute inset-x-4 bottom-4 z-content rounded border border-primary/20 bg-black/65 p-3 font-mono text-[8px] uppercase tracking-wider text-white/55 backdrop-blur-md">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <span className="font-bold text-primary">Earth Observer Frame</span>
-                <span className="text-right text-white/70">{activePreset.name}</span>
-              </div>
+          <div className="absolute inset-x-4 bottom-4 z-content rounded border border-primary/20 bg-black/65 p-3 font-mono text-[8px] uppercase tracking-wider text-white/55 backdrop-blur-md">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="font-bold text-primary">Earth Observer Frame</span>
+              <span className="text-right text-white/70">{activePreset.name}</span>
+            </div>
             <div className="grid grid-cols-4 gap-2 text-[7.5px]">
               <div>
                 <span className="block text-white/30">Subpoint lon</span>
@@ -1140,39 +1370,54 @@ export default function WorldWideTelescopeView({
               </div>
             </div>
             <div className="mt-2 border-t border-white/10 pt-2 text-[7px] leading-relaxed text-white/45">
-              Coordinate source: {earthReferenceFrame.coordinateSource === 'kepler-planet' ? 'light-time Keplerian ephemeris' : 'fixed catalog coordinates'}{earthReferenceFrame.lightTimeMinutes ? `; light time ${earthReferenceFrame.lightTimeMinutes.toFixed(1)} min` : ''}.
+              Coordinate source: fixed catalog coordinates.
             </div>
             <div className="mt-2 border-t border-white/10 pt-2 text-[7px] leading-relaxed text-white/40">
-              WWT iframe unavailable in this audit mode. This Earth-facing fallback projects WWT preset coordinates onto a local observer frame: center means zenith above the subpoint, solid objects are near-side, and dashed objects are beyond the Earth limb. It is not live WWT imagery.
-            </div>
-            </div>
-            <div className="absolute left-4 top-4 z-content rounded border border-white/10 bg-black/50 px-3 py-2 font-mono text-[7px] uppercase tracking-wider text-white/45 backdrop-blur-md">
-              <div className="font-bold text-white/70">Projected WWT Objects</div>
-              <div>{projectedPresetTargets.length} presets in observer frame</div>
-              <div>{projectedPresetSummary.nearSide} near side / {projectedPresetSummary.farSide} far limb</div>
-              <div>active target: {projectedPresetSummary.activeHorizonClass}</div>
-              <div>{projectedConstellationSummary.visibleConstellations} constellation groups visible</div>
-              <div>active region: {projectedConstellationSummary.activeRegion}</div>
-              <div className="mt-1 text-amber-200/70">schematic fallback, not live WWT imagery</div>
+              WWT iframe unavailable in this audit mode. This Earth-facing fallback projects WWT preset coordinates onto
+              a local observer frame: center means zenith above the subpoint, solid objects are near-side, and dashed
+              objects are beyond the Earth limb. It is not live WWT imagery.
             </div>
           </div>
-        );
-      }
+          <div className="absolute left-4 top-4 z-content rounded border border-white/10 bg-black/50 px-3 py-2 font-mono text-[7px] uppercase tracking-wider text-white/45 backdrop-blur-md">
+            <div className="font-bold text-white/70">Projected WWT Objects</div>
+            <div>{projectedPresetTargets.length} presets in observer frame</div>
+            <div>
+              {projectedPresetSummary.nearSide} near side / {projectedPresetSummary.farSide} far limb
+            </div>
+            <div>active target: {projectedPresetSummary.activeHorizonClass}</div>
+            <div>{projectedConstellationSummary.visibleConstellations} constellation groups visible</div>
+            <div>active region: {projectedConstellationSummary.activeRegion}</div>
+            <div className="mt-1 text-amber-200/70">schematic fallback, not live WWT imagery</div>
+          </div>
+        </div>
+      );
+    }
 
     if (iframeError) {
       return (
         <div className="text-center p-6 max-w-[85%] space-y-3 pointer-events-auto select-text z-content">
-          <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg">⚠</div>
-          <div className="text-amber-400 font-mono text-[10px] font-bold uppercase tracking-wider">WWT Connection Failed</div>
-          <div className="text-white/50 font-mono text-[8px] leading-relaxed">
-            The embedded telescope feed did not finish loading. The Earth projection remains available, and the live WWT client can be retried or opened outside the panel.
+          <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg">
+            ⚠
           </div>
-          <div className="text-white/30 font-mono text-[7px] break-all lowercase">{safeIframeUrl || String(iframeUrl)}</div>
+          <div className="text-amber-400 font-mono text-[10px] font-bold uppercase tracking-wider">
+            WWT Connection Failed
+          </div>
+          <div className="text-white/50 font-mono text-[8px] leading-relaxed">
+            The embedded telescope feed did not finish loading. The Earth projection remains available, and the live WWT
+            client can be retried or opened outside the panel.
+          </div>
+          <div className="text-white/30 font-mono text-[7px] break-all lowercase">
+            {safeIframeUrl || String(iframeUrl)}
+          </div>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
             <button
               type="button"
               aria-label="Retry embedded WorldWide Telescope connection"
-              onClick={() => { setIframeError(false); setIframeLoaded(false); setRefreshKey(k => k + 1); }}
+              onClick={() => {
+                setIframeError(false);
+                setIframeLoaded(false);
+                setRefreshKey((k) => k + 1);
+              }}
               className="min-h-11 bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-4 py-1.5 rounded text-[9px] font-bold font-mono uppercase transition-all cursor-pointer pointer-events-auto z-chrome"
             >
               Retry Connection
@@ -1222,14 +1467,22 @@ export default function WorldWideTelescopeView({
           />
         ) : (
           <div className="text-center p-6 max-w-[85%] space-y-3 pointer-events-auto select-text">
-            <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg">⚠</div>
-            <div className="text-amber-400 font-mono text-[10px] font-bold uppercase tracking-wider">Invalid Telescope URL</div>
+            <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg">
+              ⚠
+            </div>
+            <div className="text-amber-400 font-mono text-[10px] font-bold uppercase tracking-wider">
+              Invalid Telescope URL
+            </div>
             <div className="text-white/50 font-mono text-[8px] leading-relaxed">
               The configured telescope iframe URL is invalid. Please choose a different target.
             </div>
             <div className="text-white/30 font-mono text-[7px] break-all lowercase">{String(iframeUrl)}</div>
             <button
-              onClick={() => { setIframeError(false); setIframeLoaded(false); setRefreshKey(k => k + 1); }}
+              onClick={() => {
+                setIframeError(false);
+                setIframeLoaded(false);
+                setRefreshKey((k) => k + 1);
+              }}
               className="mt-2 min-h-11 bg-primary/20 hover:bg-primary/40 text-primary border border-primary/30 px-4 py-1.5 rounded text-[9px] font-bold font-mono uppercase transition-all cursor-pointer pointer-events-auto"
             >
               Retry
@@ -1242,8 +1495,10 @@ export default function WorldWideTelescopeView({
 
   const renderHUDAndTimeline = () => {
     return (
-      <div ref={overlayRootRef} className="fixed inset-0 w-full h-full flex overflow-hidden bg-transparent select-none pointer-events-none">
-
+      <div
+        ref={overlayRootRef}
+        className="fixed inset-0 w-full h-full flex overflow-hidden bg-transparent select-none pointer-events-none"
+      >
         {/* --- Real-time Telescope Telemetry Overlay --- */}
         {telescopeTelemetry && (
           <div className="absolute top-4 right-4 z-popover pointer-events-auto">
@@ -1274,7 +1529,9 @@ export default function WorldWideTelescopeView({
           <div className="glass-panel-strong border border-primary/15 px-3 py-2 font-mono text-[9px] uppercase tracking-wider shadow-xl">
             <div className="flex items-center justify-between gap-3">
               <span className="text-primary font-bold">Earth Observer Frame</span>
-              <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[8px] font-bold text-primary">{earthReferenceFrame.frameLabel}</span>
+              <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[8px] font-bold text-primary">
+                {earthReferenceFrame.frameLabel}
+              </span>
             </div>
             <div className="mt-1.5 grid grid-cols-2 gap-2 text-white/45">
               <div>
@@ -1296,9 +1553,7 @@ export default function WorldWideTelescopeView({
             </div>
             <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/5 pt-1.5 text-[7px]">
               <span className="text-white/30">Viewport state</span>
-              <span className={wwtRuntimeHealthy ? 'text-emerald-300' : 'text-amber-300'}>
-                {wwtRuntimeState}
-              </span>
+              <span className={wwtRuntimeHealthy ? 'text-emerald-300' : 'text-amber-300'}>{wwtRuntimeState}</span>
             </div>
           </div>
         </div>
@@ -1310,7 +1565,7 @@ export default function WorldWideTelescopeView({
             style={{
               left: workspaceInsets.left,
               top: drawerTop,
-              maxHeight: `calc(100% - ${workspaceInsets.top + workspaceInsets.bottom + (drawerOpen ? drawerTopPadding.expanded : drawerTopPadding.collapsed)}px)`,
+              maxHeight: `calc(100% - ${workspaceInsets.top + workspaceInsets.bottom + (drawerOpen ? drawerTopPadding.expanded : drawerTopPadding.collapsed)}px)`
             }}
           >
             {drawerOpen ? (
@@ -1370,7 +1625,10 @@ export default function WorldWideTelescopeView({
                 </div>
 
                 {/* Tab Contents */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-3 scroller" style={{ maxHeight: drawerContentMaxHeight }}>
+                <div
+                  className="flex-1 overflow-y-auto p-3 space-y-3 scroller"
+                  style={{ maxHeight: drawerContentMaxHeight }}
+                >
                   {/* Tab 1: Celestial Navigator */}
                   {activeControlTab === 'navigator' && (
                     <div className="space-y-2.5">
@@ -1382,7 +1640,7 @@ export default function WorldWideTelescopeView({
                           type="text"
                           placeholder="Search targets..."
                           value={searchQuery}
-                          onChange={e => setSearchQuery(e.target.value)}
+                          onChange={(e) => setSearchQuery(e.target.value)}
                           className="min-h-11 bg-transparent border-none text-[10px] py-1.5 w-full text-white/80 focus:outline-none placeholder:text-white/20 font-mono"
                         />
                         {searchQuery && (
@@ -1403,13 +1661,15 @@ export default function WorldWideTelescopeView({
                           <span className="text-white/40">{earthReferenceFrame.longitude}</span>
                         </div>
                         <div className="mt-1 flex items-center justify-between gap-2 text-white/45">
-                          <span>{activePresetCoordinates.ra} / {activePresetCoordinates.dec}</span>
+                          <span>
+                            {activePresetCoordinates.ra} / {activePresetCoordinates.dec}
+                          </span>
                           <span className="text-white/60">{earthReferenceFrame.relation}</span>
                         </div>
                       </div>
 
                       <div className="space-y-1.5">
-                        {drawerVisiblePresets.map(preset => {
+                        {drawerVisiblePresets.map((preset) => {
                           const isActive = activePreset.id === preset.id;
                           return (
                             <button
@@ -1428,7 +1688,9 @@ export default function WorldWideTelescopeView({
                                 style={{ backgroundColor: preset.color }}
                               />
                               <div className="min-w-0">
-                                <div className={`text-[10px] font-bold font-mono ${isActive ? 'text-primary' : 'text-white/80'}`}>
+                                <div
+                                  className={`text-[10px] font-bold font-mono ${isActive ? 'text-primary' : 'text-white/80'}`}
+                                >
                                   {preset.name}
                                 </div>
                                 <div className="text-[8px] text-white/40 mt-0.5 font-mono">
@@ -1443,7 +1705,8 @@ export default function WorldWideTelescopeView({
                         })}
                         {filteredPresets.length > drawerVisiblePresets.length && (
                           <div className="rounded border border-white/5 bg-black/20 px-2.5 py-2 font-mono text-[8px] uppercase leading-relaxed tracking-wider text-white/35">
-                            {filteredPresets.length - drawerVisiblePresets.length} more targets available in Star Array Presets.
+                            {filteredPresets.length - drawerVisiblePresets.length} more targets available in Star Array
+                            Presets.
                           </div>
                         )}
                         {filteredPresets.length === 0 && (
@@ -1459,7 +1722,9 @@ export default function WorldWideTelescopeView({
                   {activeControlTab === 'overlays' && (
                     <div className="space-y-3 font-mono text-[9px]">
                       <div className="glass-panel p-2.5 bg-black/30 space-y-2.5 border border-white/5">
-                        <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Sky Map Overlays</span>
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">
+                          Sky Map Overlays
+                        </span>
 
                         <label className="flex min-h-11 items-center justify-between gap-3 py-1 cursor-pointer">
                           <div className="flex items-center gap-2">
@@ -1472,7 +1737,7 @@ export default function WorldWideTelescopeView({
                             type="checkbox"
                             aria-label="Toggle celestial grid lines"
                             checked={showGrid}
-                            onChange={e => setShowGrid(e.target.checked)}
+                            onChange={(e) => setShowGrid(e.target.checked)}
                             className="h-11 w-11 rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer"
                           />
                         </label>
@@ -1488,7 +1753,7 @@ export default function WorldWideTelescopeView({
                             type="checkbox"
                             aria-label="Toggle constellation stick figures"
                             checked={showConstellationLines}
-                            onChange={e => setShowConstellationLines(e.target.checked)}
+                            onChange={(e) => setShowConstellationLines(e.target.checked)}
                             className="h-11 w-11 rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer"
                           />
                         </label>
@@ -1504,7 +1769,7 @@ export default function WorldWideTelescopeView({
                             type="checkbox"
                             aria-label="Toggle constellation artistic art"
                             checked={showConstellationFigures}
-                            onChange={e => setShowConstellationFigures(e.target.checked)}
+                            onChange={(e) => setShowConstellationFigures(e.target.checked)}
                             className="h-11 w-11 rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer"
                           />
                         </label>
@@ -1520,7 +1785,7 @@ export default function WorldWideTelescopeView({
                             type="checkbox"
                             aria-label="Toggle constellation boundaries"
                             checked={showConstellationBoundries}
-                            onChange={e => setShowConstellationBoundries(e.target.checked)}
+                            onChange={(e) => setShowConstellationBoundries(e.target.checked)}
                             className="h-11 w-11 rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer"
                           />
                         </label>
@@ -1536,7 +1801,7 @@ export default function WorldWideTelescopeView({
                             type="checkbox"
                             aria-label="Toggle constellation selection highlight"
                             checked={showConstellationSelection}
-                            onChange={e => setShowConstellationSelection(e.target.checked)}
+                            onChange={(e) => setShowConstellationSelection(e.target.checked)}
                             className="h-11 w-11 rounded border-white/10 bg-black text-primary focus:ring-primary/40 cursor-pointer"
                           />
                         </label>
@@ -1553,16 +1818,16 @@ export default function WorldWideTelescopeView({
                   {/* Tab 3: Background Imagery Layers */}
                   {activeControlTab === 'imagery' && (
                     <div className="space-y-1.5 font-mono">
-                      {BACKGROUND_LAYERS.map(layer => (
+                      {BACKGROUND_LAYERS.map((layer) => (
                         <button
                           key={layer.id}
                           onClick={() => handleSetBackground(layer.value)}
                           disabled={!wwtRuntimeHealthy}
-                            className={`w-full min-h-11 text-left p-2 rounded border transition-all cursor-pointer flex items-center justify-between disabled:cursor-not-allowed disabled:opacity-45 ${
-                              layer.value === wwtBackgroundLayer
-                                ? 'border-primary/50 bg-primary/10'
-                                : 'border-white/5 bg-black/25 hover:border-primary/30'
-                            }`}
+                          className={`w-full min-h-11 text-left p-2 rounded border transition-all cursor-pointer flex items-center justify-between disabled:cursor-not-allowed disabled:opacity-45 ${
+                            layer.value === wwtBackgroundLayer
+                              ? 'border-primary/50 bg-primary/10'
+                              : 'border-white/5 bg-black/25 hover:border-primary/30'
+                          }`}
                         >
                           <div>
                             <div className="text-[10px] text-white/80 font-bold">{layer.name}</div>
@@ -1578,8 +1843,10 @@ export default function WorldWideTelescopeView({
                   {activeControlTab === 'photos' && (
                     <div className="space-y-3 font-mono">
                       <div className="space-y-2">
-                        <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Premium Imagery Databases</span>
-                        {PHOTO_COLLECTIONS.map(col => (
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">
+                          Premium Imagery Databases
+                        </span>
+                        {PHOTO_COLLECTIONS.map((col) => (
                           <button
                             key={col.id}
                             onClick={() => handleLoadCollection(col.url, col.name)}
@@ -1588,7 +1855,9 @@ export default function WorldWideTelescopeView({
                           >
                             <div className="text-[10px] text-primary font-bold flex items-center justify-between">
                               <span>{col.name}</span>
-                              <span className="text-[7.5px] uppercase bg-primary/20 text-primary px-1 py-0.5 rounded">WTML</span>
+                              <span className="text-[7.5px] uppercase bg-primary/20 text-primary px-1 py-0.5 rounded">
+                                WTML
+                              </span>
                             </div>
                             <div className="text-[8px] text-white/50 mt-1 leading-relaxed">{col.desc}</div>
                           </button>
@@ -1596,14 +1865,16 @@ export default function WorldWideTelescopeView({
                       </div>
 
                       <div className="glass-panel p-2.5 border border-white/5 bg-black/30 space-y-2">
-                        <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">Ingest Custom WTML Collection</span>
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-primary block">
+                          Ingest Custom WTML Collection
+                        </span>
                         <input
                           id="wwt-custom-wtml"
                           name="wwt-custom-wtml"
                           type="text"
                           placeholder="https://example.com/collection.wtml"
                           value={customWtml}
-                          onChange={e => setCustomWtml(e.target.value)}
+                          onChange={(e) => setCustomWtml(e.target.value)}
                           aria-invalid={Boolean(customWtml && customWtmlValidation.error)}
                           aria-describedby="wwt-custom-wtml-help"
                           className="min-h-11 w-full rounded border border-white/5 bg-black/45 p-2 text-[9px] text-white/80 focus:outline-none placeholder:text-white/20 select-text"
@@ -1622,14 +1893,22 @@ export default function WorldWideTelescopeView({
                         </div>
                         <button
                           type="button"
-                          onClick={() => customWtmlValidation.url && handleLoadCollection(customWtmlValidation.url, 'Custom Collection')}
+                          onClick={() =>
+                            customWtmlValidation.url &&
+                            handleLoadCollection(customWtmlValidation.url, 'Custom Collection')
+                          }
                           disabled={!customWtmlValidation.url || wtmlStatus === 'loading' || !wwtRuntimeHealthy}
                           className="min-h-11 w-full rounded border border-primary/30 bg-primary/20 p-2 text-[9px] font-bold text-primary transition-all hover:bg-primary/45 cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                         >
-                          {wtmlStatus === 'loading' ? 'Ingesting...' :
-                           wtmlStatus === 'success' ? 'Ingested Successfully' :
-                           wtmlStatus === 'error' ? 'Ingestion Failed' :
-                           !customWtmlValidation.url && customWtml ? 'Fix WTML URL' : 'Load Custom WTML'}
+                          {wtmlStatus === 'loading'
+                            ? 'Ingesting...'
+                            : wtmlStatus === 'success'
+                              ? 'Ingested Successfully'
+                              : wtmlStatus === 'error'
+                                ? 'Ingestion Failed'
+                                : !customWtmlValidation.url && customWtml
+                                  ? 'Fix WTML URL'
+                                  : 'Load Custom WTML'}
                         </button>
                       </div>
                     </div>
@@ -1657,27 +1936,35 @@ export default function WorldWideTelescopeView({
           style={{
             left: leftPanelOpen ? `calc(${leftPanelInset}px + 1rem)` : 'clamp(1rem, 4vw, 2rem)',
             // right: 'clamp(4.75rem, 8vw, 6rem)'
-            right: rightPanelOpen ? `calc(${rightPanelInset}px + 1rem)` : 'clamp(4.75rem, 8vw, 6rem)',
+            right: rightPanelOpen ? `calc(${rightPanelInset}px + 1rem)` : 'clamp(4.75rem, 8vw, 6rem)'
           }}
         >
           <div
             className={`glass-panel-strong relative border border-primary/20 shadow-2xl font-mono text-white text-[10px] ${
-              telemetryTimelineCollapsed ? 'flex min-h-12 items-center justify-between gap-3 px-4 py-2' : 'flex flex-col gap-2 p-3 px-5'
+              telemetryTimelineCollapsed
+                ? 'flex min-h-12 items-center justify-between gap-3 px-4 py-2'
+                : 'flex flex-col gap-2 p-3 px-5'
             }`}
           >
             <button
               type="button"
               onClick={() => setTelemetryTimelineCollapsed((value) => !value)}
               className="absolute left-1/2 top-0 z-content flex min-h-8 min-w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-primary/25 bg-[#0f111a] text-primary shadow-lg transition-colors hover:bg-primary/20 hover:text-white"
-              aria-label={telemetryTimelineCollapsed ? 'Expand telemetry timeline' : 'Collapse telemetry timeline to bottom bar'}
+              aria-label={
+                telemetryTimelineCollapsed ? 'Expand telemetry timeline' : 'Collapse telemetry timeline to bottom bar'
+              }
               aria-expanded={!telemetryTimelineCollapsed}
-              title={telemetryTimelineCollapsed ? 'Expand telemetry timeline' : 'Collapse telemetry timeline to bottom bar'}
+              title={
+                telemetryTimelineCollapsed ? 'Expand telemetry timeline' : 'Collapse telemetry timeline to bottom bar'
+              }
             >
               {telemetryTimelineCollapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
 
             {/* Timeline Header Row */}
-            <div className={`flex items-center justify-between gap-3 ${telemetryTimelineCollapsed ? 'contents' : 'border-b border-white/5 pb-2'}`}>
+            <div
+              className={`flex items-center justify-between gap-3 ${telemetryTimelineCollapsed ? 'contents' : 'border-b border-white/5 pb-2'}`}
+            >
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -1691,7 +1978,9 @@ export default function WorldWideTelescopeView({
                   title="Toggle Live vs Recorded Playback Mode"
                 >
                   <div className="flex items-center gap-1.5">
-                    <div className={`w-2 h-2 rounded-full ${isPlaybackMode ? 'bg-cyan-400' : 'bg-green-400 animate-pulse'}`} />
+                    <div
+                      className={`w-2 h-2 rounded-full ${isPlaybackMode ? 'bg-cyan-400' : 'bg-green-400 animate-pulse'}`}
+                    />
                     <span>{isPlaybackMode ? 'PLAYBACK MODE' : 'LIVE TELEMETRY'}</span>
                   </div>
                 </button>
@@ -1713,9 +2002,7 @@ export default function WorldWideTelescopeView({
               <div className="flex items-center gap-2.5 text-white/80 text-[9px]">
                 <div className="flex items-center gap-1 text-white/50">
                   <Calendar size={11} />
-                  <span>
-                    {safeCurrentTime ? safeCurrentTime.toLocaleDateString() : 'N/A'}
-                  </span>
+                  <span>{safeCurrentTime ? safeCurrentTime.toLocaleDateString() : 'N/A'}</span>
                 </div>
                 <div className="flex items-center gap-1 text-white/50">
                   <Clock size={11} />
@@ -1728,138 +2015,135 @@ export default function WorldWideTelescopeView({
 
             {/* Timeline slider and speed multipliers */}
             {!telemetryTimelineCollapsed && (
-            <div className="flex flex-col gap-2">
-              <div className="px-1">
-                <TimelineLanes timeStart={timeStart} timeEnd={timeEnd} />
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="flex-1 flex items-center gap-2">
-                  <span className="text-[8px] text-white/30">START</span>
-                  <input
-                    id="wwt-timeline-progress"
-                    name="wwt-timeline-progress"
-                    type="range"
-                    aria-label="Telescope telemetry timeline progress"
-                    min="0"
-                    max="1"
-                    step="0.0001"
-                    value={progressPct}
-                    onChange={handleSliderChange}
-                    disabled={!isPlaybackMode}
-                    className="h-11 w-full rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/70"
-                    style={{
-                      background: `linear-gradient(to right, var(--theme-primary) 0%, var(--theme-primary) ${progressPct * 100}%, rgba(255,255,255,0.05) ${progressPct * 100}%, rgba(255,255,255,0.05) 100%) center / 100% 4px no-repeat`
-                    }}
-                  />
-                  <span className="text-[8px] text-white/30">NOW</span>
+              <div className="flex flex-col gap-2">
+                <div className="px-1">
+                  <TimelineLanes timeStart={timeStart} timeEnd={timeEnd} />
                 </div>
 
-                {isPlaybackMode && (
-                  <div className="flex items-center gap-1 bg-black/30 border border-white/5 p-1 rounded text-[8px]">
-                    {['1', '10', '100', '1000'].map(spd => {
-                      const s = parseInt(spd);
-                      const isSpeed = playbackSpeed === s;
-                      return (
-                        <button
-                          type="button"
-                          key={spd}
-                          onClick={() => setPlaybackSpeed(s)}
-                          className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded px-2 py-1 transition-all cursor-pointer ${
-                            isSpeed ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'
-                          }`}
-                          aria-label={`Set playback speed to ${spd}x`}
-                        >
-                          {spd}x
-                        </button>
-                      );
-                    })}
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 flex items-center gap-2">
+                    <span className="text-[8px] text-white/30">START</span>
+                    <input
+                      id="wwt-timeline-progress"
+                      name="wwt-timeline-progress"
+                      type="range"
+                      aria-label="Telescope telemetry timeline progress"
+                      min="0"
+                      max="1"
+                      step="0.0001"
+                      value={progressPct}
+                      onChange={handleSliderChange}
+                      disabled={!isPlaybackMode}
+                      className="h-11 w-full rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/70"
+                      style={{
+                        background: `linear-gradient(to right, var(--theme-primary) 0%, var(--theme-primary) ${progressPct * 100}%, rgba(255,255,255,0.05) ${progressPct * 100}%, rgba(255,255,255,0.05) 100%) center / 100% 4px no-repeat`
+                      }}
+                    />
+                    <span className="text-[8px] text-white/30">NOW</span>
                   </div>
-                )}
-              </div>
-            </div>
-            )}
 
+                  {isPlaybackMode && (
+                    <div className="flex items-center gap-1 bg-black/30 border border-white/5 p-1 rounded text-[8px]">
+                      {['1', '10', '100', '1000'].map((spd) => {
+                        const s = parseInt(spd);
+                        const isSpeed = playbackSpeed === s;
+                        return (
+                          <button
+                            type="button"
+                            key={spd}
+                            onClick={() => setPlaybackSpeed(s)}
+                            className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded px-2 py-1 transition-all cursor-pointer ${
+                              isSpeed ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white/70'
+                            }`}
+                            aria-label={`Set playback speed to ${spd}x`}
+                          >
+                            {spd}x
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Draggable floating Picture-in-Picture window overlay */}
-        {telescopeWindowActive && typeof document !== 'undefined' && createPortal(
-          <div
-            className="glass-panel border border-primary/20 flex flex-col overflow-hidden shadow-2xl pointer-events-auto absolute z-popover"
-            style={{
-              left: pos.x,
-              top: pos.y,
-              width: dim.width,
-              height: dim.height,
-            }}
-            onMouseDown={handleMouseDown}
-          >
-            {/* Window Drag Handle Header */}
-            <div className="pip-drag-handle flex min-h-12 items-center justify-between px-3 bg-black/60 border-b border-white/10 cursor-move select-none">
-              <div className="flex items-center gap-1.5 text-primary text-[10px] font-mono font-bold uppercase tracking-wider">
-                <Radio className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
-                <span>Stellar Telescope Feed</span>
-                {windowSize !== 'minimized' && (
-                  <span className="text-[8px] text-white/40 normal-case font-normal ml-2">
-                    {activePreset.name}
-                  </span>
-                )}
+        {telescopeWindowActive &&
+          typeof document !== 'undefined' &&
+          createPortal(
+            <div
+              className="glass-panel border border-primary/20 flex flex-col overflow-hidden shadow-2xl pointer-events-auto absolute z-popover"
+              style={{
+                left: pos.x,
+                top: pos.y,
+                width: dim.width,
+                height: dim.height
+              }}
+              onMouseDown={handleMouseDown}
+            >
+              {/* Window Drag Handle Header */}
+              <div className="pip-drag-handle flex min-h-12 items-center justify-between px-3 bg-black/60 border-b border-white/10 cursor-move select-none">
+                <div className="flex items-center gap-1.5 text-primary text-[10px] font-mono font-bold uppercase tracking-wider">
+                  <Radio className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
+                  <span>Stellar Telescope Feed</span>
+                  {windowSize !== 'minimized' && (
+                    <span className="text-[8px] text-white/40 normal-case font-normal ml-2">{activePreset.name}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 pip-action-btn">
+                  <button
+                    type="button"
+                    onClick={() => setWindowSize(windowSize === 'minimized' ? 'normal' : 'minimized')}
+                    className="flex min-h-11 min-w-11 items-center justify-center text-white/40 hover:text-white/85 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
+                    aria-label={windowSize === 'minimized' ? 'Expand telescope feed' : 'Minimize telescope feed'}
+                    title={windowSize === 'minimized' ? 'Expand' : 'Minimize'}
+                  >
+                    {windowSize === 'minimized' ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWindowSize(windowSize === 'large' ? 'normal' : 'large')}
+                    className="flex min-h-11 min-w-11 items-center justify-center text-white/40 hover:text-white/85 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
+                    aria-label={windowSize === 'large' ? 'Shrink telescope feed' : 'Maximize telescope feed'}
+                    title={windowSize === 'large' ? 'Shrink' : 'Maximize'}
+                    disabled={windowSize === 'minimized'}
+                  >
+                    {windowSize === 'large' ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRefreshKey((k) => k + 1)}
+                    className="flex min-h-11 min-w-11 items-center justify-center text-white/40 hover:text-white/85 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
+                    aria-label="Reload telescope client"
+                    title="Reload Telescope Client"
+                    disabled={windowSize === 'minimized'}
+                  >
+                    <RefreshCw size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInteractionMode('orbital');
+                      useUIStore.getState().setSpaceInteractionTarget('earth');
+                    }}
+                    className="flex min-h-11 min-w-11 items-center justify-center text-white/40 hover:text-red-400 p-1 hover:bg-red-950/20 rounded cursor-pointer transition-colors"
+                    aria-label="Close telescope feed"
+                    title="Close Telescope Feed"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 pip-action-btn">
-                <button
-                  type="button"
-                  onClick={() => setWindowSize(windowSize === 'minimized' ? 'normal' : 'minimized')}
-                  className="flex min-h-11 min-w-11 items-center justify-center text-white/40 hover:text-white/85 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
-                  aria-label={windowSize === 'minimized' ? 'Expand telescope feed' : 'Minimize telescope feed'}
-                  title={windowSize === 'minimized' ? 'Expand' : 'Minimize'}
-                >
-                  {windowSize === 'minimized' ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWindowSize(windowSize === 'large' ? 'normal' : 'large')}
-                  className="flex min-h-11 min-w-11 items-center justify-center text-white/40 hover:text-white/85 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
-                  aria-label={windowSize === 'large' ? 'Shrink telescope feed' : 'Maximize telescope feed'}
-                  title={windowSize === 'large' ? 'Shrink' : 'Maximize'}
-                  disabled={windowSize === 'minimized'}
-                >
-                  {windowSize === 'large' ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRefreshKey(k => k + 1)}
-                  className="flex min-h-11 min-w-11 items-center justify-center text-white/40 hover:text-white/85 p-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
-                  aria-label="Reload telescope client"
-                  title="Reload Telescope Client"
-                  disabled={windowSize === 'minimized'}
-                >
-                  <RefreshCw size={12} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInteractionMode('orbital');
-                    useUIStore.getState().setSpaceInteractionTarget('earth');
-                  }}
-                  className="flex min-h-11 min-w-11 items-center justify-center text-white/40 hover:text-red-400 p-1 hover:bg-red-950/20 rounded cursor-pointer transition-colors"
-                  aria-label="Close telescope feed"
-                  title="Close Telescope Feed"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            </div>
 
-            {/* Window Body (WWT iframe) */}
-            {windowSize !== 'minimized' && (
-              <div className="flex-1 w-full h-full relative overflow-hidden bg-black/85">
-                {renderIframe()}
-              </div>
-            )}
-          </div>,
-          document.body
-        )}
+              {/* Window Body (WWT iframe) */}
+              {windowSize !== 'minimized' && (
+                <div className="flex-1 w-full h-full relative overflow-hidden bg-black/85">{renderIframe()}</div>
+              )}
+            </div>,
+            document.body
+          )}
       </div>
     );
   };
