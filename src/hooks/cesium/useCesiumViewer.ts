@@ -55,6 +55,8 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     let canvas: HTMLCanvasElement | null = null;
     let pointerHandler: (() => void) | null = null;
     let requestRender: (() => void) | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+    let resizeRaf: number | null = null;
 
     if (config.CESIUM_ION_ACCESS_TOKEN) {
       Cesium.Ion.defaultAccessToken = config.CESIUM_ION_ACCESS_TOKEN;
@@ -218,6 +220,28 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
       }
     }
 
+    const requestResize = () => {
+      if (resizeRaf !== null) {
+        cancelAnimationFrame(resizeRaf);
+      }
+
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = null;
+        try {
+          viewerInstance.resize();
+          viewerInstance.scene.requestRender();
+        } catch (err) {
+          // Viewer may already be destroyed during teardown.
+        }
+      });
+    };
+
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(requestResize);
+      resizeObserver.observe(containerRef.current);
+    }
+    window.addEventListener('resize', requestResize, { passive: true });
+
       // Start halfway between Earth and the Moon, looking back at Earth's center.
     viewerInstance.camera.setView({
         destination: Cesium.Cartesian3.fromDegrees(0, 0, 192_200_000),
@@ -251,6 +275,11 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
             // Listener may have already been removed; ignore
           }
         }
+        resizeObserver?.disconnect();
+        if (resizeRaf !== null) {
+          cancelAnimationFrame(resizeRaf);
+        }
+        window.removeEventListener('resize', requestResize);
       } catch (e) {
         // Canvas may have been detached; ignore cleanup errors
       }

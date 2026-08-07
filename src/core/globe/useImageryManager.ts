@@ -39,6 +39,7 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
             if (targetMode === SceneMode.SCENE2D) viewer.scene.morphTo2D(1.0);
             else if (targetMode === SceneMode.SCENE3D) viewer.scene.morphTo3D(1.0);
             else if (targetMode === SceneMode.COLUMBUS_VIEW) viewer.scene.morphToColumbusView(1.0);
+            viewer.scene.requestRender();
         }
     }, [viewer, viewerReady, sceneMode]);
 
@@ -146,6 +147,7 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
                     viewer.imageryLayers.remove(currentImageryLayerRef.current);
                     currentImageryLayerRef.current = null;
                 }
+                viewer.scene.requestRender();
             } else {
                 // Load the selected imagery layer, then optionally fall back.
                 const initialLayerId = isGoogle3D ? "arcgis-world" : selectedLayerId;
@@ -190,6 +192,7 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
                 if (viewer.isDestroyed() || !active) return;
                 viewer.imageryLayers.add(newLayer, 0);
                 currentImageryLayerRef.current = newLayer;
+                viewer.scene.requestRender();
             }
         }
 
@@ -207,6 +210,7 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
                     viewer.scene.primitives.remove(googleTilesetRef.current);
                     googleTilesetRef.current = null;
                 }
+        viewer.scene.requestRender();
             }
         };
     }, [viewer, viewerReady, baseLayerId, fallbackLayerId]);
@@ -232,6 +236,7 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
                 });
                 viewer.scene.primitives.add(tileset);
                 osmBuildingsRef.current = tileset;
+                viewer.scene.requestRender();
             }).catch((err) => {
                 console.warn("[useImageryManager] Failed to load OSM 3D Buildings:", err);
             });
@@ -241,6 +246,7 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
         if (!shouldShow && osmBuildingsRef.current) {
             if (!viewer.isDestroyed()) {
                 viewer.scene.primitives.remove(osmBuildingsRef.current);
+                viewer.scene.requestRender();
             }
             osmBuildingsRef.current = null;
         }
