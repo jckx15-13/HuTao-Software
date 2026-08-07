@@ -82,6 +82,7 @@ function resolveBrowserExecutable() {
           '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
         ]
       : [
+          `${process.env.HOME || '/home/admin'}/.config/Antigravity/bin/google-chrome`,
           '/usr/bin/google-chrome',
           '/usr/bin/google-chrome-stable',
           '/usr/bin/chromium',
@@ -110,6 +111,28 @@ async function forceLauncherPage(page) {
       launcherDismissed: false,
       leftPanelOpen: true,
       rightPanelOpen: true,
+    };
+
+    window.localStorage.setItem(key, JSON.stringify({ state, version: 7 }));
+  });
+}
+
+async function forceWorkspacePage(page) {
+  await page.evaluateOnNewDocument(() => {
+    const key = 'silver-wolf-v6-core';
+    const fallback = { state: {}, version: 7 };
+    let payload = fallback;
+
+    try {
+      payload = JSON.parse(window.localStorage.getItem(key) || JSON.stringify(fallback));
+    } catch {
+      payload = fallback;
+    }
+
+    const state = {
+      ...(payload.state || payload),
+      currentPage: 'workspace',
+      launcherDismissed: true,
     };
 
     window.localStorage.setItem(key, JSON.stringify({ state, version: 7 }));
@@ -169,7 +192,7 @@ async function waitForWorkspaceText(page) {
   while (Date.now() < deadline) {
     try {
       lastText = await readBodyText(page);
-      if (/project workspaces|ai workspace|chat space|orbital telemetry system active/i.test(lastText)) {
+      if (!/loading workspace/i.test(lastText) && /project workspaces|ai workspace|chat space|orbital telemetry system active|clear chat/i.test(lastText)) {
         return true;
       }
     } catch {
@@ -178,7 +201,7 @@ async function waitForWorkspaceText(page) {
     await wait(250);
   }
 
-  return /project workspaces|ai workspace|chat space|orbital telemetry system active/i.test(lastText);
+  return !/loading workspace/i.test(lastText) && /project workspaces|ai workspace|chat space|orbital telemetry system active|clear chat/i.test(lastText);
 }
 
 async function waitForLauncherReady(page) {
@@ -528,6 +551,7 @@ async function runViewportAttempt(browser, viewport) {
     });
     await page.setUserAgent(NORMAL_USER_AGENT);
     await page.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
+    await forceWorkspacePage(page);
     await gotoWithRetry(page, WORKSPACE_AUDIT_URL);
     await waitForBodyText(page);
     await wait(WORKSPACE_SETTLE_MS);

@@ -325,6 +325,7 @@ async function measureFrontend() {
       );
     } else {
       candidates.push(
+        path.join(process.env.HOME || '/home/admin', '.config', 'Antigravity', 'bin', 'google-chrome'),
         '/usr/bin/google-chrome',
         '/usr/bin/google-chrome-stable',
         '/usr/bin/chromium',
