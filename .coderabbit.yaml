@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+early_access: false
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  path_instructions:
+    - path: "bridge/**"
+      instructions: |
+        You are reviewing a Python FastAPI bridge that routes AI assistant
+        requests to local LLM runtimes (Ollama, LM Studio, llama.cpp) or
+        cloud providers. Prioritize:
+        - Token-saving methodologies: flag any unnecessarily verbose prompt
+          construction, redundant serialization, or wasteful streaming patterns.
+        - Local-first architecture: ensure fallback chains prefer local
+          runtimes before cloud. Flag any change that makes a cloud provider
+          the default path.
+        - Security: no secrets in code, proper input validation on all routes,
+          safe subprocess usage.
+        - Performance: async correctness, connection pooling, proper use of
+          httpx client lifecycle.
+    - path: "src/components/**"
+      instructions: |
+        Review frontend React components for:
+        - Adherence to the geo-tech tactical minimalist design system defined
+          in design-tokens.tailwind.json.
+        - Token-saving: no inline styles that duplicate Tailwind utilities,
+          no redundant re-renders, proper memoization where appropriate.
+        - Local-first architecture: components should degrade gracefully when
+          the bridge is offline and prefer cached/local data.
+        - Single-responsibility: flag any component exceeding ~300 lines and
+          suggest extraction.
+    - path: "src/core/**"
+      instructions: |
+        Core modules (state, plugins, data bus). Review for:
+        - Clean plugin contract compliance.
+        - No circular dependencies between slices.
+        - Zustand best practices (selectors, minimal subscriptions).
+    - path: "src/plugins/**"
+      instructions: |
+        Data plugins. Verify:
+        - Correct PluginManager registration pattern.
+        - Proper cleanup/disposal on unmount.
+        - Error boundaries around external data fetches.
+chat:
+  auto_reply: true
