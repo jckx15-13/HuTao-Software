@@ -34,3 +34,5 @@ docs/progress.md
 
 *storybook.log
 storybook-static
+tokens.json
+qa-tokens.json
