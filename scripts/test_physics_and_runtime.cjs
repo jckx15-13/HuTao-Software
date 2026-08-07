@@ -128,25 +128,19 @@ async function run() {
   assert.equal(formatRaHours(23.9999999), "00h 00m 00s");
   assert.equal(formatDecDegrees(-12.9999999), "-13° 00' 00\"");
 
-  const planetPresets = TELESCOPE_PRESETS.filter((preset) => preset.planetId);
-  assert.equal(planetPresets.length, PLANET_IDS.length);
-  for (const planetId of PLANET_IDS) {
-    const preset = TELESCOPE_PRESETS.find((item) => item.planetId === planetId);
-    assert.ok(preset, `${planetId} telescope preset missing`);
-    const coordinates = apparentPlanetEquatorialCoordinates(planetId, j2000);
-    assert.ok(coordinates.raHours >= 0 && coordinates.raHours < 24, `${planetId} RA out of range`);
-    assert.ok(coordinates.decDegrees >= -90 && coordinates.decDegrees <= 90, `${planetId} Dec out of range`);
-    assert.ok(coordinates.distanceAu > 0, `${planetId} distance missing`);
-    assert.ok(coordinates.lightTimeMinutes > 0, `${planetId} light time missing`);
+  // Planet targets (Mercury..Neptune) were intentionally removed from
+  // TELESCOPE_PRESETS: this view is a fixed vantage between Earth and the
+  // Moon, not a solar-system navigator, so "fly to and zoom into a planet"
+  // is out of scope. Every remaining preset resolves from the fixed catalog.
+  const planetPresets = TELESCOPE_PRESETS.filter((preset) => 'planetId' in preset);
+  assert.equal(planetPresets.length, 0, "planet telescope presets should not exist");
+  for (const preset of TELESCOPE_PRESETS) {
+    assert.equal(
+      resolveTelescopePresetCoordinates(preset, j2000).source,
+      "fixed-catalog",
+      `${preset.id} should resolve from the fixed catalog, not planet ephemeris`
+    );
   }
-
-  const marsPreset = TELESCOPE_PRESETS.find((preset) => preset.id === "mars");
-  assert.ok(marsPreset, "Mars preset missing");
-  const marsPresetNow = resolveTelescopePresetCoordinates(marsPreset, j2000);
-  const marsPresetLater = resolveTelescopePresetCoordinates(marsPreset, new Date(Date.UTC(2000, 1, 1, 12, 0, 0)));
-  assert.equal(marsPresetNow.source, "kepler-planet");
-  assert.ok(marsPresetNow.lightTimeMinutes > 2);
-  assert.notEqual(marsPresetNow.ra, marsPresetLater.ra);
 
   const localText = createLocalAssistantResponse("Confirm chat works");
   assert.match(localText, /chat loop verified/i);
