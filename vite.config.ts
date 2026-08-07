@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import cesium from 'vite-plugin-cesium';
+import { wwvStaticCompiler } from './src/wwv-sdk/vite/wwvStaticCompiler';
 
 // Defers the Cesium global bundle until after first paint.
 // Matches whatever src vite-plugin-cesium emitted so this keeps working when
@@ -83,7 +84,14 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
-    plugins: [react(), tailwindcss(), cesium(), asyncCesiumGlobalScript(), flattenCesiumAssetDir(base)],
+    plugins: [
+      react(),
+      tailwindcss(),
+      cesium(),
+      wwvStaticCompiler(),
+      asyncCesiumGlobalScript(),
+      flattenCesiumAssetDir(base)
+    ],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       __SILVER_WOLF_BRIDGE_URL__: JSON.stringify(bridgeUrl),
