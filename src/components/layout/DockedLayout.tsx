@@ -76,6 +76,17 @@ export function DockedLayout() {
           Uses pointer-events-none so mouse interaction drops down to Cesium 3D canvas layer. */}
       <main
         className="flex-1 flex flex-col relative z-content bg-transparent pointer-events-none"
+        // Consumes the CSS vars set on the row above. Without this, the
+        // vars are computed but nothing reads them, and the centre column
+        // renders flush against the container edge behind the fixed side
+        // panels -- confirmed live via occlusion testing: -395px rail
+        // clearance (should be positive) and 5 real interactive elements
+        // (Toggle fullscreen, Clear chat, Send message, Diagnostics tab)
+        // hit-testing as blocked.
+        style={{
+          paddingLeft: 'max(0px, calc(var(--workspace-left-rail, 0px) + 0.75rem))',
+          paddingRight: 'max(0px, calc(var(--workspace-right-rail, 0px) + 0.75rem))'
+        }}
       >
         <div className="w-full h-full relative pointer-events-none">
           <CenterPanel />
