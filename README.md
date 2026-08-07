@@ -4,7 +4,7 @@
 
 An adaptive cyberpunk chat and astronomy workspace with a local diagnostic AI path, Gemini responses when configured, an optional Odysseus bridge, local chat history, ArcGIS/OSM globe imagery, Keplerian planet targeting, simulated telemetry, wallpaper-based theme extraction, and configurable interface controls.
 
-View your app in AI Studio: https://ai.studio/apps/d14a70cc-0c1f-444d-86d9-625b54096fee
+
 
 ## Run Locally
 
