@@ -27,7 +27,10 @@ changes are pushed to `main`. To enable or repair deployment:
 
 If the link shows a 404, confirm that the repository is named
 `HuTao-Software`, the workflow has completed successfully, and Pages is
-configured to use GitHub Actions rather than a branch folder.
+configured to use GitHub Actions rather than a branch folder. When Pages has
+never been enabled, add a `PAGES_TOKEN` repository secret containing a fine-
+grained token with **Pages: Read and write** permission, then rerun the
+workflow; the workflow cannot enable Pages with the default `GITHUB_TOKEN`.
 
 ## Run Locally
 

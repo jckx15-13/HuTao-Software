@@ -42,8 +42,9 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
-          # Create/configure the repository Pages site when it has not been
-          # enabled yet, instead of failing with a 404 from the Pages API.
+          # GITHUB_TOKEN cannot enable Pages. Set PAGES_TOKEN to a PAT with
+          # repository Pages write permission when bootstrapping this site.
+          token: ${{ secrets.PAGES_TOKEN }}
           enablement: true
 
       - name: Upload artifact
