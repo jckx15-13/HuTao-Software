@@ -1,3 +1,6 @@
+packages:
+  - '.'
+
 allowBuilds:
   '@google/genai': set this to true or false
   esbuild: set this to true or false
@@ -6,7 +9,7 @@ allowBuilds:
 
 peerDependencyRules:
   allowedVersions:
-    "rollup-plugin-external-globals>rollup": "^2.25.0 || ^4.0.0"
+    'rollup-plugin-external-globals>rollup': '^2.25.0 || ^4.0.0'
 
 overrides:
   vite: 6.4.3
