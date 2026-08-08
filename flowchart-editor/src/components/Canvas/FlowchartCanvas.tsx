@@ -2,16 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Maximize2, Minus, Plus, Trash2 } from 'lucide-react';
 import { geographyCurriculum, type CurriculumTopic } from '../../data/geographyCurriculum';
 import { silverWolfViNodes, silverWolfViEdges, type ArchitectureNode } from '../../data/silverWolfViArchitectureData';
+import { wwvArchitectureNodes, wwvArchitectureEdges } from '../../data/wwvArchitectureData';
+import { wwtArchitectureNodes, wwtArchitectureEdges } from '../../data/wwtArchitectureData';
 import { layoutGraph } from '../../utils/layout';
 
 /**
- * Three visual canvases behind one view toggle:
- * 1. "Silver Wolf VI Architecture": 3-Column by 2-Row Master Integration Flowchart.
- * 2. "Curriculum": Laid-out GCE O-Level graph (~108 nodes).
- * 3. "Freeform": Editable drag-and-drop flowchart builder.
+ * Visual canvas views:
+ * 1. "Master Matrix": 3-Column by 2-Row Master Integration Flowchart.
+ * 2. "WWV Source Arch": Interconnected WorldWideView Source Systems Diagram.
+ * 3. "WWT Source Arch": Interconnected World Wide Telescope System Diagram.
+ * 4. "Curriculum": Laid-out GCE O-Level graph (~108 nodes).
+ * 5. "Freeform": Editable drag-and-drop flowchart builder.
  */
 
-type ViewMode = 'silver-wolf-vi' | 'curriculum' | 'freeform';
+type ViewMode = 'master-matrix' | 'wwv-arch' | 'wwt-arch' | 'curriculum' | 'freeform';
 
 const TOPIC_FILL: Record<CurriculumTopic, string> = {
   tectonics: '#7f1d4a',
@@ -80,7 +84,7 @@ const FREE_FILL: Record<FreeType, string> = {
 };
 
 export default function FlowchartCanvas() {
-  const [mode, setMode] = useState<ViewMode>('silver-wolf-vi');
+  const [mode, setMode] = useState<ViewMode>('master-matrix');
   const layout = useMemo(() => layoutGraph(geographyCurriculum), []);
 
   const [zoom, setZoom] = useState(0.56);
@@ -105,7 +109,9 @@ export default function FlowchartCanvas() {
 
   const bounds = useMemo(() => {
     if (mode === 'curriculum') return layout.bounds;
-    if (mode === 'silver-wolf-vi') return { width: 1120, height: 1040 };
+    if (mode === 'master-matrix') return { width: 1140, height: 1040 };
+    if (mode === 'wwv-arch') return { width: 1100, height: 720 };
+    if (mode === 'wwt-arch') return { width: 1100, height: 620 };
     let maxX = 0;
     let maxY = 0;
     for (const n of freeNodes) {
@@ -204,7 +210,7 @@ export default function FlowchartCanvas() {
   };
 
   const selectedCurriculum = mode === 'curriculum' && selected ? positions.get(selected) : null;
-  const activeNode = mode === 'silver-wolf-vi' && selected ? nodeMap.get(selected) : null;
+  const activeNode = selected ? nodeMap.get(selected) : null;
 
   const toggle = (target: ViewMode, label: string) => (
     <button
@@ -226,15 +232,20 @@ export default function FlowchartCanvas() {
     </button>
   );
 
+  const activeNodes = mode === 'wwv-arch' ? wwvArchitectureNodes : mode === 'wwt-arch' ? wwtArchitectureNodes : silverWolfViNodes;
+  const activeEdges = mode === 'wwv-arch' ? wwvArchitectureEdges : mode === 'wwt-arch' ? wwtArchitectureEdges : silverWolfViEdges;
+
   return (
     <div ref={shell} className="relative flex h-full w-full flex-col overflow-hidden">
       <div className="absolute left-4 top-4 z-10 flex flex-wrap items-center gap-2">
         <div
           role="group"
           aria-label="Canvas view"
-          className="glass-panel flex items-center gap-1 rounded-xl p-1 ring-1 ring-white/10"
+          className="glass-panel flex flex-wrap items-center gap-1 rounded-xl p-1 ring-1 ring-white/10"
         >
-          {toggle('silver-wolf-vi', 'Silver Wolf VI Architecture (3 Column x 2 Row)')}
+          {toggle('master-matrix', 'Master Matrix (3 Col x 2 Row)')}
+          {toggle('wwv-arch', 'WWV Source Arch')}
+          {toggle('wwt-arch', 'WWT Source Arch')}
           {toggle('curriculum', 'Curriculum')}
           {toggle('freeform', 'Freeform')}
         </div>
@@ -296,11 +307,15 @@ export default function FlowchartCanvas() {
         )}
 
         <p className="glass-panel rounded-xl px-3 py-2 text-xs text-slate-400 ring-1 ring-white/10 font-mono">
-          {mode === 'silver-wolf-vi'
-            ? '3 Columns: Source (Left) ➔ Changes / Adapters (Center) ➔ Destination Files (Right)'
-            : mode === 'curriculum'
-              ? `${layout.nodes.length} topics · drag to pan · scroll to zoom`
-              : `${freeNodes.length} nodes · drag a node to move it`}
+          {mode === 'master-matrix'
+            ? 'Master Matrix: 3 Columns (Source ➔ Changes ➔ Destination) ✕ 2 Source Rows (WWV & WWT)'
+            : mode === 'wwv-arch'
+              ? 'WorldWideView System Arch: GeoJSON Feeds ➔ DataBus ➔ Zustand Store ➔ Resium Globe'
+              : mode === 'wwt-arch'
+                ? 'WWT System Arch: WebGL Engine ➔ postMessage ➔ Precession Math ➔ Camera Sync'
+                : mode === 'curriculum'
+                  ? `${layout.nodes.length} topics · drag to pan · scroll to zoom`
+                  : `${freeNodes.length} nodes · drag a node to move it`}
         </p>
       </div>
 
@@ -322,7 +337,7 @@ export default function FlowchartCanvas() {
             className="mb-1 text-[10px] uppercase tracking-[0.14em]"
             style={{ color: CATEGORY_STROKE[activeNode.category] }}
           >
-            {activeNode.row} · {activeNode.column}
+            {activeNode.row ? `${activeNode.row} · ${activeNode.column}` : activeNode.category.toUpperCase()}
           </p>
           <p className="text-sm font-semibold text-slate-100">{activeNode.label}</p>
           {activeNode.sublabel && (
@@ -370,35 +385,36 @@ export default function FlowchartCanvas() {
         </defs>
 
         <g transform={`scale(${zoom}) translate(${pan.x} ${pan.y})`}>
-          {mode === 'silver-wolf-vi' ? (
+          {mode === 'master-matrix' || mode === 'wwv-arch' || mode === 'wwt-arch' ? (
             <>
-              {/* Column Titles */}
-              <text x={40} y={18} fontSize={12} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
-                COLUMN 1: SOURCE ARCHITECTURE
-              </text>
-              <text x={420} y={18} fontSize={12} fontWeight={700} fill="#f59e0b" letterSpacing="0.08em">
-                COLUMN 2: CHANGES / ADAPTERS
-              </text>
-              <text x={790} y={18} fontSize={12} fontWeight={700} fill="#38bdf8" letterSpacing="0.08em">
-                COLUMN 3: DESTINATION FILES
-              </text>
+              {mode === 'master-matrix' && (
+                <>
+                  <text x={40} y={18} fontSize={12} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+                    COLUMN 1: SOURCE ARCHITECTURE
+                  </text>
+                  <text x={430} y={18} fontSize={12} fontWeight={700} fill="#f59e0b" letterSpacing="0.08em">
+                    COLUMN 2: CHANGES / ADAPTERS
+                  </text>
+                  <text x={800} y={18} fontSize={12} fontWeight={700} fill="#38bdf8" letterSpacing="0.08em">
+                    COLUMN 3: DESTINATION FILES
+                  </text>
 
-              {/* Row 1 Header */}
-              <text x={40} y={32} fontSize={13} fontWeight={700} fill="#34d399" letterSpacing="0.06em">
-                ROW 1: WORLDWIDEVIEW (WWV) INTEGRATION PIPELINE (https://github.com/silvertakana/worldwideview)
-              </text>
-              <line x1={40} y1={36} x2={1060} y2={36} stroke="#34d399" strokeOpacity={0.35} strokeDasharray="4,4" />
+                  <text x={40} y={32} fontSize={13} fontWeight={700} fill="#34d399" letterSpacing="0.06em">
+                    ROW 1: WORLDWIDEVIEW (WWV) INTEGRATION PIPELINE
+                  </text>
+                  <line x1={40} y1={36} x2={1100} y2={36} stroke="#34d399" strokeOpacity={0.35} strokeDasharray="4,4" />
 
-              {/* Row 2 Header */}
-              <text x={40} y={502} fontSize={13} fontWeight={700} fill="#818cf8" letterSpacing="0.06em">
-                ROW 2: WORLD WIDE TELESCOPE (WWT) INTEGRATION PIPELINE (web.wwtassets.org)
-              </text>
-              <line x1={40} y1={506} x2={1060} y2={506} stroke="#818cf8" strokeOpacity={0.35} strokeDasharray="4,4" />
+                  <text x={40} y={502} fontSize={13} fontWeight={700} fill="#818cf8" letterSpacing="0.06em">
+                    ROW 2: WORLD WIDE TELESCOPE (WWT) INTEGRATION PIPELINE
+                  </text>
+                  <line x1={40} y1={506} x2={1100} y2={506} stroke="#818cf8" strokeOpacity={0.35} strokeDasharray="4,4" />
+                </>
+              )}
 
               {/* Edge Vectors */}
-              {silverWolfViEdges.map((e, i) => {
-                const a = nodeMap.get(e.from);
-                const b = nodeMap.get(e.to);
+              {activeEdges.map((e, i) => {
+                const a = activeNodes.find((n) => n.id === e.from);
+                const b = activeNodes.find((n) => n.id === e.to);
                 if (!a || !b) return null;
 
                 const x1 = a.x + a.width;
@@ -433,7 +449,7 @@ export default function FlowchartCanvas() {
               })}
 
               {/* Node Rectangles */}
-              {silverWolfViNodes.map((n) => {
+              {activeNodes.map((n) => {
                 const isSelected = selected === n.id;
                 return (
                   <g
