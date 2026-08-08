@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import GoogleEarthRemix from '../learning/GoogleEarthRemix';
+import WorldWideTelescopeView from '../learning/WorldWideTelescopeView';
 
 export default function MountUnmountHarness() {
   const [mounted, setMounted] = useState(true);
@@ -16,6 +16,7 @@ export default function MountUnmountHarness() {
       cyclesRef.current++;
       console.log(`[MountHarness] cycle ${cyclesRef.current} toggled.`);
       try {
+        // performance.memory is non-standard, show if available
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mem = (performance as any)?.memory;
         if (mem) console.log('[MountHarness] memory', mem);
@@ -30,7 +31,7 @@ export default function MountUnmountHarness() {
     }, 1000);
   };
 
-  // Auto-run cycles when `?mountharness&autorun=1` is present
+  // Auto-run cycles when `?mountharness&autorun=1` is present (useful for CI/dev stress testing)
   React.useEffect(() => {
     try {
       if (typeof window !== 'undefined' && window.location.search.includes('autorun')) {
@@ -41,14 +42,14 @@ export default function MountUnmountHarness() {
   }, []);
 
   return (
-    <div className="p-4 text-white font-mono">
+    <div className="p-4 text-white">
       <div className="mb-2 flex gap-2">
         <button type="button" onClick={() => setMounted(true)} className="min-h-11 rounded bg-primary/20 px-3 py-1">Mount</button>
         <button type="button" onClick={() => setMounted(false)} className="min-h-11 rounded bg-amber-700/10 px-3 py-1">Unmount</button>
         <button type="button" onClick={startCycles} className="min-h-11 rounded bg-cyan-700/10 px-3 py-1">Run cycles (50)</button>
       </div>
       <div className="border rounded p-2 h-96 overflow-hidden bg-black/10">
-        {mounted ? <GoogleEarthRemix /> : <div className="text-white/40">Unmounted</div>}
+        {mounted ? <WorldWideTelescopeView /> : <div className="text-white/40">Unmounted</div>}
       </div>
     </div>
   );

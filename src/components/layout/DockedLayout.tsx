@@ -28,8 +28,6 @@ export function DockedLayout() {
   const viewportSize = useViewportSize();
   const collapsedForNarrowViewportRef = React.useRef(false);
 
-  // Derived from the same geometry the fixed side panels use, so the reserved
-  // rail always matches their real rendered width.
   const leftRailWidth = `${buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'left')}px`;
   const rightRailWidth = rightPanelOpen
     ? `${buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'right')}px`
@@ -85,11 +83,11 @@ export function DockedLayout() {
         <button
           type="button"
           onClick={() => setRightPanelOpen(true)}
-          className="fixed right-0 top-1/2 z-floating flex h-14 w-11 -translate-y-1/2 items-center justify-center rounded-l-lg border-y border-l border-white/10 bg-black/40 text-white/40 shadow-lg transition-all duration-300 ease-out hover:border-white/20 hover:bg-black/60 hover:text-white/80 pointer-events-auto cursor-pointer"
+          className="fixed right-0 top-1/2 z-floating flex h-14 w-11 -translate-y-1/2 items-center justify-center rounded-l-lg border-y border-l border-white/10 bg-black/40 text-white/40 shadow-lg transition-all duration-300 ease-out hover:border-white/20 hover:bg-black/60 hover:text-white/80 pointer-events-auto"
           title="Expand right sidebar"
           aria-label="Expand right sidebar"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-5 w-5" />
         </button>
       )}
     </div>

@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useRef } from 'react';
+import React, { Suspense, useEffect, useCallback, useRef } from 'react';
 import { MessageSquare, Globe2, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { ChatPanel } from '../ChatPanel';
@@ -6,6 +6,8 @@ import { TouchControlOverlay } from '../common/TouchControlOverlay';
 import { useChromeTopAnchor } from '../../hooks/useChromeTopAnchor';
 import { SpaceHudPillControls } from './SpaceHudPillControls';
 const GoogleEarthRemix = React.lazy(() => import('../learning/GoogleEarthRemix'));
+const WorldWideTelescopeView = React.lazy(() => import('../learning/WorldWideTelescopeView'));
+import { ErrorBoundary } from '../ErrorBoundary';
 
 function SidebarTrigger() {
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
@@ -34,6 +36,12 @@ export function CenterPanel() {
   const modeSwitcherOpen = useUIStore((s) => s.modeSwitcherOpen);
   const setModeSwitcherOpen = useUIStore((s) => s.setModeSwitcherOpen);
 
+  // Track WWT error state for change log reporting
+  const handleTelescopeError = useCallback((error: Error) => {
+    console.warn('[CenterPanel] Telescope view error caught by boundary:', error.message);
+    useUIStore.getState().addChangeLog('TELESCOPE', `View error caught: ${error.message}`, 'warning');
+  }, []);
+
   // Keyboard shortcut: Escape exits telescope mode back to orbital
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -61,7 +69,7 @@ export function CenterPanel() {
     };
     window.addEventListener('keydown', handleModeCommand);
     return () => window.removeEventListener('keydown', handleModeCommand);
-  }, [setModeSwitcherOpen]);
+  }, []);
 
   const isSpaceMode = interactionMode === 'orbital' || interactionMode === 'telescope';
 
@@ -70,6 +78,7 @@ export function CenterPanel() {
 
   return (
     // Root container: ALWAYS pointer-events-none to let Cesium globe receive drags underneath.
+    // Each interactive child explicitly opts-in with pointer-events-auto.
     <div className="flex h-full flex-1 flex-col overflow-hidden relative pointer-events-none">
       {/* Sidebar trigger — always interactive */}
       <SidebarTrigger />
@@ -77,7 +86,12 @@ export function CenterPanel() {
       {/* Touch device virtual navigation overlay */}
       <TouchControlOverlay />
 
-      {/* Dynamic Segmented Mode Switcher (Pill Style) */}
+      {/* Dynamic Segmented Mode Switcher (Pill Style) — always interactive.
+          `top` still uses the clamp() as its first-paint position (before
+          useChromeTopAnchor's ResizeObserver has measured anything); once it
+          publishes --chrome-top-y, every OTHER chrome element that needs to
+          clear this pill reads that single measured value instead of
+          re-guessing the same clamp() independently (see useChromeTopAnchor). */}
       <div
         ref={modeSwitcherRef}
         className={`mode-switcher-anchor absolute top-[clamp(3.5rem,7vh,5.75rem)] sm:top-[clamp(5.75rem,12vh,8rem)] left-1/2 z-floating -translate-x-1/2 pointer-events-auto ${modeSwitcherOpen ? 'is-open' : ''}`}
@@ -99,7 +113,7 @@ export function CenterPanel() {
                 <span>Space</span>
               </button>
             </div>
-            {interactionMode === 'orbital' && (
+            {interactionMode === 'orbital' && spaceInteractionTarget !== 'telescope' && (
               <div className="mt-1.5 flex justify-center">
                 <SpaceHudPillControls />
               </div>
@@ -125,12 +139,23 @@ export function CenterPanel() {
           </div>
         )}
 
-        {/* Space Viewport Container */}
+        {/* Combined Space & Telescope Viewport Container */}
         <div
           className={`fixed inset-0 ${isSpaceMode ? 'z-content' : 'hidden pointer-events-none z-base'}`}
           aria-hidden={!isSpaceMode}
         >
-          {/* GoogleEarthRemix overlay */}
+          {/* WorldWide Telescope controls overlay — wrapped in inline ErrorBoundary for graceful degradation */}
+          {isSpaceMode && (
+            <div className="absolute inset-0 pointer-events-none z-chrome">
+              <ErrorBoundary variant="inline" fallbackMessage="Telescope Controls Error" onError={handleTelescopeError}>
+                <Suspense fallback={null}>
+                  <WorldWideTelescopeView controlsOnly />
+                </Suspense>
+              </ErrorBoundary>
+            </div>
+          )}
+
+          {/* GoogleEarthRemix overlay — pointer-events-none so globe underneath gets drags */}
           {isSpaceMode && (
             <div className="absolute inset-0 pointer-events-none z-content">
               <Suspense fallback={null}>
