@@ -7,10 +7,10 @@
 import React, { Suspense } from 'react';
 import { MotionConfig } from 'motion/react';
 import { useUIStore } from './store/uiStore';
-import { ConfigProvider } from './lib/ConfigContext';
+import { ConfigProvider } from './context/ConfigContext';
 import { useDiagnosticsStore } from './store/diagnosticsStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { useThemeVariables } from './lib/themeEngine';
+import { useThemeVariables } from './hooks/useThemeVariables';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const ParticleOverlay = React.lazy(() =>
@@ -22,7 +22,7 @@ const CesiumBackground3D = React.lazy(() =>
 );
 
 const LauncherPage = React.lazy(() =>
-  import('./components/LauncherPage').then((m) => ({ default: m.LauncherPage }))
+  import('./components/launcher/LauncherPage').then((m) => ({ default: m.LauncherPage }))
 );
 
 const DockedLayout = React.lazy(() =>
