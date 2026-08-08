@@ -1,0 +1,260 @@
+@import "tailwindcss";
+
+/**
+ * SilverWolf VI — Purple Space theme.
+ *
+ * The slate-* scale is overridden rather than rewritten per-component: every
+ * existing `bg-slate-900` / `border-slate-700` in the app repaints to violet
+ * automatically, which keeps the theme in one file instead of scattered across
+ * every className.
+ */
+@theme {
+  --font-sans: Inter, system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  /* Deep-space violet ramp, standing in for slate */
+  --color-slate-950: #070312;
+  --color-slate-900: #130b28;
+  --color-slate-800: #241640;
+  --color-slate-700: #38265c;
+  --color-slate-600: #4f3a78;
+  --color-slate-500: #6b5296;
+  --color-slate-400: #9d84c4;
+  --color-slate-300: #c3b0e0;
+  --color-slate-200: #e4dbf5;
+
+  /* Accent ramp reuses the cyan-* slot so existing cyan classes turn violet */
+  --color-cyan-300: #d8b4fe;
+  --color-cyan-400: #c084fc;
+  --color-cyan-500: #a855f7;
+}
+
+:root {
+  --surface: #070312;
+  --panel: #130b28;
+  --border: rgba(192, 132, 252, 0.22);
+  --border-soft: #241640;
+  --text: #e4dbf5;
+  --text-dim: #9d84c4;
+  --text-faint: #6b5296;
+  --accent: #a855f7;
+  --accent-light: #d8b4fe;
+  --accent-hot: #f0abfc;
+
+  --node-fill: #1c1136;
+  --node-stroke: #4f3a78;
+  --node-hover: rgba(192, 132, 252, 0.45);
+  --node-selected: #c084fc;
+
+  --decision-fill: #3b1d5e;
+  --loop-fill: #5c2a6e;
+  --start-end-fill: #7c3aed;
+
+  --depth-1: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --depth-2: 0 6px 16px -4px rgba(0, 0, 0, 0.7);
+  --depth-3: 0 18px 40px -12px rgba(0, 0, 0, 0.85);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: var(--surface);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   2.5D space backdrop.
+   Two fixed layers behind the app: a slow nebula wash and a parallax starfield.
+   Both are pure CSS gradients — no image requests, so this stays offline-safe.
+   --------------------------------------------------------------------------- */
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Nebula: three oversized radial blooms that drift and breathe */
+body::before {
+  background:
+    radial-gradient(45% 38% at 22% 28%, rgba(124, 58, 237, 0.34), transparent 62%),
+    radial-gradient(38% 34% at 78% 22%, rgba(217, 70, 239, 0.24), transparent 60%),
+    radial-gradient(52% 46% at 62% 82%, rgba(67, 56, 202, 0.30), transparent 66%);
+  filter: blur(28px);
+  animation: nebula-drift 46s ease-in-out infinite alternate;
+}
+
+/* Starfield: two sizes of dot at different scales = parallax depth */
+body::after {
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 18%, rgba(255, 255, 255, 0.85), transparent),
+    radial-gradient(1.4px 1.4px at 68% 12%, rgba(232, 219, 255, 0.75), transparent),
+    radial-gradient(1.8px 1.8px at 41% 63%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1.2px 1.2px at 86% 71%, rgba(216, 180, 254, 0.7), transparent),
+    radial-gradient(1.5px 1.5px at 27% 88%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1.1px 1.1px at 57% 41%, rgba(240, 171, 252, 0.65), transparent),
+    radial-gradient(1.7px 1.7px at 94% 34%, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1.3px 1.3px at 8% 52%, rgba(216, 180, 254, 0.6), transparent);
+  background-size: 620px 620px, 480px 480px, 720px 720px, 540px 540px,
+                   660px 660px, 500px 500px, 780px 780px, 440px 440px;
+  animation: star-parallax 130s linear infinite;
+  opacity: 0.75;
+}
+
+/* App content sits above both backdrop layers */
+#root {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes nebula-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1);      opacity: 0.85; }
+  50%  { transform: translate3d(2%, -1.5%, 0) scale(1.06); opacity: 1; }
+  100% { transform: translate3d(-1.5%, 2%, 0) scale(1.03); opacity: 0.9; }
+}
+
+@keyframes star-parallax {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-620px, -340px, 0); }
+}
+
+/* ---------------------------------------------------------------------------
+   Glassmorphism
+   --------------------------------------------------------------------------- */
+
+.glass-panel {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(38, 22, 68, 0.72) 0%,
+    rgba(19, 11, 40, 0.62) 100%
+  );
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: var(--depth-2), inset 0 1px 0 rgba(216, 180, 254, 0.14);
+}
+
+/* Specular sheen along the top edge — sells the "pane of glass" read */
+.glass-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    transparent 38%
+  );
+}
+
+.glass-sunken {
+  background: rgba(7, 3, 18, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.55);
+}
+
+.glow-violet {
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.45);
+}
+
+/* Kept so any legacy `glow-cyan` usage still renders on-theme */
+.glow-cyan {
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.45);
+}
+
+/* ---------------------------------------------------------------------------
+   2.5D depth for canvas nodes
+   --------------------------------------------------------------------------- */
+
+.stage-3d {
+  perspective: 1400px;
+  perspective-origin: 50% 40%;
+}
+
+.node-3d {
+  transform-style: preserve-3d;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), filter 0.22s ease;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.65));
+}
+
+.node-3d:hover {
+  transform: translateY(-3px) scale(1.03);
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.8))
+          drop-shadow(0 0 14px rgba(192, 132, 252, 0.5));
+}
+
+.node-3d.is-selected {
+  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.85))
+          drop-shadow(0 0 20px rgba(216, 180, 254, 0.7));
+  animation: node-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes node-pulse {
+  0%, 100% { filter: drop-shadow(0 14px 24px rgba(0,0,0,.85)) drop-shadow(0 0 14px rgba(216,180,254,.5)); }
+  50%      { filter: drop-shadow(0 14px 24px rgba(0,0,0,.85)) drop-shadow(0 0 26px rgba(240,171,252,.85)); }
+}
+
+/* Edges get a slow travelling dash so the diagram reads as "flowing" */
+.edge-flow {
+  stroke-dasharray: 7 5;
+  animation: edge-march 1.6s linear infinite;
+}
+
+@keyframes edge-march {
+  to { stroke-dashoffset: -12; }
+}
+
+.rise-in {
+  animation: rise-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   Scrollbar
+   --------------------------------------------------------------------------- */
+
+* {
+  scrollbar-color: var(--node-stroke) transparent;
+  scrollbar-width: thin;
+}
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #6b5296, #4f3a78);
+  border-radius: 9px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #a855f7, #6b5296);
+}
+
+/* Motion is decorative here, so honour the OS-level reduced-motion setting
+   rather than animating regardless. */
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  body::after,
+  .edge-flow,
+  .rise-in,
+  .node-3d.is-selected {
+    animation: none !important;
+  }
+  .node-3d { transition: none; }
+}

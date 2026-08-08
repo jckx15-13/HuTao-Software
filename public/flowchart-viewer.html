@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Silver Wolf VI — Flowchart Editor & Interactive Viewer</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-panel: #111827;
+      --bg-editor: #060911;
+      --border-color: rgba(255, 255, 255, 0.12);
+      --text-main: #f3f4f6;
+      --text-muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-indigo: #818cf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      background: rgba(17, 24, 39, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .title-group h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .title-group p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    select, button {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-color);
+      color: #e2e8f0;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    select:focus, button:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    button:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--accent-cyan);
+      color: #fff;
+    }
+
+    .btn-active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .main-workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .editor-pane {
+      width: 42%;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pane-header {
+      padding: 0.6rem 1rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #code-editor {
+      flex: 1;
+      width: 100%;
+      background: var(--bg-editor);
+      color: #7dd3fc;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      padding: 1rem;
+      border: none;
+      resize: none;
+      outline: none;
+      tab-size: 2;
+    }
+
+    .viewer-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-main);
+      overflow: hidden;
+    }
+
+    .viewer-content {
+      flex: 1;
+      padding: 1.5rem;
+      overflow: auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #diagram-output {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .error-box {
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.82rem;
+      max-width: 90%;
+    }
+
+    .legend {
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.8rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .badge {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    .badge-wwt { background: #6366f1; }
+    .badge-mod { background: #f59e0b; }
+    .badge-swvi { background: #0284c7; }
+    .badge-imp { background: #10b981; }
+
+    #ascii-view {
+      display: none;
+      flex: 1;
+      padding: 1.5rem;
+      overflow: auto;
+    }
+
+    pre.ascii-content {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #cbd5e1;
+      background: #060911;
+      padding: 1.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-group">
+      <h1>🪐 Flowchart Editor & Live Viewer</h1>
+      <p>Silver Wolf VI — WWT Integration Architecture</p>
+    </div>
+    <div class="toolbar">
+      <select id="preset-select" onchange="loadPreset(this.value)">
+        <option value="clean">Preset: Clean Parallel Flowchart</option>
+        <option value="detailed">Preset: Full Detailed Architecture</option>
+      </select>
+      <button class="btn btn-active" id="btn-diagram" onclick="toggleView('diagram')">Mermaid Viewer</button>
+      <button class="btn" id="btn-ascii" onclick="toggleView('ascii')">ASCII Map</button>
+      <button class="btn" onclick="copyCode()">Copy Code</button>
+    </div>
+  </header>
+
+  <div class="main-workspace">
+    <!-- Left Pane: Code Editor -->
+    <div class="editor-pane">
+      <div class="pane-header">
+        <span>MERMAID FLOWCHART EDITOR</span>
+        <span style="font-size: 0.72rem; color: #94a3b8;">Live Auto-Render</span>
+      </div>
+      <textarea id="code-editor" spellcheck="false" oninput="renderDiagram()"></textarea>
+    </div>
+
+    <!-- Right Pane: Live Render Viewer -->
+    <div class="viewer-pane">
+      <div class="pane-header">
+        <span>LIVE DIAGRAM VIEW</span>
+        <div class="legend">
+          <div class="legend-item"><div class="badge badge-wwt"></div> WWT</div>
+          <div class="legend-item"><div class="badge badge-mod"></div> Adapter</div>
+          <div class="legend-item"><div class="badge badge-swvi"></div> Silver Wolf VI</div>
+          <div class="legend-item"><div class="badge badge-imp"></div> Implemented</div>
+        </div>
+      </div>
+
+      <div class="viewer-content" id="viewer-content">
+        <div id="diagram-output"></div>
+      </div>
+
+      <div id="ascii-view">
+        <pre class="ascii-content">
+================================================================================================-------------------
+1. WORLD WIDE TELESCOPE (LEFT)  --->   2. CUSTOM INTEGRATION ADAPTERS (CENTER)  --->  3. SILVER WOLF VI (RIGHT)
+================================================================================================-------------------
+
+[ Remote Research Iframe ]   ===================== (Direct Embed) =====================> [ WorldWideTelescopeView.tsx ]
+
+[ Multi-Spectrum Surveys ]   ===================== (Sky Surveys) ======================> [ telescopePresets.ts ]
+
+[ 3D Solar System Mode ]     ===================== (Vantage Orbit) ====================> [ telescopePresets.ts ]
+
+-------------------------------------------------------------------------------------------------------------------
+
+[ postMessage Telemetry ]    --------> [ Anti-Loop Mutex & 32ms Throttle ] ------------> [ useWWTListener.ts ]
+
+[ Cesium Camera Altitude H ] --------> [ Exact Horizon FOV (3.8034°) ] ----------------> [ Remote Research Iframe ]
+
+[ J2000 Catalog Coords ]     --------> [ Precession & ERA Math Engine ] ---------------> [ coordinateTransforms.ts ]
+
+[ Remote Asset CDN ]         --------> [ Local Asset Sync Script ] --------------------> [ repositoryData.ts ]
+
+[ Remote Research Iframe ]   --------> [ 45s Watchdog & Canvas Fallback ] -------------> [ WorldWideTelescopeView.tsx ]
+
+[ Multi-Spectrum Surveys ]   --------> [ 4-Tab Space Control Drawer UI ] --------------> [ WorldWideTelescopeView.tsx ]
+        </pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PRESETS = {
+      clean: `flowchart LR
+    subgraph WWT ["1. World Wide Telescope (Left)"]
+        direction TB
+        W1["Remote Research Iframe"]:::wwt
+        W2["Multi-Spectrum Surveys"]:::wwt
+        W3["3D Solar System Mode"]:::wwt
+        W4["postMessage Telemetry"]:::wwt
+        W5["J2000 Catalog Coords"]:::wwt
+        W6["Remote Asset CDN"]:::wwt
+    end
+
+    subgraph ADAPTERS ["2. Custom Integration Adapters (Center)"]
+        direction TB
+        A1["45s Watchdog & Canvas Fallback"]:::mod
+        A2["Anti-Loop Mutex & 32ms Throttle"]:::mod
+        A3["Exact Horizon FOV (3.8034°)"]:::mod
+        A4["Precession & ERA Math Engine"]:::mod
+        A5["Local Asset Sync Script"]:::mod
+        A6["4-Tab Space Control Drawer UI"]:::mod
+    end
+
+    subgraph SWVI ["3. Silver Wolf VI Codebase (Right)"]
+        direction TB
+        S1["WorldWideTelescopeView.tsx"]:::swvi
+        S2["telescopePresets.ts"]:::swvi
+        S3["useWWTListener.ts"]:::swvi
+        S4["useCameraSync.ts"]:::swvi
+        S5["coordinateTransforms.ts"]:::swvi
+        S6["repositoryData.ts"]:::swvi
+    end
+
+    %% Implemented direct paths (Green)
+    W1 ==>|"Direct Embed"| S1
+    W2 ==>|"Sky Surveys"| S2
+    W3 ==>|"Vantage Orbit"| S2
+
+    %% Transformation paths (Clean parallel flow)
+    W4 --> A2 --> S3
+    S4 --> A3 --> W1
+    W5 --> A4 --> S5
+    W6 --> A5 --> S6
+    W1 --> A1 --> S1
+    W2 --> A6 --> S1
+
+    classDef wwt fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#e0e7ff;
+    classDef mod fill:#451a03,stroke:#f59e0b,stroke-width:2px,color:#fef3c7;
+    classDef swvi fill:#0f172a,stroke:#0284c7,stroke-width:2px,color:#e0f2fe;
+
+    linkStyle 0 stroke:#10b981,stroke-width:3px;
+    linkStyle 1 stroke:#10b981,stroke-width:3px;
+    linkStyle 2 stroke:#10b981,stroke-width:3px;`,
+      detailed: `flowchart TD
+    subgraph WWT ["World Wide Telescope Engine Architecture"]
+        W1["Remote Research App Iframe"]
+        W2["Multi-Wavelength Imagery"]
+        W3["3D Solar System Mode"]
+        W4["postMessage Telemetry"]
+        W5["J2000 Catalog Coordinates"]
+        W6["Remote Asset CDN"]
+    end
+
+    subgraph MODS ["Transformation Logic Blocks"]
+        M1["Anti-Loop Mutex Block"]
+        M2["Exact Horizon FOV Block"]
+        M3["Precession & ERA Math Block"]
+        M4["Local Asset Sync Block"]
+        M5["45s Watchdog & Canvas Fallback Block"]
+        M6["Space Control Drawer UI Block"]
+    end
+
+    subgraph SWVI ["Silver Wolf VI Target Codebase"]
+        S1["src/App.tsx"]
+        S2["WorldWideTelescopeView.tsx"]
+        S3["useCameraSync.ts"]
+        S4["useWWTListener.ts"]
+        S5["coordinateTransforms.ts"]
+        S6["earthObserverProjection.ts"]
+        S7["repositoryData.ts"]
+        S8["telescopePresets.ts"]
+        S9["Cesium 3D Globe Engine"]
+    end
+
+    W1 ==>|"Implemented"| S2
+    W2 ==>|"Implemented"| S8
+    W3 ==>|"Implemented"| S8
+    S1 ==>|"Implemented"| S2
+
+    W4 --> M1 --> S4
+    S9 --> M1 --> S3
+    S3 --> M2 --> W1
+    W5 --> M3 --> S5
+    S5 --> M3 --> S6
+    W6 --> M4 --> S7
+    W1 --> M5 --> S2
+    W2 --> M6 --> S2
+
+    classDef implemented fill:#064e3b,stroke:#22c55e,stroke-width:2px,color:#fff;
+    classDef modified fill:#451a03,stroke:#f59e0b,stroke-width:2px,color:#fff;
+    classDef swviStyle fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#fff;
+    classDef wwtStyle fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
+
+    class W1,W2,W3,W4,W5,W6 wwtStyle;
+    class M1,M2,M3,M4,M5,M6 modified;
+    class S1,S2,S3,S4,S5,S6,S7,S8,S9 swviStyle;`
+    };
+
+    let renderCounter = 0;
+
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' }
+    });
+
+    const editor = document.getElementById('code-editor');
+    const output = document.getElementById('diagram-output');
+
+    function loadPreset(name) {
+      if (PRESETS[name]) {
+        editor.value = PRESETS[name];
+        renderDiagram();
+      }
+    }
+
+    async function renderDiagram() {
+      const code = editor.value;
+      renderCounter++;
+      const id = `mermaid-svg-${renderCounter}`;
+
+      try {
+        const { svg } = await mermaid.render(id, code);
+        output.innerHTML = svg;
+      } catch (err) {
+        output.innerHTML = `<div class="error-box"><strong>Mermaid Syntax Error:</strong><br/>${err.message || err}</div>`;
+      }
+    }
+
+    function toggleView(tabName) {
+      document.getElementById('viewer-content').style.display = tabName === 'diagram' ? 'flex' : 'none';
+      document.getElementById('ascii-view').style.display = tabName === 'ascii' ? 'block' : 'none';
+
+      document.getElementById('btn-diagram').classList.toggle('btn-active', tabName === 'diagram');
+      document.getElementById('btn-ascii').classList.toggle('btn-active', tabName === 'ascii');
+    }
+
+    function copyCode() {
+      navigator.clipboard.writeText(editor.value).then(() => {
+        alert('Flowchart Mermaid code copied to clipboard!');
+      });
+    }
+
+    // Initial Load
+    editor.value = PRESETS.clean;
+    window.addEventListener('DOMContentLoaded', () => {
+      renderDiagram();
+    });
+  </script>
+</body>
+</html>
