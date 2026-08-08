@@ -1,9 +1,19 @@
-import React, { Suspense, lazy } from 'react';
-const LeftPanel = lazy(() => import('../panels/LeftPanel').then(m => ({ default: m.LeftPanel })));
-const CenterPanel = lazy(() => import('../panels/CenterPanel').then(m => ({ default: m.CenterPanel })));
-const RightPanel = lazy(() => import('../panels/RightPanel').then(m => ({ default: m.RightPanel })));
+// ============================================================================
+// 🧱 Docked Layout Organizer (DockedLayout.tsx)
+// ============================================================================
+// Low-level mechanics:
+// 1. Implements standard CSS Flex row layout matching workspace specifications.
+// 2. Coordinates viewport dimensions using tailwind responsive utility prefixes (e.g. xl:flex).
+// 3. Implements conditional width placeholders (aside panel width alignment).
+// ============================================================================
+
+import React, { Suspense } from 'react';
+import { CenterPanel } from '../panels/CenterPanel'; // Middle container coordinating workspace and telescope targets.
+import { ChevronLeft } from 'lucide-react';
+const LeftPanel = React.lazy(() => import('../panels/LeftPanel').then((m) => ({ default: m.LeftPanel })));
+const RightPanel = React.lazy(() => import('../panels/RightPanel').then((m) => ({ default: m.RightPanel })));
 import { WorkspaceHeader } from './WorkspaceHeader';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore } from '../../store/uiStore'; // Central state hook providing toggle flags for left/right columns.
 import { useViewportSize } from '../../hooks/useViewportSize';
 import { buildWorkspaceRailPx } from '../panels/panelGeometry';
 
@@ -18,6 +28,8 @@ export function DockedLayout() {
   const viewportSize = useViewportSize();
   const collapsedForNarrowViewportRef = React.useRef(false);
 
+  // Derived from the same geometry the fixed side panels use, so the reserved
+  // rail always matches their real rendered width.
   const leftRailWidth = `${buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'left')}px`;
   const rightRailWidth = rightPanelOpen
     ? `${buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'right')}px`
@@ -73,11 +85,11 @@ export function DockedLayout() {
         <button
           type="button"
           onClick={() => setRightPanelOpen(true)}
-          className="fixed right-0 top-1/2 z-floating flex h-14 w-11 -translate-y-1/2 items-center justify-center rounded-l-lg border-y border-l border-white/10 bg-black/40 text-white/40 shadow-lg transition-all duration-300 ease-out hover:border-white/20 hover:bg-black/60 hover:text-white/80 pointer-events-auto"
+          className="fixed right-0 top-1/2 z-floating flex h-14 w-11 -translate-y-1/2 items-center justify-center rounded-l-lg border-y border-l border-white/10 bg-black/40 text-white/40 shadow-lg transition-all duration-300 ease-out hover:border-white/20 hover:bg-black/60 hover:text-white/80 pointer-events-auto cursor-pointer"
           title="Expand right sidebar"
           aria-label="Expand right sidebar"
         >
-          <span className="text-xs font-bold">‹</span>
+          <ChevronLeft className="h-4 w-4" />
         </button>
       )}
     </div>
