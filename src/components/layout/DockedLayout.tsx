@@ -1,49 +1,27 @@
-// ============================================================================
-// 🧱 Docked Layout Organizer (DockedLayout.tsx)
-// ============================================================================
-// Low-level mechanics:
-// 1. Implements standard CSS Flex row layout matching workspace specifications.
-// 2. Coordinates viewport dimensions using tailwind responsive utility prefixes (e.g. xl:flex).
-// 3. Implements conditional width placeholders (aside panel width alignment).
-// ============================================================================
-
-import React, { Suspense } from 'react';
-import { CenterPanel } from '../panels/CenterPanel'; // Middle container coordinating workspace and telescope targets.
-import { ChevronLeft } from 'lucide-react';
-const LeftPanel = React.lazy(() => import('../panels/LeftPanel').then((m) => ({ default: m.LeftPanel })));
-const RightPanel = React.lazy(() => import('../panels/RightPanel').then((m) => ({ default: m.RightPanel })));
+import React, { Suspense, lazy } from 'react';
+const LeftPanel = lazy(() => import('../panels/LeftPanel').then(m => ({ default: m.LeftPanel })));
+const CenterPanel = lazy(() => import('../panels/CenterPanel').then(m => ({ default: m.CenterPanel })));
+const RightPanel = lazy(() => import('../panels/RightPanel').then(m => ({ default: m.RightPanel })));
 import { WorkspaceHeader } from './WorkspaceHeader';
-import { SystemMonitor } from '../SystemMonitor'; // Nested system metrics tracker widget.
-import { useUIStore } from '../../store/uiStore'; // Central state hook providing toggle flags for left/right columns.
+import { useUIStore } from '../../store/uiStore';
 import { useViewportSize } from '../../hooks/useViewportSize';
 import { buildWorkspaceRailPx } from '../panels/panelGeometry';
 
 export function DockedLayout() {
   // Read open status of panels directly from the Zustand global store.
   const {
-    settingsDocked,
-    showSettings,
     leftPanelOpen,
     setLeftPanelOpen,
     rightPanelOpen,
     setRightPanelOpen,
-    interactionMode
   } = useUIStore();
   const viewportSize = useViewportSize();
   const collapsedForNarrowViewportRef = React.useRef(false);
 
-  // Design logic: Hide the performance meter dashboard if the settings page is docked onto the side layout.
-  const hideSystemMonitor = showSettings && settingsDocked;
-  const showPassiveTelemetry = interactionMode !== 'chat' && !hideSystemMonitor;
-  // Derived from the same geometry the fixed side panels use, so the reserved
-  // rail always matches their real rendered width. Computing these independently
-  // is what previously let the chat surface slide underneath the sidebars.
   const leftRailWidth = `${buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'left')}px`;
   const rightRailWidth = rightPanelOpen
     ? `${buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'right')}px`
-    : showPassiveTelemetry && viewportSize.width >= 1280
-      ? 'clamp(14rem, 16vw, 20rem)'
-      : '0px';
+    : '0px';
 
   React.useEffect(() => {
     const isNarrowViewport = viewportSize.width < 760;
@@ -84,22 +62,12 @@ export function DockedLayout() {
         </div>
       </main>
 
-      {/* COLUMN 3: Right details panel or background telemetry panel. */}
-      {rightPanelOpen ? (
-        // Mode A: Shows standard Markdown context search & browser pages.
+      {/* COLUMN 3: Right details panel */}
+      {rightPanelOpen && (
         <Suspense fallback={null}>
           <RightPanel />
         </Suspense>
-      ) : showPassiveTelemetry ? (
-        // Mode B: Renders system telemetry inside a fixed-width aside bar (320px width).
-        // Uses `xl:flex` to hide on smaller screens, appearing automatically once viewport exceeds 1280px wide.
-        <aside className="relative z-chrome hidden w-[clamp(14rem,16vw,20rem)] shrink-0 flex-col border-l border-panel-border bg-panel panel-glass ambient-glow transition-opacity duration-300 xl:flex">
-          <SystemMonitor />
-        </aside>
-      ) : hideSystemMonitor ? (
-        // Mode C: Renders a passive width offset (400px) on extra-large screens to balance the layout.
-        <div className="hidden w-[clamp(14rem,16vw,20rem)] shrink-0 xl:block" />
-      ) : null}
+      )}
 
       {!rightPanelOpen && (
         <button
@@ -109,7 +77,7 @@ export function DockedLayout() {
           title="Expand right sidebar"
           aria-label="Expand right sidebar"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <span className="text-xs font-bold">‹</span>
         </button>
       )}
     </div>
