@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 import { bridgeUrl, getBridgeBaseUrl, isBridgeEnabled } from '../lib/bridgeConfig';
+import { sentryService } from '../services/sentryService';
+import { coderabbitService, CodeRabbitAuditResult } from '../services/coderabbitService';
+import { visualInspectorService, HardwareSpecs, VisualSnapshot } from '../services/visualInspectorService';
 
 export type DiagnosticLevel = 'error' | 'warning' | 'info' | 'debug';
 
@@ -15,9 +18,22 @@ export interface DiagnosticEntry {
 
 interface DiagnosticsState {
   entries: DiagnosticEntry[];
+  sentryDsn: string;
+  sentryEnabled: boolean;
+  codeRabbitAudit: CodeRabbitAuditResult | null;
+  hardwareSpecs: HardwareSpecs | null;
+  latestVisualSnapshot: VisualSnapshot | null;
+  aiVisionEnabled: boolean;
+
   add: (entry: Omit<DiagnosticEntry, 'id' | 'timestamp'>) => void;
   clear: () => void;
   export: () => string;
+
+  setSentryDsn: (dsn: string) => void;
+  runCodeRabbitAudit: () => CodeRabbitAuditResult;
+  refreshHardwareSpecs: () => Promise<HardwareSpecs>;
+  captureVisualSnapshot: () => Promise<VisualSnapshot>;
+  setAIVisionEnabled: (enabled: boolean) => void;
 }
 
 const makeId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -74,6 +90,13 @@ function sanitize(data: any): any {
 
 export const useDiagnosticsStore = create<DiagnosticsState>((set, get) => ({
   entries: [],
+  sentryDsn: sentryService.getDSN(),
+  sentryEnabled: sentryService.isEnabled(),
+  codeRabbitAudit: coderabbitService.runAudit(),
+  hardwareSpecs: null,
+  latestVisualSnapshot: null,
+  aiVisionEnabled: true,
+
   add: (entry) => {
     const sanitizedMetadata = sanitize(entry.metadata || {});
     const sanitizedMessage = sanitize(entry.message);
@@ -108,6 +131,14 @@ export const useDiagnosticsStore = create<DiagnosticsState>((set, get) => ({
         navigator.webdriver ||
         window.location.search.includes('fallback'));
 
+    // Asynchronously log to Sentry if error or warning
+    if (entry.level === 'error' || entry.level === 'warning') {
+      sentryService.captureMessage(sanitizedMessage, entry.level === 'error' ? 'error' : 'warning', {
+        stack: entry.stack,
+        metadata: sanitizedMetadata
+      });
+    }
+
     // Skip bridge file-logging when headless, or when no bridge exists for this
     // build — otherwise every diagnostic entry would fire a doomed request.
     if (!isHeadless && isBridgeEnabled()) {
@@ -124,7 +155,34 @@ export const useDiagnosticsStore = create<DiagnosticsState>((set, get) => ({
     set((s) => ({ entries: [full, ...s.entries].slice(0, 500) }));
   },
   clear: () => set({ entries: [] }),
-  export: () => JSON.stringify(get().entries, null, 2)
+  export: () => JSON.stringify(get().entries, null, 2),
+
+  setSentryDsn: (dsn: string) => {
+    sentryService.setDSN(dsn);
+    set({ sentryDsn: dsn, sentryEnabled: sentryService.isEnabled() });
+  },
+
+  runCodeRabbitAudit: () => {
+    const result = coderabbitService.runAudit();
+    set({ codeRabbitAudit: result });
+    return result;
+  },
+
+  refreshHardwareSpecs: async () => {
+    const specs = await visualInspectorService.getHardwareSpecs();
+    set({ hardwareSpecs: specs });
+    return specs;
+  },
+
+  captureVisualSnapshot: async () => {
+    const snapshot = await visualInspectorService.captureViewportSnapshot();
+    set({ latestVisualSnapshot: snapshot });
+    return snapshot;
+  },
+
+  setAIVisionEnabled: (enabled: boolean) => {
+    set({ aiVisionEnabled: enabled });
+  }
 }));
 
 // Auto-capture uncaught exceptions, promise rejections, and client load performance

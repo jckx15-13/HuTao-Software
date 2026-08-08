@@ -27,6 +27,7 @@ import {
 import { useRef, useState, useEffect, useMemo } from 'react';
 import type { RightPanelTab } from '@/store/uiStore';
 import { useHorizontalOverflow } from './useHorizontalOverflow';
+import { TouchSheetHandle } from '../common/TouchSheetHandle';
 import { WWV_ASSET_AUDIT, WWV_ORBITAL_ASSET_BY_CATEGORY } from '@/assets/wwvVisualAssets';
 import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
 import { propagateCircularOrbit, calculateOrbitalSpeed, calculateOrbitalPeriod } from '../../lib/simulation';
@@ -192,6 +193,8 @@ export function RightPanel() {
         className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-panel h-auto bg-black/75"
         style={spatialPanelStyle}
       >
+        {/* Mobile/Tablet Touch Drag Handle */}
+        <TouchSheetHandle className="min-[760px]:hidden" onDismiss={() => setRightPanelOpen(false)} />
         {/* Header and Tab Switcher */}
         <div className="flex min-h-14 items-center justify-between gap-2 border-b border-white/10 bg-black/45 px-3 py-1.5">
           {/* Tab strip: horizontally scrollable, with edge fades and paging arrows

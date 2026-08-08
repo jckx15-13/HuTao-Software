@@ -578,3 +578,30 @@ textarea:disabled {
   88% { clip: rect(135px, 9999px, 92px, 0); }
   100% { clip: rect(52px, 9999px, 10px, 0); }
 }
+
+/* Touch device input & hit target utilities */
+@media (pointer: coarse) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+.touch-action-none {
+  touch-action: none;
+}
+
+.touch-action-manipulation {
+  touch-action: manipulation;
+}
+
+.touch-device-only {
+  display: none;
+}
+
+@media (pointer: coarse), (hover: none) {
+  .touch-device-only {
+    display: flex;
+  }
+}
+

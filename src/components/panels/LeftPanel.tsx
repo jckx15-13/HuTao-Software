@@ -34,6 +34,7 @@ import { useStore } from '@/core/state/store';
 import { locations } from '@/data/locations';
 import { tours } from '@/data/tours';
 import { pluginManager } from '@/core/plugins/PluginManager';
+import { TouchSheetHandle } from '../common/TouchSheetHandle';
 import { TELESCOPE_PRESETS as presets, resolveTelescopePresetCoordinates } from '@/data/telescopePresets';
 import { projectTelescopeTargetToEarth } from '@/lib/earthObserverProjection';
 // Runtime/mocked wrapper to prevent static Cesium initialization crashes in headless environments
@@ -642,6 +643,8 @@ export function LeftPanel() {
         className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-panel h-auto min-h-0 bg-black/75"
         style={spatialPanelStyle}
       >
+        {/* Mobile/Tablet Touch Drag Handle */}
+        <TouchSheetHandle className="min-[760px]:hidden" onDismiss={() => setLeftPanelOpen(false)} />
       {/* Header section */}
       <div className="flex h-12 items-center justify-between px-4 border-b border-white/10 shrink-0 bg-black/45">
         <div className="flex items-center gap-2">

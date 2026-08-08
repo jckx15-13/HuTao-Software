@@ -1,10 +1,85 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { createInitialMessages, createResetMessages, type Message } from '../lib/messages';
 import type { PaletteKey, ThemeVars } from '../lib/themeEngine';
 import { type LocationData } from '../data/locations';
 import { type Tour } from '../data/tours';
 import { type WeatherData } from '../services/weatherService';
+import { resolveDeviceProfile } from '../core/layout/deviceProfile';
+import {
+  UI_DEFAULTS,
+  PERSONALISATION_DEFAULTS,
+  buildDefaultUiState,
+  enforcePanelBudget,
+  normalizeAiModel,
+  normalizePersonalisation,
+  resolveStartupLayout,
+  sanitizePersistedUiState
+} from '../core/defaults/uiDefaults';
+
+/**
+ * localStorage wrapper that treats storage itself as untrusted.
+ *
+ * A truncated or hand-edited entry used to make `JSON.parse` throw inside the
+ * persist middleware before any of our code ran, and a browser in private mode
+ * or with storage disabled throws on `setItem`. Either one took the app down on
+ * boot. Failures here degrade to "no persisted state" — the defaults — and a
+ * payload that cannot be parsed is cleared so it can't fail again next launch.
+ */
+const safePersistStorage: Storage = {
+  get length() {
+    try {
+      return window.localStorage.length;
+    } catch {
+      return 0;
+    }
+  },
+  key(index) {
+    try {
+      return window.localStorage.key(index);
+    } catch {
+      return null;
+    }
+  },
+  getItem(key) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (raw === null) return null;
+      // Parse here purely to validate. A throw means the entry is unusable, and
+      // leaving it in place would reproduce the failure on every future load.
+      JSON.parse(raw);
+      return raw;
+    } catch {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {
+        /* storage unavailable entirely; defaults still apply */
+      }
+      return null;
+    }
+  },
+  setItem(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      /* quota exceeded or storage blocked — settings stay in memory this session */
+    }
+  },
+  removeItem(key) {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      /* nothing to recover */
+    }
+  },
+  clear() {
+    try {
+      window.localStorage.clear();
+    } catch {
+      /* nothing to recover */
+    }
+  }
+};
 
 export type AiModel =
   | 'gemini-3.5-flash'
@@ -96,65 +171,6 @@ export type CurrentPage = 'launcher' | 'workspace' | 'settings';
 export type RightPanelTab = 'context' | 'browser' | 'changes' | 'diagnostics' | 'telemetry' | 'odysseus';
 export type SettingsCategory =
   'personalisation' | 'ai' | 'connections' | 'feedback' | 'developer' | 'about' | 'map' | 'plugins';
-
-const defaultPersonalisation: Personalisation = {
-  panelOpacity: 0.88,
-  blurIntensity: 6,
-  animationIntensity: 0.35,
-  motionReduced: false,
-  cornerRadius: 20,
-  borderStyle: 'solid',
-  shadowIntensity: 0.2,
-  chatBubbleStyle: 'solid',
-  minimalMode: false,
-  iconStyle: 'outlined',
-  uiDensity: 'compact',
-  fontScale: 1.0,
-  accentColor: '',
-  fontFamily: 'Inter',
-  panelTransitionStyle: 'fade'
-};
-
-const activeAiModels = new Set<AiModel>([
-  'local-assistant',
-  'odysseus-local',
-  'gemini-3.5-flash',
-  'gemini-3.1-pro-preview',
-  'gemini-3.1-flash-lite',
-  'gemini-3-flash-preview',
-  'gemini-2.5-flash',
-  'gemini-2.5-pro'
-]);
-
-function normalizeAiModel(model: unknown): AiModel {
-  if (typeof model !== 'string') return 'local-assistant';
-
-  if (model === 'gemini-3-flash') return 'gemini-3-flash-preview';
-  if (model === 'gemini-3-pro') return 'gemini-3.1-pro-preview';
-  if (model.startsWith('gpt-')) return 'local-assistant';
-
-  return activeAiModels.has(model as AiModel) ? (model as AiModel) : 'local-assistant';
-}
-
-function normalizePersonalisation(personalisation?: Partial<Personalisation> | null): Personalisation {
-  const merged = { ...defaultPersonalisation, ...(personalisation || {}) };
-  const isMinimal = merged.minimalMode === true;
-  const panelRange = isMinimal ? { min: 0.78, max: 0.98 } : { min: 0.72, max: 0.98 };
-  const blurRange = isMinimal ? { min: 0, max: 8 } : { min: 0, max: 16 };
-
-  return {
-    ...merged,
-    panelOpacity: Math.max(
-      panelRange.min,
-      Math.min(panelRange.max, merged.panelOpacity ?? defaultPersonalisation.panelOpacity)
-    ),
-    blurIntensity: Math.max(
-      blurRange.min,
-      Math.min(blurRange.max, merged.blurIntensity ?? defaultPersonalisation.blurIntensity)
-    ),
-    chatBubbleStyle: merged.chatBubbleStyle || defaultPersonalisation.chatBubbleStyle
-  };
-}
 
 function createGlobalChat(): ChatSession {
   const now = Date.now();
@@ -382,6 +398,8 @@ export interface UIStore {
 
   // Generic settings updater
   updateSettings: (settings: Partial<UIStore>) => void;
+  /** Restores every persisted setting to its startup default. Leaves chats intact. */
+  resetToDefaults: () => void;
 }
 
 let diagCounter = 0;
@@ -390,6 +408,9 @@ export const useUIStore = create<UIStore>()(
   persist(
     (set, get) => {
       const globalChat = createGlobalChat();
+      // Panel state depends on the device the app is booting on, so it is
+      // resolved once here rather than baked in as a desktop-shaped literal.
+      const startupLayout = resolveStartupLayout();
 
       return {
         // Chat Sessions
@@ -505,7 +526,7 @@ export const useUIStore = create<UIStore>()(
           }),
 
         // Theme / Appearance
-        activePalette: 'holographic' as PaletteKey,
+        activePalette: UI_DEFAULTS.activePalette,
         setActivePalette: (activePalette) => set({ activePalette }),
         customWallpaper: null,
         setCustomWallpaper: (customWallpaper) => set({ customWallpaper }),
@@ -513,24 +534,24 @@ export const useUIStore = create<UIStore>()(
         setDynamicTheme: (dynamicTheme) => set({ dynamicTheme }),
 
         // Personalisation
-        personalisation: normalizePersonalisation(defaultPersonalisation),
+        personalisation: normalizePersonalisation(PERSONALISATION_DEFAULTS),
         updatePersonalisation: (p) =>
           set((s) => ({ personalisation: normalizePersonalisation({ ...s.personalisation, ...p }) })),
 
         // Custom cursor design
-        cursorDesign: 'reticle-v1',
+        cursorDesign: UI_DEFAULTS.cursorDesign,
         setCursorDesign: (cursorDesign) => set({ cursorDesign }),
 
         // AI Config
-        aiModel: 'local-assistant',
+        aiModel: UI_DEFAULTS.aiModel,
         setAiModel: (aiModel) => set({ aiModel: normalizeAiModel(aiModel) }),
-        systemInstructions: 'You are Silver Wolf VI, a cyberpunk AI companion.',
+        systemInstructions: UI_DEFAULTS.systemInstructions,
         setSystemInstructions: (systemInstructions) => set({ systemInstructions }),
 
         // Sensory
-        audioFeedback: false,
+        audioFeedback: UI_DEFAULTS.audioFeedback,
         setAudioFeedback: (audioFeedback) => set({ audioFeedback }),
-        particleEffects: false,
+        particleEffects: UI_DEFAULTS.particleEffects,
         setParticleEffects: (particleEffects) => set({ particleEffects }),
         terminalFontSize: 15,
         setTerminalFontSize: (terminalFontSize) => set({ terminalFontSize }),
@@ -540,19 +561,19 @@ export const useUIStore = create<UIStore>()(
         setCurrentPage: (currentPage) => set({ currentPage }),
 
         // Interaction Mode
-        interactionMode: 'chat',
+        interactionMode: UI_DEFAULTS.interactionMode,
         setInteractionMode: (interactionMode) => set({ interactionMode }),
         // Scanline / CRT overlay (off by default)
-        scanlineOverlay: false,
+        scanlineOverlay: UI_DEFAULTS.scanlineOverlay,
         setScanlineOverlay: (scanlineOverlay) => set({ scanlineOverlay }),
         // Camera sensitivity (1.0 = default)
-        cameraSensitivity: 1.0,
+        cameraSensitivity: UI_DEFAULTS.cameraSensitivity,
         setCameraSensitivity: (cameraSensitivity) => set({ cameraSensitivity }),
-        showBorders: false,
+        showBorders: UI_DEFAULTS.showBorders,
         setShowBorders: (showBorders) => set({ showBorders }),
-        showTerrain: false,
+        showTerrain: UI_DEFAULTS.showTerrain,
         setShowTerrain: (showTerrain) => set({ showTerrain }),
-        showRoads: false,
+        showRoads: UI_DEFAULTS.showRoads,
         setShowRoads: (showRoads) => set({ showRoads }),
 
         // Location Selection
@@ -581,7 +602,7 @@ export const useUIStore = create<UIStore>()(
         setTelescopeTelemetry: (telescopeTelemetry) => set({ telescopeTelemetry }),
 
         // Browser URL
-        browserUrl: 'https://nasa.gov',
+        browserUrl: UI_DEFAULTS.browserUrl,
         setBrowserUrl: (browserUrl) => set({ browserUrl }),
 
         // Change Logs
@@ -627,18 +648,9 @@ export const useUIStore = create<UIStore>()(
         setIssTelemetry: (issTelemetry) => set({ issTelemetry }),
 
         // Satellite Ingestion & Tracker State
-        activeSatelliteId: null,
+        activeSatelliteId: UI_DEFAULTS.activeSatelliteId,
         setActiveSatelliteId: (activeSatelliteId) => set({ activeSatelliteId }),
-        satelliteCategories: {
-          spaceStations: true,
-          brightest: true,
-          weather: true,
-          gps: true,
-          earthObs: true,
-          starlink: true,
-          military: true,
-          other: true
-        },
+        satelliteCategories: { ...UI_DEFAULTS.satelliteCategories },
         toggleSatelliteCategory: (category) =>
           set((s) => ({
             satelliteCategories: {
@@ -646,13 +658,7 @@ export const useUIStore = create<UIStore>()(
               [category]: !s.satelliteCategories[category]
             }
           })),
-        satelliteSettings: {
-          showTrails: true,
-          showAllTrails: false,
-          occludeByGlobe: true,
-          trailLength: 40,
-          iconSize: 18
-        },
+        satelliteSettings: { ...UI_DEFAULTS.satelliteSettings },
         updateSatelliteSettings: (settings) =>
           set((s) => ({
             satelliteSettings: { ...s.satelliteSettings, ...settings }
@@ -666,25 +672,25 @@ export const useUIStore = create<UIStore>()(
         setWeatherData: (weatherData) => set({ weatherData }),
 
         // Developer Diagnostics State
-        forceFallback: false,
+        forceFallback: UI_DEFAULTS.forceFallback,
         setForceFallback: (forceFallback) => set({ forceFallback }),
-        engineUrlOverride: '',
+        engineUrlOverride: UI_DEFAULTS.engineUrlOverride,
         setEngineUrlOverride: (engineUrlOverride) => set({ engineUrlOverride }),
-        imageryProvider: 'arcgis-world',
+        imageryProvider: UI_DEFAULTS.imageryProvider,
         setImageryProvider: (imageryProvider) => set({ imageryProvider }),
-        spaceBlendOpacity: 0.35,
+        spaceBlendOpacity: UI_DEFAULTS.spaceBlendOpacity,
         setSpaceBlendOpacity: (spaceBlendOpacity) => set({ spaceBlendOpacity }),
-          cosmosBackgroundMode: 'wwt-milkyway',
-          setCosmosBackgroundMode: (cosmosBackgroundMode) => set({ cosmosBackgroundMode }),
-          wwtBackgroundLayer: '3D Solar System View',
-          setWwtBackgroundLayer: (wwtBackgroundLayer) => set({ wwtBackgroundLayer }),
-        spaceInteractionTarget: 'earth',
+        cosmosBackgroundMode: UI_DEFAULTS.cosmosBackgroundMode,
+        setCosmosBackgroundMode: (cosmosBackgroundMode) => set({ cosmosBackgroundMode }),
+        wwtBackgroundLayer: UI_DEFAULTS.wwtBackgroundLayer,
+        setWwtBackgroundLayer: (wwtBackgroundLayer) => set({ wwtBackgroundLayer }),
+        spaceInteractionTarget: UI_DEFAULTS.spaceInteractionTarget,
         setSpaceInteractionTarget: (spaceInteractionTarget) => set({ spaceInteractionTarget }),
 
-        // Panel State
-        leftPanelOpen: true,
+        // Panel State — seeded from the device profile, not a fixed literal.
+        leftPanelOpen: startupLayout.leftPanelOpen,
         setLeftPanelOpen: (leftPanelOpen) => set({ leftPanelOpen }),
-        rightPanelOpen: true,
+        rightPanelOpen: startupLayout.rightPanelOpen,
         setRightPanelOpen: (rightPanelOpen) => set({ rightPanelOpen }),
         rightPanelTab: 'context',
         setRightPanelTab: (rightPanelTab) => set({ rightPanelTab }),
@@ -694,7 +700,7 @@ export const useUIStore = create<UIStore>()(
         setSettingsCategory: (settingsCategory) => set({ settingsCategory }),
 
         // Launcher
-        launcherDismissed: false,
+        launcherDismissed: UI_DEFAULTS.launcherDismissed,
         setLauncherDismissed: (launcherDismissed) => set({ launcherDismissed, currentPage: 'workspace' }),
         diagnostics: [],
         addDiagnostic: (entry) => {
@@ -729,9 +735,9 @@ export const useUIStore = create<UIStore>()(
         setSyncStatus: (syncStatus) => set({ syncStatus, lastSyncTime: Date.now() }),
 
         // Notion Connector
-        notionEnabled: false,
+        notionEnabled: UI_DEFAULTS.notionEnabled,
         notionApiKey: '',
-        notionDatabaseId: '',
+        notionDatabaseId: UI_DEFAULTS.notionDatabaseId,
         setNotionEnabled: (notionEnabled) => set({ notionEnabled }),
         setNotionApiKey: (notionApiKey) => set({ notionApiKey }),
         setNotionDatabaseId: (notionDatabaseId) => set({ notionDatabaseId }),
@@ -754,6 +760,14 @@ export const useUIStore = create<UIStore>()(
         settingsDocked: false,
         setSettingsDocked: (settingsDocked) => set({ settingsDocked }),
 
+        /**
+         * Restores every persisted setting to its startup default, re-resolving
+         * panel state against the device in use right now rather than the one
+         * the profile was first created on. Chat sessions and messages are left
+         * alone — this resets settings, not the user's content.
+         */
+        resetToDefaults: () => set({ ...buildDefaultUiState() }),
+
         // Generic updater
         updateSettings: (settings) =>
           set((s) => ({
@@ -769,39 +783,49 @@ export const useUIStore = create<UIStore>()(
     {
       name: 'silver-wolf-v6-core',
       version: 9,
+      storage: createJSONStorage(() => safePersistStorage),
+      /**
+       * Runs only for payloads written by a version below 9. Field-level repair
+       * now lives in `merge`, so this is left with the one job a migration
+       * actually has: dropping the API key that older builds persisted in clear
+       * text. The forced overrides that used to live here (`leftPanelOpen: true`,
+       * `showBorders: true`, a full personalisation rewrite) were one-time
+       * nudges that also stamped desktop panel state onto phones.
+       */
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') return persistedState;
         const { notionApiKey: _notionApiKey, ...safeState } = persistedState as Partial<UIStore> & {
           notionApiKey?: string;
         };
-        const migrated = { ...safeState };
-        migrated.aiModel = normalizeAiModel(migrated.aiModel);
-        migrated.particleEffects = true;
-        migrated.leftPanelOpen = true;
-        migrated.rightPanelOpen = true;
-        migrated.scanlineOverlay = false;
-        migrated.showBorders = true;
-        migrated.imageryProvider =
-          migrated.imageryProvider === 'cesium' ? 'arcgis-world' : migrated.imageryProvider || 'arcgis-world';
-          migrated.cosmosBackgroundMode = migrated.cosmosBackgroundMode || 'wwt-milkyway';
-          migrated.wwtBackgroundLayer =
-            migrated.wwtBackgroundLayer && migrated.wwtBackgroundLayer !== 'Visible Imagery'
-              ? migrated.wwtBackgroundLayer
-              : '3D Solar System View';
-        migrated.personalisation = normalizePersonalisation({
-          ...migrated.personalisation,
-          minimalMode: false,
-          panelOpacity: 0.88,
-          blurIntensity: 10,
-          animationIntensity: 0.65,
-          motionReduced: false,
-          cornerRadius: 20,
-          shadowIntensity: 0.45,
-          borderStyle: 'glow',
-          chatBubbleStyle: 'glass',
-          uiDensity: 'compact'
-        });
-        return migrated;
+        return safeState;
+      },
+      /**
+       * Every load passes through here, so this is the fallback boundary: each
+       * persisted field is validated independently and anything unusable is
+       * dropped in favour of the freshly-built default. A corrupt entry costs
+       * one setting instead of the whole session.
+       */
+      merge: (persistedState, currentState) => {
+        const { state, rejected } = sanitizePersistedUiState(persistedState);
+
+        if (rejected.length > 0 && typeof console !== 'undefined') {
+          console.warn(
+            `[uiStore] discarded ${rejected.length} invalid persisted setting(s); defaults applied:`,
+            rejected.join(', ')
+          );
+        }
+
+        const merged = { ...currentState, ...state } as UIStore;
+
+        // Persisted panel state can outlive the device it was saved on — a
+        // desktop session synced to a phone, or a window dragged to a small
+        // screen between runs. Re-check it against the current profile.
+        const layout = enforcePanelBudget(
+          { leftPanelOpen: merged.leftPanelOpen, rightPanelOpen: merged.rightPanelOpen },
+          resolveDeviceProfile()
+        );
+
+        return { ...merged, ...layout };
       },
       partialize: (s) => ({
         activePalette: s.activePalette,

@@ -149,6 +149,43 @@ export function sanitizeAIResponsePayload(raw: string, prompt: string): string {
   return createPromptSanitizer(prompt)(raw);
 }
 
+import { useDiagnosticsStore } from '../store/diagnosticsStore';
+
+function buildDeveloperVisionContext(): string {
+  try {
+    const store = useDiagnosticsStore.getState();
+    if (!store.aiVisionEnabled) return '';
+
+    const hw = store.hardwareSpecs;
+    const snap = store.latestVisualSnapshot;
+    const sentry = store.sentryEnabled ? 'Active DSN' : 'Local Telemetry Sandbox';
+    const codeRabbit = store.codeRabbitAudit ? `Profile: ${store.codeRabbitAudit.profile}` : 'Audit Ready';
+
+    const parts: string[] = ['\n--- [DEVELOPER HARDWARE & VISUAL CONTEXT] ---'];
+    if (hw) {
+      parts.push(`Display: ${hw.screenWidth}x${hw.screenHeight} (${hw.viewportWidth}x${hw.viewportHeight} viewport @ ${hw.devicePixelRatio}x scale, ${hw.orientation})`);
+      parts.push(`GPU / WebGL: ${hw.webglVendor} | ${hw.webglRenderer} (${hw.webglVersion})`);
+      parts.push(`Hardware: ${hw.hardwareConcurrency} CPU threads | ${hw.deviceMemoryGiB ? hw.deviceMemoryGiB + ' GB RAM' : 'RAM unthrottled'}`);
+      if (hw.backendHardware) {
+        parts.push(`Backend Acceleration: ${hw.backendHardware.inference_mode.toUpperCase()} (${hw.backendHardware.model_budget_gib} GiB budget)`);
+      }
+    } else {
+      parts.push(`Client Runtime: ${typeof navigator !== 'undefined' ? navigator.userAgent : 'Node/Browser'}`);
+    }
+
+    if (snap) {
+      parts.push(`Live Visual Viewport: ${snap.summaryText}`);
+    }
+
+    parts.push(`Integrations: Sentry (${sentry}) | CodeRabbit (${codeRabbit})`);
+    parts.push('--------------------------------------------\n');
+
+    return parts.join('\n');
+  } catch {
+    return '';
+  }
+}
+
 export function createLocalAssistantResponse(text: string, systemInstruction?: string): string {
   const normalized = text.replace(/\s+/g, ' ').trim();
   const promptLength = normalized.length;
@@ -156,12 +193,15 @@ export function createLocalAssistantResponse(text: string, systemInstruction?: s
     ? 'System instructions loaded.'
     : 'No custom system instructions set.';
 
+  const visionContext = buildDeveloperVisionContext();
+
   return [
     'Local diagnostic assistant response.',
     `Input accepted without echoing the prompt text. Prompt length: ${promptLength} character${promptLength === 1 ? '' : 's'}.`,
     'Chat loop verified: user turn stored, composer cleared, processing completed, and assistant turn appended separately.',
-    `${instructionNote} Gemini or Odysseus require configured credentials or a reachable bridge.`
-  ].join('\n');
+    `${instructionNote} Gemini or Odysseus require configured credentials or a reachable bridge.`,
+    visionContext ? visionContext : ''
+  ].filter(Boolean).join('\n');
 }
 
 export async function aiChat(
@@ -170,6 +210,9 @@ export async function aiChat(
   _contents: unknown[] = [],
   systemInstruction?: string
 ): Promise<AIChatResult> {
+  const visionContext = buildDeveloperVisionContext();
+  const effectiveInstruction = (systemInstruction || '') + (visionContext ? `\n${visionContext}` : '');
+
   if (model === 'local-assistant') {
     return { text: createLocalAssistantResponse(text, systemInstruction) };
   }
@@ -189,7 +232,7 @@ Odysseus bridge status: unavailable in this static demo deployment, so this loca
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          system_instruction: systemInstruction
+          system_instruction: effectiveInstruction
         })
       });
 

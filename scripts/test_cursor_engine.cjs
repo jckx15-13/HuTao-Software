@@ -19,6 +19,8 @@ global.DOMRect = class DOMRect {
   }
 };
 
+const vm = require("node:vm");
+
 require.extensions[".ts"] = function loadTypeScript(module, filename) {
   const source = fs.readFileSync(filename, "utf8");
   const output = ts.transpileModule(source, {
@@ -30,7 +32,9 @@ require.extensions[".ts"] = function loadTypeScript(module, filename) {
     },
     fileName: filename,
   }).outputText;
-  module._compile(output, filename);
+  const wrapper = `(function (exports, require, module, __filename, __dirname) {\n${output}\n});`;
+  const fn = vm.runInThisContext(wrapper, { filename });
+  fn(module.exports, module.require.bind(module), module, filename, path.dirname(filename));
 };
 
 const root = path.resolve(__dirname, "..");

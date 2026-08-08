@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const Module = require("node:module");
 const path = require("node:path");
+const vm = require("node:vm");
 const ts = require("typescript");
 
 require.extensions[".ts"] = function loadTypeScript(module, filename) {
@@ -15,7 +16,9 @@ require.extensions[".ts"] = function loadTypeScript(module, filename) {
     },
     fileName: filename,
   }).outputText;
-  module._compile(output, filename);
+  const wrapper = `(function (exports, require, module, __filename, __dirname) {\n${output}\n});`;
+  const fn = vm.runInThisContext(wrapper, { filename });
+  fn(module.exports, module.require.bind(module), module, filename, path.dirname(filename));
 };
 
 const root = path.resolve(__dirname, "..");

@@ -182,7 +182,10 @@ export const DEVICE_CLASS_SPECS: ReadonlyArray<readonly [DeviceClass, DeviceClas
   [
     'phone',
     {
-      minWidth: 380,
+      // 340px, not 380px: the iPhone SE reports 375 and a great many Android
+      // handsets report 360. Both are phones, and classing them as watches gave
+      // them the chromeless full-bleed sheet meant for a 200px wrist display.
+      minWidth: 340,
       panelWidthRatio: 1,
       panelWidthMinPx: 200,
       panelWidthMaxPx: 600,
@@ -228,8 +231,12 @@ const SPEC_BY_CLASS = new Map<DeviceClass, DeviceClassSpec>(
 /** Widths at or above this dock panels beside the workspace instead of over it. */
 export const DOCKED_LAYOUT_MIN_WIDTH = 760;
 
-/** Below this, a single panel takes the whole screen — no inset, no chrome. */
-export const FULLBLEED_MAX_WIDTH = 380;
+/**
+ * Below this, a single panel takes the whole screen — no inset, no chrome.
+ * Deliberately aligned with the `phone` lower bound so full-bleed is reserved
+ * for wrist-sized displays; phones still get an inset sheet.
+ */
+export const FULLBLEED_MAX_WIDTH = 340;
 
 export const DEFAULT_VIEWPORT: ViewportLike = { width: 1280, height: 720 };
 

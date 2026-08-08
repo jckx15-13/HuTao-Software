@@ -1,9 +1,11 @@
-import { Cpu, Wifi, Battery, Menu, Bell, User } from 'lucide-react';
+import { Cpu, Wifi, Battery, Menu, Bell, User, PanelRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 
 export function WorkspaceHeader() {
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
   const setLeftPanelOpen = useUIStore((s) => s.setLeftPanelOpen);
+  const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
+  const setRightPanelOpen = useUIStore((s) => s.setRightPanelOpen);
   const cpuLoad = useUIStore((s) => s.cpuLoad);
   const metrics = useUIStore((s) => s.systemMetrics);
   const setCurrentPage = useUIStore((s) => s.setCurrentPage);
@@ -11,16 +13,17 @@ export function WorkspaceHeader() {
   return (
     <header
       id="workspace-header"
-      className="flex h-14 w-full items-center justify-between px-4 glass-panel-subtle border-b border-white/5"
+      className="flex h-14 w-full items-center justify-between px-4 glass-panel-subtle border-b border-white/5 pointer-events-auto z-chrome shrink-0"
       style={{ borderRadius: 0 }}
     >
       {/* Left section */}
       <div className="flex items-center gap-4">
         <button
           type="button"
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 md:hidden"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 min-[760px]:hidden cursor-pointer"
           onClick={() => setLeftPanelOpen(!leftPanelOpen)}
           aria-label="Toggle navigation"
+          title="Toggle left panel"
         >
           <Menu className="h-4 w-4" />
         </button>
@@ -30,7 +33,7 @@ export function WorkspaceHeader() {
             <div className="absolute inset-0 rounded-full bg-primary animate-ping opacity-50" />
             <div className="relative h-1.5 w-1.5 rounded-full bg-primary" />
           </div>
-          <span className="glow-text hidden sm:inline">Silver Wolf VI</span>
+          <span className="glow-text inline">Silver Wolf VI</span>
         </div>
 
         {/* System metrics */}
@@ -45,21 +48,31 @@ export function WorkspaceHeader() {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className="relative inline-flex min-h-10 min-w-10 items-center justify-center rounded-md p-1.5 text-white/30 transition-colors hover:bg-white/5 hover:text-white/60 sm:min-h-11 sm:min-w-11"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 min-[760px]:hidden cursor-pointer"
+          onClick={() => setRightPanelOpen(!rightPanelOpen)}
+          aria-label="Toggle details panel"
+          title="Toggle right panel"
+        >
+          <PanelRight className="h-4 w-4" />
+        </button>
+
+        <button
+          type="button"
+          className="relative inline-flex min-h-10 min-w-10 items-center justify-center rounded-md p-1.5 text-white/30 transition-colors hover:bg-white/5 hover:text-white/60 sm:min-h-11 sm:min-w-11 cursor-pointer"
           aria-label="Notifications"
         >
-          <Bell className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+          <Bell className="h-3.5 w-3.5" />
           <div className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-primary" />
         </button>
 
         <button
           type="button"
           onClick={() => setCurrentPage('settings')}
-          className="flex min-h-10 items-center gap-1.5 rounded-full p-1 pr-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white/60 sm:min-h-11 sm:gap-2 sm:pr-3"
+          className="flex min-h-10 items-center gap-1.5 rounded-full p-1 pr-2 text-white/40 transition-colors hover:bg-white/5 hover:text-white/60 sm:min-h-11 sm:gap-2 sm:pr-3 cursor-pointer"
           aria-label="User profile"
         >
           <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 sm:h-6 sm:w-6">
-            <User className="h-3 w-3 text-primary sm:h-3.5 sm:w-3.5" />
+            <User className="h-3.5 w-3.5 text-primary" />
           </div>
           <span className="hidden text-[10px] font-mono uppercase tracking-wider md:inline">Operator</span>
         </button>

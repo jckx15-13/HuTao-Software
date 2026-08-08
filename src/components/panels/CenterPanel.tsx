@@ -2,6 +2,7 @@ import React, { Suspense, useEffect, useCallback } from 'react';
 import { MessageSquare, Globe2, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { ChatPanel } from '../ChatPanel';
+import { TouchControlOverlay } from '../common/TouchControlOverlay';
 const GoogleEarthRemix = React.lazy(() => import('../learning/GoogleEarthRemix'));
 const WorldWideTelescopeView = React.lazy(() => import('../learning/WorldWideTelescopeView'));
 import { ErrorBoundary } from '../ErrorBoundary';
@@ -60,6 +61,9 @@ export function CenterPanel() {
       {/* Sidebar trigger — always interactive */}
       <SidebarTrigger />
 
+      {/* Touch device virtual navigation overlay */}
+      <TouchControlOverlay />
+
       {/* Dynamic Segmented Mode Switcher (Pill Style) — always interactive */}
       <div className="absolute top-[clamp(3.5rem,7vh,5.75rem)] sm:top-[clamp(5.75rem,12vh,8rem)] left-1/2 z-floating -translate-x-1/2 pointer-events-auto">
         <div className="mode-switcher-shell glass-panel flex items-center rounded-full border border-white/5 p-1 shadow-lg">
@@ -96,11 +100,6 @@ export function CenterPanel() {
         {/* Chat View Container */}
         {interactionMode === 'chat' && (
           <div
-            /* Top padding derives from the mode switcher's own offset (same
-               clamp) plus its height, so the chat header can never collide with
-               the floating Chat/Space pill. These were previously tuned
-               independently and overlapped on narrow viewports — at 375px the
-               Space tab covered ~59% of the fullscreen button. */
             className="absolute inset-0 z-content flex flex-col px-[clamp(0.75rem,3vw,1.5rem)] pb-4 pt-[calc(clamp(5.75rem,12vh,8rem)+4rem)] opacity-100 pointer-events-auto"
           >
             <div className="mx-auto flex min-h-0 w-full max-w-[78rem] flex-1 flex-col justify-between overflow-hidden rounded-[32px] border border-white/10 bg-[#07090f]/94 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
@@ -108,22 +107,11 @@ export function CenterPanel() {
               <div className="flex-1 overflow-hidden">
                 <ChatPanel />
               </div>
-
-              {/* Input bar removed to prevent duplication (ChatPanel manages its own) */}
             </div>
           </div>
         )}
 
-        {/* Combined Space & Telescope Viewport Container. `fixed`, not
-            `absolute`: this is meant to be a full-bleed viewport background
-            with docked panels floating on top of it, but it sits inside
-            <main>'s now-padded content box (DockedLayout reserves rail space
-            there for Chat mode). As a normal-flow descendant it inherited
-            that narrowed width -- measured live at 26x395px instead of
-            spanning the screen, which is what made .orbital-hud-bar (a
-            child) render as a vertical sliver instead of a wide bar. `fixed`
-            escapes the padded flow entirely and anchors to the true
-            viewport. */}
+        {/* Combined Space & Telescope Viewport Container */}
         <div
           className={`fixed inset-0 ${isSpaceMode ? 'z-content' : 'hidden pointer-events-none z-base'}`}
           aria-hidden={!isSpaceMode}
