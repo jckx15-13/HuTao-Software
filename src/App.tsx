@@ -1,33 +1,53 @@
-import { AnimatePresence, MotionConfig } from 'motion/react';
+// ============================================================================
+// 🧱 Main Application Shell (App.tsx)
+// ============================================================================
+// Coordinates application routing, theme provider tokens, modal drawers, and background views.
+// ============================================================================
+
 import React, { Suspense } from 'react';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { ConfigProvider } from './context/ConfigContext';
+import { MotionConfig } from 'motion/react';
+import { useUIStore } from './store/uiStore';
+import { ConfigProvider } from './lib/ConfigContext';
 import { useDiagnosticsStore } from './store/diagnosticsStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { useThemeVariables } from './hooks/useThemeVariables';
-import { useUIStore } from './store/uiStore';
+import { useThemeVariables } from './lib/themeEngine';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+const ParticleOverlay = React.lazy(() =>
+  import('./components/ParticleOverlay').then((m) => ({ default: m.ParticleOverlay }))
+);
+
+const CesiumBackground3D = React.lazy(() =>
+  import('./components/background/CesiumBackground3D').then((m) => ({ default: m.CesiumBackground3D }))
+);
+
+const LauncherPage = React.lazy(() =>
+  import('./components/LauncherPage').then((m) => ({ default: m.LauncherPage }))
+);
 
 const DockedLayout = React.lazy(() =>
   import('./components/layout/DockedLayout').then((m) => ({ default: m.DockedLayout }))
 );
-const CesiumBackground = React.lazy(() =>
-  import('./components/background/CesiumBackground').then((m) => ({ default: m.CesiumBackground }))
-);
-const LauncherPage = React.lazy(() =>
-  import('./components/launcher/LauncherPage').then((m) => ({ default: m.LauncherPage }))
-);
-const ParticleOverlay = React.lazy(() =>
-  import('./components/ParticleOverlay').then((m) => ({ default: m.ParticleOverlay }))
-);
-const CustomCursor = React.lazy(() =>
-  import('./components/layout/CustomCursor').then((m) => ({ default: m.CustomCursor }))
-);
 
-function WorkspaceFallback({ label = 'Loading workspace' }: { label?: string }) {
+function AppContent() {
+  const isHighLoad = useUIStore((s) => s.isHighLoad);
+  const particleEffects = useUIStore((s) => s.particleEffects);
+  const isSpaceMode = useUIStore((s) => s.interactionMode === 'orbital' || s.interactionMode === 'telescope');
+
   return (
-    <div className="flex h-full w-full items-center justify-center bg-[#06070a]/80 text-center font-mono text-xs uppercase tracking-wider text-white/70">
-      {label}
-    </div>
+    <>
+      <Suspense fallback={null}>
+        <CesiumBackground3D />
+      </Suspense>
+      {particleEffects && !isHighLoad && (
+        <Suspense fallback={null}>
+          <ParticleOverlay />
+        </Suspense>
+      )}
+      <Suspense fallback={null}>
+        <DockedLayout />
+      </Suspense>
+    </>
   );
 }
 
@@ -38,20 +58,14 @@ const SettingsPage = React.lazy(() =>
 const MountUnmountHarness = React.lazy(() => import('./components/dev/MountUnmountHarness'));
 const DiagnosticPanel = React.lazy(() => import('./components/dev/DiagnosticPanel'));
 
-const WorldWideTelescopeView = React.lazy(() => import('./components/learning/WorldWideTelescopeView'));
-
 export default function App() {
   useKeyboardShortcuts();
   const currentPage = useUIStore((state) => state.currentPage);
   const launcherDismissed = useUIStore((state) => state.launcherDismissed);
   const interactionMode = useUIStore((state) => state.interactionMode);
   const customWallpaper = useUIStore((state) => state.customWallpaper);
-  const scanlineOverlay = useUIStore((state) => state.scanlineOverlay);
   const particleEffects = useUIStore((state) => state.particleEffects);
-  const motionReduced = useUIStore((state) => state.personalisation.motionReduced);
-  const animationIntensity = useUIStore((state) => state.personalisation.animationIntensity);
   const cosmosBackgroundMode = useUIStore((state) => state.cosmosBackgroundMode);
-  const spaceInteractionTarget = useUIStore((state) => state.spaceInteractionTarget);
 
   const isHeadless =
     typeof window !== 'undefined' &&
@@ -76,8 +90,6 @@ export default function App() {
   const setCurrentPage = useUIStore((state) => state.setCurrentPage);
   const showLauncher = currentPage === 'launcher' && !launcherDismissed;
   const isSpaceMode = interactionMode === 'orbital' || interactionMode === 'telescope';
-  const isTelescopeTarget = spaceInteractionTarget === 'telescope' || interactionMode === 'telescope';
-  const isEarthTarget = spaceInteractionTarget === 'earth' && interactionMode !== 'telescope';
 
   React.useEffect(() => {
     if (isHeadless || showHarness || showDiagnostics) {
@@ -110,14 +122,11 @@ export default function App() {
   }, []);
 
   const { appStyle, isHighLoad } = useThemeVariables();
-  const shouldShowParticleOverlay = !isHighLoad && (
-    isSpaceMode ? cosmosBackgroundMode === 'sparkling' : particleEffects
-  );
 
   const backgroundStyle = customWallpaper
     ? { backgroundImage: `url(${customWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : undefined;
-  const workspaceIsolationProps = currentPage === 'settings' && !isHeadless ? { inert: true, 'aria-hidden': true } : {};
+
   const settingsOverlay =
     currentPage === 'settings' ? (
       <Suspense fallback={null}>
@@ -138,89 +147,39 @@ export default function App() {
         >
           {!customWallpaper && (
             <div className="absolute inset-0 z-base">
-                {isSpaceMode && (
-                  <div
-                    className={`absolute inset-0 ${cosmosBackgroundMode === 'deep-black' ? 'bg-black' : 'bg-[#02040a]'}`}
-                    aria-hidden="true"
-                  />
-                )}
-                {isSpaceMode && isTelescopeTarget && cosmosBackgroundMode === 'wwt-milkyway' && (!isHeadless || isTelescopeTarget) && (
+              {isSpaceMode && (
                 <div
-                  className="absolute inset-0 z-base transition-opacity duration-500"
-                  style={{
-                    opacity: isTelescopeTarget ? 0.26 : 1,
-                    mixBlendMode: isTelescopeTarget ? 'screen' : 'normal'
-                  }}
-                >
-                  <Suspense fallback={null}>
-                    <WorldWideTelescopeView bgOnly />
-                  </Suspense>
-                </div>
+                  className={`absolute inset-0 ${cosmosBackgroundMode === 'deep-black' ? 'bg-black' : 'bg-[#02040a]'}`}
+                  aria-hidden="true"
+                />
               )}
-              <div
-                className="absolute inset-0 transition-all duration-500 ease-in-out"
-                style={{
-                  zIndex: 'calc(var(--theme-z-base) + 1)',
-                  // Telescope mode belongs to WWT. Keeping Cesium's imagery
-                  // visible here paints its geographic survey tiles over the
-                  // WWT solar-system canvas.
-                  opacity: isSpaceMode && isTelescopeTarget ? 0 : 1.0,
-                  pointerEvents: isSpaceMode && isEarthTarget ? 'auto' : 'none'
-                }}
-              >
+              <div className="absolute inset-0 transition-all duration-500 ease-in-out z-base">
                 <Suspense fallback={null}>
-                  <CesiumBackground interactive={isSpaceMode && isEarthTarget} />
+                  <CesiumBackground3D />
                 </Suspense>
               </div>
             </div>
           )}
 
-          {interactionMode === 'chat' && (
-            <div className="absolute inset-0 bg-[#06070a]/75 backdrop-blur-[2px] pointer-events-none z-base" />
-          )}
+          <div className="relative flex h-full w-full flex-col z-content pointer-events-none">
+            {showLauncher ? (
+              <Suspense fallback={null}>
+                <LauncherPage />
+              </Suspense>
+            ) : showHarness ? (
+              <Suspense fallback={null}>
+                <MountUnmountHarness />
+              </Suspense>
+            ) : showDiagnostics ? (
+              <Suspense fallback={null}>
+                <DiagnosticPanel />
+              </Suspense>
+            ) : (
+              <AppContent />
+            )}
+          </div>
 
-          {scanlineOverlay && (
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.12)_50%)] bg-[size:100%_4px] pointer-events-none z-content" />
-          )}
-
-          {showLauncher ? (
-            <Suspense fallback={<WorkspaceFallback label="Loading launch checks" />}>
-              <LauncherPage />
-            </Suspense>
-          ) : (
-            <>
-              <div className="contents" {...workspaceIsolationProps}>
-                {shouldShowParticleOverlay && (
-                  <Suspense fallback={null}>
-                    <ParticleOverlay forceEnabled={isSpaceMode && cosmosBackgroundMode === 'sparkling'} />
-                    {!motionReduced && animationIntensity > 0.5 && <CustomCursor appHighLoad={isHighLoad} />}
-                  </Suspense>
-                )}
-
-                {scanlineOverlay && <div className="hologram-overlay" />}
-
-                <div className="relative z-content flex h-full w-full pointer-events-none transition-all duration-300 pt-0">
-                  <Suspense fallback={<WorkspaceFallback />}>
-                    <DockedLayout />
-                  </Suspense>
-                </div>
-
-                {showHarness && (
-                  <Suspense fallback={null}>
-                    <MountUnmountHarness />
-                  </Suspense>
-                )}
-
-                {showDiagnostics && (
-                  <Suspense fallback={null}>
-                    <DiagnosticPanel />
-                  </Suspense>
-                )}
-              </div>
-
-              {isHeadless ? settingsOverlay : <AnimatePresence>{settingsOverlay}</AnimatePresence>}
-            </>
-          )}
+          {settingsOverlay}
         </div>
       </MotionConfig>
     </ConfigProvider>
