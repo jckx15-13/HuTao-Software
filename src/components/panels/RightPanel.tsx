@@ -1055,11 +1055,11 @@ function SatelliteTelemetryCard({ satId }: { satId: string }) {
             <span className="uppercase">Position Source</span>
             <span className={`${status.className} text-right font-bold`}>{status.shortLabel}</span>
           </div>
-          {satelliteEntity?.properties?.telemetryTimestamp && (
+          {Boolean(satelliteEntity?.properties?.telemetryTimestamp) && (
             <div className="flex items-center justify-between gap-3 text-white/50">
               <span className="uppercase">Telemetry Age</span>
               <span className="text-white font-bold">
-                {formatAge(Number(satelliteEntity.properties.telemetryTimestamp))}
+                {formatAge(Number(satelliteEntity?.properties?.telemetryTimestamp))}
               </span>
             </div>
           )}

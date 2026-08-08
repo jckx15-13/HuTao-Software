@@ -6,14 +6,19 @@
 
 ## 🔥 Current High Priority (Run 10 Focus)
 
-- [ ] **Automated Documentation Generation**
-  - Category: `DX` | Tier: <span style="background:#E8F0FE;color:#1A73E8;padding:0.2em(0.4em;border-radius:0.3em;">🔵 Low</span>
-  - Why: Keep DOCS.md in sync with the codebase automatically.
+- [x] **Phase 0: Close Part A Cleanup**
+  - Category: `UI/Refactor` | Tier: <span style="background:#E8F0FE;color:#1A73E8;padding:0.2em 0.4em;border-radius:0.3em;">🔵 Low</span>
+  - Implementation: Cleaned obsolete CSS classes in `GoogleEarthRemix.css` and updated component docstrings in `SpaceHudPillControls.tsx`. `npm run qa:check` passed.
+- [x] **Automated Documentation Generation**
+  - Category: `DX` | Tier: <span style="background:#E8F0FE;color:#1A73E8;padding:0.2em 0.4em;border-radius:0.3em;">🔵 Low</span>
+  - Implementation: `npm run docs:generate` owns a bounded inventory block in `DOCS.md`; `npm run docs:check` is part of `npm test` and fails when it drifts.
 
 ---
 
 ## ✅ Completed Tasks (Run 08 & 09)
 
+- [x] **Space UI & Globe Runtime Hardening**
+  - Implementation: Established explicit CesiumViewerStatus model, observable imagery loading/error contracts, removed obsolete orbital HUD CSS, and unified status bar clearance for globe navigation controls.
 - [x] **API Key Sanitization in Logs**
   - Implementation: Added recursive `sanitize` helper to `diagnosticsStore.ts`.
 - [x] **Component Virtualization for Chat**

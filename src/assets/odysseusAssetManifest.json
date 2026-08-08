@@ -1,0 +1,170 @@
+[
+  {
+    "filename": "bg.webm",
+    "runtimePath": "public/odysseus-assets/docs/bg.webm",
+    "sourcePath": "odysseus/docs/bg.webm",
+    "size": 3517503,
+    "sha256": "157f732539a6072d55164da23d65afa9423782728dd067154867fcebb176fb35",
+    "signature": "WEBM"
+  },
+  {
+    "filename": "chat.gif",
+    "runtimePath": "public/odysseus-assets/docs/chat.gif",
+    "sourcePath": "odysseus/docs/chat.gif",
+    "size": 3107555,
+    "sha256": "b83df24ec9fd98cb27ef4eb3373d59d55daa58249b26aaf3c8682ad90a464596",
+    "signature": "GIF89a"
+  },
+  {
+    "filename": "chat.webm",
+    "runtimePath": "public/odysseus-assets/docs/chat.webm",
+    "sourcePath": "odysseus/docs/chat.webm",
+    "size": 375626,
+    "sha256": "d69f319192cec2cac1831e08ee99ae902398f1b163021e42b3fda05a0d7ab4d5",
+    "signature": "WEBM"
+  },
+  {
+    "filename": "compare.gif",
+    "runtimePath": "public/odysseus-assets/docs/compare.gif",
+    "sourcePath": "odysseus/docs/compare.gif",
+    "size": 3564957,
+    "sha256": "0281d338afff63d6673a86bb0e6df3cc18bf9c695260cd6edeaeeaa510a48688",
+    "signature": "GIF89a"
+  },
+  {
+    "filename": "compare.webm",
+    "runtimePath": "public/odysseus-assets/docs/compare.webm",
+    "sourcePath": "odysseus/docs/compare.webm",
+    "size": 533537,
+    "sha256": "90d8c68dbc2ac3029b258598a7e2c2c5c8f5d6d702b9d31f0c729e5517093f51",
+    "signature": "WEBM"
+  },
+  {
+    "filename": "document.gif",
+    "runtimePath": "public/odysseus-assets/docs/document.gif",
+    "sourcePath": "odysseus/docs/document.gif",
+    "size": 1172600,
+    "sha256": "84e03f21307359de8afa4bc7c73951aa8d0e3dad9b3cb0ddb19fe5f3469cf1bb",
+    "signature": "GIF89a"
+  },
+  {
+    "filename": "document.webm",
+    "runtimePath": "public/odysseus-assets/docs/document.webm",
+    "sourcePath": "odysseus/docs/document.webm",
+    "size": 247539,
+    "sha256": "754e4ae071e9def5151749a03ad284cd41385354620fc8afea3c5c4f50f64a0d",
+    "signature": "WEBM"
+  },
+  {
+    "filename": "gallery-314-desktop.png",
+    "runtimePath": "public/odysseus-assets/docs/gallery-314-desktop.png",
+    "sourcePath": "odysseus/docs/gallery-314-desktop.png",
+    "size": 92682,
+    "sha256": "45d0a258eda09bc73b5b98b38974e5d7e15b9273395620af9dbf8331eaef6eaf",
+    "signature": "PNG"
+  },
+  {
+    "filename": "gallery-314-mobile.png",
+    "runtimePath": "public/odysseus-assets/docs/gallery-314-mobile.png",
+    "sourcePath": "odysseus/docs/gallery-314-mobile.png",
+    "size": 128048,
+    "sha256": "c4ed18a7b97f1bbb3dbeacd9d6595bc424ee68e99b3ba809d37d7cb22462c69d",
+    "signature": "PNG"
+  },
+  {
+    "filename": "gallery.webm",
+    "runtimePath": "public/odysseus-assets/docs/gallery.webm",
+    "sourcePath": "odysseus/docs/gallery.webm",
+    "size": 149715,
+    "sha256": "b3bbe99c55b5cd1de32cb8e84fa31044761b7724a76a4bae4d4b0acaed7f3500",
+    "signature": "WEBM"
+  },
+  {
+    "filename": "index.html",
+    "runtimePath": "public/odysseus-assets/docs/index.html",
+    "sourcePath": "odysseus/docs/index.html",
+    "size": 56732,
+    "sha256": "b07d81e1d78721cadd33ac7a8eb563f03f508ac574e8c2391feab016bdad64f2",
+    "signature": "HTML"
+  },
+  {
+    "filename": "notes.gif",
+    "runtimePath": "public/odysseus-assets/docs/notes.gif",
+    "sourcePath": "odysseus/docs/notes.gif",
+    "size": 1027071,
+    "sha256": "fc1235cef92856b5b4a427774765b27ec1ff28610bad192e2d8833f1b7fd844f",
+    "signature": "GIF89a"
+  },
+  {
+    "filename": "notes.webm",
+    "runtimePath": "public/odysseus-assets/docs/notes.webm",
+    "sourcePath": "odysseus/docs/notes.webm",
+    "size": 217298,
+    "sha256": "2a82b501271c4b60927e575bb22f8c986e3d1a4089a5518f84b46e534dea37d7",
+    "signature": "WEBM"
+  },
+  {
+    "filename": "odysseus.jpg",
+    "runtimePath": "public/odysseus-assets/docs/odysseus.jpg",
+    "sourcePath": "odysseus/docs/odysseus.jpg",
+    "size": 45964,
+    "sha256": "5a32aefdd93cd24d52e1aaf69e4c174c0eb062784b0e70c48eba1927845e652f",
+    "signature": "JPEG"
+  },
+  {
+    "filename": "research.gif",
+    "runtimePath": "public/odysseus-assets/docs/research.gif",
+    "sourcePath": "odysseus/docs/research.gif",
+    "size": 2588848,
+    "sha256": "d9ae4d5be8ba9dafee4e880e675d820f5f3adf77d7a48f7c60aaf35c408f4ed1",
+    "signature": "GIF89a"
+  },
+  {
+    "filename": "research.webm",
+    "runtimePath": "public/odysseus-assets/docs/research.webm",
+    "sourcePath": "odysseus/docs/research.webm",
+    "size": 914608,
+    "sha256": "2495a1a6cc1ea037f7460d065e3af6aacf091b240edebc436ce4bca5e83dab87",
+    "signature": "WEBM"
+  },
+  {
+    "filename": "theme.webm",
+    "runtimePath": "public/odysseus-assets/docs/theme.webm",
+    "sourcePath": "odysseus/docs/theme.webm",
+    "size": 435053,
+    "sha256": "6bd5a4140e9eeb9e06bee217319d331e9c8c873763fcb9040425fb38878b8410",
+    "signature": "WEBM"
+  },
+  {
+    "filename": "a11y/focus-after.png",
+    "runtimePath": "public/odysseus-assets/docs/a11y/focus-after.png",
+    "sourcePath": "odysseus/docs/a11y/focus-after.png",
+    "size": 52866,
+    "sha256": "8e10f51b91e5b87d014af041d3aebdab10b71223541873cf45ca65ac07138f33",
+    "signature": "PNG"
+  },
+  {
+    "filename": "a11y/focus-before.png",
+    "runtimePath": "public/odysseus-assets/docs/a11y/focus-before.png",
+    "sourcePath": "odysseus/docs/a11y/focus-before.png",
+    "size": 52270,
+    "sha256": "e5b365d5cca0b4656fdff03ce0749adf4b514739d5c8e88053adaf3b864387d1",
+    "signature": "PNG"
+  },
+  {
+    "filename": "a11y/login-after.png",
+    "runtimePath": "public/odysseus-assets/docs/a11y/login-after.png",
+    "sourcePath": "odysseus/docs/a11y/login-after.png",
+    "size": 26524,
+    "sha256": "8bb442054c8e5086d1f53bcc10be1f479afcb15f9266bca304f9e8bc8ec41c85",
+    "signature": "PNG"
+  },
+  {
+    "filename": "a11y/login-before.png",
+    "runtimePath": "public/odysseus-assets/docs/a11y/login-before.png",
+    "sourcePath": "odysseus/docs/a11y/login-before.png",
+    "size": 26351,
+    "sha256": "e960927917dcbf412e38e3d8deac869d30d0bb33f25483561a547d2396bf17f5",
+    "signature": "PNG"
+  }
+]

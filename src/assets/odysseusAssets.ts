@@ -26,6 +26,11 @@ export type OdysseusSourceDocAsset = {
   motionSensitive?: boolean;
 };
 
+import odysseusAssetManifest from './odysseusAssetManifest.json';
+
+export type OdysseusManifestEntry = typeof odysseusAssetManifest[number];
+export const ODYSSEUS_ASSET_MANIFEST = odysseusAssetManifest;
+
 // import.meta.env.BASE_URL ends with '/', so this stays sub-path correct
 // (e.g. '/HuTao-Software/odysseus-assets') without a trailing slash of its own.
 export const ODYSSEUS_ASSET_ROOT = `${import.meta.env.BASE_URL}odysseus-assets`;

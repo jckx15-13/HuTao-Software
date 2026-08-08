@@ -11,335 +11,35 @@
   font-family: 'Outfit', 'Inter', system-ui, sans-serif;
   user-select: none;
   pointer-events: none;
+  --status-bar-bottom-clearance: calc(12px + 28px + 12px + env(safe-area-inset-bottom, 0px));
 }
 
-/* Cyberpunk Spacecraft Telemetry HUD Bar */
-.orbital-hud-bar {
-  position: absolute;
-  top: 12px;
-  /* Read the same workspace-rail vars DockedLayout sets on its root (this
-     element inherits them, being a descendant). Without this the bar spans
-     the FULL viewport regardless of docked panels, so .hud-center-stack
-     centers on total width -- when the right panel is open, its rightmost
-     tabs (Target, System) land underneath it. Confirmed via screenshot +
-     DOM measurement: reproducible whenever the right panel is docked open. */
-  left: calc(12px + var(--workspace-left-rail, 0px));
-  right: calc(12px + var(--workspace-right-rail, 0px));
-  min-height: 56px;
-  height: auto;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(16, 18, 27, 0.75);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.05);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: space-between;
-  padding: 0.8rem 1rem 0.85rem;
-  gap: 0.6rem;
-  color: #c4c6cf;
-  font-size: 0.7rem;
-  z-index: var(--theme-z-floating); /* floating: .orbital-hud-bar must stay over the in-view panels/place cards (was 25 > 20/15/10) */
-  pointer-events: auto;
-  transition: all 0.3s ease;
+.earth-remix.is-transitioning .earth-ctrl-btn,
+.earth-remix.is-transitioning .earth-zoom-cluster,
+.earth-remix.is-transitioning .earth-status {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-.hud-top-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem 1rem;
-  width: 100%;
-  min-width: 0;
+.earth-remix[data-chrome-tier='compact'] .earth-ctrl-btn {
+  width: 32px;
+  height: 32px;
 }
 
-.hud-section {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  min-width: 0;
-}
-
-.hud-center-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  width: 100%;
-  /* Clear the floating Chat/Space mode switcher, which is centred over this
-     same region at `top: clamp(5.75rem, 12vh, 8rem)` with a ~3.4rem tall pill.
-     Without this the pill sits on top of the tab strip — measured 50% overlap
-     on Layers and 54% on Target — making those tabs partly unclickable.
-     Derived from the same clamp so the two scale together. */
-  padding-top: calc(clamp(5.75rem, 12vh, 8rem) + 3.5rem);
-}
-
-.hud-tab-strip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.hud-tab {
-  min-height: 2.25rem;
-  min-width: 4.6rem;
-  padding: 0 0.8rem;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: rgba(196, 198, 207, 0.72);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.hud-tab.active {
-  background: rgba(66, 133, 244, 0.18);
-  color: #fff;
-  box-shadow: inset 0 0 0 1px rgba(66, 133, 244, 0.35);
-}
-
-.hud-tab-caption {
-  font-family: 'JetBrains Mono', monospace;
+.earth-remix[data-chrome-tier='compact'] .earth-status {
+  gap: 0.75rem;
+  padding: 0 0.65rem;
   font-size: 0.56rem;
-  letter-spacing: 0.2em;
-  color: rgba(196, 198, 207, 0.4);
 }
 
-.hud-section.branding {
-  flex: 1 1 auto;
-  max-width: min(48vw, 620px);
+.earth-remix[data-chrome-tier='expansive'] .earth-ctrl-btn {
+  width: 40px;
+  height: 40px;
 }
 
-.hud-section.actions {
-  flex: 0 1 auto;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.hud-status-node {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0.25rem 0.5rem;
-  border-radius: 8px;
-  max-width: 100%;
-}
-
-.hud-indicator {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--theme-primary, #8a5bc7);
-  box-shadow: 0 0 8px var(--theme-primary, #8a5bc7);
-}
-
-.hud-indicator.active {
-  background: #00fff7;
-  box-shadow: 0 0 10px #00fff7, 0 0 20px rgba(0, 255, 247, 0.4);
-}
-
-.hud-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.hud-metric {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.65rem;
-}
-
-.hud-value {
-  font-weight: bold;
-  letter-spacing: 0.02em;
-}
-
-.hud-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  color: #c4c6cf;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.65rem;
-  font-weight: 600;
-  cursor: pointer;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0.35rem 0.7rem;
-  border-radius: 8px;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.hud-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 0 16px rgba(255, 255, 255, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.1);
-}
-
-.hud-btn:active {
-  transform: scale(0.97);
-}
-
-.hud-btn svg {
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
-}
-
-.hud-btn:hover svg {
-  opacity: 1;
-}
-
-.orbital-hud-bar.right-panel-open .hud-section.actions {
-  margin-left: auto;
-  gap: 0.4rem;
-}
-
-.orbital-hud-bar.right-panel-open .hud-section.actions .hud-metric {
-  display: none !important;
-}
-
-.orbital-hud-bar.right-panel-open .hud-section.actions .hud-btn {
-  min-width: 44px;
-  padding: 0.35rem;
-  gap: 0;
-}
-
-.orbital-hud-bar.right-panel-open .hud-section.actions .hud-btn span {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-@media (max-width: 1540px) {
-  .orbital-hud-bar {
-    padding: 0.7rem 0.75rem 0.8rem;
-  }
-
-  .hud-section {
-    gap: 0.5rem;
-  }
-
-  .hud-section.branding {
-    max-width: min(44vw, 520px);
-  }
-
-  .hud-center-spacer {
-    display: none !important;
-  }
-
-  .hud-section.actions {
-    margin-left: auto;
-    gap: 0.4rem;
-  }
-
-  .hud-section.actions .hud-metric {
-    display: none !important;
-  }
-
-  .hud-section.actions .hud-btn {
-    min-width: 44px;
-    padding: 0.35rem;
-    gap: 0;
-  }
-
-  .hud-section.actions .hud-btn span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-}
-
-@media (max-width: 980px) {
-  .orbital-hud-bar {
-    top: 8px;
-    left: 8px;
-    right: 8px;
-    gap: 0.45rem;
-  }
-
-  .hud-top-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .hud-section.branding {
-    max-width: none;
-  }
-
-  .hud-section.actions {
-    justify-content: flex-start;
-  }
-
-  .hud-tab-strip {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .hud-tab {
-    min-width: 4rem;
-    padding: 0 0.7rem;
-  }
-}
-
-@media (max-width: 720px) {
-  .hud-section.branding {
-    flex-wrap: wrap;
-    gap: 0.35rem 0.65rem;
-  }
-
-  .hud-status-node {
-    padding: 0.2rem 0.4rem;
-  }
-
-  .hud-label {
-    max-width: 11rem;
-  }
-
-  .hud-section.actions {
-    gap: 0.35rem;
-  }
-
-  .hud-btn {
-    min-width: 40px;
-    min-height: 40px;
-    padding: 0.3rem 0.55rem;
-  }
+.earth-remix[data-chrome-tier='expansive'] .earth-status {
+  height: 32px;
+  font-size: 0.72rem;
 }
 
 /* Sidebar & Main Screen Workspace Layout */
@@ -1162,44 +862,11 @@
   background: #d93025;
 }
 
-/* Radar Minimap */
-.earth-minimap {
-  position: absolute;
-  left: 1rem;
-  bottom: 3.5rem;
-  width: 48px;
-  height: 48px;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
-  background: rgba(18, 19, 26, 0.8);
-  backdrop-filter: blur(8px);
-  display: grid;
-  place-items: center;
-  z-index: var(--theme-z-content); /* content: sits under the status bar (was 5 < 10), over the globe */
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  pointer-events: auto;
-}
-
-.earth-minimap-icon {
-  color: #8ab4f8;
-  opacity: 0.7;
-}
-
-.earth-radar-ping {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: radial-gradient(circle, transparent 40%, rgba(66, 133, 244, 0.15) 100%);
-  animation: radarPulse 3s linear infinite;
-}
-
 /* Bottom Right Globe Navigation Controls */
 .earth-controls {
   position: absolute;
   right: 1rem;
-  bottom: 3.5rem;
+  bottom: var(--status-bar-bottom-clearance);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -1211,20 +878,20 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(18, 19, 26, 0.85);
+  background: rgba(10, 13, 22, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #fff;
   cursor: pointer;
   display: grid;
   place-items: center;
   backdrop-filter: blur(12px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transition: all 0.2s ease;
 }
 
 .earth-ctrl-btn:hover {
-  background: #1a73e8;
-  border-color: #4285f4;
+  background: color-mix(in srgb, var(--theme-primary) 82%, #101521);
+  border-color: color-mix(in srgb, var(--theme-primary) 70%, white);
   transform: translateY(-2px);
 }
 
@@ -1243,7 +910,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(18, 19, 26, 0.85);
+  background: rgba(10, 13, 22, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   overflow: hidden;
@@ -1378,15 +1045,47 @@
   flex: 1;
 }
 
+.earth-status-toggle,
+.earth-status-reveal {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+}
+
+.earth-status-toggle:hover,
+.earth-status-reveal:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.earth-status-toggle:focus-visible,
+.earth-status-reveal:focus-visible {
+  outline: 2px solid var(--theme-primary, #8ab4f8);
+  outline-offset: 2px;
+}
+
+.earth-status-reveal {
+  position: absolute;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: var(--theme-z-chrome);
+  pointer-events: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(16, 18, 27, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 /* Animations */
 @keyframes cloudDrift {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
-}
-
-@keyframes radarPulse {
-  0% { transform: scale(0.6); opacity: 0.8; }
-  100% { transform: scale(1.3); opacity: 0; }
 }
 
 /* Scroller utility */
@@ -1407,29 +1106,12 @@
 
 /* Responsiveness adjustments */
 @media (max-width: 768px) {
-  .earth-menu {
-    display: none;
-  }
   .earth-workspace {
     height: 100%;
   }
-  .earth-panel {
-    width: 280px;
-  }
-  .earth-place {
-    width: 280px;
-    right: 0.5rem;
-    top: 0.5rem;
-  }
   .earth-controls {
     right: 0.75rem;
-    bottom: 1.25rem;
-  }
-  .earth-minimap {
-    left: 0.75rem;
-    bottom: 1.25rem;
-    width: 44px;
-    height: 44px;
+    bottom: var(--status-bar-bottom-clearance);
   }
 }
 

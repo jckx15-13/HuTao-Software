@@ -25,6 +25,17 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
   const osmBuildingsRef = useRef<Cesium3DTileset | null>(null);
   const googleTilesetRef = useRef<Cesium3DTileset | null>(null);
   const [google3DActive, setGoogle3DActive] = useState(false);
+  const [imageryStatus, setImageryStatus] = useState<{
+      loading: boolean;
+      error: string | null;
+      activeLayerId: string;
+      fallbackLayerUsed: boolean;
+  }>({
+      loading: false,
+      error: null,
+      activeLayerId: selectedLayerId,
+      fallbackLayerUsed: false,
+  });
   const imageryRequestRef = useRef(0);
 
     // 1. Manage Scene Mode (2D / 3D / Columbus)
@@ -152,15 +163,21 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
                 // Load the selected imagery layer, then optionally fall back.
                 const initialLayerId = isGoogle3D ? "arcgis-world" : selectedLayerId;
                 let provider;
+                let activeLayerId = initialLayerId;
+                let fallbackUsed = false;
+                let loadError: string | null = null;
 
                 try {
                   provider = await createImageryProvider(initialLayerId);
-                } catch (primaryErr) {
+                } catch (primaryErr: any) {
+                    loadError = primaryErr?.message || String(primaryErr);
                     console.warn(`[useImageryManager] Failed to load imagery layer ${initialLayerId}, trying fallback if available`, primaryErr);
 
                     if (fallbackLayerId && fallbackLayerId !== initialLayerId) {
                     try {
                       provider = await createImageryProvider(fallbackLayerId);
+                      activeLayerId = fallbackLayerId;
+                      fallbackUsed = true;
                       console.warn(`[useImageryManager] Falling back to imagery layer ${fallbackLayerId}`);
                     } catch (fallbackErr) {
                       console.warn(`[useImageryManager] Fallback imagery ${fallbackLayerId} also failed`, fallbackErr);
@@ -169,11 +186,21 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
 
                     if (!provider) {
                         provider = await createOsmProvider();
+                        activeLayerId = 'osm';
+                        fallbackUsed = true;
                         console.warn('[useImageryManager] Using OSM fallback imagery');
                     }
                 }
 
                 if (!provider) {
+                    if (active) {
+                      setImageryStatus({
+                        loading: false,
+                        error: loadError || 'Failed to load imagery provider',
+                        activeLayerId,
+                        fallbackLayerUsed: true,
+                      });
+                    }
                     return;
                 }
 
@@ -192,6 +219,14 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
                 if (viewer.isDestroyed() || !active) return;
                 viewer.imageryLayers.add(newLayer, 0);
                 currentImageryLayerRef.current = newLayer;
+                if (active) {
+                  setImageryStatus({
+                    loading: false,
+                    error: loadError,
+                    activeLayerId,
+                    fallbackLayerUsed: fallbackUsed,
+                  });
+                }
                 viewer.scene.requestRender();
             }
         }
@@ -222,8 +257,8 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
 
         const shouldShow = showOsmBuildings && !google3DActive && is3DMode;
 
+        let cancelled = false;
         if (shouldShow && !osmBuildingsRef.current) {
-            let cancelled = false;
             createOsmBuildingsAsync().then((tileset) => {
                 if (cancelled || !viewer || viewer.isDestroyed()) {
                     tileset.destroy();
@@ -240,7 +275,6 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
             }).catch((err) => {
                 console.warn("[useImageryManager] Failed to load OSM 3D Buildings:", err);
             });
-            return () => { cancelled = true; };
         }
 
         if (!shouldShow && osmBuildingsRef.current) {
@@ -250,9 +284,15 @@ export function useImageryManager(viewerInstance: CesiumViewer | null, viewerRea
             }
             osmBuildingsRef.current = null;
         }
+
+        return () => { cancelled = true; };
     }, [viewer, viewerReady, google3DActive, is3DMode, showOsmBuildings]);
 
     return {
-        isGoogle3D: google3DActive
+        isGoogle3D: google3DActive,
+        loading: imageryStatus.loading,
+        error: imageryStatus.error,
+        activeLayerId: imageryStatus.activeLayerId,
+        fallbackLayerUsed: imageryStatus.fallbackLayerUsed
     };
 }

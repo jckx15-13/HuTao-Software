@@ -22,13 +22,15 @@ import {
   Camera,
   Play,
   RotateCcw,
-  Check,
+  Check
 } from 'lucide-react';
 // Runtime/mocked wrapper to prevent static Cesium initialization crashes in headless environments
 const Cesium = {
   ConstantProperty: class {
     value: any;
-    constructor(val: any) { this.value = val; }
+    constructor(val: any) {
+      this.value = val;
+    }
   },
   Cartesian3: {
     fromDegrees: (lng: number, lat: number, alt: number) => {
@@ -56,9 +58,13 @@ const Cesium = {
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '../../core/state/store';
 import { pluginManager } from '../../core/plugins/PluginManager';
+import { resolveChromeTierForWidth } from '@/core/layout/deviceProfile';
 import { locations, type LocationData } from '../../data/locations';
 import { tours, type Tour, type TourStep } from '../../data/tours';
 import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
+import { useViewportSize } from '@/hooks/useViewportSize';
+import { useDeviceProfile } from '@/hooks/useDeviceProfile';
+import { buildWorkspaceRailPx } from '../panels/panelGeometry';
 import {
   LANDMASS_POINTS_3D,
   MERIDIANS_3D,
@@ -66,7 +72,7 @@ import {
   projectUnitVector,
   projectLatLng,
   latLngToVector,
-  slerp,
+  slerp
 } from '../../lib/globeProjection';
 import './GoogleEarthRemix.css';
 
@@ -76,7 +82,7 @@ const mapLabels = ['India', 'China', 'Thailand', 'Vietnam', 'Malaysia', 'Indones
 const cleanSatelliteName = (fullName: string): string => {
   return fullName
     .replace(/^[^\s\w]+\s*/g, '') // remove leading emojis/symbols
-    .split(' (')[0]             // remove parenthetical info like "(SPACE STATION)"
+    .split(' (')[0] // remove parenthetical info like "(SPACE STATION)"
     .trim();
 };
 
@@ -87,19 +93,15 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
 
 export default function GoogleEarthRemix() {
-  const isHeadless = typeof window !== 'undefined' && (
-    /HeadlessChrome/i.test(navigator.userAgent) ||
-    window.location.search.includes('fallback')
-  );
+  const isHeadless =
+    typeof window !== 'undefined' &&
+    (/HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback'));
 
   // 1. Primitive useState hooks
   const [query, setQuery] = useState('');
@@ -123,7 +125,6 @@ export default function GoogleEarthRemix() {
   const setMeasureEnd = useUIStore((s) => s.setMeasureEnd);
   const [activePanorama, setActivePanorama] = useState<string | null>(null);
   const [hasCesium, setHasCesium] = useState(false);
-  const [hudTab, setHudTab] = useState<'navigation' | 'layers' | 'target' | 'system'>('navigation');
 
   // 2. Zustand Store integrations
   const activeLocation = useUIStore((s) => s.activeLocation);
@@ -134,8 +135,13 @@ export default function GoogleEarthRemix() {
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
   const setLeftPanelOpen = useUIStore((s) => s.setLeftPanelOpen);
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
+  const topBarOpen = useUIStore((s) => s.topBarOpen);
+  const bottomBarOpen = useUIStore((s) => s.bottomBarOpen);
+  const setBottomBarOpen = useUIStore((s) => s.setBottomBarOpen);
   const telescopeFocus = useUIStore((s) => s.spaceInteractionTarget === 'telescope');
-
+  const viewportSize = useViewportSize();
+  const deviceProfile = useDeviceProfile(leftPanelOpen && rightPanelOpen);
+  const [isChromeTransitioning, setIsChromeTransitioning] = useState(false);
 
   const mapConfig = useStore((s) => s.mapConfig);
   const updateMapConfig = useStore((s) => s.updateMapConfig);
@@ -151,12 +157,43 @@ export default function GoogleEarthRemix() {
   const clickStartPosRef = useRef({ x: 0, y: 0 });
   const hoverLocationRef = useRef<LocationData | null>(null);
 
+  const chromeTier = useMemo(() => {
+    const leftRail = buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'left', deviceProfile);
+    const rightRail = buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'right', deviceProfile);
+    return resolveChromeTierForWidth(Math.max(1, viewportSize.width - leftRail - rightRail));
+  }, [deviceProfile, leftPanelOpen, rightPanelOpen, viewportSize]);
+
+  useEffect(() => {
+    let active = true;
+    let fallbackTimer: number | null = null;
+
+    const requestCesiumResize = () => {
+      if (!active) return;
+      const viewer = (window as any).cesiumViewer;
+      if (viewer && !viewer.isDestroyed?.()) {
+        viewer.resize();
+        viewer.scene.requestRender();
+      }
+      setIsChromeTransitioning(false);
+    };
+
+    setIsChromeTransitioning(true);
+    window.addEventListener('transitionend', requestCesiumResize, { once: true });
+    fallbackTimer = window.setTimeout(requestCesiumResize, 320);
+
+    return () => {
+      active = false;
+      window.removeEventListener('transitionend', requestCesiumResize);
+      if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
+    };
+  }, [leftPanelOpen, rightPanelOpen, topBarOpen]);
+
   // 4. Fallback Interactive Canvas Refs
   useEffect(() => {
     if (activeLocation) {
       targetRef.current = {
         lng: activeLocation.lng,
-        lat: activeLocation.lat,
+        lat: activeLocation.lat
       };
     }
   }, [activeLocation]);
@@ -216,7 +253,15 @@ export default function GoogleEarthRemix() {
 
       let foundHover: LocationData | null = null;
       for (const loc of locations) {
-        const p = projectLatLng(loc.lat, loc.lng, (cameraRef.current.lng * Math.PI) / 180, (cameraRef.current.lat * Math.PI) / 180, R, cx, cy);
+        const p = projectLatLng(
+          loc.lat,
+          loc.lng,
+          (cameraRef.current.lng * Math.PI) / 180,
+          (cameraRef.current.lat * Math.PI) / 180,
+          R,
+          cx,
+          cy
+        );
         if (p.visible) {
           const dist = Math.hypot(mouseX - p.x, mouseY - p.y);
           if (dist < 8) {
@@ -292,7 +337,15 @@ export default function GoogleEarthRemix() {
           const R = R_base * (zoom / 42);
 
           for (const loc of locations) {
-            const p = projectLatLng(loc.lat, loc.lng, (cameraRef.current.lng * Math.PI) / 180, (cameraRef.current.lat * Math.PI) / 180, R, cx, cy);
+            const p = projectLatLng(
+              loc.lat,
+              loc.lng,
+              (cameraRef.current.lng * Math.PI) / 180,
+              (cameraRef.current.lat * Math.PI) / 180,
+              R,
+              cx,
+              cy
+            );
             if (p.visible) {
               const dist = Math.hypot(touchX - p.x, touchY - p.y);
               if (dist < 15) {
@@ -312,11 +365,10 @@ export default function GoogleEarthRemix() {
 
     let active = true;
     let lastFrameTime = 0;
-    const isHeadless = typeof window !== 'undefined' && (
-      /HeadlessChrome/i.test(navigator.userAgent) ||
-      window.location.search.includes('fallback')
-    );
-    const FRAME_INTERVAL = isHeadless ? 2000 : (1000 / 30); // Throttled in headless mode to prevent crashes
+    const isHeadless =
+      typeof window !== 'undefined' &&
+      (/HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback'));
+    const FRAME_INTERVAL = isHeadless ? 2000 : 1000 / 30; // Throttled in headless mode to prevent crashes
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -504,7 +556,7 @@ export default function GoogleEarthRemix() {
           const isHovered = hoverLocationRef.current && loc.id === hoverLocationRef.current.id;
 
           ctx.beginPath();
-          ctx.arc(p.x, p.y, isActive ? 6 : (isHovered ? 5 : 4), 0, 2 * Math.PI);
+          ctx.arc(p.x, p.y, isActive ? 6 : isHovered ? 5 : 4, 0, 2 * Math.PI);
           ctx.fillStyle = isActive ? '#4285f4' : '#ea4335';
           ctx.fill();
           ctx.strokeStyle = '#ffffff';
@@ -553,23 +605,27 @@ export default function GoogleEarthRemix() {
   }, [hasCesium, zoom, measureStart, measureEnd, showBorders, activeLocation]);
 
   useEffect(() => {
+    if (forceFallback) {
+      setHasCesium(false);
+      return;
+    }
     const checkCesium = () => {
-      if (forceFallback) {
-        setHasCesium(false);
-        return;
-      }
       const viewer = (window as any).cesiumViewer;
-      if (viewer) {
+      if (viewer && !viewer.isDestroyed?.()) {
         setHasCesium(true);
-      } else {
-        setHasCesium(false);
+        return true;
       }
+      setHasCesium(false);
+      return false;
     };
-    checkCesium();
-    const interval = setInterval(checkCesium, 1000);
+    if (checkCesium()) return;
+    const interval = setInterval(() => {
+      if (checkCesium()) {
+        clearInterval(interval);
+      }
+    }, 150);
     return () => clearInterval(interval);
   }, [forceFallback]);
-
 
   // Sync Borders and Labels visibility to Cesium
   useEffect(() => {
@@ -627,13 +683,15 @@ export default function GoogleEarthRemix() {
           id: 'measure-line',
           polyline: {
             positions: Cesium.Cartesian3.fromDegreesArray([
-              measureStart.lng, measureStart.lat,
-              measureEnd.lng, measureEnd.lat,
+              measureStart.lng,
+              measureStart.lat,
+              measureEnd.lng,
+              measureEnd.lat
             ]),
             width: 3,
             material: Cesium.Color.fromCssColorString('#4285f4'),
-            clampToGround: true,
-          },
+            clampToGround: true
+          }
         });
 
         viewer.scene.requestRender();
@@ -670,7 +728,7 @@ export default function GoogleEarthRemix() {
     }
 
     // Map static locations
-    const staticMatches: SearchItem[] = locations.map(l => ({
+    const staticMatches: SearchItem[] = locations.map((l) => ({
       id: l.id,
       name: l.name,
       country: l.country,
@@ -704,9 +762,7 @@ export default function GoogleEarthRemix() {
     const allItems = [...staticMatches, ...pluginMatches];
     if (!term) return allItems.slice(0, 5);
 
-    return allItems.filter((item) =>
-      `${item.name} ${item.country} ${item.category}`.toLowerCase().includes(term)
-    );
+    return allItems.filter((item) => `${item.name} ${item.country} ${item.category}`.toLowerCase().includes(term));
   }, [query, layers]);
 
   const applyGraphicsPreset = (preset: 'low' | 'high') => {
@@ -721,7 +777,9 @@ export default function GoogleEarthRemix() {
       });
       useUIStore.getState().setShowBorders(true);
       useUIStore.getState().setShowTerrain(true);
-      useUIStore.getState().addChangeLog('GRAPHICS', 'Performance Preset Applied: shadows off, 0.7x scale, AA off.', 'info');
+      useUIStore
+        .getState()
+        .addChangeLog('GRAPHICS', 'Performance Preset Applied: shadows off, 0.7x scale, AA off.', 'info');
     } else {
       updateMapConfig({
         shadowsEnabled: true,
@@ -733,7 +791,13 @@ export default function GoogleEarthRemix() {
       });
       useUIStore.getState().setShowBorders(true);
       useUIStore.getState().setShowTerrain(true);
-      useUIStore.getState().addChangeLog('GRAPHICS', 'Cinematic Preset Applied: shadows on, 1.0x scale, MSAA 4x, OSM buildings active.', 'success');
+      useUIStore
+        .getState()
+        .addChangeLog(
+          'GRAPHICS',
+          'Cinematic Preset Applied: shadows on, 1.0x scale, MSAA 4x, OSM buildings active.',
+          'success'
+        );
     }
   };
 
@@ -779,10 +843,10 @@ export default function GoogleEarthRemix() {
           orientation: {
             heading: 0.0,
             pitch: -Cesium.Math.PI_OVER_TWO,
-            roll: 0.0,
+            roll: 0.0
           },
           duration: 1.5,
-          complete: () => viewer.scene.requestRender(),
+          complete: () => viewer.scene.requestRender()
         });
       }
     } catch (err) {
@@ -798,13 +862,13 @@ export default function GoogleEarthRemix() {
           viewer.camera.flyTo({
             destination: Cesium.Cartesian3.fromDegrees(activeLocation.lng, activeLocation.lat, 1800000),
             duration: 1.5,
-            complete: () => viewer.scene.requestRender(),
+            complete: () => viewer.scene.requestRender()
           });
         } else {
           viewer.camera.flyTo({
             destination: Cesium.Cartesian3.fromDegrees(0, 20, 20000000),
             duration: 1.5,
-            complete: () => viewer.scene.requestRender(),
+            complete: () => viewer.scene.requestRender()
           });
         }
       }
@@ -841,7 +905,7 @@ export default function GoogleEarthRemix() {
         viewer.camera.flyTo({
           destination: Cesium.Cartesian3.fromDegrees(step.lng, step.lat, 250000),
           duration: 2.0,
-          complete: () => viewer.scene.requestRender(),
+          complete: () => viewer.scene.requestRender()
         });
 
         const listener = viewer.scene.preUpdate.addEventListener(() => viewer.scene.requestRender());
@@ -859,231 +923,15 @@ export default function GoogleEarthRemix() {
   }
 
   return (
-    <section className="earth-remix" aria-label="Orbital explorer">
-      {/* Cyberpunk Telemetry HUD Bar */}
-      {!telescopeFocus && (
-        <header
-          className={`orbital-hud-bar ${rightPanelOpen ? 'right-panel-open' : ''}`}
-          style={{
-            left: leftPanelOpen ? 'min(336px, 70vw)' : '0.75rem',
-            right: rightPanelOpen ? 'min(336px, 70vw)' : '0.75rem',
-          }}
-        >
-          <div className="hud-top-row">
-            <div className="hud-section branding">
-              <button
-                type="button"
-                className="hud-status-node cursor-pointer border-0 bg-transparent text-left flex items-center gap-2"
-                onClick={() => {
-                  useUIStore.getState().addChangeLog('ORBITAL', 'Orbital Core diagnostics synced. Status: OPTIMAL.', 'success');
-                  alert('Orbital Engine Status: OPTIMAL\nActive Array: WWT/WWV Composite');
-                }}
-              >
-                <div className="hud-indicator active animate-pulse" />
-                <span className="hud-label font-bold text-primary tracking-widest text-[9px]">SILVER_WOLF // ORBITAL_ARRAY</span>
-              </button>
-              <div className="hud-metric text-[8px] text-white/40 hidden sm:block">SYS: <span className="text-[#34a853] font-bold">OPTIMAL</span></div>
-              <div className="hud-metric text-[8px] text-white/40 hidden md:block">GRID: <span className="text-[#00FFF7]">WWV/WWT</span></div>
-              <div className="hud-metric text-[8px] text-white/40 hidden lg:block border-l border-white/10 pl-2">
-                <span className="text-cyan-400 font-mono">
-                  {activeLocation ? `${activeLocation.lat.toFixed(4)}°N, ${activeLocation.lng.toFixed(4)}°E` : 'AUTO_TRACKING'}
-                </span>
-              </div>
-            </div>
-
-            <div className="hud-section actions">
-              <button
-                type="button"
-                className="hud-btn"
-                aria-label={leftPanelOpen ? 'Hide spatial HUD sidebar' : 'Show spatial HUD sidebar'}
-                title={leftPanelOpen ? 'Hide Sidebar' : 'Show Sidebar'}
-                onClick={() => {
-                  setLeftPanelOpen(!leftPanelOpen);
-                  useUIStore.getState().addChangeLog('UI', leftPanelOpen ? 'Spatial Control Panel hidden.' : 'Spatial Control Panel shown.', 'info');
-                }}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>{leftPanelOpen ? 'HIDE' : 'SIDEBAR'}</span>
-              </button>
-
-              {hudTab === 'navigation' && (
-                <>
-                  <button
-                    type="button"
-                    className="hud-btn"
-                    aria-label="Reset measurement ruler"
-                    title="Reset Measurement Ruler"
-                    onClick={() => {
-                      setMeasureStart(null);
-                      setMeasureEnd(null);
-                      useUIStore.getState().addChangeLog('MEASUREMENT', 'Geodetic markers cleared.', 'info');
-                    }}
-                  >
-                    <Ruler className="w-3.5 h-3.5" />
-                    <span>RULER</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="hud-btn"
-                    aria-label="Reset camera heading north"
-                    title="Reset Camera Orientation North"
-                    onClick={() => {
-                      handleCompass();
-                      useUIStore.getState().addChangeLog('CAMERA', 'Heading reset to North.', 'info');
-                    }}
-                  >
-                    <Navigation className="w-3.5 h-3.5" />
-                    <span>NORTH</span>
-                  </button>
-                </>
-              )}
-
-              {hudTab === 'layers' && (
-                <>
-                  <button
-                    type="button"
-                    className="hud-btn"
-                    aria-pressed={showBorders}
-                    aria-label="Toggle borders"
-                    title="Toggle Borders"
-                    onClick={() => setShowBorders(!showBorders)}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>BORDERS</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="hud-btn"
-                    aria-pressed={showTerrain}
-                    aria-label="Toggle terrain"
-                    title="Toggle Terrain"
-                    onClick={() => setShowTerrain(!showTerrain)}
-                  >
-                    <Map className="w-3.5 h-3.5" />
-                    <span>TERRAIN</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="hud-btn"
-                    aria-pressed={showRoads}
-                    aria-label="Toggle roads"
-                    title="Toggle Roads"
-                    onClick={() => setShowRoads(!showRoads)}
-                  >
-                    <Pin className="w-3.5 h-3.5" />
-                    <span>ROADS</span>
-                  </button>
-                </>
-              )}
-
-              {hudTab === 'target' && (
-                <>
-                  <div className="hud-metric text-[8px] text-white/40 hidden xl:flex gap-2 mr-2 border-r border-white/10 pr-2">
-                    <span>TARGET: <span className="text-purple-400 font-bold uppercase">{activeSatelliteId ? cleanSatelliteName(selectedSatellite?.name || activeSatelliteId) : (activeLocation ? activeLocation.name.split(',')[0] : 'EARTH')}</span></span>
-                    {activeSatelliteId && <span>ALT: <span className="text-amber-400 font-bold">{(selectedSatellite?.altitudeM || 420000) / 1000}KM</span></span>}
-                  </div>
-                  <button
-                    type="button"
-                    className="hud-btn"
-                    aria-label="Open diagnostics panel"
-                    title="Open Diagnostic System Panel"
-                    onClick={() => {
-                      useUIStore.getState().setRightPanelTab('diagnostics');
-                      useUIStore.getState().setRightPanelOpen(true);
-                      useUIStore.getState().addChangeLog('UI', 'Diagnostics Panel opened.', 'info');
-                    }}
-                  >
-                    <Settings className="w-3.5 h-3.5" />
-                    <span>DIAGNOSTICS</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="hud-btn"
-                    aria-label="Open active target details"
-                    title="Open Active Target Details"
-                    onClick={() => {
-                      useUIStore.getState().setRightPanelTab('context');
-                      useUIStore.getState().setRightPanelOpen(true);
-                    }}
-                  >
-                    <Pin className="w-3.5 h-3.5" />
-                    <span>TARGET</span>
-                  </button>
-                </>
-              )}
-
-              {hudTab === 'system' && (
-                <>
-                  <button
-                    type="button"
-                    className="hud-btn"
-                    aria-label="Reload telescope engine"
-                    title="Reload Telescope Engine"
-                    onClick={() => {
-                      const refreshWwtIframe = (window as any).refreshWwtIframe;
-                      if (typeof refreshWwtIframe === 'function') {
-                        refreshWwtIframe();
-                      } else {
-                        const viewer = (window as any).cesiumViewer;
-                        if (viewer && !viewer.isDestroyed?.()) {
-                          viewer.scene.requestRender();
-                        }
-                      }
-                      useUIStore.getState().addChangeLog('SYSTEM', 'Render engine refresh requested.', 'info');
-                    }}
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>RELOAD</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="hud-btn"
-                    aria-label="Open help and operator manual"
-                    title="Access Help & User Documentation"
-                    onClick={() => {
-                      useUIStore.getState().setRightPanelTab('browser');
-                      useUIStore.getState().setRightPanelOpen(true);
-                      useUIStore.getState().setBrowserUrl('https://html.duckduckgo.com/html/?q=Silver+Wolf+VI+Operator+Manual');
-                      useUIStore.getState().addChangeLog('HELP', 'Opened manual in system browser.', 'info');
-                    }}
-                  >
-                    <UserCircle className="w-3.5 h-3.5" />
-                    <span>MANUAL</span>
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="hud-center-stack">
-            <div className="hud-tab-strip" role="tablist" aria-label="Earth overlay modes">
-              {([
-                ['navigation', 'Navigation'],
-                ['layers', 'Layers'],
-                ['target', 'Target'],
-                ['system', 'System'],
-              ] as const).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={hudTab === key}
-                  onClick={() => setHudTab(key)}
-                  className={`hud-tab ${hudTab === key ? 'active' : ''}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="hud-tab-caption">{hudTab.toUpperCase()}</div>
-          </div>
-        </header>
-      )}
-
+    <section
+      className={`earth-remix${isChromeTransitioning ? ' is-transitioning' : ''}`}
+      data-chrome-tier={chromeTier}
+      aria-label="Orbital explorer"
+    >
+      {/* Orbital HUD bar removed — its controls now live in the CHAT/SPACE mode-switcher pill (CenterPanel.tsx SpaceHudPillControls). */}
       <div className="earth-workspace">
         {/* Core Stage */}
         <div className="earth-stage">
-
           {/* Fallback 2D Sphere Globe when Cesium has not loaded */}
           {!hasCesium && (
             <div className="earth-globe-fallback pointer-events-auto">
@@ -1123,13 +971,17 @@ export default function GoogleEarthRemix() {
                   <img src={activeTourStep.image} alt={activeTourStep.title} className="earth-tour-step-img" />
                 )}
                 <div className="earth-tour-step-content">
-                  <div className="earth-tour-step-badge">Step {currentStepIndex + 1} of {selectedTour.steps.length}</div>
+                  <div className="earth-tour-step-badge">
+                    Step {currentStepIndex + 1} of {selectedTour.steps.length}
+                  </div>
                   <h2>{activeTourStep.title}</h2>
                   <small className="earth-tour-step-meta">{activeTourStep.location}</small>
                   <p className="scroller">{activeTourStep.description}</p>
 
                   <div className="earth-tour-controls">
-                    <button type="button" onClick={handlePrevStep} className="earth-tour-btn-nav"><ChevronLeft size={16} /></button>
+                    <button type="button" onClick={handlePrevStep} className="earth-tour-btn-nav">
+                      <ChevronLeft size={16} />
+                    </button>
                     {activeTourStep.panoramaUrl && (
                       <button
                         type="button"
@@ -1139,7 +991,9 @@ export default function GoogleEarthRemix() {
                         <Camera size={14} /> Street View
                       </button>
                     )}
-                    <button type="button" onClick={handleNextStep} className="earth-tour-btn-nav"><ChevronRight size={16} /></button>
+                    <button type="button" onClick={handleNextStep} className="earth-tour-btn-nav">
+                      <ChevronRight size={16} />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1172,7 +1026,9 @@ export default function GoogleEarthRemix() {
                   </div>
                   <div className="earth-fact-node">
                     <span className="lbl">Coordinates</span>
-                    <span className="val">{activeLocation.lat.toFixed(3)}° N, {activeLocation.lng.toFixed(3)}° E</span>
+                    <span className="val">
+                      {activeLocation.lat.toFixed(3)}° N, {activeLocation.lng.toFixed(3)}° E
+                    </span>
                   </div>
                 </div>
 
@@ -1190,21 +1046,7 @@ export default function GoogleEarthRemix() {
             </aside>
           )}
 
-          {/* Minimap (Radar Grid) */}
-          {!leftPanelOpen && !telescopeFocus && (
-            <button
-              type="button"
-              className="earth-minimap cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200"
-              title="Recenter Camera to Global View"
-              aria-label="Recenter camera to global view"
-              onClick={handleRecenter}
-            >
-              <Map size={20} className="earth-minimap-icon" />
-              <div className="earth-radar-ping" />
-            </button>
-          )}
-
-          {/* Bottom Right Globe Navigation Controls */}
+          {/* Unified globe navigation dock. Its bottom offset clears the status bar. */}
           {!rightPanelOpen && (
             <div className="earth-controls" aria-label="Map controls">
               <button
@@ -1215,12 +1057,7 @@ export default function GoogleEarthRemix() {
               >
                 <UserCircle size={22} />
               </button>
-              <button
-                type="button"
-                className="earth-ctrl-btn"
-                onClick={handleRecenter}
-                title="Fly to active location"
-              >
+              <button type="button" className="earth-ctrl-btn" onClick={handleRecenter} title="Fly to active location">
                 <Navigation size={20} />
               </button>
               <button
@@ -1244,23 +1081,41 @@ export default function GoogleEarthRemix() {
           )}
 
           {/* Draggable Street View Panorama Overlayer */}
-          {activePanorama && (
-            <PanoramaViewer
-              imageUrl={activePanorama}
-              onClose={() => setActivePanorama(null)}
-            />
-          )}
+          {activePanorama && <PanoramaViewer imageUrl={activePanorama} onClose={() => setActivePanorama(null)} />}
 
           {/* Bottom Status Information Bar */}
-          <footer className="earth-status">
-            <span className="earth-copyright">Map data ©2026 Google</span>
-            <span className="earth-status-spacer" />
-            <span>Camera Altitude: {hasCesium ? 'Dynamic' : `${Math.round((78 - zoom) * 920)} km`}</span>
-            <span>Scale: {hasCesium ? 'Dynamic' : (zoom < 36 ? '10,000 km' : '1,000 km')}</span>
-            {activeLocation && (
-              <span>Coords: {activeLocation.lat.toFixed(4)}° N, {activeLocation.lng.toFixed(4)}° E</span>
-            )}
-          </footer>
+          {bottomBarOpen ? (
+            <footer className="earth-status">
+              <span className="earth-copyright">Map data ©2026 Google</span>
+              <span className="earth-status-spacer" />
+              <span>Camera Altitude: {hasCesium ? 'Dynamic' : `${Math.round((78 - zoom) * 920)} km`}</span>
+              <span>Scale: {hasCesium ? 'Dynamic' : zoom < 36 ? '10,000 km' : '1,000 km'}</span>
+              {activeLocation && (
+                <span>
+                  Coords: {activeLocation.lat.toFixed(4)}° N, {activeLocation.lng.toFixed(4)}° E
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setBottomBarOpen(false)}
+                className="earth-status-toggle"
+                aria-label="Hide space status bar"
+                title="Hide status bar"
+              >
+                <ChevronDown size={14} />
+              </button>
+            </footer>
+          ) : (
+            <button
+              type="button"
+              className="earth-status-reveal"
+              onClick={() => setBottomBarOpen(true)}
+              aria-label="Show space status bar"
+              title="Show status bar"
+            >
+              <ChevronDown size={14} className="rotate-180" />
+            </button>
+          )}
         </div>
       </div>
     </section>
@@ -1328,16 +1183,9 @@ function PanoramaViewer({ imageUrl, onClose }: { imageUrl: string; onClose: () =
         onMouseLeave={handleMouseUpOrLeave}
         style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
       >
-        <img
-          src={imageUrl}
-          alt="Street View 360"
-          className="earth-panorama-image"
-          draggable="false"
-        />
+        <img src={imageUrl} alt="Street View 360" className="earth-panorama-image" draggable="false" />
       </div>
-      <div className="earth-panorama-help">
-        DRAG MOUSE TO PAN 360° STREET VIEW // PRESS ESC OR CLICK CLOSE TO EXIT
-      </div>
+      <div className="earth-panorama-help">DRAG MOUSE TO PAN 360° STREET VIEW // PRESS ESC OR CLICK CLOSE TO EXIT</div>
     </div>
   );
 }
@@ -1353,13 +1201,20 @@ function ToolbarIcon({ label, children }: { label: string; children: ReactNode }
 function markerStyle(location: LocationData) {
   return {
     left: `${Math.max(8, Math.min(92, ((location.lng + 180) / 360) * 100))}%`,
-    top: `${Math.max(10, Math.min(88, ((90 - location.lat) / 180) * 100))}%`,
+    top: `${Math.max(10, Math.min(88, ((90 - location.lat) / 180) * 100))}%`
   };
 }
 
 function labelStyle(index: number) {
   const points = [
-    [37, 43], [55, 29], [61, 52], [66, 50], [58, 70], [69, 75], [79, 31], [74, 91],
+    [37, 43],
+    [55, 29],
+    [61, 52],
+    [66, 50],
+    [58, 70],
+    [69, 75],
+    [79, 31],
+    [74, 91]
   ];
   const [left, top] = points[index] || [50, 50];
   return { left: `${left}%`, top: `${top}%` };

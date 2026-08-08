@@ -11,14 +11,15 @@
  * class here and every consumer picks it up.
  */
 
-export type DeviceClass =
-  | 'watch'
-  | 'phone'
-  | 'phablet'
-  | 'tablet'
-  | 'laptop'
-  | 'desktop'
-  | 'ultrawide';
+export type DeviceClass = 'watch' | 'phone' | 'phablet' | 'tablet' | 'laptop' | 'desktop' | 'ultrawide';
+
+/**
+ * Coarse 3-bucket grouping of `DeviceClass`, for consumers that want a chrome
+ * density tier (button/label verbosity, HUD padding) rather than the full
+ * 7-way width classification. Derived from `DeviceClass`, not a second set
+ * of width thresholds — see `resolveChromeTier`.
+ */
+export type ChromeTier = 'compact' | 'standard' | 'expansive';
 
 export type Orientation = 'portrait' | 'landscape';
 
@@ -56,7 +57,24 @@ export type DeviceProfile = {
   bottomInsetPx: number;
   /** Suggested multiplier for chrome density (font size, control padding). */
   chromeScale: number;
+  /** Coarse 3-bucket grouping of `deviceClass` — see `ChromeTier`. */
+  chromeTier: ChromeTier;
 };
+
+const CHROME_TIER_BY_CLASS: Record<DeviceClass, ChromeTier> = {
+  watch: 'compact',
+  phone: 'compact',
+  phablet: 'compact',
+  tablet: 'standard',
+  laptop: 'standard',
+  desktop: 'expansive',
+  ultrawide: 'expansive'
+};
+
+/** Maps a `DeviceClass` to its `ChromeTier` bucket. No new width thresholds — reuses `resolveDeviceClass`. */
+export function resolveChromeTier(deviceClass: DeviceClass): ChromeTier {
+  return CHROME_TIER_BY_CLASS[deviceClass] ?? 'standard';
+}
 
 export type DeviceClassSpec = {
   /** Inclusive lower bound of the class, in CSS px. */
@@ -247,13 +265,36 @@ const clampPx = (value: number, min: number, max: number): number => {
   return Math.min(Math.max(Math.round(value), lo), hi);
 };
 
+/**
+ * The real viewport, when there is a DOM to ask.
+ *
+ * Callers outside React — store initialisation, persist `merge` — have no
+ * `useViewportSize` to hand. Falling back to `DEFAULT_VIEWPORT` there silently
+ * treated every device as a 1280×720 desktop, which is exactly the case that
+ * needs to be right: it decides which panels a phone opens on launch.
+ */
+export function readWindowViewport(): ViewportLike | null {
+  if (typeof window === 'undefined') return null;
+
+  const visual = window.visualViewport;
+  const width = visual?.width ?? window.innerWidth;
+  const height = visual?.height ?? window.innerHeight;
+
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return { width: Math.round(width), height: Math.round(height) };
+}
+
 /** Coerces anything into a usable viewport, so a NaN width can't cascade into NaN CSS. */
 export function normalizeViewport(viewport?: Partial<ViewportLike> | null): ViewportLike {
+  const fallback = readWindowViewport() ?? DEFAULT_VIEWPORT;
   const width = Number(viewport?.width);
   const height = Number(viewport?.height);
   return {
-    width: Number.isFinite(width) && width > 0 ? Math.round(width) : DEFAULT_VIEWPORT.width,
-    height: Number.isFinite(height) && height > 0 ? Math.round(height) : DEFAULT_VIEWPORT.height
+    width: Number.isFinite(width) && width > 0 ? Math.round(width) : fallback.width,
+    height: Number.isFinite(height) && height > 0 ? Math.round(height) : fallback.height
   };
 }
 
@@ -324,11 +365,7 @@ function resolvePanelWidthPx(
     return Math.max(1, viewport.width - edgeInsetPx * 2);
   }
 
-  const preferredPx = clampPx(
-    viewport.width * spec.panelWidthRatio,
-    spec.panelWidthMinPx,
-    spec.panelWidthMaxPx
-  );
+  const preferredPx = clampPx(viewport.width * spec.panelWidthRatio, spec.panelWidthMinPx, spec.panelWidthMaxPx);
 
   // Reserve a centre column so two docked panels can never meet in the middle.
   const centreGutterPx = dualPanels ? 40 : 24;
@@ -357,11 +394,7 @@ export function resolveDeviceProfile(
   const panelPresentation = resolvePanelPresentation(deviceClass, viewport);
   const dualPanels = options.dualPanels === true;
 
-  const edgeInsetPx = clampPx(
-    viewport.width * spec.edgeInsetRatio,
-    spec.edgeInsetMinPx,
-    spec.edgeInsetMaxPx
-  );
+  const edgeInsetPx = clampPx(viewport.width * spec.edgeInsetRatio, spec.edgeInsetMinPx, spec.edgeInsetMaxPx);
 
   return {
     deviceClass,
@@ -374,11 +407,18 @@ export function resolveDeviceProfile(
     edgeInsetPx,
     panelWidthPx: resolvePanelWidthPx(viewport, spec, panelPresentation, edgeInsetPx, dualPanels),
     topInsetPx: clampPx(viewport.height * spec.topInsetRatio, spec.topInsetMinPx, spec.topInsetMaxPx),
-    bottomInsetPx: clampPx(
-      viewport.height * spec.bottomInsetRatio,
-      spec.bottomInsetMinPx,
-      spec.bottomInsetMaxPx
-    ),
-    chromeScale: spec.chromeScale
+    bottomInsetPx: clampPx(viewport.height * spec.bottomInsetRatio, spec.bottomInsetMinPx, spec.bottomInsetMaxPx),
+    chromeScale: spec.chromeScale,
+    chromeTier: resolveChromeTier(deviceClass)
   };
+}
+
+/**
+ * `resolveChromeTier`, but for a caller that already knows the *net* width
+ * available (e.g. the space-view centre column after subtracting docked rail
+ * widths) rather than the full window width. Used by `GoogleEarthRemix` so
+ * its chrome density reflects the room it actually has, not the window's.
+ */
+export function resolveChromeTierForWidth(netWidthPx: number): ChromeTier {
+  return resolveChromeTier(resolveDeviceClass(netWidthPx));
 }

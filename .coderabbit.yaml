@@ -2,8 +2,8 @@
 language: en-US
 early_access: false
 reviews:
-  profile: chill
-  request_changes_workflow: false
+  profile: assertive
+  request_changes_workflow: true
   high_level_summary: true
   poem: false
   review_status: true
@@ -11,40 +11,45 @@ reviews:
   path_instructions:
     - path: "bridge/**"
       instructions: |
-        You are reviewing a Python FastAPI bridge that routes AI assistant
-        requests to local LLM runtimes (Ollama, LM Studio, llama.cpp) or
-        cloud providers. Prioritize:
-        - Token-saving methodologies: flag any unnecessarily verbose prompt
-          construction, redundant serialization, or wasteful streaming patterns.
-        - Local-first architecture: ensure fallback chains prefer local
-          runtimes before cloud. Flag any change that makes a cloud provider
-          the default path.
-        - Security: no secrets in code, proper input validation on all routes,
-          safe subprocess usage.
-        - Performance: async correctness, connection pooling, proper use of
-          httpx client lifecycle.
+        You are reviewing a Python FastAPI bridge routing AI assistant requests.
+        Strict QA checks:
+        - Token efficiency: flag wasteful prompt wrapping or serialization.
+        - Local-first priority: ensure local LLM runtimes (Ollama/LM Studio) are checked first.
+        - Security & Sentry Telemetry: verify Sentry exception reporting on failure routes, no leaked keys, strict Pydantic validation.
+        - Async & Resource Safety: correct HTTP client reuse, non-blocking loops, clean error status codes.
+    - path: "src/core/qa/**"
+      instructions: |
+        QA and Telemetry subsystem review:
+        - Sentry QA integration correctness, breadcrumb tracking, no swallowed exceptions.
+        - Zero runtime crashes when SENTRY_DSN is absent (mock mode safety).
+    - path: "src/core/state/**"
+      instructions: |
+        Zustand state slices review:
+        - Strict slice isolation: slices must not directly mutate external slice states without actions.
+        - Immutable updates only; prohibit direct state mutations.
+        - Validate initial state reset functions and selector performance.
     - path: "src/components/**"
       instructions: |
-        Review frontend React components for:
-        - Adherence to the geo-tech tactical minimalist design system defined
-          in design-tokens.tailwind.json.
-        - Token-saving: no inline styles that duplicate Tailwind utilities,
-          no redundant re-renders, proper memoization where appropriate.
-        - Local-first architecture: components should degrade gracefully when
-          the bridge is offline and prefer cached/local data.
-        - Single-responsibility: flag any component exceeding ~300 lines and
-          suggest extraction.
-    - path: "src/core/**"
-      instructions: |
-        Core modules (state, plugins, data bus). Review for:
-        - Clean plugin contract compliance.
-        - No circular dependencies between slices.
-        - Zustand best practices (selectors, minimal subscriptions).
+        React UI components review:
+        - Strict wrapping with ErrorBoundary and sentryQA instrumentation on async handlers.
+        - Tactical geo-tech design compliance matching design-tokens.tailwind.json.
+        - Component modularity: flag components >300 lines and request subcomponent extraction.
+        - Accessibility (a11y) & responsive layout integrity across all device breakpoints.
     - path: "src/plugins/**"
       instructions: |
-        Data plugins. Verify:
-        - Correct PluginManager registration pattern.
-        - Proper cleanup/disposal on unmount.
-        - Error boundaries around external data fetches.
+        Data plugins review:
+        - Imperative and manifest plugin registration compliance.
+        - Clean resource disposal on unmount (`dispose()` method).
+        - Robust network timeout and fallback guards for live telemetry APIs.
+    - path: "src/lib/**"
+      instructions: |
+        Physics, astronomy, and utility libraries review:
+        - Mathematical rigor: verified bounds for orbital elements, coordinate transforms, and astronomical models.
+        - Edge-case validation: handling of NaNs, zero division, infinity, and invalid geographic coordinates.
+    - path: "scripts/**"
+      instructions: |
+        Test runner and verification harness review:
+        - Strict assertion coverage; reject superficial passing tests without assertions.
+        - Complete pass criteria: type checking, state immutability, contract adherence, layout bounds, and Sentry integration checks.
 chat:
   auto_reply: true

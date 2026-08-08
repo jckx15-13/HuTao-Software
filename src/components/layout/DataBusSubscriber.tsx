@@ -82,7 +82,7 @@ export function DataBusSubscriber() {
                     level: 'warning',
                     message: message || `[Plugin:${pluginId}] error`,
                     stack: error?.stack || null,
-                    metadata: { pluginId, engineUrl: resolveEngineUrl(pluginId) },
+                    metadata: { pluginId, engineUrl: resolveEngineUrl(pluginId || '') },
                     suggestion: 'Inspect plugin manifest and upstream engine availability; check network and auth',
                 });
             } catch (e) {

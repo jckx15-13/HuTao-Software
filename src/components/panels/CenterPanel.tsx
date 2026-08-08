@@ -1,8 +1,10 @@
-import React, { Suspense, useEffect, useCallback } from 'react';
+import React, { Suspense, useEffect, useCallback, useRef } from 'react';
 import { MessageSquare, Globe2, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { ChatPanel } from '../ChatPanel';
 import { TouchControlOverlay } from '../common/TouchControlOverlay';
+import { useChromeTopAnchor } from '../../hooks/useChromeTopAnchor';
+import { SpaceHudPillControls } from './SpaceHudPillControls';
 const GoogleEarthRemix = React.lazy(() => import('../learning/GoogleEarthRemix'));
 const WorldWideTelescopeView = React.lazy(() => import('../learning/WorldWideTelescopeView'));
 import { ErrorBoundary } from '../ErrorBoundary';
@@ -31,6 +33,8 @@ export function CenterPanel() {
   const setInteractionMode = useUIStore((s) => s.setInteractionMode);
   const spaceInteractionTarget = useUIStore((s) => s.spaceInteractionTarget);
   const setSpaceInteractionTarget = useUIStore((s) => s.setSpaceInteractionTarget);
+  const modeSwitcherOpen = useUIStore((s) => s.modeSwitcherOpen);
+  const setModeSwitcherOpen = useUIStore((s) => s.setModeSwitcherOpen);
 
   // Track WWT error state for change log reporting
   const handleTelescopeError = useCallback((error: Error) => {
@@ -42,6 +46,10 @@ export function CenterPanel() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (modeSwitcherOpen) {
+          setModeSwitcherOpen(false);
+          return;
+        }
         if (interactionMode === 'telescope' || spaceInteractionTarget === 'telescope') {
           setInteractionMode('orbital');
           setSpaceInteractionTarget('earth');
@@ -50,9 +58,23 @@ export function CenterPanel() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [interactionMode, spaceInteractionTarget, setInteractionMode, setSpaceInteractionTarget]);
+  }, [interactionMode, modeSwitcherOpen, spaceInteractionTarget, setInteractionMode, setSpaceInteractionTarget]);
+
+  useEffect(() => {
+    const handleModeCommand = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === '.') {
+        event.preventDefault();
+        setModeSwitcherOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleModeCommand);
+    return () => window.removeEventListener('keydown', handleModeCommand);
+  }, []);
 
   const isSpaceMode = interactionMode === 'orbital' || interactionMode === 'telescope';
+
+  const modeSwitcherRef = useRef<HTMLDivElement>(null);
+  useChromeTopAnchor(modeSwitcherRef);
 
   return (
     // Root container: ALWAYS pointer-events-none to let Cesium globe receive drags underneath.
@@ -64,35 +86,40 @@ export function CenterPanel() {
       {/* Touch device virtual navigation overlay */}
       <TouchControlOverlay />
 
-      {/* Dynamic Segmented Mode Switcher (Pill Style) — always interactive */}
-      <div className="absolute top-[clamp(3.5rem,7vh,5.75rem)] sm:top-[clamp(5.75rem,12vh,8rem)] left-1/2 z-floating -translate-x-1/2 pointer-events-auto">
-        <div className="mode-switcher-shell glass-panel flex items-center rounded-full border border-white/5 p-1 shadow-lg">
-          <button
-            type="button"
-            onClick={() => setInteractionMode('chat')}
-            className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
-              interactionMode === 'chat' ? 'mode-tab-active bg-primary text-white' : 'text-white/40 hover:text-white/70'
-            }`}
-          >
-            <MessageSquare className="h-3 w-3" />
-            <span>Chat</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setInteractionMode('orbital');
-              setSpaceInteractionTarget('earth');
-            }}
-            className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
-              interactionMode === 'orbital'
-                ? 'mode-tab-active bg-primary text-white'
-                : 'text-white/40 hover:text-white/70'
-            }`}
-          >
-            <Globe2 className="h-3 w-3" />
-            <span>Space</span>
-          </button>
-        </div>
+      {/* Dynamic Segmented Mode Switcher (Pill Style) — always interactive.
+          `top` still uses the clamp() as its first-paint position (before
+          useChromeTopAnchor's ResizeObserver has measured anything); once it
+          publishes --chrome-top-y, every OTHER chrome element that needs to
+          clear this pill reads that single measured value instead of
+          re-guessing the same clamp() independently (see useChromeTopAnchor). */}
+      <div
+        ref={modeSwitcherRef}
+        className={`mode-switcher-anchor absolute top-[clamp(3.5rem,7vh,5.75rem)] sm:top-[clamp(5.75rem,12vh,8rem)] left-1/2 z-floating -translate-x-1/2 pointer-events-auto ${modeSwitcherOpen ? 'is-open' : ''}`}
+        style={{ marginTop: 'env(safe-area-inset-top, 0px)' }}
+      >
+        {modeSwitcherOpen && (
+          <div className="mode-switcher-panel">
+            <div
+              className="mode-switcher-shell glass-panel grid grid-cols-2 rounded-full border border-white/10 p-1 shadow-lg"
+              data-active-mode={interactionMode === 'chat' ? 'chat' : 'space'}
+            >
+              <span className="mode-switcher-indicator" aria-hidden="true" />
+              <button type="button" onClick={() => setInteractionMode('chat')} aria-pressed={interactionMode === 'chat'} className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${interactionMode === 'chat' ? 'mode-tab-active text-white' : 'text-white/40 hover:text-white/80'}`}>
+                <MessageSquare className="h-3 w-3" />
+                <span>Chat</span>
+              </button>
+              <button type="button" onClick={() => { setInteractionMode('orbital'); setSpaceInteractionTarget('earth'); }} aria-pressed={interactionMode === 'orbital'} className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${interactionMode === 'orbital' ? 'mode-tab-active text-white' : 'text-white/40 hover:text-white/80'}`}>
+                <Globe2 className="h-3 w-3" />
+                <span>Space</span>
+              </button>
+            </div>
+            {interactionMode === 'orbital' && spaceInteractionTarget !== 'telescope' && (
+              <div className="mt-1.5 flex justify-center">
+                <SpaceHudPillControls />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Center Panel Content with Slide Transitions */}
@@ -100,7 +127,8 @@ export function CenterPanel() {
         {/* Chat View Container */}
         {interactionMode === 'chat' && (
           <div
-            className="absolute inset-0 z-content flex flex-col px-[clamp(0.75rem,3vw,1.5rem)] pb-4 pt-[calc(clamp(5.75rem,12vh,8rem)+4rem)] opacity-100 pointer-events-auto"
+            className="absolute inset-x-0 bottom-0 z-content flex flex-col px-[clamp(0.75rem,3vw,1.5rem)] pb-4 opacity-100 pointer-events-auto"
+            style={{ top: 'calc(var(--chrome-top-y, 8rem) - var(--chrome-parent-top-y, 0px) + 1rem)' }}
           >
             <div className="mx-auto flex min-h-0 w-full max-w-[78rem] flex-1 flex-col justify-between overflow-hidden rounded-[32px] border border-white/10 bg-[#07090f]/94 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
               {/* Scrollable messages */}

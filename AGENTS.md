@@ -71,11 +71,13 @@ unification described below.
 
 ```bash
 npm run dev          # Vite dev server, port 3005
-npm run build         # production build
-npm run typecheck     # tsc --noEmit (was previously mislabeled "lint")
-npm run lint           # real ESLint check
-npm run lint:fix       # ESLint --fix
-npm test               # scripts/test_*.cjs smoke tests
+npm run build        # production build
+npm run typecheck    # tsc --noEmit
+npm run lint         # real ESLint check
+npm run lint:fix     # ESLint --fix
+npm test             # Redesigned strict test suite (state, cursor, physics, sentry QA, coderabbit)
+npm run test:strict  # Alias for strict test suite
+npm run qa:check     # Typecheck + strict test suite execution
 
 # Bridge (separate process; not started by npm run dev)
 cd bridge && ./venv/bin/python3 server.py
@@ -87,6 +89,7 @@ cd bridge && ./venv/bin/python3 server.py
 | File | Covers |
 |---|---|
 | `AGENTS.md` | This file — architecture, conventions, open issues |
+| `docs/QA_ARCHITECTURE.md` | QA and dev architecture (Sentry telemetry + CodeRabbit rules) |
 | `docs/LOCAL_LLM.md` | Local LLM setup, hardware tiers, low-memory tuning |
 | `docs/manual/Operator-Manual.md` | End-user operation |
 | `docs/ARCHITECTURE_LEARNING.md` | Deeper architecture notes |

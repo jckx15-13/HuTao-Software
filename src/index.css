@@ -205,10 +205,31 @@ textarea:disabled {
   box-shadow: 0 0 20px 2px color-mix(in srgb, var(--theme-primary) 15%, transparent);
 }
 
+.mode-header-toggle {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.mode-header-toggle:hover,
+.mode-header-toggle.is-active {
+  border-color: color-mix(in srgb, var(--theme-secondary) 55%, transparent);
+  background: color-mix(in srgb, var(--theme-secondary) 12%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--theme-secondary) 16%, transparent);
+}
+
+.mode-header-toggle.is-active {
+  color: var(--theme-secondary);
+}
+
 .mode-switcher-shell {
   position: relative;
   overflow: hidden;
   isolation: isolate;
+  min-width: 188px;
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.32),
+    0 0 0 1px color-mix(in srgb, var(--theme-secondary) 10%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .mode-switcher-shell::before {
@@ -227,7 +248,50 @@ textarea:disabled {
 .mode-tab {
   position: relative;
   overflow: hidden;
+  z-index: 1;
   transform: translateZ(0);
+  transition: color 180ms ease, transform 180ms ease;
+}
+
+.mode-switcher-indicator {
+  position: absolute;
+  z-index: 0;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--theme-primary) 92%, white), var(--theme-primary)),
+    var(--theme-primary);
+  box-shadow:
+    0 6px 16px color-mix(in srgb, var(--theme-primary) 30%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease;
+}
+
+.mode-switcher-shell[data-active-mode="space"] .mode-switcher-indicator {
+  transform: translateX(100%);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--theme-secondary) 92%, white), var(--theme-secondary)),
+    var(--theme-secondary);
+}
+
+.space-hud-pill-controls {
+  animation: spaceControlsReveal 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: top center;
+}
+
+@keyframes spaceControlsReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .mode-tab::after {
@@ -251,8 +315,8 @@ textarea:disabled {
 
 .mode-tab-active {
   box-shadow:
-    0 0 18px color-mix(in srgb, var(--theme-primary) 22%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    0 0 18px color-mix(in srgb, var(--theme-primary) 18%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 @keyframes modeSwitcherBreathe {
@@ -273,6 +337,14 @@ textarea:disabled {
 
   .mode-tab:hover {
     transform: none;
+  }
+
+  .mode-switcher-indicator {
+    transition: none;
+  }
+
+  .space-hud-pill-controls {
+    animation: none;
   }
 }
 

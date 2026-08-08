@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { useCesiumViewer } from '../../hooks/cesium/useCesiumViewer';
+import { useCesiumViewer, type CesiumViewerStatus } from '../../hooks/cesium/useCesiumViewer';
 import { useLandmarks } from '../../hooks/cesium/useLandmarks';
 import { useAutoRotation } from '../../hooks/cesium/useAutoRotation';
 import { useWWVGlobe } from '../../hooks/cesium/useWWVGlobe';
@@ -15,9 +15,10 @@ import 'cesium/Build/Cesium/Widgets/widgets.css';
 interface CesiumBackground3DProps {
   interactive: boolean;
   onError: (err: string) => void;
+  onStatusChange?: (status: CesiumViewerStatus) => void;
 }
 
-export default function CesiumBackground3D({ interactive, onError }: CesiumBackground3DProps) {
+export default function CesiumBackground3D({ interactive, onError, onStatusChange }: CesiumBackground3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const showBorders = useUIStore((s) => s.showBorders);
   const imageryProvider = useUIStore((s) => s.imageryProvider);
@@ -30,7 +31,13 @@ export default function CesiumBackground3D({ interactive, onError }: CesiumBackg
     }
   }, [imageryProvider, updateMapConfig]);
   // Initialize Cesium Viewer
-  const { viewer, isLoaded, error } = useCesiumViewer(containerRef);
+  const { viewer, isLoaded, status, error } = useCesiumViewer(containerRef);
+
+  useEffect(() => {
+    if (onStatusChange) {
+      onStatusChange(status);
+    }
+  }, [status, onStatusChange]);
 
   // Propagate error back to parent if initialization fails
   useEffect(() => {

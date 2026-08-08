@@ -1,4 +1,4 @@
-import { useDeviceProfile } from "@/hooks/useDeviceProfile";
+import { useDeviceProfile } from '@/hooks/useDeviceProfile';
 
 /**
  * True when side panels present as sheets over the workspace rather than docking
@@ -11,5 +11,5 @@ import { useDeviceProfile } from "@/hooks/useDeviceProfile";
  * the two can no longer drift apart.
  */
 export function useIsMobile(): boolean {
-    return useDeviceProfile().panelPresentation !== 'docked';
+  return useDeviceProfile().panelPresentation !== 'docked';
 }

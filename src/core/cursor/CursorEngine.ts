@@ -100,8 +100,8 @@ export class CursorEngine implements CursorEngineLifecycle {
   private readonly trailPool: TrailSample[] = Array.from({ length: 96 }, () => ({ x: 0, y: 0, life: 0, width: 1, active: false }));
   private trailIndex = 0;
   private readonly activeTrailSamples = new Set<number>();
-  private resolvedProfile: CursorProfile;
-  private profileDiagnostic: CursorDiagnostic;
+  private resolvedProfile!: CursorProfile;
+  private profileDiagnostic!: CursorDiagnostic;
 
   private syncProfile(): void {
     this.resolvedProfile = resolveCursorProfile(this.config);

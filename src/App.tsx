@@ -144,7 +144,7 @@ export default function App() {
                     aria-hidden="true"
                   />
                 )}
-                {isSpaceMode && cosmosBackgroundMode === 'wwt-milkyway' && (!isHeadless || isTelescopeTarget) && (
+                {isSpaceMode && isTelescopeTarget && cosmosBackgroundMode === 'wwt-milkyway' && (!isHeadless || isTelescopeTarget) && (
                 <div
                   className="absolute inset-0 z-base transition-opacity duration-500"
                   style={{

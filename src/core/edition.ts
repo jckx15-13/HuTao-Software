@@ -112,8 +112,8 @@ export const DEMO_ADMIN_ROLE = "demo-admin";
  * Empty or unset → ticket auth is disabled for all plugins (dormant / safe default).
  */
 export function ticketAuthEnabledForPlugin(pluginId: string): boolean {
-    const list = import.meta.env.NEXT_PUBLIC_WWV_TICKET_AUTH_PLUGINS ?? "";
-    return list.split(",").map((s) => s.trim()).filter(Boolean).includes(pluginId);
+    const list = String(import.meta.env.NEXT_PUBLIC_WWV_TICKET_AUTH_PLUGINS ?? "");
+    return list.split(',').map((entry: string) => entry.trim()).filter(Boolean).includes(pluginId);
 }
 
 /**
