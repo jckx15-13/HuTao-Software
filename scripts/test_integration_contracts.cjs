@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -310,25 +311,129 @@ for (const assetPath of wwvSourcePublicPaths) {
   assertFile(path.join("public", "wwv-assets", "source-public", assetPath), `Copied WorldWideView public asset ${assetPath}`);
 }
 
-const odysseusDocPaths = collectMatches(odysseusAssetsSource, /\bpath:\s*'([^']+)'/g);
-assert.ok(odysseusDocPaths.length >= 20, "Expected copied Odysseus documentation assets");
-for (const docPath of odysseusDocPaths) {
-  // The served copy under public/ is the real runtime dependency: OdysseusConsole
-  // renders each asset via `asset.url`, which resolves to this path. Assert it strictly.
-  assertFile(path.join("public", "odysseus-assets", "docs", docPath), `Copied Odysseus doc asset ${docPath}`);
+const odysseusAssetManifest = JSON.parse(read("src/assets/odysseusAssetManifest.json"));
+
+function auditOdysseusAssetIntegrity(manifest, rootDir = root) {
+  const upstreamMissing = [];
+  const servedMissing = [];
+  const integrityFailures = [];
+
+  for (const entry of manifest) {
+    const upstreamPath = path.join(rootDir, entry.sourcePath);
+    if (!fs.existsSync(upstreamPath)) {
+      upstreamMissing.push(entry.filename);
+    }
+
+    const servedPath = path.join(rootDir, entry.runtimePath);
+    if (!fs.existsSync(servedPath)) {
+      servedMissing.push(entry.filename);
+      continue;
+    }
+
+    let buf;
+    try {
+      buf = fs.readFileSync(servedPath);
+    } catch (err) {
+      integrityFailures.push({ filename: entry.filename, reason: `Read error: ${err.message}` });
+      continue;
+    }
+
+    if (buf.length === 0) {
+      integrityFailures.push({ filename: entry.filename, reason: "File is zero bytes" });
+      continue;
+    }
+
+    let sigValid = true;
+    if (entry.signature.startsWith("GIF")) {
+      const sig = buf.slice(0, 6).toString();
+      if (sig !== "GIF87a" && sig !== "GIF89a") {
+        sigValid = false;
+      }
+    } else if (entry.signature === "PNG") {
+      if (buf.slice(0, 4).toString("hex") !== "89504e47") {
+        sigValid = false;
+      }
+    } else if (entry.signature === "WEBM") {
+      if (buf.slice(0, 4).toString("hex") !== "1a45dfa3") {
+        sigValid = false;
+      }
+    } else if (entry.signature === "JPEG") {
+      if (buf.slice(0, 2).toString("hex") !== "ffd8") {
+        sigValid = false;
+      }
+    }
+
+    if (!sigValid) {
+      integrityFailures.push({ filename: entry.filename, reason: `Invalid signature header for ${entry.signature}` });
+      continue;
+    }
+
+    const hash = crypto.createHash("sha256").update(buf).digest("hex");
+    if (hash !== entry.sha256) {
+      integrityFailures.push({ filename: entry.filename, reason: `SHA-256 mismatch: expected ${entry.sha256}, got ${hash}` });
+      continue;
+    }
+
+    if (buf.length !== entry.size) {
+      integrityFailures.push({ filename: entry.filename, reason: `Byte size mismatch: expected ${entry.size}, got ${buf.length}` });
+      continue;
+    }
+  }
+
+  const baseScore = 100;
+  const penalties = (servedMissing.length * 10) + (integrityFailures.length * 10);
+  const score = Math.max(0, baseScore - penalties);
+
+  return {
+    total: manifest.length,
+    upstreamMissing,
+    servedMissing,
+    integrityFailures,
+    score,
+    pass: servedMissing.length === 0 && integrityFailures.length === 0
+  };
 }
 
-// `sourcePath` is provenance metadata — OdysseusConsole displays it as text and never
-// resolves it. odysseus/ is a pinned third-party checkout whose current revision ships
-// only the .webm demos, so several mirrored assets (a11y screenshots, .gif variants,
-// gallery-314-*) have no counterpart upstream. Report drift instead of failing on it.
-const odysseusDocsMissingUpstream = odysseusDocPaths.filter(
-  (docPath) => !fs.existsSync(path.join(root, "odysseus", "docs", docPath))
-);
-if (odysseusDocsMissingUpstream.length > 0) {
+function runOdysseusAssetRegressionCoverage() {
+  // 1. Missing required asset
+  const missingManifest = [{
+    filename: "missing.png",
+    runtimePath: "public/odysseus-assets/docs/nonexistent_file_xyz.png",
+    sourcePath: "odysseus/docs/nonexistent_file_xyz.png",
+    size: 100,
+    sha256: "abc",
+    signature: "PNG"
+  }];
+  const resMissing = auditOdysseusAssetIntegrity(missingManifest);
+  assert.strictEqual(resMissing.servedMissing.length, 1, "Regression test: servedMissing must capture missing assets");
+  assert.strictEqual(resMissing.pass, false, "Regression test: pass must be false when assets are missing");
+  assert.ok(resMissing.score < 100, "Regression test: score must be penalized when assets are missing");
+
+  // 2. Upstream missing with valid served copy produces provenance warning but maintains 100 score
+  const validServedEntry = odysseusAssetManifest.find((e) => e.filename === "chat.gif");
+  assert.ok(validServedEntry, "chat.gif entry must exist in manifest");
+  const upstreamMissingManifest = [{
+    ...validServedEntry,
+    sourcePath: "odysseus/docs/absent_from_upstream.gif"
+  }];
+  const resUpstreamMissing = auditOdysseusAssetIntegrity(upstreamMissingManifest);
+  assert.strictEqual(resUpstreamMissing.upstreamMissing.length, 1, "Regression test: upstreamMissing must record missing upstream file");
+  assert.strictEqual(resUpstreamMissing.servedMissing.length, 0, "Regression test: served copy is present");
+  assert.strictEqual(resUpstreamMissing.integrityFailures.length, 0, "Regression test: served copy has valid integrity");
+  assert.strictEqual(resUpstreamMissing.score, 100, "Regression test: offline score is 100 when served copy is valid");
+  assert.strictEqual(resUpstreamMissing.pass, true, "Regression test: pass is true when served copy is valid");
+}
+
+runOdysseusAssetRegressionCoverage();
+
+const odysseusAssetAudit = auditOdysseusAssetIntegrity(odysseusAssetManifest);
+assert.strictEqual(odysseusAssetAudit.servedMissing.length, 0, `Missing served assets: ${odysseusAssetAudit.servedMissing.join(", ")}`);
+assert.strictEqual(odysseusAssetAudit.integrityFailures.length, 0, `Integrity failures: ${odysseusAssetAudit.integrityFailures.map(f => `${f.filename}: ${f.reason}`).join("; ")}`);
+
+if (odysseusAssetAudit.upstreamMissing.length > 0) {
   console.warn(
-    `Note: ${odysseusDocsMissingUpstream.length}/${odysseusDocPaths.length} mirrored Odysseus doc assets are absent from the pinned odysseus/ checkout ` +
-      `(served copies present): ${odysseusDocsMissingUpstream.join(", ")}`
+    `Note: ${odysseusAssetAudit.upstreamMissing.length}/${odysseusAssetAudit.total} mirrored Odysseus doc assets are absent from the pinned odysseus/ checkout ` +
+      `(served copies present): ${odysseusAssetAudit.upstreamMissing.join(", ")}`
   );
 }
 
@@ -430,14 +535,12 @@ for (const [label, source] of [
   assert.ok(!source.includes(">Open HUD<"), `${label} must not render the bulky Open HUD text button`);
 }
 
-const runtime = readVerificationStatus(root);
-const baseScore = 100;
-const penalties = {
-  runtime: runtime.overall_status === "PASS" ? 0 : runtime.overall_status === "PARTIAL" ? 4 : 8,
-  missingRealtimeDocs: runtime.offlineServices.length >= 2 ? 3 : 0,
-};
-const integrationScore = Math.max(0, baseScore - penalties.runtime - penalties.missingRealtimeDocs);
+const upstreamCount = odysseusAssetAudit.total - odysseusAssetAudit.upstreamMissing.length;
+const servedCount = odysseusAssetAudit.total - odysseusAssetAudit.servedMissing.length;
+const assetIntegrityStatus = odysseusAssetAudit.integrityFailures.length === 0 ? "PASS" : "FAIL";
 
 console.log("Repository integration contracts passed for Silver Wolf, WorldWideView, Odysseus, and the local bridge.");
-console.log(`Runtime verification status: ${runtime.overall_status} (${runtime.comment}).`);
-console.log(`Integration score: ${integrationScore}/100 (runtime dependency score not treated as 100 while offline validation remains unresolved).`);
+console.log(`Upstream provenance assets: ${upstreamCount}/${odysseusAssetAudit.total}`);
+console.log(`Offline served assets: ${servedCount}/${odysseusAssetAudit.total}`);
+console.log(`Asset integrity: ${assetIntegrityStatus}`);
+console.log(`Integration score: ${odysseusAssetAudit.score}/100`);

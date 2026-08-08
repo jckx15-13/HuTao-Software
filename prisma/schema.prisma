@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Favorite {
+  id         String   @id @default(uuid())
+  tenantId   String?  @default("local-tenant")
+  entityId   String
+  pluginId   String
+  label      String
+  pluginName String
+  lastSeen   DateTime @default(now())
+  userId     String   @default("local-anon-operator")
+  notes      String?
+
+  @@unique([userId, entityId])
+  @@index([tenantId])
+  @@map("favorites")
+}
+
+model InstalledPlugin {
+  id          String   @id @default(uuid())
+  tenantId    String?  @default("local-tenant")
+  pluginId    String
+  version     String
+  config      String   @default("{}")
+  enabled     Boolean  @default(true)
+  installedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, pluginId])
+  @@index([tenantId])
+  @@map("installed_plugins")
+}
+
+model Setting {
+  id       String  @id @default(uuid())
+  tenantId String? @default("local-tenant")
+  key      String
+  value    String
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+  @@map("settings")
+}
+
+model Workspace {
+  id            String            @id @default(uuid())
+  name          String
+  subdomain     String            @unique
+  ownerId       String?           @default("local-anon-operator")
+  status        String            @default("active")
+  plan          String            @default("pro")
+  tier          String            @default("unlimited")
+  locked        Boolean           @default(false)
+  lockedReason  String?
+  lockedAt      DateTime?
+  tierStampedAt DateTime?
+  trialEndsAt   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  members       WorkspaceMember[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String    @id @default(uuid())
+  userId      String    @default("local-anon-operator")
+  workspaceId String
+  role        String    @default("operator")
+  joinedAt    DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@map("workspace_members")
+}
+
+model MarketplaceCredential {
+  id         String   @id @default(uuid())
+  tenantId   String?  @default("local-tenant")
+  version    String   @default("1.0.0")
+  salt       String
+  nonce      String
+  ciphertext String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([tenantId])
+  @@index([tenantId])
+  @@map("marketplace_credentials")
+}
+
+model TelemetryLog {
+  id         String   @id @default(uuid())
+  source     String
+  timestamp  DateTime @default(now())
+  latitude   Float?
+  longitude  Float?
+  altitude   Float?
+  velocity   Float?
+  rawPayload String?
+
+  @@index([source, timestamp])
+  @@map("telemetry_logs")
+}
+
+model HardwareParameter {
+  id             String   @id @default(uuid())
+  deviceId       String
+  parameterKey   String
+  parameterValue String
+  updatedAt      DateTime @updatedAt
+
+  @@unique([deviceId, parameterKey])
+  @@map("hardware_parameters")
+}
+
+model FlowchartDefinition {
+  id        String   @id @default(uuid())
+  title     String
+  nodesJson String   @default("[]")
+  edgesJson String   @default("[]")
+  updatedAt DateTime @updatedAt
+
+  @@map("flowchart_definitions")
+}

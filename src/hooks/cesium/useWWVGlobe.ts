@@ -27,14 +27,13 @@ export function useWWVGlobe(viewer: Viewer | null) {
 
   // Initialize primitive collections once when viewer is ready
   useEffect(() => {
-    if (viewer) {
-      initPrimitiveCollections(viewer);
-      
-      const cleanupInteractions = setupInteractionHandlers(viewer, hoveredEntityIdRef);
-      return () => {
-        cleanupInteractions();
-      };
-    }
+    if (!viewer) return;
+    initPrimitiveCollections(viewer);
+
+    const cleanupInteractions = setupInteractionHandlers(viewer, hoveredEntityIdRef);
+    return () => {
+      cleanupInteractions();
+    };
   }, [viewer]);
 
   // Derive visible entities list by looking at plugin settings and layers config

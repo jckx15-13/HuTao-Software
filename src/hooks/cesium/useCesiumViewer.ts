@@ -11,6 +11,8 @@ const isLowEndHardware = () => {
   return deviceMemory <= 4 || cores <= 4 || mobile;
 };
 
+export type CesiumViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 /**
  * Cesium viewer hook with WWV-inspired performance optimizations.
  *
@@ -55,8 +57,6 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     let canvas: HTMLCanvasElement | null = null;
     let pointerHandler: (() => void) | null = null;
     let requestRender: (() => void) | null = null;
-    let resizeObserver: ResizeObserver | null = null;
-    let resizeRaf: number | null = null;
 
     if (config.CESIUM_ION_ACCESS_TOKEN) {
       Cesium.Ion.defaultAccessToken = config.CESIUM_ION_ACCESS_TOKEN;
@@ -143,11 +143,14 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     viewerInstance.scene.highDynamicRange = !lowEndDevice; // Disable HDR on low-end devices
 
     // Cool-toned luminous space atmosphere
-    viewerInstance.scene.skyAtmosphere.show = !lowEndDevice;
-    if (!lowEndDevice) {
-      viewerInstance.scene.skyAtmosphere.brightnessShift = 0.15; // Enhanced brightness contrast
-      viewerInstance.scene.skyAtmosphere.saturationShift = 0.45; // Luminous saturation
-      viewerInstance.scene.skyAtmosphere.hueShift = -0.05; // Cool cyan/purple shift
+    const skyAtmosphere = viewerInstance.scene.skyAtmosphere;
+    if (skyAtmosphere) {
+      skyAtmosphere.show = !lowEndDevice;
+      if (!lowEndDevice) {
+        skyAtmosphere.brightnessShift = 0.15; // Enhanced brightness contrast
+        skyAtmosphere.saturationShift = 0.45; // Luminous saturation
+        skyAtmosphere.hueShift = -0.05; // Cool cyan/purple shift
+      }
     }
 
     // Configure globe atmospheric lighting
@@ -191,60 +194,27 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
       try {
         viewerInstance.scene.requestRender();
       } catch (err) {
-        // Viewer may be destroyed; ignore
+        /* ignore */
       }
-    };
-    // Throttle pointermove to ~60fps to avoid excessive WebGL re-renders
-    let moveRafPending = false;
-    const throttledMoveHandler = () => {
-      if (moveRafPending) return;
-      moveRafPending = true;
-      requestAnimationFrame(() => {
-        moveRafPending = false;
-        if (requestRender) requestRender();
-      });
     };
     pointerHandler = () => {
       if (requestRender) requestRender();
     };
     canvas.addEventListener('pointerdown', pointerHandler);
     canvas.addEventListener('pointerup', pointerHandler);
-    canvas.addEventListener('pointermove', throttledMoveHandler);
+    canvas.addEventListener('pointermove', pointerHandler);
     canvas.addEventListener('wheel', pointerHandler, { passive: true } as AddEventListenerOptions);
     const camera = viewerInstance.camera as Cesium.Camera & { changed: Cesium.Event };
     if (camera.changed?.addEventListener) {
       try {
         camera.changed.addEventListener(requestRender);
-      } catch (e) {
-        // Event may not support this listener; ignore
-      }
+      } catch (e) {}
     }
 
-    const requestResize = () => {
-      if (resizeRaf !== null) {
-        cancelAnimationFrame(resizeRaf);
-      }
-
-      resizeRaf = requestAnimationFrame(() => {
-        resizeRaf = null;
-        try {
-          viewerInstance.resize();
-          viewerInstance.scene.requestRender();
-        } catch (err) {
-          // Viewer may already be destroyed during teardown.
-        }
-      });
-    };
-
-    if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(requestResize);
-      resizeObserver.observe(containerRef.current);
-    }
-    window.addEventListener('resize', requestResize, { passive: true });
-
-      // Start halfway between Earth and the Moon, looking back at Earth's center.
+      // Start at a global-Earth distance so imagery and orbital tracks are
+      // visible on launch instead of occupying a few pixels against the sky.
     viewerInstance.camera.setView({
-        destination: Cesium.Cartesian3.fromDegrees(0, 0, 192_200_000),
+        destination: Cesium.Cartesian3.fromDegrees(0, 20, 20_000_000),
         orientation: {
           heading: 0,
           pitch: Cesium.Math.toRadians(-90),
@@ -264,36 +234,39 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
         if (canvas && pointerHandler) {
           canvas.removeEventListener('pointerdown', pointerHandler);
           canvas.removeEventListener('pointerup', pointerHandler);
-          canvas.removeEventListener('pointermove', throttledMoveHandler);
+          canvas.removeEventListener('pointermove', pointerHandler);
           canvas.removeEventListener('wheel', pointerHandler as EventListenerOrEventListenerObject);
         }
         const camera = viewerInstance?.camera as Cesium.Camera & { changed: Cesium.Event };
         if (camera?.changed?.removeEventListener && requestRender) {
           try {
             camera.changed.removeEventListener(requestRender);
-          } catch (e) {
-            // Listener may have already been removed; ignore
-          }
+          } catch (e) {}
         }
-        resizeObserver?.disconnect();
-        if (resizeRaf !== null) {
-          cancelAnimationFrame(resizeRaf);
-        }
-        window.removeEventListener('resize', requestResize);
-      } catch (e) {
-        // Canvas may have been detached; ignore cleanup errors
-      }
+      } catch (e) {}
 
       if (!viewerInstance.isDestroyed()) {
         viewerInstance.destroy();
         (window as any).cesiumViewer = null;
       }
       setViewer(null);
+      setIsLoaded(false);
     };
   }, [containerRef, config, configLoading, webglError]);
 
+  const status: CesiumViewerStatus = webglError
+    ? 'error'
+    : error
+    ? 'error'
+    : isLoaded && viewer
+    ? 'ready'
+    : containerRef.current && !configLoading
+    ? 'loading'
+    : 'idle';
+
   return {
     viewer,
+    status,
     isLoaded: webglError ? true : isLoaded,
     error: webglError || error
   };

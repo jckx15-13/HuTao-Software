@@ -231,7 +231,7 @@ function applyTelescopeGlobeMode(viewer: Cesium.Viewer, telescopeTarget: unknown
     viewer.scene.globe.translucency.frontFaceAlpha = 0.88;
     viewer.scene.globe.translucency.backFaceAlpha = 0.25;
   }
-  viewer.scene.skyAtmosphere.show = true;
+  if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = true;
 
   const preset = TELESCOPE_PRESETS.find((p) => p.name === (telescopeTarget as { name?: string } | null)?.name) || TELESCOPE_PRESETS[0];
   const projectionDate = parseProjectionDate(currentTime);
@@ -257,7 +257,7 @@ function restoreTelescopeGlobeMode(viewer: Cesium.Viewer) {
   if (viewer.scene.globe.translucency) {
     viewer.scene.globe.translucency.enabled = false;
   }
-  viewer.scene.skyAtmosphere.show = true;
+  if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = true;
 }
 
 export function useTelescopePresets(viewer: Cesium.Viewer | null) {

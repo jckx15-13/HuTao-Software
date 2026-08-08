@@ -1,0 +1,52 @@
+{
+  "operatorId": "local-anon-operator",
+  "tenantId": "local-tenant",
+  "favorites": [
+    {
+      "id": "fav-test-1",
+      "tenantId": "local-tenant",
+      "entityId": "ISS-25544",
+      "pluginId": "iss-tracker",
+      "label": "International Space Station",
+      "pluginName": "ISS Tracker",
+      "lastSeen": "2026-08-08T14:51:01.071Z",
+      "userId": "local-anon-operator"
+    }
+  ],
+  "installedPlugins": [
+    {
+      "id": "plugin-test-1",
+      "tenantId": "local-tenant",
+      "pluginId": "geojson-importer",
+      "version": "1.0.0",
+      "config": {
+        "autoParse": true
+      },
+      "enabled": true,
+      "installedAt": "2026-08-08T14:51:01.071Z",
+      "updatedAt": "2026-08-08T14:51:01.071Z"
+    }
+  ],
+  "settings": {
+    "theme": "silverwolf-dark",
+    "defaultProjection": "GLOBE"
+  },
+  "telemetryLogs": [
+    {
+      "id": "log-test-1",
+      "source": "ISS-Position",
+      "timestamp": "2026-08-08T14:51:01.071Z",
+      "latitude": 51.64,
+      "longitude": -110.23,
+      "altitude": 418.5,
+      "velocity": 7.66
+    }
+  ],
+  "hardwareParameters": {
+    "Odysseus-LoRa-01": {
+      "frequency": "915MHz",
+      "txPower": "20dBm"
+    }
+  },
+  "flowcharts": []
+}

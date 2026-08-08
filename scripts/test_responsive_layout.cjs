@@ -62,9 +62,14 @@ function loadTs(relativePath) {
 const {
   resolveDeviceProfile,
   resolveDeviceClass,
+  resolveChromeTier,
+  resolveChromeTierForWidth,
   normalizeViewport,
   DEVICE_CLASS_SPECS,
 } = loadTs("src/core/layout/deviceProfile.ts");
+
+const { resolvePipWindowDimensions } = loadTs("src/core/layout/pipDimensions.ts");
+const { resolveChromeTopAnchor } = loadTs("src/hooks/useChromeTopAnchor.ts");
 
 const { buildSpatialPanelGeometry, buildWorkspaceRailPx } = loadTs(
   "src/components/panels/panelGeometry.ts"
@@ -109,6 +114,42 @@ for (const device of DEVICES) {
     `${device.label} (${device.width}px) should classify as ${device.expected}`
   );
 }
+
+// Chrome tiers are derived from the existing device ladder, never a second
+// set of breakpoints. Their ordering must therefore stay monotonic.
+const CHROME_TIER_RANK = { compact: 0, standard: 1, expansive: 2 };
+let previousChromeTierRank = -1;
+for (const [deviceClass] of [...DEVICE_CLASS_SPECS].reverse()) {
+  const tier = resolveChromeTier(deviceClass);
+  assert.ok(CHROME_TIER_RANK[tier] >= previousChromeTierRank, `${deviceClass} chrome tier must be monotonic`);
+  previousChromeTierRank = CHROME_TIER_RANK[tier];
+}
+
+// A 1280px desktop with both docked rails open should use the density for its
+// actual centre workspace, not its full window width.
+const tierViewport = { width: 1280, height: 800 };
+const tierProfile = resolveDeviceProfile(tierViewport, { dualPanels: true });
+const tierNetWidth =
+  tierViewport.width -
+  buildWorkspaceRailPx(tierViewport, true, true, "left", tierProfile) -
+  buildWorkspaceRailPx(tierViewport, true, true, "right", tierProfile);
+assert.equal(resolveChromeTierForWidth(tierNetWidth), "compact", "1280px with both rails needs compact chrome");
+
+for (let availableWidth = 320; availableWidth <= 3840; availableWidth += 40) {
+  const dimensions = resolvePipWindowDimensions(availableWidth, 1080);
+  assert.ok(dimensions.normal.width >= 360, `normal PiP floor failed at ${availableWidth}px`);
+  assert.ok(dimensions.normal.height >= 260, `normal PiP height floor failed at ${availableWidth}px`);
+  assert.ok(dimensions.large.width >= 480, `large PiP floor failed at ${availableWidth}px`);
+  assert.ok(dimensions.large.height >= 340, `large PiP height floor failed at ${availableWidth}px`);
+  assert.ok(
+    dimensions.large.width >= dimensions.normal.width + 120,
+    `large PiP width invariant failed at ${availableWidth}px`
+  );
+}
+
+assert.equal(resolveChromeTopAnchor(56, 120), 120, "the lower measured chrome edge must win");
+assert.equal(resolveChromeTopAnchor(72, 48), 72, "header collapse/expand must update the shared anchor");
+assert.equal(resolveChromeTopAnchor(-10, null), 0, "invalid measured edges must not create negative CSS offsets");
 
 // Boundaries are inclusive on the lower edge.
 for (const [deviceClass, spec] of DEVICE_CLASS_SPECS) {

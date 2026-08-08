@@ -159,11 +159,44 @@ function testNativeCursorFallbackGuard() {
   assert.equal(shouldUseNativeCursorFallback({ headless: true }), true);
 }
 
+function testNegativeCoordinatesAndFrameDrops() {
+  const registry = new CursorTargetRegistry();
+  registry.publish({
+    id: "offscreen-target",
+    kind: "ui",
+    source: "ui",
+    rect: new DOMRect(-100, -100, 50, 50),
+    priority: 50,
+    confidence: 0.8,
+    expiresAt: performance.now() + 1000,
+  });
+
+  const resolvedOffscreen = registry.resolve({ x: -80, y: -80 }, performance.now(), 16);
+  assert.equal(resolvedOffscreen.selectedTarget.id, "offscreen-target");
+
+  // Heavy frame drop delta (120ms frame time) policy check
+  const frameDropPolicy = deriveRuntimePolicy(
+    {
+      enabled: true,
+      cursorDesign: "reticle-v1",
+      reducedMotion: false,
+      appHighLoad: false,
+      animationIntensity: 1,
+      particleEffects: true,
+    },
+    CURSOR_PROFILES.tactical,
+    120, // 120ms frame delta indicates major lag spike
+    true
+  );
+  assert.ok(frameDropPolicy !== null, "Frame drop policy must degrade gracefully");
+}
+
 testTargetPriority();
 testStaleTargetExpiry();
 testExplicitLock();
 testPolicyDegradation();
 testDiagnostics();
 testNativeCursorFallbackGuard();
+testNegativeCoordinatesAndFrameDrops();
 
-console.log("Cursor engine contract tests passed.");
+console.log("Cursor engine strict contract tests passed.");

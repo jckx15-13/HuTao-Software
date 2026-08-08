@@ -13,10 +13,10 @@ import { resolveDeviceProfile, type DeviceProfile } from '@/core/layout/devicePr
  * on whether one or two of them have to share the row.
  */
 export function useDeviceProfile(dualPanels = false): DeviceProfile {
-  const viewport = useViewportSize();
+  // Destructured deliberately: `useViewportSize` returns a fresh object on every
+  // rAF tick, so depending on the object itself would rebuild the profile (and
+  // re-render every consumer) even when the dimensions have not moved.
+  const { width, height } = useViewportSize();
 
-  return useMemo(
-    () => resolveDeviceProfile(viewport, { dualPanels }),
-    [viewport.width, viewport.height, dualPanels]
-  );
+  return useMemo(() => resolveDeviceProfile({ width, height }, { dualPanels }), [width, height, dualPanels]);
 }

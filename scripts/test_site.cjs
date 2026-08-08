@@ -4,7 +4,7 @@ const puppeteer = require('puppeteer');
   console.log("Launching browser...");
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    executablePath: process.env.CHROME_PATH || undefined,
     dumpio: true
   });
 

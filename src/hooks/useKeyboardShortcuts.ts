@@ -6,11 +6,22 @@ export function useKeyboardShortcuts() {
   const setCurrentPage = useUIStore((s) => s.setCurrentPage);
   const setLeftPanelOpen = useUIStore((s) => s.setLeftPanelOpen);
   const setRightPanelOpen = useUIStore((s) => s.setRightPanelOpen);
+  const setTopBarOpen = useUIStore((s) => s.setTopBarOpen);
+  const setBottomBarOpen = useUIStore((s) => s.setBottomBarOpen);
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '.') {
+        e.preventDefault();
+        setTopBarOpen(true);
+        setBottomBarOpen(true);
+        setLeftPanelOpen(true);
+        setRightPanelOpen(true);
+        return;
+      }
+
       // Only trigger if Alt is pressed
       if (!e.altKey) return;
 
@@ -40,6 +51,10 @@ export function useKeyboardShortcuts() {
         case 'R':
           setRightPanelOpen(!rightPanelOpen);
           break;
+        case 't':
+        case 'T':
+          setTopBarOpen(!useUIStore.getState().topBarOpen);
+          break;
         default:
           break;
       }
@@ -47,5 +62,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [leftPanelOpen, rightPanelOpen, setInteractionMode, setCurrentPage, setLeftPanelOpen, setRightPanelOpen]);
+  }, [leftPanelOpen, rightPanelOpen, setInteractionMode, setCurrentPage, setLeftPanelOpen, setRightPanelOpen, setTopBarOpen, setBottomBarOpen]);
 }

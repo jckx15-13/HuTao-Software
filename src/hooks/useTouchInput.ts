@@ -33,7 +33,7 @@ export function useTouchInput(options: TouchInputOptions = {}) {
 
   const [isTouchDevice, setIsTouchDevice] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
-    return 'ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+    return Boolean('ontouchstart' in window || navigator.maxTouchPoints > 0);
   });
 
   const [gestureState, setGestureState] = useState<TouchGestureState>({
