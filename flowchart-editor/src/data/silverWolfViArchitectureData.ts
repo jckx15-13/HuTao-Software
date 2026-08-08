@@ -3,8 +3,7 @@ export interface ArchitectureNode {
   label: string;
   sublabel?: string;
   category: 'wwt' | 'wwv' | 'prisma' | 'agent' | 'adapter' | 'swvi';
-  row: 'Row 1: WorldWideView (WWV)' | 'Row 2: World Wide Telescope (WWT)';
-  column: 'Source' | 'Changes / Adapters' | 'Destination File';
+  section: 'WWT Source Architecture' | 'WWV Source Architecture' | 'Silver Wolf VI Integration Pipeline';
   x: number;
   y: number;
   width: number;
@@ -16,510 +15,88 @@ export interface ArchitectureEdge {
   to: string;
   label?: string;
   implemented?: boolean;
+  type?: 'top-down' | 'left-to-right';
 }
 
 export const silverWolfViNodes: ArchitectureNode[] = [
   // =========================================================================
-  // ROW 1: WORLDWIDEVIEW (WWV) INTEGRATION PIPELINE
+  // SECTION 1: WWT SOURCE ARCHITECTURE (TOP-DOWN FLOW)
   // =========================================================================
+  // Layer 1: Engine & Surveys
+  { id: 'wwt_w1', label: 'WWT WebGL Iframe Engine', sublabel: 'web.wwtassets.org/research/latest/', category: 'wwt', section: 'WWT Source Architecture', x: 40, y: 40, width: 310, height: 54 },
+  { id: 'wwt_w2', label: 'Multi-Spectrum Sky Surveys', sublabel: 'DSS Visible, Chandra X-Ray, Planck, Radio VLSS', category: 'wwt', section: 'WWT Source Architecture', x: 410, y: 40, width: 310, height: 54 },
+  { id: 'wwt_w3', label: 'J2000 Celestial Grid & Ephemeris', sublabel: '3D Solar System Reference Frame', category: 'wwt', section: 'WWT Source Architecture', x: 780, y: 40, width: 310, height: 54 },
 
-  // Row 1.1: Static GeoJSON Assets (borders, cameras, bases)
-  {
-    id: 'v1',
-    label: 'WWV Static GeoJSON Data',
-    sublabel: 'borders.geojson (4.04MB), cameras_geojson.json (1.93MB), military_bases.geojson (6.65MB)',
-    category: 'wwv',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Source',
-    x: 40,
-    y: 40,
-    width: 350,
-    height: 56,
-  },
-  {
-    id: 'a1',
-    label: 'Local Asset Sync Build Script',
-    sublabel: 'scripts/sync_wwv_assets.cjs (predev/prebuild lifecycle)',
-    category: 'adapter',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Changes / Adapters',
-    x: 430,
-    y: 40,
-    width: 330,
-    height: 56,
-  },
-  {
-    id: 's1',
-    label: 'public/wwv-assets/*.geojson',
-    sublabel: 'public/wwv-assets/borders.geojson & military_bases.geojson',
-    category: 'swvi',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Destination File',
-    x: 800,
-    y: 40,
-    width: 300,
-    height: 56,
-  },
+  // Layer 2: Protocol & Telemetry
+  { id: 'wwt_b1', label: 'Outbound postMessage Protocol', sublabel: 'set_view, load_background, set_fov', category: 'wwt', section: 'WWT Source Architecture', x: 40, y: 130, width: 310, height: 54 },
+  { id: 'wwt_b2', label: 'wwt_view_state Telemetry Broadcast', sublabel: '60 FPS Broadcast (RA, Dec, FOV, Roll)', category: 'wwt', section: 'WWT Source Architecture', x: 410, y: 130, width: 310, height: 54 },
+  { id: 'wwt_b3', label: 'useWWTListener.ts (Mutex Lock)', sublabel: 'syncSource Lock ("none"|"cesium"|"wwt") + 32ms Timer', category: 'adapter', section: 'WWT Source Architecture', x: 780, y: 130, width: 310, height: 54 },
 
-  // Row 1.2: 3D Flight Models & SVG Icons (airplane.zip, plane-icon.svg)
-  {
-    id: 'v2',
-    label: 'WWV 3D Models & Map Icons',
-    sublabel: 'airplane.zip (82.1KB), plane-icon.svg (445B), military-plane-icon.svg (351B)',
-    category: 'wwv',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Source',
-    x: 40,
-    y: 115,
-    width: 350,
-    height: 56,
-  },
-  {
-    id: 'a2',
-    label: 'Local-First URL Candidate Resolver',
-    sublabel: 'getWwtAssetLocalCandidateUrls Fallback Engine',
-    category: 'adapter',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Changes / Adapters',
-    x: 430,
-    y: 115,
-    width: 330,
-    height: 56,
-  },
-  {
-    id: 's2',
-    label: 'src/lib/wwt/repositoryData.ts',
-    sublabel: 'public/wwv-assets/airplane.zip & plane-icon.svg Resolver',
-    category: 'swvi',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Destination File',
-    x: 800,
-    y: 115,
-    width: 300,
-    height: 56,
-  },
-
-  // Row 1.3: Layer Manifests & Plugin Parser
-  {
-    id: 'v3',
-    label: 'WWV Layer Manifest Schema',
-    sublabel: 'worldwideview/public/data/manifest.json & Dynamic CDN Plugins',
-    category: 'wwv',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Source',
-    x: 40,
-    y: 190,
-    width: 350,
-    height: 56,
-  },
-  {
-    id: 'a3',
-    label: 'Manifest & Plugin Layer Parser',
-    sublabel: 'loadFromManifest() Plugin Layer Registrar',
-    category: 'adapter',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Changes / Adapters',
-    x: 430,
-    y: 190,
-    width: 330,
-    height: 56,
-  },
-  {
-    id: 's3',
-    label: 'src/core/plugins/parseWwvManifest.ts',
-    sublabel: 'Dynamic Plugin Manifest Parser File',
-    category: 'swvi',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Destination File',
-    x: 800,
-    y: 190,
-    width: 300,
-    height: 56,
-  },
-
-  // Row 1.4: Real-Time DataBus & Store Boundary
-  {
-    id: 'v4',
-    label: 'WWV DataBus & Zustand Store',
-    sublabel: 'WebSocket /stream, entitySlice, filterSlice, pluginSlice',
-    category: 'wwv',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Source',
-    x: 40,
-    y: 265,
-    width: 350,
-    height: 56,
-  },
-  {
-    id: 'a4',
-    label: 'Store Ownership Boundary Sync',
-    sublabel: 'uiStore.ts (UI/Layout) vs store.ts (Domain Telemetry State)',
-    category: 'adapter',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Changes / Adapters',
-    x: 430,
-    y: 265,
-    width: 330,
-    height: 56,
-  },
-  {
-    id: 's4',
-    label: 'src/store/uiStore.ts & store.ts',
-    sublabel: 'Decoupled Store Modules in Silver Wolf VI',
-    category: 'swvi',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Destination File',
-    x: 800,
-    y: 265,
-    width: 300,
-    height: 56,
-  },
-
-  // Row 1.5: Static Ground Features & Terrain Alignment
-  {
-    id: 'v5',
-    label: 'WWV Geographic Ground Landmarks',
-    sublabel: 'Observatories, Launchpads & Country Label Coordinates',
-    category: 'wwv',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Source',
-    x: 40,
-    y: 340,
-    width: 350,
-    height: 56,
-  },
-  {
-    id: 'a5',
-    label: 'Landmark Terrain Clamping Policy',
-    sublabel: 'HeightReference.CLAMP_TO_GROUND Primitive Alignment',
-    category: 'adapter',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Changes / Adapters',
-    x: 430,
-    y: 340,
-    width: 330,
-    height: 56,
-  },
-  {
-    id: 's5',
-    label: 'src/hooks/cesium/useLandmarks.ts',
-    sublabel: 'Terrain Clamping Primitive Hook',
-    category: 'swvi',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Destination File',
-    x: 800,
-    y: 340,
-    width: 300,
-    height: 56,
-  },
-
-  // Row 1.6: Prisma 7 Schema & Agent Bus
-  {
-    id: 'v6',
-    label: 'WWV Prisma 7 Models & Agent Bus',
-    sublabel: 'schema.prisma (InstalledPlugin, Setting) & szski/wwv-mcp',
-    category: 'prisma',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Source',
-    x: 40,
-    y: 415,
-    width: 350,
-    height: 56,
-  },
-  {
-    id: 'a6',
-    label: 'Database & Agent Bridge Adapter',
-    sublabel: 'PostgreSQL Models & LLM SSE Control Surface',
-    category: 'adapter',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Changes / Adapters',
-    x: 430,
-    y: 415,
-    width: 330,
-    height: 56,
-  },
-  {
-    id: 's6',
-    label: 'worldwideview/prisma/schema.prisma',
-    sublabel: 'Multi-Tenant Database Models',
-    category: 'swvi',
-    row: 'Row 1: WorldWideView (WWV)',
-    column: 'Destination File',
-    x: 800,
-    y: 415,
-    width: 300,
-    height: 56,
-  },
+  // Layer 3: Math Engine & Control UI
+  { id: 'wwt_m1', label: 'coordinateTransforms.ts', sublabel: 'IAU 1976 Precession & ERA Sidereal Time', category: 'adapter', section: 'WWT Source Architecture', x: 40, y: 220, width: 310, height: 54 },
+  { id: 'wwt_m2', label: 'useCameraSync.ts (Exact Horizon FOV)', sublabel: 'Exact Spherical FOV = 2*arcsin(Re / (Re+H))', category: 'adapter', section: 'WWT Source Architecture', x: 410, y: 220, width: 310, height: 54 },
+  { id: 'wwt_m3', label: 'OrbitEngine.ts (SGP4 Solver)', sublabel: 'Real-Time Satellite Trajectory Propagation', category: 'adapter', section: 'WWT Source Architecture', x: 780, y: 220, width: 310, height: 54 },
 
   // =========================================================================
-  // ROW 2: WORLD WIDE TELESCOPE (WWT) INTEGRATION PIPELINE
+  // SECTION 2: WWV SOURCE ARCHITECTURE (TOP-DOWN FLOW)
   // =========================================================================
+  // Layer 1: External Feeds & Control
+  { id: 'wwv_e1', label: 'External REST APIs & Seeders', sublabel: 'OpenSky Aviation, USGS Earthquakes, Webcams', category: 'wwv', section: 'WWV Source Architecture', x: 40, y: 350, width: 310, height: 54 },
+  { id: 'wwv_e2', label: 'Opt-in Agent Bus (HTTP+SSE)', sublabel: 'szski/wwv-mcp Control Surface for LLMs', category: 'agent', section: 'WWV Source Architecture', x: 410, y: 350, width: 310, height: 54 },
+  { id: 'wwv_e3', label: 'Static GeoJSON & 3D Assets', sublabel: 'borders (4.0MB), bases (6.6MB), airplane.zip', category: 'wwv', section: 'WWV Source Architecture', x: 780, y: 350, width: 310, height: 54 },
 
-  // Row 2.1: Remote WebGL Iframe & View Host Wrapper
-  {
-    id: 'w1',
-    label: 'WWT WebGL Iframe Research App',
-    sublabel: 'web.wwtassets.org/research/latest/ (HTML5 Engine)',
-    category: 'wwt',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Source',
-    x: 40,
-    y: 520,
-    width: 350,
-    height: 56,
-  },
-  {
-    id: 'b1',
-    label: 'Iframe Host Wrapper & PiP Clamp',
-    sublabel: 'Watchdog Timer, Window Bounds Clamp & 4-Tab Control Drawer',
-    category: 'adapter',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Changes / Adapters',
-    x: 430,
-    y: 520,
-    width: 330,
-    height: 56,
-  },
-  {
-    id: 't1',
-    label: 'src/components/learning/WorldWideTelescopeView.tsx',
-    sublabel: 'View Host Container File',
-    category: 'swvi',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Destination File',
-    x: 800,
-    y: 520,
-    width: 300,
-    height: 56,
-  },
+  // Layer 2: Core Data Bus & Logic
+  { id: 'wwv_b1', label: 'DataBus WebSocket (/stream)', sublabel: 'High-Frequency Real-Time Event Bus', category: 'wwv', section: 'WWV Source Architecture', x: 40, y: 440, width: 310, height: 54 },
+  { id: 'wwv_b2', label: 'AgentBusController.ts', sublabel: 'FlyTo, Selection & Layer Command Dispatcher', category: 'agent', section: 'WWV Source Architecture', x: 410, y: 440, width: 310, height: 54 },
+  { id: 'wwv_b3', label: 'PluginManager & parseWwvManifest.ts', sublabel: 'Dynamic CDN Bundle Loader & Manifest Parser', category: 'adapter', section: 'WWV Source Architecture', x: 780, y: 440, width: 310, height: 54 },
 
-  // Row 2.2: All-Sky Surveys (DSS, Chandra, Planck, Radio)
-  {
-    id: 'w2',
-    label: 'WWT All-Sky Surveys',
-    sublabel: 'DSS Color Visible, Chandra X-Ray, Planck Dust, Radio VLSS',
-    category: 'wwt',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Source',
-    x: 40,
-    y: 595,
-    width: 350,
-    height: 56,
-  },
-  {
-    id: 'b2',
-    label: 'Survey Preset Catalog Mapper',
-    sublabel: 'TELESCOPE_PRESETS Array & Layer Dispatcher',
-    category: 'adapter',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Changes / Adapters',
-    x: 430,
-    y: 595,
-    width: 330,
-    height: 56,
-  },
-  {
-    id: 't2',
-    label: 'src/data/telescopePresets.ts',
-    sublabel: 'Deep-Sky Survey Catalog File',
-    category: 'swvi',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Destination File',
-    x: 800,
-    y: 595,
-    width: 300,
-    height: 56,
-  },
+  // Layer 3: Zustand Store Slices
+  { id: 'wwv_s1', label: 'entitySlice.ts (Live Entities)', sublabel: 'Aircraft, Webcams, Satellites, Military Bases', category: 'wwv', section: 'WWV Source Architecture', x: 40, y: 530, width: 310, height: 54 },
+  { id: 'wwv_s2', label: 'filterSlice.ts & pluginSlice.ts', sublabel: 'Spatial Bounds & Dynamic Layer Config', category: 'wwv', section: 'WWV Source Architecture', x: 410, y: 530, width: 310, height: 54 },
+  { id: 'wwv_s3', label: 'Prisma 7 PostgreSQL Schema', sublabel: 'InstalledPlugin, Setting, Workspace, Favorite', category: 'prisma', section: 'WWV Source Architecture', x: 780, y: 530, width: 310, height: 54 },
 
-  // Row 2.3: postMessage Telemetry & Anti-Loop Mutex
-  {
-    id: 'w3',
-    label: 'postMessage Telemetry API',
-    sublabel: 'wwt_view_state Events (ra, dec, fov, roll, target)',
-    category: 'wwt',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Source',
-    x: 40,
-    y: 670,
-    width: 350,
-    height: 56,
-  },
-  {
-    id: 'b3',
-    label: 'Anti-Loop Mutex & 32ms Throttle',
-    sublabel: 'syncSource Lock ("none"|"cesium"|"wwt") + 30FPS Timer',
-    category: 'adapter',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Changes / Adapters',
-    x: 430,
-    y: 670,
-    width: 330,
-    height: 56,
-  },
-  {
-    id: 't3',
-    label: 'src/hooks/useWWTListener.ts',
-    sublabel: 'Telemetry Event Listener Hook File',
-    category: 'swvi',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Destination File',
-    x: 800,
-    y: 670,
-    width: 300,
-    height: 56,
-  },
+  // Layer 4: UI & Globe Renderer
+  { id: 'wwv_u1', label: 'AppShell.tsx & Header.tsx', sublabel: 'Top Navigation Workspace Bar & SearchBar', category: 'wwv', section: 'WWV Source Architecture', x: 40, y: 620, width: 310, height: 54 },
+  { id: 'wwv_u2', label: 'ResiumGlobe.tsx / CesiumViewer', sublabel: 'Main 3D Globe View Container', category: 'wwv', section: 'WWV Source Architecture', x: 410, y: 620, width: 310, height: 54 },
+  { id: 'wwv_u3', label: 'EntityRenderer.ts (60 FPS)', sublabel: 'Billboard, Polyline & glTF Batch Renderer', category: 'wwv', section: 'WWV Source Architecture', x: 780, y: 620, width: 310, height: 54 },
 
-  // Row 2.4: Cesium Camera Altitude H & Exact Horizon FOV Engine
-  {
-    id: 'w4',
-    label: 'Cesium Camera Altitude H',
-    sublabel: 'Camera Height d = Re + H',
-    category: 'wwt',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Source',
-    x: 40,
-    y: 745,
-    width: 350,
-    height: 56,
-  },
-  {
-    id: 'b4',
-    label: 'Exact Horizon FOV Engine',
-    sublabel: 'FOV = 2 * arcsin(Re / (Re+H)) (3.8034° at midpoint)',
-    category: 'adapter',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Changes / Adapters',
-    x: 430,
-    y: 745,
-    width: 330,
-    height: 56,
-  },
-  {
-    id: 't4',
-    label: 'src/hooks/useCameraSync.ts',
-    sublabel: 'Camera Synchronization Engine File',
-    category: 'swvi',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Destination File',
-    x: 800,
-    y: 745,
-    width: 300,
-    height: 56,
-  },
+  // =========================================================================
+  // SECTION 3: SILVER WOLF VI INTEGRATION PIPELINE (LEFT-TO-RIGHT FLOW)
+  // =========================================================================
+  // WWV Transformation Row (Left -> Center -> Right)
+  { id: 'int_wwv_src', label: 'WWV Source Package / Assets', sublabel: 'borders.geojson, military_bases, manifest.json', category: 'wwv', section: 'Silver Wolf VI Integration Pipeline', x: 40, y: 750, width: 310, height: 54 },
+  { id: 'int_wwv_adp', label: 'Asset Sync & Manifest Parser', sublabel: 'scripts/sync_wwv_assets.cjs & parseWwvManifest.ts', category: 'adapter', section: 'Silver Wolf VI Integration Pipeline', x: 410, y: 750, width: 310, height: 54 },
+  { id: 'int_wwv_dst', label: 'Silver Wolf VI Assets & Stores', sublabel: 'public/wwv-assets/, repositoryData.ts, store.ts', category: 'swvi', section: 'Silver Wolf VI Integration Pipeline', x: 780, y: 750, width: 310, height: 54 },
 
-  // Row 2.5: J2000 Coordinates & IAU 1976 Precession Math
-  {
-    id: 'w5',
-    label: 'J2000 Celestial Frame & ERA',
-    sublabel: 'Equatorial Grid & Earth Rotation Angle Matrix',
-    category: 'wwt',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Source',
-    x: 40,
-    y: 820,
-    width: 350,
-    height: 56,
-  },
-  {
-    id: 'b5',
-    label: 'Precession & Sidereal Math Matrix',
-    sublabel: 'IAU 1976 Precession & ERA Coordinate Matrices',
-    category: 'adapter',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Changes / Adapters',
-    x: 430,
-    y: 820,
-    width: 330,
-    height: 56,
-  },
-  {
-    id: 't5',
-    label: 'src/lib/coordinateTransforms.ts',
-    sublabel: 'Celestial Transformation Math File',
-    category: 'swvi',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Destination File',
-    x: 800,
-    y: 820,
-    width: 300,
-    height: 56,
-  },
-
-  // Row 2.6: Space HUD Controls & Timeline SGP4 Sync
-  {
-    id: 'w6',
-    label: 'Space HUD Controls & Timeline',
-    sublabel: 'NAV/LAYERS Pill, Timeline Scrubbing & SGP4 Orbits',
-    category: 'wwt',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Source',
-    x: 40,
-    y: 895,
-    width: 350,
-    height: 56,
-  },
-  {
-    id: 'b6',
-    label: 'HUD Action Dispatcher & SGP4 Linker',
-    sublabel: 'Docked Pill Actions & Temporal Orbital Propagation',
-    category: 'adapter',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Changes / Adapters',
-    x: 430,
-    y: 895,
-    width: 330,
-    height: 56,
-  },
-  {
-    id: 't6',
-    label: 'src/components/panels/SpaceHudPillControls.tsx',
-    sublabel: 'Docked Space HUD Pill & Timeline Component Files',
-    category: 'swvi',
-    row: 'Row 2: World Wide Telescope (WWT)',
-    column: 'Destination File',
-    x: 800,
-    y: 895,
-    width: 300,
-    height: 56,
-  },
+  // WWT Transformation Row (Left -> Center -> Right)
+  { id: 'int_wwt_src', label: 'WWT WebGL Iframe & Telemetry', sublabel: 'web.wwtassets.org & wwt_view_state Broadcast', category: 'wwt', section: 'Silver Wolf VI Integration Pipeline', x: 40, y: 840, width: 310, height: 54 },
+  { id: 'int_wwt_adp', label: 'Anti-Loop Mutex & Exact FOV', sublabel: 'useWWTListener.ts & Exact Spherical FOV Engine', category: 'adapter', section: 'Silver Wolf VI Integration Pipeline', x: 410, y: 840, width: 310, height: 54 },
+  { id: 'int_wwt_dst', label: 'WorldWideTelescopeView.tsx', sublabel: 'View Host, SpaceHudPillControls & TimelineLanes', category: 'swvi', section: 'Silver Wolf VI Integration Pipeline', x: 780, y: 840, width: 310, height: 54 },
 ];
 
 export const silverWolfViEdges: ArchitectureEdge[] = [
-  // ROW 1: WWV Connections (Source -> Changes -> Destination)
-  { from: 'v1', to: 'a1', label: 'Copy Source', implemented: true },
-  { from: 'a1', to: 's1', label: 'Local Assets', implemented: true },
+  // WWT Top-Down Edges
+  { from: 'wwt_w1', to: 'wwt_b1', label: 'Commands', implemented: true, type: 'top-down' },
+  { from: 'wwt_w2', to: 'wwt_b2', label: 'Telemetry', implemented: true, type: 'top-down' },
+  { from: 'wwt_w3', to: 'wwt_b3', label: 'J2000 Sync', implemented: true, type: 'top-down' },
+  { from: 'wwt_b1', to: 'wwt_m1', label: 'Precession', implemented: true, type: 'top-down' },
+  { from: 'wwt_b2', to: 'wwt_m2', label: 'Exact FOV', implemented: true, type: 'top-down' },
+  { from: 'wwt_b3', to: 'wwt_m3', label: 'SGP4 Scrub', implemented: true, type: 'top-down' },
 
-  { from: 'v2', to: 'a2', label: 'Models & Icons' },
-  { from: 'a2', to: 's2', label: 'Asset Resolver' },
+  // WWV Top-Down Edges
+  { from: 'wwv_e1', to: 'wwv_b1', label: 'Stream Feed', implemented: true, type: 'top-down' },
+  { from: 'wwv_e2', to: 'wwv_b2', label: 'Agent Control', implemented: true, type: 'top-down' },
+  { from: 'wwv_e3', to: 'wwv_b3', label: 'Manifest Load', implemented: true, type: 'top-down' },
+  { from: 'wwv_b1', to: 'wwv_s1', label: 'State Hydrate', implemented: true, type: 'top-down' },
+  { from: 'wwv_b2', to: 'wwv_s2', label: 'Layer Config', implemented: true, type: 'top-down' },
+  { from: 'wwv_b3', to: 'wwv_s3', label: 'Prisma Models', implemented: true, type: 'top-down' },
+  { from: 'wwv_s1', to: 'wwv_u1', label: 'Header Search', implemented: true, type: 'top-down' },
+  { from: 'wwv_s2', to: 'wwv_u2', label: '3D Globe Host', implemented: true, type: 'top-down' },
+  { from: 'wwv_s3', to: 'wwv_u3', label: '60FPS Renderer', implemented: true, type: 'top-down' },
 
-  { from: 'v3', to: 'a3', label: 'Manifest JSON' },
-  { from: 'a3', to: 's3', label: 'Plugin Parser' },
-
-  { from: 'v4', to: 'a4', label: 'Store Slices' },
-  { from: 'a4', to: 's4', label: 'Decoupled Stores' },
-
-  { from: 'v5', to: 'a5', label: 'Ground Features' },
-  { from: 'a5', to: 's5', label: 'Terrain Clamp' },
-
-  { from: 'v6', to: 'a6', label: 'Prisma Schema' },
-  { from: 'a6', to: 's6', label: 'DB Models' },
-
-  // ROW 2: WWT Connections (Source -> Changes -> Destination)
-  { from: 'w1', to: 'b1', label: 'Direct Embed', implemented: true },
-  { from: 'b1', to: 't1', label: 'View Host', implemented: true },
-
-  { from: 'w2', to: 'b2', label: 'Sky Surveys', implemented: true },
-  { from: 'b2', to: 't2', label: 'Presets File', implemented: true },
-
-  { from: 'w3', to: 'b3', label: 'postMessage' },
-  { from: 'b3', to: 't3', label: 'Telemetry Hook' },
-
-  { from: 'w4', to: 'b4', label: 'Altitude H' },
-  { from: 'b4', to: 't4', label: 'Exact FOV' },
-
-  { from: 'w5', to: 'b5', label: 'J2000 Grid' },
-  { from: 'b5', to: 't5', label: 'Precession' },
-
-  { from: 'w6', to: 'b6', label: 'HUD & Time', implemented: true },
-  { from: 'b6', to: 't6', label: 'Docked Pill', implemented: true },
+  // Silver Wolf VI Left-To-Right Integration Edges
+  { from: 'int_wwv_src', to: 'int_wwv_adp', label: 'Asset Mirror', implemented: true, type: 'left-to-right' },
+  { from: 'int_wwv_adp', to: 'int_wwv_dst', label: 'Local Target', implemented: true, type: 'left-to-right' },
+  { from: 'int_wwt_src', to: 'int_wwt_adp', label: 'Telemetry Sync', implemented: true, type: 'left-to-right' },
+  { from: 'int_wwt_adp', to: 'int_wwt_dst', label: 'View Host', implemented: true, type: 'left-to-right' },
 ];
