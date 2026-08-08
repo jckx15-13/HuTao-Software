@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 export const SYSTEM_OPERATOR_ID = 'local-anon-operator';
 export const DEFAULT_TENANT_ID = 'local-tenant';
 
@@ -54,7 +57,7 @@ export interface JsonStorageStructure {
   flowcharts: StorageFlowchart[];
 }
 
-const LOCAL_STORAGE_KEY = 'silverwolf_storage_json';
+const STORAGE_FILE_PATH = path.resolve(process.cwd(), 'data/storage.json');
 
 const INITIAL_STORAGE: JsonStorageStructure = {
   operatorId: SYSTEM_OPERATOR_ID,
@@ -82,81 +85,43 @@ const INITIAL_STORAGE: JsonStorageStructure = {
   flowcharts: [],
 };
 
-// Memory fallback cache
-let inMemoryStorage: JsonStorageStructure = { ...INITIAL_STORAGE };
-
 /**
- * Browser vs Node environment detection
+ * Ensure storage directory and storage.json file exist.
  */
-const isBrowser = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+function ensureStorageFile(): string {
+  const dir = path.dirname(STORAGE_FILE_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  if (!fs.existsSync(STORAGE_FILE_PATH)) {
+    fs.writeFileSync(STORAGE_FILE_PATH, JSON.stringify(INITIAL_STORAGE, null, 2), 'utf-8');
+  }
+  return STORAGE_FILE_PATH;
+}
 
 /**
- * Read the entire JSON storage structure safely across Browser and Node environments.
+ * Read the entire JSON storage structure.
  */
 export function readJsonStorage(): JsonStorageStructure {
-  if (isBrowser) {
-    try {
-      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (raw) {
-        return JSON.parse(raw) as JsonStorageStructure;
-      }
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_STORAGE));
-      return INITIAL_STORAGE;
-    } catch (e) {
-      return inMemoryStorage;
-    }
-  }
-
-  // Node.js environment
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const fs = require('fs');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const path = require('path');
-    const filePath = path.resolve(process.cwd(), 'data/storage.json');
-
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, JSON.stringify(INITIAL_STORAGE, null, 2), 'utf-8');
-    }
+    const filePath = ensureStorageFile();
     const raw = fs.readFileSync(filePath, 'utf-8');
     return JSON.parse(raw) as JsonStorageStructure;
   } catch (err) {
-    return inMemoryStorage;
+    console.warn('[jsonStorage] Error reading storage.json, initializing fallback:', err);
+    return INITIAL_STORAGE;
   }
 }
 
 /**
- * Write updated structure to storage safely across Browser and Node environments.
+ * Write updated structure to JSON storage.
  */
 export function writeJsonStorage(data: JsonStorageStructure): void {
-  inMemoryStorage = data;
-  if (isBrowser) {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-    } catch (e) {
-      // quota fallback
-    }
-    return;
-  }
-
-  // Node.js environment
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const fs = require('fs');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const path = require('path');
-    const filePath = path.resolve(process.cwd(), 'data/storage.json');
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    const filePath = ensureStorageFile();
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
-    // safe fallback
+    console.error('[jsonStorage] Error writing storage.json:', err);
   }
 }
 
@@ -239,6 +204,7 @@ export function addTelemetryLog(log: Omit<StorageTelemetryLog, 'id' | 'timestamp
     timestamp: new Date().toISOString(),
   };
   store.telemetryLogs.unshift(newLog);
+  // Cap at 1000 logs in JSON
   if (store.telemetryLogs.length > 1000) {
     store.telemetryLogs = store.telemetryLogs.slice(0, 1000);
   }

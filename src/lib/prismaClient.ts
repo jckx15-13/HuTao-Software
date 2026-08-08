@@ -1,24 +1,25 @@
-import { PrismaClient } from '@prisma/client';
 import * as jsonStorage from './jsonStorage';
 
-declare global {
-  // eslint-disable-next-line no-var
-  var globalPrisma: PrismaClient | undefined;
+// Defensive import for PrismaClient to ensure build succeeds even if @prisma/client is not pre-generated
+let PrismaClientClass: any;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const prismaModule = require('@prisma/client');
+  PrismaClientClass = prismaModule.PrismaClient;
+} catch {
+  PrismaClientClass = null;
 }
 
-export let prisma: PrismaClient;
+export let prisma: any = null;
 
-let isPostgresAvailable = false;
-
-if (process.env.NODE_ENV === 'production') {
-  prisma = new PrismaClient();
-} else {
-  if (!globalThis.globalPrisma) {
-    globalThis.globalPrisma = new PrismaClient({
+if (PrismaClientClass) {
+  try {
+    prisma = new PrismaClientClass({
       log: ['error', 'warn'],
     });
+  } catch {
+    prisma = null;
   }
-  prisma = globalThis.globalPrisma;
 }
 
 /**
@@ -26,22 +27,19 @@ if (process.env.NODE_ENV === 'production') {
  */
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
-    if (!process.env.DATABASE_URL) {
-      isPostgresAvailable = false;
+    if (!prisma || !process.env.DATABASE_URL) {
       return false;
     }
     await prisma.$queryRaw`SELECT 1`;
-    isPostgresAvailable = true;
     return true;
-  } catch (err) {
-    isPostgresAvailable = false;
-    console.info('[PrismaClient] PostgreSQL database connection unavailable. Operating on local JSON storage fallback.');
+  } catch {
+    console.info('[PrismaClient] Operating on local JSON storage fallback.');
     return false;
   }
 }
 
 export function isDbConnected(): boolean {
-  return isPostgresAvailable;
+  return Boolean(prisma);
 }
 
 export { jsonStorage };
