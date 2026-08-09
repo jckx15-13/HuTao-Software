@@ -38,7 +38,6 @@ const SettingsPage = React.lazy(() =>
 const MountUnmountHarness = React.lazy(() => import('./components/dev/MountUnmountHarness'));
 const DiagnosticPanel = React.lazy(() => import('./components/dev/DiagnosticPanel'));
 
-const WorldWideTelescopeView = React.lazy(() => import('./components/learning/WorldWideTelescopeView'));
 
 export default function App() {
   useKeyboardShortcuts();
@@ -144,28 +143,14 @@ export default function App() {
                     aria-hidden="true"
                   />
                 )}
-                {isSpaceMode && isTelescopeTarget && cosmosBackgroundMode === 'wwt-milkyway' && (!isHeadless || isTelescopeTarget) && (
-                <div
-                  className="absolute inset-0 z-base transition-opacity duration-500"
-                  style={{
-                    opacity: isTelescopeTarget ? 0.26 : 1,
-                    mixBlendMode: isTelescopeTarget ? 'screen' : 'normal'
-                  }}
-                >
-                  <Suspense fallback={null}>
-                    <WorldWideTelescopeView bgOnly />
-                  </Suspense>
-                </div>
-              )}
               <div
                 className="absolute inset-0 transition-all duration-500 ease-in-out"
                 style={{
                   zIndex: 'calc(var(--theme-z-base) + 1)',
-                  // Telescope mode belongs to WWT. Keeping Cesium's imagery
-                  // visible here paints its geographic survey tiles over the
-                  // WWT solar-system canvas.
-                  opacity: isSpaceMode && isTelescopeTarget ? 0 : 1.0,
-                  pointerEvents: isSpaceMode && isEarthTarget ? 'auto' : 'none'
+                  // Cesium owns terrestrial, orbital, and native celestial modes.
+                  // The telescope controls remain an overlay; there is no second viewer.
+                  opacity: 1,
+                  pointerEvents: isSpaceMode && (isEarthTarget || isTelescopeTarget) ? 'auto' : 'none'
                 }}
               >
                 <Suspense fallback={null}>

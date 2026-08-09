@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Sparkles, Compass, Eye, RefreshCw, X, Maximize2, Minimize2,
-  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Play, Pause,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Play, Pause,
   Calendar, Clock, Image as ImageIcon, Layers, Search,
   MapPin, Grid, Plus, Check, Info, Radio, Star
 } from 'lucide-react';
@@ -12,8 +12,6 @@ import { TELESCOPE_PRESETS as presets, resolveTelescopePresetCoordinates } from 
 import { constellations } from '@/data/constellations';
 import TimelineLanes from './TimelineLanes';
 import { pluginManager } from '@/core/plugins/PluginManager';
-import { useCameraSync } from '@/hooks/useCameraSync';
-import { useWWTListener } from '@/hooks/useWWTListener';
 import { formatRA, formatDec, precessEquatorialJ2000ToDate, raHoursToDegrees } from '@/lib/coordinateTransforms';
 import {
   projectTelescopeTargetToEarth,
@@ -31,10 +29,8 @@ const BACKGROUND_LAYERS = [
 ];
 
 const PHOTO_COLLECTIONS = [
-  { id: 'hubble', name: 'Hubble Heritage', url: 'https://worldwidetelescope.org/webclient/docs/wtml/hubbleheritage.wtml', desc: 'Panoramic collections of star fields and nebulae.' },
-  { id: 'spitzer', name: 'Spitzer Infrared', url: 'https://worldwidetelescope.org/webclient/docs/wtml/spitzer.wtml', desc: 'Infrared penetrations of stellar nurseries.' },
-  { id: 'chandra', name: 'Chandra X-Ray', url: 'https://worldwidetelescope.org/webclient/docs/wtml/chandra.wtml', desc: 'Hot gas remnants of supernovas.' },
-  { id: 'astrophoto', name: 'Astrophotography', url: 'https://worldwidetelescope.org/webclient/docs/wtml/astrophoto.wtml', desc: 'Top images from worldwide observatories.' }
+  { id: 'jwst-rho-ophiuchi', name: 'JWST Rho Ophiuchi', url: 'https://data1.wwtassets.org/packages/2023/07_jwst/weic2316a/index.wtml', desc: 'WWT manifest rendered as a native Cesium media pin and source record.' },
+  { id: 'custom-source', name: 'Custom WTML Source', url: '', desc: 'Load an HTTPS or local WTML manifest into the native Cesium celestial layer.' },
 ];
 
 const FALLBACK_STAR_FIELD = Array.from({ length: 96 }, (_, index) => ({
@@ -68,30 +64,13 @@ function CrashComponent(): any {
   throw new Error("Simulated Telescope Crash");
 }
 
-type WwtRuntimeState = 'Connecting' | 'Static fallback' | 'WWT iframe loaded' | 'WWT unavailable';
-
-const WWT_RUNTIME_STATE_EVENT = 'silver-wolf-wwt-runtime-state';
-const WWT_LOAD_WATCHDOG_MS = 45_000;
-const WWT_RESEARCH_APP_URL = 'https://web.wwtassets.org/research/latest/';
-const WWT_SOLAR_SYSTEM_LAYER = '3D Solar System View';
-const WWT_EARTH_TRACK_CODE = 19;
+type CelestialRuntimeState = 'Native Cesium ready';
 
 const clampPx = (value: number, min: number, max: number): number => {
   const normalized = Math.round(value);
   if (!Number.isFinite(normalized)) return min;
   return Math.min(Math.max(normalized, min), max);
 };
-
-function publishWwtRuntimeState(state: WwtRuntimeState) {
-  if (typeof window === 'undefined') return;
-  (window as any).__silverWolfWwtRuntimeState = state;
-  window.dispatchEvent(new CustomEvent(WWT_RUNTIME_STATE_EVENT, { detail: state }));
-}
-
-function readSharedWwtRuntimeState(): WwtRuntimeState {
-  if (typeof window === 'undefined') return 'Connecting';
-  return ((window as any).__silverWolfWwtRuntimeState as WwtRuntimeState | undefined) || 'Connecting';
-}
 
 export default function WorldWideTelescopeView({
   bgOnly = false,
@@ -127,6 +106,9 @@ export default function WorldWideTelescopeView({
   const syncSource = useUIStore((s) => s.syncSource);
   const wwtBackgroundLayer = useUIStore((s) => s.wwtBackgroundLayer);
   const setWwtBackgroundLayer = useUIStore((s) => s.setWwtBackgroundLayer);
+  const celestialOverlaySettings = useUIStore((s) => s.celestialOverlaySettings);
+  const updateCelestialOverlaySettings = useUIStore((s) => s.updateCelestialOverlaySettings);
+  const setCelestialCollectionUrl = useUIStore((s) => s.setCelestialCollectionUrl);
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -257,19 +239,26 @@ export default function WorldWideTelescopeView({
   const windowStart = useRef({ x: 0, y: 0 });
   const previousSpaceInteractionTarget = useRef(spaceInteractionTarget);
 
-  // WWT Settings States
-  const [showConstellationFigures, setShowConstellationFigures] = useState(true);
-  const [showConstellationLines, setShowConstellationLines] = useState(true);
-  const [showConstellationBoundries, setShowConstellationBoundries] = useState(false); // WWT typo mapped
-  const [showConstellationSelection, setShowConstellationSelection] = useState(true);
-  const [showGrid, setShowGrid] = useState(false);
+  // These controls retain their original UI but now update the native Cesium layer.
+  const showConstellationFigures = celestialOverlaySettings.showConstellationFigures;
+  const setShowConstellationFigures = (showConstellationFigures: boolean) =>
+    updateCelestialOverlaySettings({ showConstellationFigures });
+  const showConstellationLines = celestialOverlaySettings.showConstellationLines;
+  const setShowConstellationLines = (showConstellationLines: boolean) =>
+    updateCelestialOverlaySettings({ showConstellationLines });
+  const showConstellationBoundries = celestialOverlaySettings.showConstellationBoundaries;
+  const setShowConstellationBoundries = (showConstellationBoundaries: boolean) =>
+    updateCelestialOverlaySettings({ showConstellationBoundaries });
+  const showConstellationSelection = celestialOverlaySettings.showConstellationSelection;
+  const setShowConstellationSelection = (showConstellationSelection: boolean) =>
+    updateCelestialOverlaySettings({ showConstellationSelection });
+  const showGrid = celestialOverlaySettings.showGrid;
+  const setShowGrid = (showGrid: boolean) => updateCelestialOverlaySettings({ showGrid });
 
   // Custom WTML loader state
   const [customWtml, setCustomWtml] = useState('');
   const [wtmlStatus, setWtmlStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
-  // Iframe reference
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const overlayRootRef = useRef<HTMLDivElement>(null);
 
   // Utility: safely parse dates from a variety of inputs
@@ -327,132 +316,26 @@ export default function WorldWideTelescopeView({
     return { url: parsed.toString(), error: null };
   };
 
-  // Iframe loading / connection state
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const iframeLoadedRef = useRef(iframeLoaded);
-  useEffect(() => {
-    iframeLoadedRef.current = iframeLoaded;
-  }, [iframeLoaded]);
-  const [iframeError, setIframeError] = useState(false);
-  const [sharedWwtRuntimeState, setSharedWwtRuntimeState] = useState<WwtRuntimeState>(() => readSharedWwtRuntimeState());
-  const watchdogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isFallbackRuntime = typeof window !== 'undefined' && window.location.search.includes('fallback');
-  const localWwtRuntimeState: WwtRuntimeState = isFallbackRuntime
-    ? 'Static fallback'
-    : iframeError
-      ? 'WWT unavailable'
-      : iframeLoaded
-        ? 'WWT iframe loaded'
-        : 'Connecting';
-  const wwtRuntimeState = controlsOnly && !isFallbackRuntime ? sharedWwtRuntimeState : localWwtRuntimeState;
-  const wwtRuntimeHealthy = wwtRuntimeState === 'WWT iframe loaded';
-
-  // Post message to WWT iframe helper — with full error handling
-  const postToWWT = (message: any) => {
-    if (controlsOnly && typeof window !== 'undefined' && (window as any).postToWWTBackground) {
-      (window as any).postToWWTBackground(message);
-      return;
-    }
-    try {
-      if (!iframeRef.current || !iframeRef.current.contentWindow) return;
-      let actualOrigin = '';
-      try {
-        const src = iframeRef.current.getAttribute?.('src') || iframeRef.current.src || '';
-        actualOrigin = src ? new URL(src).origin : '';
-      } catch (e) {
-        actualOrigin = '';
-      }
-
-      let targetOrigin = actualOrigin;
-      if (!targetOrigin) {
-        try {
-          targetOrigin = new URL(WWT_RESEARCH_APP_URL).origin;
-        } catch (e) {
-          targetOrigin = '';
-        }
-      }
-
-      if (!targetOrigin) {
-        console.warn('[WorldWideTelescopeView] postToWWT skipped: no concrete target origin');
-        return;
-      }
-
-      iframeRef.current.contentWindow.postMessage(message, targetOrigin);
-    } catch (err) {
-      console.warn('[WorldWideTelescopeView] postToWWT failed:', err);
-    }
-  };
-
-  // --- Camera Sync Integration ---
-  // Connects WWT and Cesium via the useCameraSync Mutex and postMessage listener
-  const cesiumViewer = typeof window !== 'undefined' ? (window as any).cesiumViewer : null;
-  useCameraSync(cesiumViewer, postToWWT);
-  useWWTListener();
+  // The prior remote viewer lifecycle is intentionally replaced by the native
+  // Cesium scene. The existing control shell stays visible and reports its
+  // actual renderer instead of a network-dependent state. There is no load
+  // watchdog, retry path, or connection state because nothing is fetched to
+  // render the sky: the celestial layer is drawn by useNativeCelestialSky.
+  const wwtRuntimeState: CelestialRuntimeState = 'Native Cesium ready';
+  const wwtRuntimeHealthy = true;
 
   // Sync Coordinates on activePreset change (smooth pans!)
   useEffect(() => {
     if (!activePreset) return;
 
-    // Check if WWT iframe is ready and target coordinates are available
-    if (activePreset.lookAt) {
-      postToWWT({
-        event: 'set_viewer_mode',
-        mode: activePreset.lookAt.toLowerCase()
-      });
-      useUIStore.getState().addChangeLog('TELESCOPE', `Viewer mode changed to: ${activePreset.lookAt}`, 'success');
-    } else {
-      // WWT coordinates: ra (decimal hours), dec (decimal degrees)
-      postToWWT({
-        event: 'center_on_coordinates',
-        ra: raHoursToDegrees(activePresetCoordinates.raHours),
-        dec: activePresetCoordinates.decDegrees,
-        fov: parseFloat(activePreset.fov) || 1.0,
-        instant: false
-      });
-      useUIStore.getState().addChangeLog('TELESCOPE', `Telescope panned to ${activePreset.name} (RA: ${activePresetCoordinates.ra}, DEC: ${activePresetCoordinates.dec})`, 'success');
-    }
+    useUIStore.getState().setTelescopeTelemetry({
+      ra: raHoursToDegrees(activePresetCoordinates.raHours),
+      dec: activePresetCoordinates.decDegrees,
+      roll: 0,
+    });
+    useUIStore.getState().addChangeLog('TELESCOPE', `Native Cesium celestial camera focused on ${activePreset.name} (RA: ${activePresetCoordinates.ra}, DEC: ${activePresetCoordinates.dec})`, 'success');
   }, [activePreset, activePresetCoordinates, refreshKey]);
 
-  // Sync datetime on currentTime change (defensive)
-  useEffect(() => {
-    const d = parseDateSafe(currentTime);
-    if (d) {
-      try {
-        postToWWT({ event: 'set_datetime', isot: d.toISOString() });
-      } catch (err) {
-        console.error('[WorldWideTelescopeView] Failed to format date for WWT sync', err);
-      }
-    }
-  }, [currentTime]);
-
-  // Sync Overlay Settings when they change
-  useEffect(() => {
-    postToWWT({ event: 'modify_setting', setting: 'showConstellationFigures', value: showConstellationFigures });
-  }, [showConstellationFigures]);
-
-  useEffect(() => {
-    postToWWT({ event: 'modify_setting', setting: 'showConstellationLines', value: showConstellationLines });
-  }, [showConstellationLines]);
-
-  useEffect(() => {
-    postToWWT({ event: 'modify_setting', setting: 'showConstellationBoundries', value: showConstellationBoundries });
-  }, [showConstellationBoundries]);
-
-  useEffect(() => {
-    postToWWT({ event: 'modify_setting', setting: 'showConstellationSelection', value: showConstellationSelection });
-  }, [showConstellationSelection]);
-
-  useEffect(() => {
-    postToWWT({ event: 'modify_setting', setting: 'showGrid', value: showGrid });
-  }, [showGrid]);
-
-  useEffect(() => {
-    if (!wwtBackgroundLayer || !wwtRuntimeHealthy) return;
-    postToWWT({ event: 'set_background_by_name', name: wwtBackgroundLayer });
-    if (wwtBackgroundLayer === WWT_SOLAR_SYSTEM_LAYER) {
-      postToWWT({ event: 'track_object', code: WWT_EARTH_TRACK_CODE });
-    }
-  }, [wwtBackgroundLayer, wwtRuntimeHealthy, refreshKey]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -516,24 +399,6 @@ export default function WorldWideTelescopeView({
   useEffect(() => {
     setPos((current) => clampPipPosition(current.x, current.y));
   }, [windowPixelDimensions, windowSize, workspaceInsets, pipSafeLeft, viewportSize]);
-
-  useEffect(() => {
-    if (!controlsOnly || typeof window === 'undefined') return;
-
-    const syncSharedRuntimeState = (event?: Event) => {
-      const customEvent = event as CustomEvent<WwtRuntimeState> | undefined;
-      setSharedWwtRuntimeState(customEvent?.detail || readSharedWwtRuntimeState());
-    };
-
-    syncSharedRuntimeState();
-    window.addEventListener(WWT_RUNTIME_STATE_EVENT, syncSharedRuntimeState);
-    const intervalId = window.setInterval(syncSharedRuntimeState, 1000);
-
-    return () => {
-      window.removeEventListener(WWT_RUNTIME_STATE_EVENT, syncSharedRuntimeState);
-      window.clearInterval(intervalId);
-    };
-  }, [controlsOnly]);
 
   useEffect(() => {
     const enteredTelescopeMode =
