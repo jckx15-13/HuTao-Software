@@ -34,6 +34,18 @@ function engineUrl(): string {
 let engineUnreachable = false;
 let lastFailureLogAt = 0;
 
+/** JSON.stringify replacer that breaks cycles instead of throwing. */
+function safeStringify(value: unknown): string {
+  const seen = new WeakSet<object>();
+  return JSON.stringify(value, (_key, val) => {
+    if (typeof val === 'object' && val !== null) {
+      if (seen.has(val)) return '[Circular]';
+      seen.add(val);
+    }
+    return val;
+  });
+}
+
 /**
  * Fire-and-forget forward of a diagnostics store entry to diagnostic-engine's
  * ingest endpoint. Never throws. Backs off after the first failed request so
@@ -43,30 +55,35 @@ export function reportToEngine(entry: DiagnosticEntry, source = 'silver-wolf-vi'
   if (typeof window === 'undefined' || typeof fetch === 'undefined') return;
   if (engineUnreachable && Date.now() - lastFailureLogAt < 60_000) return;
 
-  const payload = {
-    id: entry.id,
-    timestamp: entry.timestamp,
-    severity: LEVEL_TO_SEVERITY[entry.level] || 'info',
-    category: LEVEL_TO_CATEGORY[entry.level] || 'runtime',
-    message: entry.message,
-    stack: entry.stack || undefined,
-    source,
-    metadata: entry.metadata || undefined,
-    sanitized: true
-  };
+  try {
+    const payload = {
+      id: entry.id,
+      timestamp: entry.timestamp,
+      severity: LEVEL_TO_SEVERITY[entry.level] || 'info',
+      category: LEVEL_TO_CATEGORY[entry.level] || 'runtime',
+      message: entry.message,
+      stack: entry.stack || undefined,
+      source,
+      metadata: entry.metadata || undefined,
+      sanitized: true
+    };
 
-  fetch(`${engineUrl()}/api/diagnostics/ingest`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
-    .then((res) => {
-      if (res.ok) {
-        engineUnreachable = false;
-      }
+    fetch(`${engineUrl()}/api/diagnostics/ingest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: safeStringify(payload)
     })
-    .catch(() => {
-      engineUnreachable = true;
-      lastFailureLogAt = Date.now();
-    });
+      .then((res) => {
+        if (res.ok) {
+          engineUnreachable = false;
+        }
+      })
+      .catch(() => {
+        engineUnreachable = true;
+        lastFailureLogAt = Date.now();
+      });
+  } catch {
+    engineUnreachable = true;
+    lastFailureLogAt = Date.now();
+  }
 }

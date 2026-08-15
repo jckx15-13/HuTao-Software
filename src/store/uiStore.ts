@@ -92,6 +92,13 @@ export type InteractionMode = 'chat' | 'orbital' | 'telescope';
 export type SyncSource = 'cesium' | 'wwt' | 'none';
 export type CosmosBackgroundMode = 'deep-black' | 'sparkling' | 'wwt-milkyway';
 export type WwtBackgroundLayer = string;
+export interface CelestialOverlaySettings {
+  showGrid: boolean;
+  showConstellationLines: boolean;
+  showConstellationFigures: boolean;
+  showConstellationSelection: boolean;
+  showConstellationBoundaries: boolean;
+}
 export type CurrentPage = 'launcher' | 'workspace' | 'settings';
 export type RightPanelTab = 'context' | 'browser' | 'changes' | 'diagnostics' | 'telemetry' | 'odysseus';
 export type SettingsCategory =
@@ -325,6 +332,10 @@ export interface UIStore {
   setWwtBackgroundLayer: (v: WwtBackgroundLayer) => void;
   spaceInteractionTarget: 'earth' | 'telescope';
   setSpaceInteractionTarget: (v: 'earth' | 'telescope') => void;
+  celestialOverlaySettings: CelestialOverlaySettings;
+  setCelestialOverlaySettings: (v: Partial<CelestialOverlaySettings>) => void;
+  celestialCollectionUrl: string | null;
+  setCelestialCollectionUrl: (v: string | null) => void;
 
   // Panel State
   leftPanelOpen: boolean;
@@ -688,6 +699,18 @@ export const useUIStore = create<UIStore>()(
           setWwtBackgroundLayer: (wwtBackgroundLayer) => set({ wwtBackgroundLayer }),
         spaceInteractionTarget: 'earth',
         setSpaceInteractionTarget: (spaceInteractionTarget) => set({ spaceInteractionTarget }),
+        celestialOverlaySettings: {
+          showGrid: false,
+          showConstellationLines: true,
+          showConstellationFigures: true,
+          showConstellationSelection: true,
+          showConstellationBoundaries: false,
+        },
+        setCelestialOverlaySettings: (v) => set((s) => ({
+          celestialOverlaySettings: { ...s.celestialOverlaySettings, ...v },
+        })),
+        celestialCollectionUrl: null,
+        setCelestialCollectionUrl: (celestialCollectionUrl) => set({ celestialCollectionUrl }),
 
         // Panel State
         leftPanelOpen: true,
