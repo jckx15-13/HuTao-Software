@@ -3,6 +3,7 @@
  * @description QA & Development Mode Telemetry module integrating Sentry
  * and client-side error handling for Silver Wolf VI.
  */
+import { reportToEngine } from '../../services/diagnosticEngineClient';
 
 export interface QABreadcrumb {
   category: string;
@@ -88,6 +89,16 @@ class SentryQAService {
       message: `${errorObj.name}: ${errorObj.message}`,
       level: "error",
       data: { eventId },
+    });
+
+    // Additive forward to diagnostic-engine (fire-and-forget, no-ops if not running)
+    reportToEngine({
+      id: eventId,
+      timestamp: Date.now(),
+      level: "error",
+      message: errorObj.message,
+      stack: errorObj.stack || null,
+      metadata: { tags: context?.tags, extra: context?.extra },
     });
 
     return eventId;

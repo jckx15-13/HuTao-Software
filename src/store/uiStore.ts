@@ -92,13 +92,6 @@ export type InteractionMode = 'chat' | 'orbital' | 'telescope';
 export type SyncSource = 'cesium' | 'wwt' | 'none';
 export type CosmosBackgroundMode = 'deep-black' | 'sparkling' | 'wwt-milkyway';
 export type WwtBackgroundLayer = string;
-export interface CelestialOverlaySettings {
-  showGrid: boolean;
-  showConstellationLines: boolean;
-  showConstellationFigures: boolean;
-  showConstellationBoundaries: boolean;
-  showConstellationSelection: boolean;
-}
 export type CurrentPage = 'launcher' | 'workspace' | 'settings';
 export type RightPanelTab = 'context' | 'browser' | 'changes' | 'diagnostics' | 'telemetry' | 'odysseus';
 export type SettingsCategory =
@@ -330,13 +323,6 @@ export interface UIStore {
   setCosmosBackgroundMode: (v: CosmosBackgroundMode) => void;
   wwtBackgroundLayer: WwtBackgroundLayer;
   setWwtBackgroundLayer: (v: WwtBackgroundLayer) => void;
-  /** Native Cesium celestial overlay controls. Kept in the existing UI store so
-   * the Space Array controls and 3D scene always describe the same state. */
-  celestialOverlaySettings: CelestialOverlaySettings;
-  updateCelestialOverlaySettings: (settings: Partial<CelestialOverlaySettings>) => void;
-  /** A WTML manifest used as a native data source, never as an embedded viewer. */
-  celestialCollectionUrl: string | null;
-  setCelestialCollectionUrl: (url: string | null) => void;
   spaceInteractionTarget: 'earth' | 'telescope';
   setSpaceInteractionTarget: (v: 'earth' | 'telescope') => void;
 
@@ -700,18 +686,6 @@ export const useUIStore = create<UIStore>()(
           setCosmosBackgroundMode: (cosmosBackgroundMode) => set({ cosmosBackgroundMode }),
           wwtBackgroundLayer: '3D Solar System View',
           setWwtBackgroundLayer: (wwtBackgroundLayer) => set({ wwtBackgroundLayer }),
-          celestialOverlaySettings: {
-            showGrid: false,
-            showConstellationLines: true,
-            showConstellationFigures: true,
-            showConstellationBoundaries: false,
-            showConstellationSelection: true,
-          },
-          updateCelestialOverlaySettings: (settings) => set((state) => ({
-            celestialOverlaySettings: { ...state.celestialOverlaySettings, ...settings },
-          })),
-          celestialCollectionUrl: null,
-          setCelestialCollectionUrl: (celestialCollectionUrl) => set({ celestialCollectionUrl }),
         spaceInteractionTarget: 'earth',
         setSpaceInteractionTarget: (spaceInteractionTarget) => set({ spaceInteractionTarget }),
 
@@ -830,17 +804,6 @@ export const useUIStore = create<UIStore>()(
             migrated.wwtBackgroundLayer && migrated.wwtBackgroundLayer !== 'Visible Imagery'
               ? migrated.wwtBackgroundLayer
               : '3D Solar System View';
-        migrated.celestialOverlaySettings = {
-          showGrid: false,
-          showConstellationLines: true,
-          showConstellationFigures: true,
-          showConstellationBoundaries: false,
-          showConstellationSelection: true,
-          ...(migrated.celestialOverlaySettings || {}),
-        };
-        migrated.celestialCollectionUrl = typeof migrated.celestialCollectionUrl === 'string'
-          ? migrated.celestialCollectionUrl
-          : null;
         migrated.personalisation = normalizePersonalisation({
           ...migrated.personalisation,
           minimalMode: false,
@@ -888,8 +851,6 @@ export const useUIStore = create<UIStore>()(
         spaceBlendOpacity: s.spaceBlendOpacity,
           cosmosBackgroundMode: s.cosmosBackgroundMode,
           wwtBackgroundLayer: s.wwtBackgroundLayer,
-          celestialOverlaySettings: s.celestialOverlaySettings,
-          celestialCollectionUrl: s.celestialCollectionUrl,
         spaceInteractionTarget: s.spaceInteractionTarget
       })
     }

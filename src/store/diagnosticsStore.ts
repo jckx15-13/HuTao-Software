@@ -3,6 +3,7 @@ import { bridgeUrl, getBridgeBaseUrl, isBridgeEnabled } from '../lib/bridgeConfi
 import { sentryService } from '../services/sentryService';
 import { coderabbitService, CodeRabbitAuditResult } from '../services/coderabbitService';
 import { visualInspectorService, HardwareSpecs, VisualSnapshot } from '../services/visualInspectorService';
+import { reportToEngine } from '../services/diagnosticEngineClient';
 
 export type DiagnosticLevel = 'error' | 'warning' | 'info' | 'debug';
 
@@ -153,6 +154,9 @@ export const useDiagnosticsStore = create<DiagnosticsState>((set, get) => ({
     }
 
     set((s) => ({ entries: [full, ...s.entries].slice(0, 500) }));
+
+    // Additive forward to diagnostic-engine (fire-and-forget, no-ops if not running)
+    reportToEngine(full);
   },
   clear: () => set({ entries: [] }),
   export: () => JSON.stringify(get().entries, null, 2),
@@ -208,7 +212,9 @@ if (typeof window !== 'undefined') {
             suggestion: 'Verify network connection, asset path correctness, or resource CORS policies.'
           });
         }
-      } catch (e) { /* ignore error listener error */ }
+      } catch (e) {
+        /* ignore error listener error */
+      }
     },
     true
   );
@@ -308,7 +314,9 @@ if (typeof window !== 'undefined') {
         message: `Console Error: ${msg.substring(0, 300)}`,
         suggestion: 'Trace this error using browser devtools stack trace or check related components.'
       });
-    } catch (e) { /* ignore console intercept error */ }
+    } catch (e) {
+      /* ignore console intercept error */
+    }
   };
 
   console.warn = function (...args) {
@@ -321,7 +329,9 @@ if (typeof window !== 'undefined') {
         message: `Console Warning: ${msg.substring(0, 300)}`,
         suggestion: 'Resolve warnings to ensure optimal performance and standard-compliant rendering.'
       });
-    } catch (e) { /* ignore console intercept error */ }
+    } catch (e) {
+      /* ignore console intercept error */
+    }
   };
 
   // 6. Navigation Performance and Vitals check
@@ -456,5 +466,3 @@ if (typeof window !== 'undefined') {
     }, 1000);
   });
 }
-
-export default useDiagnosticsStore;

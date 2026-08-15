@@ -96,6 +96,12 @@ export default defineConfig(({ mode }) => {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       __SILVER_WOLF_BRIDGE_URL__: JSON.stringify(bridgeUrl),
       __SILVER_WOLF_ODYSSEUS_CORE_URL__: JSON.stringify(env.VITE_ODYSSEUS_CORE_URL || ''),
+      // diagnosticEngineClient.ts references this constant to locate the
+      // diagnostic-engine ingest endpoint. Without this define the bundler
+      // would leave the identifier unresolved and throw a ReferenceError at
+      // runtime. An empty string makes the module fall back to its hard-coded
+      // FALLBACK_ENGINE_URL (127.0.0.1:9500).
+      __SILVER_WOLF_DIAGNOSTIC_ENGINE_URL__: JSON.stringify(env.VITE_DIAGNOSTIC_ENGINE_URL || ''),
       // src/core/edition.ts reads this, but Vite only exposes VITE_-prefixed vars
       // on import.meta.env, so it must be inlined explicitly. The Pages build runs
       // as the "demo" edition, which routes favorites to cookies instead of the

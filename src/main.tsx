@@ -21,6 +21,11 @@ function BootFallback() {
 if (typeof window !== 'undefined') {
   (window as any).useUIStore = useUIStore;
   (window as any).useDiagnosticsStore = useDiagnosticsStore;
+
+  // diagnostic-engine integration is additive: every diagnosticsStore.add() call
+  // also forwards to the engine's REST ingest endpoint (see diagnosticEngineClient.ts).
+  // No-ops silently if the engine process isn't running locally.
+  console.log('[diagnostics] Forwarding to diagnostic-engine at http://127.0.0.1:9500 (if running)');
 }
 
 createRoot(document.getElementById('root')!).render(
