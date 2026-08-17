@@ -165,8 +165,7 @@ export default defineConfig(({ mode }) => {
             motion: ['motion'],
             lucide: ['lucide-react'],
             virtualization: ['react-virtuoso'],
-            satellite: ['satellite.js'],
-            wwv: ['@wwtelescope/engine', '@wwtelescope/engine-types']
+            satellite: ['satellite.js']
           }
         }
       },
