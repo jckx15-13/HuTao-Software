@@ -17,7 +17,7 @@
     "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit",
     "lint": "node ./node_modules/eslint/bin/eslint.js . --ext .ts,.tsx",
     "lint:fix": "node ./node_modules/eslint/bin/eslint.js . --ext .ts,.tsx --fix",
-    "test": "node scripts/test_cursor_engine.cjs && node scripts/test_physics_and_runtime.cjs && node scripts/test_integration_contracts.cjs && node scripts/test_responsive_layout.cjs && node scripts/test_state_slices.cjs && node scripts/test_sentry_qa_integration.cjs && node scripts/test_coderabbit_config.cjs && node scripts/test_strict_torture.cjs && node scripts/test_negative_fault_injection.cjs && npm run docs:check",
+    "test": "node scripts/test_cursor_engine.cjs && node scripts/test_physics_and_runtime.cjs && node scripts/test_integration_contracts.cjs && node scripts/test_responsive_layout.cjs && node scripts/test_state_slices.cjs && node scripts/test_zustand_adversarial_torture.cjs && node scripts/test_sentry_qa_integration.cjs && node scripts/test_coderabbit_config.cjs && node scripts/test_strict_torture.cjs && node scripts/test_negative_fault_injection.cjs && npm run docs:check",
     "test:strict": "npm run test",
     "test:vitest": "node ./node_modules/vitest/vitest.mjs run",
     "qa:check": "npm run typecheck && npm run test",

@@ -14,6 +14,24 @@ function assertFile(relativePath, label = relativePath) {
   assert.ok(fs.existsSync(fullPath), `${label} is missing at ${fullPath}`);
 }
 
+// Directories that can appear inside a sub-project folder without any source
+// having been checked out — e.g. running a dev server from the wrong working
+// directory creates `.next/` and nothing else.
+const BUILD_ARTIFACT_ENTRIES = new Set([".next", "node_modules", "dist", "build"]);
+
+/**
+ * True when a sub-project directory holds real checked-out source rather than
+ * leftover build output. Keeps assertions about OPTIONAL sub-projects
+ * meaningful without making a clean clone of this repo fail.
+ */
+function hasCheckedOutSource(relativeDir) {
+  const fullPath = path.join(root, relativeDir);
+  if (!fs.existsSync(fullPath)) {
+    return false;
+  }
+  return fs.readdirSync(fullPath).some((entry) => !BUILD_ARTIFACT_ENTRIES.has(entry));
+}
+
 // Strip // and /* */ comments so "must not contain X" assertions test real code and
 // aren't tripped by comments that document why X is deliberately avoided.
 function stripComments(source) {
@@ -161,9 +179,26 @@ const uiAuditSource = read("scripts/ui-audit.mjs");
 assertFile("package.json", "Silver Wolf root package");
 assertFile("public/config.json", "Browser runtime public config");
 assertFile("public/favicon.svg", "Browser favicon asset");
-assertFile("worldwideview/package.json", "WorldWideView package");
-assertFile("odysseus/pyproject.toml", "Odysseus Python package");
-assertFile("odysseus/package.json", "Odysseus frontend package");
+// `worldwideview/` is an OPTIONAL, gitignored sub-project (README.md:30,42) with
+// its own install and database requirements. The committed source of truth for
+// its assets is public/wwv-assets, which the mapped-asset checks below already
+// resolve via WWV_SOURCE_PATH_FALLBACKS. Validate the package only when the
+// sub-project is genuinely checked out, so a clean clone of this repo alone
+// still passes while a half-cloned checkout is still caught.
+if (hasCheckedOutSource("worldwideview")) {
+  assertFile("worldwideview/package.json", "WorldWideView package");
+}
+// `odysseus/` is committed as a gitlink (mode 160000) with no `.gitmodules`, so a
+// fresh clone materialises the directory empty and `git submodule update --init`
+// cannot populate it. Its docs assets are mirrored under public/odysseus-assets,
+// which the served-asset audit below already validates independently. Same
+// conditional treatment as `worldwideview/` above: check the packages only when
+// the sub-project is genuinely checked out, so a clean clone of this repo passes
+// while a half-cloned checkout is still caught.
+if (hasCheckedOutSource("odysseus")) {
+  assertFile("odysseus/pyproject.toml", "Odysseus Python package");
+  assertFile("odysseus/package.json", "Odysseus frontend package");
+}
 assertFile("bridge/server.py", "Silver Wolf bridge server");
 assertFile("src/lib/credentials/apiCredentialEngine.ts", "API credential management engine");
 assertFile("src/lib/credentials/apiConnectorEngine.ts", "API connector request engine");
@@ -437,10 +472,15 @@ if (odysseusAssetAudit.upstreamMissing.length > 0) {
   );
 }
 
+// The mapping table itself lives in committed source, so its shape is always
+// asserted. Resolving those paths on disk needs the gitlink checkout, which a
+// clean clone does not have -- see the `hasCheckedOutSource` note above.
 const odysseusSourceModules = collectMatches(odysseusAssetsSource, /'(odysseus\/(?:src|static)\/[^']+)'/g);
 assert.ok(odysseusSourceModules.length >= 8, "Expected Odysseus source module mappings");
-for (const modulePath of odysseusSourceModules) {
-  assertFile(modulePath, `Odysseus mapped source module ${modulePath}`);
+if (hasCheckedOutSource("odysseus")) {
+  for (const modulePath of odysseusSourceModules) {
+    assertFile(modulePath, `Odysseus mapped source module ${modulePath}`);
+  }
 }
 
 for (const route of [
