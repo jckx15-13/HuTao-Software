@@ -119,16 +119,18 @@ export function buildSpatialPanelGeometry(input: SpatialPanelGeometryInput): Spa
     };
   }
 
-  const reservedChromePx = 32;
-  const maxHeightPx = clampPx(
-    Math.max(0, viewport.height - topInsetPx - bottomInsetPx - reservedChromePx),
-    0,
-    viewport.height
-  );
+  // Curtain presentation: a docked panel hangs the full height of the workspace
+  // with the SAME gap on every side, so it reads as a detached surface floating
+  // over the globe rather than a slab welded to the viewport edge. Reusing
+  // edgeInsetPx for the vertical gap is what makes the margin uniform — the old
+  // asymmetric topInsetPx/bottomInsetPx left a visibly different gap top and
+  // bottom than at the side, which reads as misalignment rather than depth.
+  const curtainInsetPx = edgeInsetPx;
+  const maxHeightPx = clampPx(Math.max(0, viewport.height - curtainInsetPx * 2), 0, viewport.height);
 
   const base: SpatialPanelStyle = {
-    top: `calc(${topInsetPx}px + env(safe-area-inset-top))`,
-    bottom: `calc(${bottomInsetPx}px + env(safe-area-inset-bottom))`,
+    top: `calc(${curtainInsetPx}px + env(safe-area-inset-top))`,
+    bottom: `calc(${curtainInsetPx}px + env(safe-area-inset-bottom))`,
     width: `${panelWidthPx}px`,
     maxHeight: `${maxHeightPx}px`
   };

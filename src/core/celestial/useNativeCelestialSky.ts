@@ -60,7 +60,7 @@ export function useNativeCelestialSky(viewer: Cesium.Viewer | null) {
   const collectionRef = useRef<NativeWtmlCollection | null>(null);
   const sourceRef = useRef<Cesium.CustomDataSource | null>(null);
   const starCollectionRef = useRef<Cesium.PointPrimitiveCollection | null>(null);
-  const stars = useMemo(seededStars, []);
+  const stars = useMemo(() => seededStars(), []);
 
   const isActive = interactionMode === 'telescope' || spaceInteractionTarget === 'telescope';
 

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import {
   Hexagon,
   ChevronLeft,
@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useStore } from '@/core/state/store';
+import { useLayout } from '@/core/layout/engine/useLayout';
 import { locations } from '@/data/locations';
 import { tours } from '@/data/tours';
 import { pluginManager } from '@/core/plugins/PluginManager';
@@ -59,11 +60,12 @@ import { WWV_ORBITAL_ASSET_BY_CATEGORY } from '@/assets/wwvVisualAssets';
 import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { buildSpatialPanelGeometry } from './panelGeometry';
+import { PanelToggleButton } from '../common/PanelToggleButton';
 
 const COSMOS_BACKGROUND_OPTIONS = [
   { id: 'deep-black', label: 'DEEP BLACK', description: 'A clean, lightless cosmos.' },
   { id: 'sparkling', label: 'SPARKLING', description: 'Dark space with moving star points.' },
-  { id: 'wwt-milkyway', label: 'WWT MILKY WAY', description: 'WorldWide Telescope sky surveys.' },
+  { id: 'wwt-milkyway', label: 'WWT MILKY WAY', description: 'WorldWide Telescope sky surveys.' }
 ] as const;
 
 const WWT_BACKGROUND_OPTIONS = [
@@ -73,7 +75,7 @@ const WWT_BACKGROUND_OPTIONS = [
   { value: 'Hubble Space Telescope Imagery', label: 'Hubble' },
   { value: 'RASS: ROSAT All Sky Survey (X-ray)', label: 'Chandra X-Ray / ROSAT' },
   { value: 'Planck Dust & Gas', label: 'Planck Dust & Gas' },
-  { value: 'VLSS: VLA Low-frequency Sky Survey (Radio)', label: 'Radio VLSS' },
+  { value: 'VLSS: VLA Low-frequency Sky Survey (Radio)', label: 'Radio VLSS' }
 ] as const;
 
 // ============================================================================
@@ -427,8 +429,8 @@ export function LeftPanel() {
   }, [telescopeTarget]);
 
   const earthFrame = useMemo(() => {
-    const parsedTime = currentTime instanceof Date ? currentTime : new Date(currentTime ?? Date.now());
-    const projectionDate = Number.isNaN(parsedTime.getTime()) ? new Date() : parsedTime;
+    const parsedTime = currentTime instanceof Date ? currentTime : new Date(currentTime ?? 0);
+    const projectionDate = Number.isNaN(parsedTime.getTime()) ? new Date(0) : parsedTime;
     const coordinates = resolveTelescopePresetCoordinates(activePreset, projectionDate);
     const projection = projectTelescopeTargetToEarth(coordinates.raHours, coordinates.decDegrees, projectionDate);
 
@@ -453,7 +455,7 @@ export function LeftPanel() {
     });
   }, [satelliteSearchQuery, satelliteCategories, satellites]);
 
-  const handleSelectSatellite = (id: string, altitudeM: number) => {
+  const handleSelectSatellite = useCallback((id: string, altitudeM: number) => {
     setActiveSatelliteId(id);
     useUIStore.getState().addChangeLog('TRACKER', `Locked satellite: ${id.toUpperCase()}`, 'success');
 
@@ -482,14 +484,14 @@ export function LeftPanel() {
         });
       } else {
         viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(0, 0, altitudeM * 2.5 + 200000),
+          destination: Cesium.Cartesian3.fromDegrees(0, 0, 20000000),
           duration: 2.0
         });
       }
     }
 
     setExpanded((prev) => ({ ...prev, satellites: false }));
-  };
+  }, [setActiveLocation, setActiveSatelliteId]);
 
   // Distance computation
   const measureDistance = useMemo(() => {
@@ -612,15 +614,23 @@ export function LeftPanel() {
     useUIStore.getState().addChangeLog('VOYAGER', `Started Guided Tour: ${tour.title}`, 'success');
   };
 
+  const { hidden: hiddenSlots } = useLayout();
+  const railHidden = hiddenSlots.includes('leftRail');
   const isSpatialMode = interactionMode === 'orbital' || interactionMode === 'telescope';
 
   if (!leftPanelOpen) return null;
 
+  const backdropClassName = railHidden
+    ? 'fixed inset-0 bg-black/60 backdrop-blur-sm z-chrome pointer-events-auto'
+    : 'fixed inset-0 bg-black/60 backdrop-blur-sm z-chrome pointer-events-auto min-[760px]:hidden';
+
   return (
-    <aside
-      className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-panel h-auto min-h-0 bg-black/75"
-      style={spatialPanelStyle}
-    >
+    <>
+      <div onClick={() => setLeftPanelOpen(false)} className={backdropClassName} aria-hidden="true" />
+      <aside
+        className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-md border border-white/10 shadow-2xl z-panel h-auto min-h-0"
+        style={spatialPanelStyle}
+      >
       {/* Header section */}
       <div className="flex h-12 items-center justify-between px-4 border-b border-white/10 shrink-0 bg-black/45">
         <div className="flex items-center gap-2">
@@ -634,14 +644,14 @@ export function LeftPanel() {
             {isSpatialMode ? 'SPATIAL HUD' : 'SILVER WOLF'}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => setLeftPanelOpen(false)}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors cursor-pointer"
-          title="Collapse Sidebar"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
+        {/* Shared control: identical box, icon and hit area to the right panel
+            and header toggles. */}
+        <PanelToggleButton
+          side="left"
+          open={leftPanelOpen}
+          onToggle={() => setLeftPanelOpen(false)}
+          label="spatial sidebar"
+        />
       </div>
 
       {/* Main scrolling content area */}
@@ -903,59 +913,62 @@ export function LeftPanel() {
                   </button>
                 </div>
 
-                  {isSpatialMode && (
-                    <div className="space-y-2 border-t border-white/5 pt-3">
-                      <div>
-                        <span className="text-xs font-bold uppercase tracking-wider text-primary block">
-                          Cosmos Background
-                        </span>
-                        <span className="text-[8px] uppercase tracking-wide text-white/35">
-                          Non-Earth space renderer
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1.5 rounded border border-white/5 bg-black/30 p-0.5">
-                        {COSMOS_BACKGROUND_OPTIONS.map((option) => (
-                          <button
-                            key={option.id}
-                            type="button"
-                            title={option.description}
-                            onClick={() => setCosmosBackgroundMode(option.id)}
-                            className={`min-h-11 rounded px-1 py-1 text-[9px] font-bold transition-all cursor-pointer ${
-                              cosmosBackgroundMode === option.id
-                                ? 'bg-primary text-white'
-                                : 'text-white/40 hover:text-white/75'
-                            }`}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="text-[8px] leading-relaxed text-white/35">
-                        {COSMOS_BACKGROUND_OPTIONS.find((option) => option.id === cosmosBackgroundMode)?.description}
-                      </p>
-                      {cosmosBackgroundMode === 'wwt-milkyway' && (
-                        <div className="space-y-1">
-                            <label htmlFor="cosmos-wwt-background-layer" className="text-white/40 block text-[9px] uppercase">WWT Layer</label>
-                          <select
-                            id="cosmos-wwt-background-layer"
-                            name="cosmos-wwt-background-layer"
-                            value={wwtBackgroundLayer}
-                            onChange={(e) => setWwtBackgroundLayer(e.target.value)}
-                            className="min-h-11 w-full rounded border border-white/5 bg-[#111217] px-2 py-1 text-xs text-white focus:border-primary focus:outline-none cursor-pointer"
-                          >
-                            {WWT_BACKGROUND_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
+                {isSpatialMode && (
+                  <div className="space-y-2 border-t border-white/5 pt-3">
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-primary block">
+                        Cosmos Background
+                      </span>
+                      <span className="text-[8px] uppercase tracking-wide text-white/35">Non-Earth space renderer</span>
                     </div>
-                  )}
+                    <div className="grid grid-cols-3 gap-1.5 rounded border border-white/5 bg-black/30 p-0.5">
+                      {COSMOS_BACKGROUND_OPTIONS.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          title={option.description}
+                          onClick={() => setCosmosBackgroundMode(option.id)}
+                          className={`min-h-11 rounded px-1 py-1 text-[9px] font-bold transition-all cursor-pointer ${
+                            cosmosBackgroundMode === option.id
+                              ? 'bg-primary text-white'
+                              : 'text-white/40 hover:text-white/75'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[8px] leading-relaxed text-white/35">
+                      {COSMOS_BACKGROUND_OPTIONS.find((option) => option.id === cosmosBackgroundMode)?.description}
+                    </p>
+                    {cosmosBackgroundMode === 'wwt-milkyway' && (
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="cosmos-wwt-background-layer"
+                          className="text-white/40 block text-[9px] uppercase"
+                        >
+                          WWT Layer
+                        </label>
+                        <select
+                          id="cosmos-wwt-background-layer"
+                          name="cosmos-wwt-background-layer"
+                          value={wwtBackgroundLayer}
+                          onChange={(e) => setWwtBackgroundLayer(e.target.value)}
+                          className="min-h-11 w-full rounded border border-white/5 bg-[#111217] px-2 py-1 text-xs text-white focus:border-primary focus:outline-none cursor-pointer"
+                        >
+                          {WWT_BACKGROUND_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-xs uppercase">Imagery Source</label>
+                  <label htmlFor="imagery-source" className="text-white/40 block text-xs uppercase">Imagery Source</label>
                   <select
                     id="imagery-source"
                     name="imagery-source"
@@ -1055,7 +1068,7 @@ export function LeftPanel() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-white/40 block text-xs uppercase">Active Input Focus</label>
+                      <span className="text-white/40 block text-xs uppercase">Active Input Focus</span>
                       <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded border border-white/5 bg-black/30 text-xs text-center">
                         <button
                           type="button"
@@ -1095,7 +1108,7 @@ export function LeftPanel() {
             >
               <div className="space-y-2 font-mono text-xs">
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-xs uppercase">Point A (Start):</label>
+                  <label htmlFor="measure-point-a" className="text-white/40 block text-xs uppercase">Point A (Start):</label>
                   <select
                     id="measure-point-a"
                     name="measure-point-a"
@@ -1116,7 +1129,7 @@ export function LeftPanel() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-xs uppercase">Point B (End):</label>
+                  <label htmlFor="measure-point-b" className="text-white/40 block text-xs uppercase">Point B (End):</label>
                   <select
                     id="measure-point-b"
                     name="measure-point-b"
@@ -1180,7 +1193,7 @@ export function LeftPanel() {
 
                 {/* Category Toggles (Grid) */}
                 <div className="space-y-1">
-                  <label className="text-white/40 block text-[10px] uppercase tracking-wider">Categories</label>
+                  <span className="text-white/40 block text-[10px] uppercase tracking-wider">Categories</span>
                   <div className="grid grid-cols-4 gap-1 text-[10px]">
                     {Object.entries(SATELLITE_CATEGORIES_METADATA).map(([key, meta]) => {
                       const isToggled = satelliteCategories[key] !== false;
@@ -1428,9 +1441,7 @@ export function LeftPanel() {
                     </div>
                     <div className="col-span-2 border-t border-white/5 pt-1.5 mt-1.5">
                       <span className="text-white/20 block text-xs uppercase">Coordinate Source</span>
-                      <span className="text-white/70 font-bold">
-                        Fixed catalog coordinate
-                      </span>
+                      <span className="text-white/70 font-bold">Fixed catalog coordinate</span>
                     </div>
                   </div>
                 </CollapsibleSection>
@@ -1476,5 +1487,6 @@ export function LeftPanel() {
         </div>
       )}
     </aside>
+    </>
   );
 }

@@ -12,7 +12,7 @@ const STANDARD_PRESET: Personalisation = {
   accentColor: '',
   panelOpacity: 0.88,
   blurIntensity: 10,
-  cornerRadius: 20,
+  cornerRadius: 10,
   shadowIntensity: 0.45,
   borderStyle: 'glow',
   uiDensity: 'compact',
@@ -30,7 +30,7 @@ const MINIMAL_PRESET: Personalisation = {
   accentColor: '',
   panelOpacity: 0.88,
   blurIntensity: 8,
-  cornerRadius: 20,
+  cornerRadius: 10,
   shadowIntensity: 0.35,
   borderStyle: 'subtle',
   uiDensity: 'compact',
@@ -298,8 +298,8 @@ export function PersonalisationSettings() {
               id="personalisation-corner-roundness"
               name="personalisation-corner-roundness"
               type="range"
-              min={0}
-              max={24}
+              min={6}
+              max={14}
               value={personalisation.cornerRadius}
               onChange={(e) => updatePersonalisation({ cornerRadius: parseInt(e.target.value) })}
               className="w-full range-hit-target bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"

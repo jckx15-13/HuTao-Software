@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as Cesium from 'cesium';
 import { useConfig } from '../../context/ConfigContext';
 import { useUIStore } from '../../store/uiStore';
@@ -12,6 +12,13 @@ const isLowEndHardware = () => {
 };
 
 export type CesiumViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+/**
+ * How many times a lost WebGL context may be rebuilt before we surface a hard
+ * error instead of looping. Bounded because a machine with no working GPU would
+ * otherwise rebuild the viewer forever.
+ */
+const MAX_CONTEXT_RECOVERY_ATTEMPTS = 3;
 
 /**
  * Cesium viewer hook with WWV-inspired performance optimizations.
@@ -29,6 +36,13 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { config, isLoading: configLoading } = useConfig();
+
+  // Bumping this rebuilds the viewer from scratch. A lost WebGL context cannot
+  // be revived in place: Cesium halts its render loop permanently on the first
+  // failed frame and restarting the loop just re-throws, because the GL
+  // resources it needs no longer exist. Only a fresh Viewer recovers.
+  const [contextGeneration, setContextGeneration] = useState(0);
+  const recoveryAttemptsRef = useRef(0);
 
   // WebGL availability check derived lazily
   const [webglError] = useState<string | null>(() => {
@@ -57,6 +71,9 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     let canvas: HTMLCanvasElement | null = null;
     let pointerHandler: (() => void) | null = null;
     let requestRender: (() => void) | null = null;
+    let handleContextLost: ((event: Event) => void) | null = null;
+    let handleContextRestored: (() => void) | null = null;
+    let renderErrorHandler: (() => void) | null = null;
 
     if (config.CESIUM_ION_ACCESS_TOKEN) {
       Cesium.Ion.defaultAccessToken = config.CESIUM_ION_ACCESS_TOKEN;
@@ -204,22 +221,64 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     canvas.addEventListener('pointerup', pointerHandler);
     canvas.addEventListener('pointermove', pointerHandler);
     canvas.addEventListener('wheel', pointerHandler, { passive: true } as AddEventListenerOptions);
+
+    /**
+     * Rebuild the viewer after the GL context died, up to a bounded number of
+     * attempts. Cesium's own `_canRender` guard compares `canvas.clientWidth`,
+     * which stays non-zero after a context loss, so it never protects us here —
+     * the loop dies allocating a zero-width framebuffer texture instead.
+     */
+    const scheduleContextRecovery = () => {
+      if (!active) return;
+      if (recoveryAttemptsRef.current >= MAX_CONTEXT_RECOVERY_ATTEMPTS) {
+        setError(
+          `WebGL context was lost and could not be restored after ${MAX_CONTEXT_RECOVERY_ATTEMPTS} attempts.`
+        );
+        setIsLoaded(true);
+        return;
+      }
+      recoveryAttemptsRef.current += 1;
+      setContextGeneration((generation) => generation + 1);
+    };
+
+    // Claiming the event is what obliges the browser to follow up with
+    // `webglcontextrestored`. Without preventDefault the context is gone for
+    // good. This must live beside a real restore path — claiming it in a
+    // diagnostics-only listener is what previously left the globe dead.
+    handleContextLost = (event: Event) => {
+      event.preventDefault();
+    };
+    handleContextRestored = () => {
+      scheduleContextRecovery();
+    };
+    canvas.addEventListener('webglcontextlost', handleContextLost);
+    canvas.addEventListener('webglcontextrestored', handleContextRestored);
+
+    // Cesium swallows a render crash into its own error panel and stops the
+    // loop. This is the only signal available when the loop dies for a reason
+    // that never surfaced as a contextlost event.
+    renderErrorHandler = () => {
+      scheduleContextRecovery();
+    };
+    viewerInstance.scene.renderError.addEventListener(renderErrorHandler);
     const camera = viewerInstance.camera as Cesium.Camera & { changed: Cesium.Event };
     if (camera.changed?.addEventListener) {
       try {
         camera.changed.addEventListener(requestRender);
-      } catch (e) {}
+      } catch (e) {
+        /* ignore */
+      }
     }
 
-      // Start at a global-Earth distance so imagery and orbital tracks are
-      // visible on launch instead of occupying a few pixels against the sky.
+    // Start at a global-Earth distance so imagery and orbital tracks are
+    // visible on launch instead of occupying a few pixels against the sky.
     viewerInstance.camera.setView({
-        destination: Cesium.Cartesian3.fromDegrees(0, 20, 20_000_000),
-        orientation: {
-          heading: 0,
-          pitch: Cesium.Math.toRadians(-90),
-          roll: 0,
-        },
+      destination: Cesium.Cartesian3.fromDegrees(0, 20, 20_000_000),
+      orientation: {
+        heading: 0,
+        pitch: Cesium.Math.toRadians(-90),
+        roll: 0
+      }
     });
     if (active && !viewerInstance.isDestroyed()) {
       setViewer(viewerInstance);
@@ -237,32 +296,51 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
           canvas.removeEventListener('pointermove', pointerHandler);
           canvas.removeEventListener('wheel', pointerHandler as EventListenerOrEventListenerObject);
         }
+        if (canvas && handleContextLost) {
+          canvas.removeEventListener('webglcontextlost', handleContextLost);
+        }
+        if (canvas && handleContextRestored) {
+          canvas.removeEventListener('webglcontextrestored', handleContextRestored);
+        }
+        if (renderErrorHandler && !viewerInstance.isDestroyed()) {
+          viewerInstance.scene.renderError.removeEventListener(renderErrorHandler);
+        }
         const camera = viewerInstance?.camera as Cesium.Camera & { changed: Cesium.Event };
         if (camera?.changed?.removeEventListener && requestRender) {
           try {
             camera.changed.removeEventListener(requestRender);
-          } catch (e) {}
+          } catch (e) {
+            /* ignore */
+          }
         }
-      } catch (e) {}
+      } catch (e) {
+        /* ignore */
+      }
 
       if (!viewerInstance.isDestroyed()) {
-        viewerInstance.destroy();
-        (window as any).cesiumViewer = null;
+        try {
+          viewerInstance.destroy();
+        } catch (e) {
+          // Destroying a viewer whose GL context was lost can throw while
+          // Cesium releases resources that no longer exist. It is unusable
+          // either way, so drop the reference and let the rebuild proceed.
+        }
       }
+      (window as any).cesiumViewer = null;
       setViewer(null);
       setIsLoaded(false);
     };
-  }, [containerRef, config, configLoading, webglError]);
+  }, [containerRef, config, configLoading, webglError, contextGeneration]);
 
   const status: CesiumViewerStatus = webglError
     ? 'error'
     : error
-    ? 'error'
-    : isLoaded && viewer
-    ? 'ready'
-    : containerRef.current && !configLoading
-    ? 'loading'
-    : 'idle';
+      ? 'error'
+      : isLoaded && viewer
+        ? 'ready'
+        : !configLoading
+          ? 'loading'
+          : 'idle';
 
   return {
     viewer,

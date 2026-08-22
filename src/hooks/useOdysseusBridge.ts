@@ -106,9 +106,22 @@ export function useOdysseusBridge() {
   }, [status.modelName]);
 
   useEffect(() => {
-    checkStatus();
-    const timer = setInterval(checkStatus, 5000);
-    return () => clearInterval(timer);
+    let active = true;
+    const poll = async () => {
+      if (!active) return;
+      await checkStatus();
+    };
+    const initTimer = setTimeout(() => {
+      void poll();
+    }, 0);
+    const timer = setInterval(() => {
+      void poll();
+    }, 5000);
+    return () => {
+      active = false;
+      clearTimeout(initTimer);
+      clearInterval(timer);
+    };
   }, [checkStatus]);
 
   return {

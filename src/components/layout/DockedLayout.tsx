@@ -15,7 +15,7 @@ const RightPanel = React.lazy(() => import('../panels/RightPanel').then((m) => (
 import { WorkspaceHeader } from './WorkspaceHeader';
 import { useUIStore } from '../../store/uiStore'; // Central state hook providing toggle flags for left/right columns.
 import { useViewportSize } from '../../hooks/useViewportSize';
-import { buildWorkspaceRailPx } from '../panels/panelGeometry';
+import { useLayout } from '../../core/layout/engine/useLayout';
 
 export function DockedLayout() {
   // Read open status of panels directly from the Zustand global store.
@@ -28,18 +28,26 @@ export function DockedLayout() {
   const viewportSize = useViewportSize();
   const collapsedForNarrowViewportRef = React.useRef(false);
 
-  const leftRailWidth = `${buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'left')}px`;
-  const rightRailWidth = rightPanelOpen
-    ? `${buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'right')}px`
-    : '0px';
+  // Rail widths come from the layout engine, which is the single authority on
+  // chrome geometry. It differs from the raw buildWorkspaceRailPx call this
+  // replaced in one behaviour that matters: when granting both rails would
+  // starve the centre stage below MIN_STAGE_WIDTH_PX (measured at 820x1180, a
+  // 220px stage), the engine drops a rail entirely instead of shrinking on —
+  // and `hidden` names which one, so the panel can present as a sheet.
+  const { slots: layoutSlots } = useLayout();
+  const leftRailWidth = `${layoutSlots.leftRail?.width ?? 0}px`;
+  const rightRailWidth = `${layoutSlots.rightRail?.width ?? 0}px`;
 
   React.useEffect(() => {
     const isNarrowViewport = viewportSize.width < 760;
+    const isTabletViewport = viewportSize.width >= 760 && viewportSize.width < 1024;
 
     if (isNarrowViewport && !collapsedForNarrowViewportRef.current) {
       if (leftPanelOpen) setLeftPanelOpen(false);
       if (rightPanelOpen) setRightPanelOpen(false);
       collapsedForNarrowViewportRef.current = true;
+    } else if (isTabletViewport && leftPanelOpen && rightPanelOpen) {
+      setLeftPanelOpen(false);
     }
 
     if (!isNarrowViewport) {
@@ -63,8 +71,26 @@ export function DockedLayout() {
 
       {/* COLUMN 2: Main center area. Sets flex-1 to occupy all remaining width.
           Uses pointer-events-none so mouse interaction drops down to Cesium 3D canvas layer. */}
+      {/* Both side panels are position:fixed, so they leave this flex row and
+          <main> measures the FULL viewport width — it does not shrink around
+          them. buildWorkspaceRailPx (panelGeometry.ts:52) already computes the
+          width each docked panel occupies, published as the two CSS vars above,
+          but nothing consumed them — so the centre column rendered underneath
+          the sidebars. Padding by those same vars is what keeps the two apart;
+          deriving it from one source rather than re-clamping in CSS is exactly
+          what panelGeometry.ts:41-46 documents. */}
+      {/* min-w-0 is load-bearing, not cosmetic: a flex item defaults to
+          min-width:auto, so <main> cannot shrink below its widest child. Its
+          children are full-bleed `inset-0` layers, so once the rail padding
+          below is applied the box is forced to viewport+padding (measured 1484px
+          at a 1366px viewport) and the right content edge lands underneath the
+          right panel — the very overlap the padding exists to prevent. */}
       <main
-        className="flex-1 flex flex-col relative z-content bg-transparent pointer-events-none"
+        className="flex-1 min-w-0 flex flex-col relative z-content bg-transparent pointer-events-none"
+        style={{
+          paddingLeft: 'var(--workspace-left-rail, 0px)',
+          paddingRight: 'var(--workspace-right-rail, 0px)'
+        }}
       >
         <WorkspaceHeader />
         <div className="w-full h-full relative pointer-events-none min-h-0 flex-1">

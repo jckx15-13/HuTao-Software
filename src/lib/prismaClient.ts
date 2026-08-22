@@ -3,7 +3,7 @@ import * as jsonStorage from './jsonStorage';
 // Defensive import for PrismaClient to ensure build succeeds even if @prisma/client is not pre-generated
 let PrismaClientClass: any;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const prismaModule = require('@prisma/client');
   PrismaClientClass = prismaModule.PrismaClient;
 } catch {
@@ -15,7 +15,7 @@ export let prisma: any = null;
 if (PrismaClientClass) {
   try {
     prisma = new PrismaClientClass({
-      log: ['error', 'warn'],
+      log: ['error', 'warn']
     });
   } catch {
     prisma = null;

@@ -64,7 +64,7 @@ import { tours, type Tour, type TourStep } from '../../data/tours';
 import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { useDeviceProfile } from '@/hooks/useDeviceProfile';
-import { buildWorkspaceRailPx } from '../panels/panelGeometry';
+import { useLayout } from '../../core/layout/engine/useLayout';
 import {
   LANDMASS_POINTS_3D,
   MERIDIANS_3D,
@@ -157,11 +157,16 @@ export default function GoogleEarthRemix() {
   const clickStartPosRef = useRef({ x: 0, y: 0 });
   const hoverLocationRef = useRef<LocationData | null>(null);
 
-  const chromeTier = useMemo(() => {
-    const leftRail = buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'left', deviceProfile);
-    const rightRail = buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'right', deviceProfile);
-    return resolveChromeTierForWidth(Math.max(1, viewportSize.width - leftRail - rightRail));
-  }, [deviceProfile, leftPanelOpen, rightPanelOpen, viewportSize]);
+  // centreStage.width IS "viewport minus whatever rails were actually granted",
+  // so it already accounts for a rail the engine dropped to protect the stage.
+  // Re-deriving it from buildWorkspaceRailPx here would disagree with
+  // DockedLayout the moment that happens — the second source of layout truth
+  // this engine exists to eliminate.
+  const { slots: layoutSlots } = useLayout();
+  const chromeTier = useMemo(
+    () => resolveChromeTierForWidth(Math.max(1, layoutSlots.centreStage?.width ?? viewportSize.width)),
+    [layoutSlots, viewportSize.width]
+  );
 
   useEffect(() => {
     let active = true;
@@ -177,12 +182,15 @@ export default function GoogleEarthRemix() {
       setIsChromeTransitioning(false);
     };
 
-    setIsChromeTransitioning(true);
+    const raf = requestAnimationFrame(() => {
+      if (active) setIsChromeTransitioning(true);
+    });
     window.addEventListener('transitionend', requestCesiumResize, { once: true });
     fallbackTimer = window.setTimeout(requestCesiumResize, 320);
 
     return () => {
       active = false;
+      cancelAnimationFrame(raf);
       window.removeEventListener('transitionend', requestCesiumResize);
       if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
     };
@@ -605,11 +613,18 @@ export default function GoogleEarthRemix() {
   }, [hasCesium, zoom, measureStart, measureEnd, showBorders, activeLocation]);
 
   useEffect(() => {
+    let active = true;
     if (forceFallback) {
-      setHasCesium(false);
-      return;
+      const raf = requestAnimationFrame(() => {
+        if (active) setHasCesium(false);
+      });
+      return () => {
+        active = false;
+        cancelAnimationFrame(raf);
+      };
     }
     const checkCesium = () => {
+      if (!active) return false;
       const viewer = (window as any).cesiumViewer;
       if (viewer && !viewer.isDestroyed?.()) {
         setHasCesium(true);
@@ -618,13 +633,19 @@ export default function GoogleEarthRemix() {
       setHasCesium(false);
       return false;
     };
-    if (checkCesium()) return;
+    const timer = setTimeout(() => {
+      if (checkCesium()) return;
+    }, 0);
     const interval = setInterval(() => {
       if (checkCesium()) {
         clearInterval(interval);
       }
     }, 150);
-    return () => clearInterval(interval);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [forceFallback]);
 
   // Sync Borders and Labels visibility to Cesium

@@ -1,5 +1,6 @@
 import { Cpu, Wifi, Battery, Menu, Bell, User, PanelRight, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
+import { PanelToggleButton } from '../common/PanelToggleButton';
 
 export function WorkspaceHeader() {
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
@@ -122,15 +123,10 @@ export function WorkspaceHeader() {
           <span className="hidden text-[10px] font-mono uppercase tracking-wider md:inline">Operator</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setTopBarOpen(false)}
-          className="group inline-flex min-h-10 min-w-10 items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/10 hover:text-white sm:min-h-11 sm:min-w-11 cursor-pointer"
-          aria-label="Hide top bar (Alt+T)"
-          title="Hide top bar (Alt+T)"
-        >
-          <ChevronDown className="h-4 w-4 rotate-180 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:text-primary" />
-        </button>
+        {/* Shared control: identical box, icon and hit area to the two side
+            panel toggles. Previously an h-4 chevron rotated 180deg inside a
+            rounded-md min-h-10 box, matching neither panel. */}
+        <PanelToggleButton side="top" open={topBarOpen} onToggle={() => setTopBarOpen(false)} label="top bar (Alt+T)" />
       </div>
     </header>
   );

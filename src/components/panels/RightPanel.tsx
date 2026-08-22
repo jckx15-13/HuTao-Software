@@ -33,6 +33,8 @@ import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
 import { propagateCircularOrbit, calculateOrbitalSpeed, calculateOrbitalPeriod } from '../../lib/simulation';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { buildSpatialPanelGeometry } from './panelGeometry';
+import { useLayout } from '@/core/layout/engine/useLayout';
+import { PanelToggleButton } from '../common/PanelToggleButton';
 
 /**
  * Tab strip contents. Data-driven so the row has exactly one markup path — the
@@ -81,6 +83,8 @@ export function RightPanel() {
   const [historyIndex, setHistoryIndex] = useState(0);
   const isFallbackMode = typeof window !== 'undefined' && window.location.search.includes('fallback');
   const viewportSize = useViewportSize();
+  const { hidden: hiddenSlots } = useLayout();
+  const railHidden = hiddenSlots.includes('rightRail');
   const spatialPanelStyle = useMemo(
     () =>
       buildSpatialPanelGeometry({
@@ -103,7 +107,9 @@ export function RightPanel() {
         }
 
         const nextHistory =
-          previousHistory[previousHistory.length - 1] === browserUrl ? previousHistory : [...previousHistory, browserUrl];
+          previousHistory[previousHistory.length - 1] === browserUrl
+            ? previousHistory
+            : [...previousHistory, browserUrl];
         setHistoryIndex(nextHistory.length - 1);
         return nextHistory;
       });
@@ -182,15 +188,20 @@ export function RightPanel() {
 
   const isSpatialMode = interactionMode === 'orbital' || interactionMode === 'telescope';
 
+  // When the engine drops this panel's rail to protect the centre stage, the
+  // panel no longer has reserved space — it is hanging over the workspace. Show
+  // the dismiss backdrop in that case too, so it presents as a deliberate
+  // curtain over the globe instead of silently overlapping it. Without this the
+  // stage-protection rule trades a cramped layout for an unsignalled collision.
+  const backdropClassName = railHidden
+    ? 'fixed inset-0 bg-black/60 backdrop-blur-sm z-chrome pointer-events-auto'
+    : 'fixed inset-0 bg-black/60 backdrop-blur-sm z-chrome pointer-events-auto min-[760px]:hidden';
+
   return (
     <>
-      <div
-        onClick={() => setRightPanelOpen(false)}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-backdrop pointer-events-auto min-[760px]:hidden"
-        aria-hidden="true"
-      />
+      <div onClick={() => setRightPanelOpen(false)} className={backdropClassName} aria-hidden="true" />
       <aside
-        className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-xl border border-white/10 shadow-2xl z-panel h-auto bg-black/75"
+        className="glass-panel-strong flex flex-col select-none pointer-events-auto transition-all duration-300 fixed rounded-md border border-white/10 shadow-2xl z-panel h-auto"
         style={spatialPanelStyle}
       >
         {/* Mobile/Tablet Touch Drag Handle */}
@@ -217,435 +228,434 @@ export function RightPanel() {
               </button>
             )}
 
-          <div className="relative min-w-0 flex-1">
-            <div
-              ref={attachScroller}
-              role="group"
-              aria-label="Right panel sections"
-              className="flex min-w-0 items-center gap-1.5 overflow-x-auto overscroll-x-contain pr-1 font-mono text-[10px] scroller"
-            >
-              {RIGHT_PANEL_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  ref={(node) => {
-                    tabButtonRefs.current[tab.id] = node;
-                  }}
-                  type="button"
-                  onClick={() => setRightPanelTab(tab.id)}
-                  aria-pressed={rightPanelTab === tab.id}
-                  className={`inline-flex min-h-11 shrink-0 items-center rounded px-2 transition-colors ${
-                    rightPanelTab === tab.id
-                      ? 'text-primary bg-primary/10 font-bold'
-                      : 'text-white/40 hover:text-white/70'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            <div className="relative min-w-0 flex-1">
+              <div
+                ref={attachScroller}
+                role="group"
+                aria-label="Right panel sections"
+                className="flex min-w-0 items-center gap-1.5 overflow-x-auto overscroll-x-contain pr-1 font-mono text-[10px] scroller"
+              >
+                {RIGHT_PANEL_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    ref={(node) => {
+                      tabButtonRefs.current[tab.id] = node;
+                    }}
+                    type="button"
+                    onClick={() => setRightPanelTab(tab.id)}
+                    aria-pressed={rightPanelTab === tab.id}
+                    className={`inline-flex min-h-11 shrink-0 items-center rounded px-2 transition-colors ${
+                      rightPanelTab === tab.id
+                        ? 'text-primary bg-primary/10 font-bold'
+                        : 'text-white/40 hover:text-white/70'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
-            {/* Edge fades. Absolutely positioned AFTER the scroller in DOM order,
+              {/* Edge fades. Absolutely positioned AFTER the scroller in DOM order,
                 so they paint over it without needing a z-index of their own, and
                 pointer-events-none so they never intercept a tab click. */}
-            <div
-              aria-hidden="true"
-              className={`pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-black/85 via-black/40 to-transparent transition-opacity duration-200 ${
-                canScrollStart ? 'opacity-100' : 'opacity-0'
-              }`}
-            />
-            <div
-              aria-hidden="true"
-              className={`pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-black/85 via-black/40 to-transparent transition-opacity duration-200 ${
-                canScrollEnd ? 'opacity-100' : 'opacity-0'
-              }`}
-            />
+              <div
+                aria-hidden="true"
+                className={`pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-black/85 via-black/40 to-transparent transition-opacity duration-200 ${
+                  canScrollStart ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+              <div
+                aria-hidden="true"
+                className={`pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-black/85 via-black/40 to-transparent transition-opacity duration-200 ${
+                  canScrollEnd ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+            </div>
+
+            {hasOverflow && (
+              <button
+                type="button"
+                onClick={() => scrollByPage(1)}
+                disabled={!canScrollEnd}
+                className="inline-flex min-h-11 w-8 min-w-[32px] shrink-0 items-center justify-center rounded text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-20"
+                aria-label="Scroll section tabs right"
+                title="Scroll tabs right"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
-          {hasOverflow && (
-            <button
-              type="button"
-              onClick={() => scrollByPage(1)}
-              disabled={!canScrollEnd}
-              className="inline-flex min-h-11 w-8 min-w-[32px] shrink-0 items-center justify-center rounded text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-20"
-              aria-label="Scroll section tabs right"
-              title="Scroll tabs right"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          )}
+          {/* Separates the tab-paging chevrons from the panel-collapse chevron, which
+            would otherwise read as a third scroll arrow. */}
+          <span aria-hidden="true" className="h-6 w-px shrink-0 bg-white/10" />
+
+          {/* Shared control: identical box, icon and hit area to the left panel
+              and header toggles. PanelToggleButton carries shrink-0 — without it
+              flex compresses the button while the adjacent tab scroller keeps
+              its width, and the last tab rendered over it (measured 50% overlap
+              at 1366px). */}
+          <PanelToggleButton
+            side="right"
+            open={rightPanelOpen}
+            onToggle={() => setRightPanelOpen(false)}
+            label="details panel"
+          />
         </div>
 
-        {/* Separates the tab-paging chevrons from the panel-collapse chevron, which
-            would otherwise read as a third scroll arrow. */}
-        <span aria-hidden="true" className="h-6 w-px shrink-0 bg-white/10" />
-
-        <button
-          type="button"
-          onClick={() => setRightPanelOpen(false)}
-          /* shrink-0: without it flex compresses this button while the adjacent
-             tab scroller keeps its width, and the last tab (Telemetry) renders
-             over it — measured 50% overlap at 1366px. */
-          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors"
-          title="Collapse Panel"
-          aria-label="Collapse right panel"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* Main Tab Contents */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scroller">
-        {/* Tab 1: Context */}
-        {rightPanelTab === 'context' && (
-          <div className="space-y-4">
-            {/* If ISS Live Feed is open */}
-            {issFeedOpen && (
-              <div className="glass-panel p-3 border border-cyan-500/25 bg-cyan-950/10 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-cyan-400 font-mono text-[9px] font-bold uppercase tracking-wider">
-                    <Radio className="h-3.5 w-3.5 animate-pulse" />
-                    <span>{isFallbackMode ? 'ISS CAMERA UNAVAILABLE' : 'ISS CAMERA FEED'}</span>
+        {/* Main Tab Contents */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 scroller">
+          {/* Tab 1: Context */}
+          {rightPanelTab === 'context' && (
+            <div className="space-y-4">
+              {/* If ISS Live Feed is open */}
+              {issFeedOpen && (
+                <div className="glass-panel p-3 border border-cyan-500/25 bg-cyan-950/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-cyan-400 font-mono text-[9px] font-bold uppercase tracking-wider">
+                      <Radio className="h-3.5 w-3.5 animate-pulse" />
+                      <span>{isFallbackMode ? 'ISS CAMERA UNAVAILABLE' : 'ISS CAMERA FEED'}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIssFeedOpen(false)}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded hover:bg-white/5 text-white/30 hover:text-white/70"
+                      aria-label="Close ISS camera panel"
+                      title="Close ISS camera panel"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIssFeedOpen(false)}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded hover:bg-white/5 text-white/30 hover:text-white/70"
-                    aria-label="Close ISS camera panel"
-                    title="Close ISS camera panel"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
 
-                {/* Live stream video frame */}
-                <div className="relative aspect-video w-full rounded overflow-hidden bg-black border border-white/5 flex items-center justify-center">
-                  {isFallbackMode ? (
-                    <div className="text-cyan-300 font-mono text-[9px] text-center p-4 leading-relaxed">
-                      Camera stream disabled in fallback mode. Satellite telemetry may still update below.
+                  {/* Live stream video frame */}
+                  <div className="relative aspect-video w-full rounded overflow-hidden bg-black border border-white/5 flex items-center justify-center">
+                    {isFallbackMode ? (
+                      <div className="text-cyan-300 font-mono text-[9px] text-center p-4 leading-relaxed">
+                        Camera stream disabled in fallback mode. Satellite telemetry may still update below.
+                      </div>
+                    ) : (
+                      <iframe
+                        src="https://www.ustream.tv/embed/17074538?html5=1&autoplay=1&mute=1"
+                        title="ISS Live Camera Feed"
+                        sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        className="absolute inset-0 h-full w-full border-none"
+                      />
+                    )}
+                  </div>
+
+                  {/* Telemetry info */}
+                  {issTelemetry ? (
+                    <div className="grid grid-cols-2 gap-2 font-mono text-[9px] text-white/70 bg-black/25 p-2 rounded border border-white/5">
+                      <div>
+                        <span className="text-white/30 block uppercase">Latitude</span>
+                        <span className="text-cyan-400">{issTelemetry.latitude.toFixed(4)}°</span>
+                      </div>
+                      <div>
+                        <span className="text-white/30 block uppercase">Longitude</span>
+                        <span className="text-cyan-400">{issTelemetry.longitude.toFixed(4)}°</span>
+                      </div>
+                      <div>
+                        <span className="text-white/30 block uppercase">Altitude</span>
+                        <span>{Math.round(issTelemetry.altitude)} km</span>
+                      </div>
+                      <div>
+                        <span className="text-white/30 block uppercase">Velocity</span>
+                        <span>{Math.round(issTelemetry.velocity)} km/h</span>
+                      </div>
                     </div>
                   ) : (
-                    <iframe
-                      src="https://www.ustream.tv/embed/17074538?html5=1&autoplay=1&mute=1"
-                      title="ISS Live Camera Feed"
-                      sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"
-                      referrerPolicy="strict-origin-when-cross-origin"
-                      allow="autoplay; fullscreen; picture-in-picture"
-                      allowFullScreen
-                      className="absolute inset-0 h-full w-full border-none"
-                    />
-                  )}
-                </div>
-
-                {/* Telemetry info */}
-                {issTelemetry ? (
-                  <div className="grid grid-cols-2 gap-2 font-mono text-[9px] text-white/70 bg-black/25 p-2 rounded border border-white/5">
-                    <div>
-                      <span className="text-white/30 block uppercase">Latitude</span>
-                      <span className="text-cyan-400">{issTelemetry.latitude.toFixed(4)}°</span>
-                    </div>
-                    <div>
-                      <span className="text-white/30 block uppercase">Longitude</span>
-                      <span className="text-cyan-400">{issTelemetry.longitude.toFixed(4)}°</span>
-                    </div>
-                    <div>
-                      <span className="text-white/30 block uppercase">Altitude</span>
-                      <span>{Math.round(issTelemetry.altitude)} km</span>
-                    </div>
-                    <div>
-                      <span className="text-white/30 block uppercase">Velocity</span>
-                      <span>{Math.round(issTelemetry.velocity)} km/h</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="font-mono text-[8px] text-white/30 italic text-center">
-                    Connecting telemetry link...
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Landmark Details */}
-            {activeSatelliteId ? (
-              <SatelliteTelemetryCard satId={activeSatelliteId} />
-            ) : activeLocation ? (
-              <div className="space-y-3">
-                <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-white/5 shadow-md">
-                  <img src={activeLocation.image} alt={activeLocation.name} className="h-full w-full object-cover" />
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                    <span className="text-[8px] bg-primary/80 text-white px-2 py-0.5 rounded uppercase font-bold tracking-wider font-mono">
-                      {activeLocation.category}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <h3 className="font-bold text-sm tracking-wide text-white">{activeLocation.name}</h3>
-                  <div className="flex items-center gap-1 text-[10px] text-white/40 font-mono">
-                    <MapPin className="h-3 w-3 text-primary" />
-                    <span>{activeLocation.country}</span>
-                  </div>
-                </div>
-
-                <p className="text-xs text-text-muted leading-relaxed">{activeLocation.description}</p>
-
-                <div className="border-t border-white/5 pt-3 space-y-2 font-mono text-[9px]">
-                  <div className="flex items-center justify-between text-white/50">
-                    <span className="uppercase">Coordinates</span>
-                    <span>
-                      {activeLocation.lat.toFixed(4)}°N, {activeLocation.lng.toFixed(4)}°E
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-white/50">
-                    <span className="uppercase">Elevation</span>
-                    <span>{activeLocation.elevation}</span>
-                  </div>
-                </div>
-
-                {/* Facts card list */}
-                {activeLocation.facts && activeLocation.facts.length > 0 && (
-                  <div className="space-y-2 pt-1">
-                    <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-primary block">
-                      Landmark Codex
-                    </span>
-                    {activeLocation.facts.map((fact, i) => (
-                      <div key={i} className="glass-panel p-2.5 text-[10px] text-white/70 leading-relaxed">
-                        {fact}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : selectedEntity?.pluginId === 'wwv-aviation' ? (
-              <AviationTelemetryCard entity={selectedEntity} />
-            ) : selectedEntity?.pluginId === 'wwv-public-cameras' ? (
-              <PublicCameraTelemetryCard entity={selectedEntity} />
-            ) : selectedEntity?.pluginId === 'wwv-military-bases' ? (
-              <MilitaryBaseTelemetryCard entity={selectedEntity} />
-            ) : selectedEntity ? (
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <h3 className="font-bold text-sm tracking-wide text-white">
-                    {selectedEntity.label || selectedEntity.id}
-                  </h3>
-                  <div className="flex items-center gap-1.5 text-[9px] font-mono text-primary font-bold uppercase tracking-wider">
-                    <span>
-                      {pluginManager.getPlugin(selectedEntity.pluginId)?.plugin.name || selectedEntity.pluginId}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="border-t border-white/5 pt-3 space-y-2 font-mono text-[9px]">
-                  <div className="flex items-center justify-between text-white/50">
-                    <span className="uppercase">Latitude</span>
-                    <span className="text-cyan-400">{selectedEntity.latitude.toFixed(5)}°</span>
-                  </div>
-                  <div className="flex items-center justify-between text-white/50">
-                    <span className="uppercase">Longitude</span>
-                    <span className="text-cyan-400">{selectedEntity.longitude.toFixed(5)}°</span>
-                  </div>
-                  {selectedEntity.altitude !== undefined && (
-                    <div className="flex items-center justify-between text-white/50">
-                      <span className="uppercase">Altitude</span>
-                      <span>{(selectedEntity.altitude / 1000).toFixed(1)} km</span>
+                    <div className="font-mono text-[8px] text-white/30 italic text-center">
+                      Connecting telemetry link...
                     </div>
                   )}
-                  {selectedEntity.timestamp && (
-                    <div className="flex items-center justify-between text-white/50">
-                      <span className="uppercase">
-                        {selectedEntity.properties?.staticDataset ? 'Dataset Time' : 'Telemetry Time'}
+                </div>
+              )}
+
+              {/* Landmark Details */}
+              {activeSatelliteId ? (
+                <SatelliteTelemetryCard satId={activeSatelliteId} />
+              ) : activeLocation ? (
+                <div className="space-y-3">
+                  <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-white/5 shadow-md">
+                    <img src={activeLocation.image} alt={activeLocation.name} className="h-full w-full object-cover" />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                      <span className="text-[8px] bg-primary/80 text-white px-2 py-0.5 rounded uppercase font-bold tracking-wider font-mono">
+                        {activeLocation.category}
                       </span>
-                      <span>{new Date(selectedEntity.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-sm tracking-wide text-white">{activeLocation.name}</h3>
+                    <div className="flex items-center gap-1 text-[10px] text-white/40 font-mono">
+                      <MapPin className="h-3 w-3 text-primary" />
+                      <span>{activeLocation.country}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-text-muted leading-relaxed">{activeLocation.description}</p>
+
+                  <div className="border-t border-white/5 pt-3 space-y-2 font-mono text-[9px]">
+                    <div className="flex items-center justify-between text-white/50">
+                      <span className="uppercase">Coordinates</span>
+                      <span>
+                        {activeLocation.lat.toFixed(4)}°N, {activeLocation.lng.toFixed(4)}°E
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-white/50">
+                      <span className="uppercase">Elevation</span>
+                      <span>{activeLocation.elevation}</span>
+                    </div>
+                  </div>
+
+                  {/* Facts card list */}
+                  {activeLocation.facts && activeLocation.facts.length > 0 && (
+                    <div className="space-y-2 pt-1">
+                      <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-primary block">
+                        Landmark Codex
+                      </span>
+                      {activeLocation.facts.map((fact, i) => (
+                        <div key={i} className="glass-panel p-2.5 text-[10px] text-white/70 leading-relaxed">
+                          {fact}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
-
-                {selectedEntity.properties && Object.keys(selectedEntity.properties).length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-white/5">
-                    <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-primary block">
-                      Telemetry Details
-                    </span>
-                    <div className="space-y-1.5 font-mono text-[9px] scroller max-h-[300px] overflow-y-auto pr-1">
-                      {Object.entries(selectedEntity.properties)
-                        .filter(
-                          ([k]) =>
-                            k !== 'rawEntity' &&
-                            selectedEntity.properties[k] !== null &&
-                            selectedEntity.properties[k] !== undefined
-                        )
-                        .map(([key, value]) => {
-                          const displayLabel = key.replace(/_/g, ' ').toUpperCase();
-                          let displayValue = '';
-                          if (typeof value === 'boolean') {
-                            displayValue = value ? 'TRUE' : 'FALSE';
-                          } else if (typeof value === 'object') {
-                            displayValue = JSON.stringify(value);
-                          } else {
-                            displayValue = String(value);
-                          }
-
-                          return (
-                            <div
-                              key={key}
-                              className="glass-panel p-2 flex flex-col gap-0.5 border border-white/5 bg-black/15 rounded"
-                            >
-                              <span className="text-white/30 text-[8px]">{displayLabel}</span>
-                              <span className="text-white/80 font-bold break-all">{displayValue}</span>
-                            </div>
-                          );
-                        })}
+              ) : selectedEntity?.pluginId === 'wwv-aviation' ? (
+                <AviationTelemetryCard entity={selectedEntity} />
+              ) : selectedEntity?.pluginId === 'wwv-public-cameras' ? (
+                <PublicCameraTelemetryCard entity={selectedEntity} />
+              ) : selectedEntity?.pluginId === 'wwv-military-bases' ? (
+                <MilitaryBaseTelemetryCard entity={selectedEntity} />
+              ) : selectedEntity ? (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-sm tracking-wide text-white">
+                      {selectedEntity.label || selectedEntity.id}
+                    </h3>
+                    <div className="flex items-center gap-1.5 text-[9px] font-mono text-primary font-bold uppercase tracking-wider">
+                      <span>
+                        {pluginManager.getPlugin(selectedEntity.pluginId)?.plugin.name || selectedEntity.pluginId}
+                      </span>
                     </div>
                   </div>
-                )}
-              </div>
-            ) : (
-              !issFeedOpen && (
-                <div className="flex flex-col items-center justify-center py-20 text-center text-white/20 font-mono space-y-2">
-                  <Info className="h-8 w-8 text-white/10" />
-                  <span className="text-[10px] uppercase tracking-wider">No Subject Targetted</span>
-                  <span className="text-[8px] max-w-[200px] leading-relaxed">
-                    Select a marker on the globe or search locations to pull coordinates telemetry.
-                  </span>
-                </div>
-              )
-            )}
-          </div>
-        )}
 
-        {/* Tab 2: Sandboxed Agent Browser */}
-        {rightPanelTab === 'browser' && (
-          <div className="space-y-3 flex flex-col h-full select-text">
-            {/* Browser Control Bar */}
-            <div className="flex items-center gap-1.5 bg-black/40 p-1.5 rounded-lg border border-white/5 font-mono text-[9px] pointer-events-auto">
-              <button
-                type="button"
-                onClick={handleBack}
-                disabled={historyIndex <= 0}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none text-white/70 transition-colors"
-                aria-label="Go back in embedded browser"
-                title="Back"
-              >
-                <ArrowLeft size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={handleRefresh}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
-                aria-label="Refresh embedded browser frame"
-                title="Refresh Frame"
-              >
-                <RotateCw size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={handleHome}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
-                aria-label="Open embedded browser home page"
-                title="Home Page"
-              >
-                <Globe size={12} />
-              </button>
-              <div className="flex min-h-11 flex-1 items-center gap-1 rounded border border-white/5 bg-black/40 px-2 py-1">
-                <input
-                  type="text"
-                  value={addressInput}
-                  onChange={(e) => setAddressInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleNavigate(addressInput);
-                    }
-                  }}
-                  className="min-h-11 w-full bg-transparent text-[8px] text-white/80 focus:outline-none placeholder:text-white/20 select-text"
-                  placeholder="URL or search query..."
-                  aria-label="Embedded browser URL or search query"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const opened = window.open(browserUrl, '_blank', 'noopener,noreferrer');
-                  if (opened) opened.opener = null;
-                }}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
-                aria-label="Open embedded browser URL in new window"
-                title="Open in new window"
-              >
-                <ExtLink size={12} />
-              </button>
-            </div>
+                  <div className="border-t border-white/5 pt-3 space-y-2 font-mono text-[9px]">
+                    <div className="flex items-center justify-between text-white/50">
+                      <span className="uppercase">Latitude</span>
+                      <span className="text-cyan-400">{selectedEntity.latitude.toFixed(5)}°</span>
+                    </div>
+                    <div className="flex items-center justify-between text-white/50">
+                      <span className="uppercase">Longitude</span>
+                      <span className="text-cyan-400">{selectedEntity.longitude.toFixed(5)}°</span>
+                    </div>
+                    {selectedEntity.altitude !== undefined && (
+                      <div className="flex items-center justify-between text-white/50">
+                        <span className="uppercase">Altitude</span>
+                        <span>{(selectedEntity.altitude / 1000).toFixed(1)} km</span>
+                      </div>
+                    )}
+                    {selectedEntity.timestamp && (
+                      <div className="flex items-center justify-between text-white/50">
+                        <span className="uppercase">
+                          {selectedEntity.properties?.staticDataset ? 'Dataset Time' : 'Telemetry Time'}
+                        </span>
+                        <span>{new Date(selectedEntity.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                    )}
+                  </div>
 
-            {/* Sandboxed iframe viewport */}
-            <div className="relative flex-1 flex h-[min(400px,45vh)] min-h-[220px] w-full flex-col overflow-hidden rounded-xl border border-white/5 bg-black shadow-lg pointer-events-auto flex items-center justify-center">
-              {window.location.search.includes('fallback') ? (
-                <div className="text-cyan-400 font-mono text-[9px] text-center p-4">
-                  [BROWSER VIEWPORT MOCKED FOR: {browserUrl}]
+                  {selectedEntity.properties && Object.keys(selectedEntity.properties).length > 0 && (
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                      <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-primary block">
+                        Telemetry Details
+                      </span>
+                      <div className="space-y-1.5 font-mono text-[9px] scroller max-h-[300px] overflow-y-auto pr-1">
+                        {Object.entries(selectedEntity.properties)
+                          .filter(
+                            ([k]) =>
+                              k !== 'rawEntity' &&
+                              selectedEntity.properties[k] !== null &&
+                              selectedEntity.properties[k] !== undefined
+                          )
+                          .map(([key, value]) => {
+                            const displayLabel = key.replace(/_/g, ' ').toUpperCase();
+                            let displayValue = '';
+                            if (typeof value === 'boolean') {
+                              displayValue = value ? 'TRUE' : 'FALSE';
+                            } else if (typeof value === 'object') {
+                              displayValue = JSON.stringify(value);
+                            } else {
+                              displayValue = String(value);
+                            }
+
+                            return (
+                              <div
+                                key={key}
+                                className="glass-panel p-2 flex flex-col gap-0.5 border border-white/5 bg-black/15 rounded"
+                              >
+                                <span className="text-white/30 text-[8px]">{displayLabel}</span>
+                                <span className="text-white/80 font-bold break-all">{displayValue}</span>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <iframe
-                  key={refreshKey}
-                  src={browserUrl}
-                  sandbox="allow-scripts allow-popups allow-forms"
-                  className="flex-1 h-full w-full border-none bg-black"
-                  title="Agent Browser Frame"
-                />
+                !issFeedOpen && (
+                  <div className="flex flex-col items-center justify-center py-20 text-center text-white/20 font-mono space-y-2">
+                    <Info className="h-8 w-8 text-white/10" />
+                    <span className="text-[10px] uppercase tracking-wider">No Subject Targetted</span>
+                    <span className="text-[8px] max-w-[200px] leading-relaxed">
+                      Select a marker on the globe or search locations to pull coordinates telemetry.
+                    </span>
+                  </div>
+                )
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Tab 3: Changes timeline */}
-        {rightPanelTab === 'changes' && (
-          <div className="space-y-3 font-mono">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-primary block mb-2">
-              SYSTEM TELEMETRY LOG
-            </span>
-            {changeLogs.length > 0 ? (
-              <div className="relative border-l border-white/10 pl-3.5 ml-1.5 space-y-4 text-[9px] py-1 max-h-[min(500px,45vh)] overflow-y-auto scroller">
-                {changeLogs.map((log) => {
-                  let badgeBg = 'bg-primary ring-primary-hover/20';
-                  if (log.level === 'success') badgeBg = 'bg-green-500 ring-green-950';
-                  else if (log.level === 'warning') badgeBg = 'bg-yellow-500 ring-yellow-950';
-                  else if (log.level === 'error') badgeBg = 'bg-red-500 ring-red-950';
-                  else if (log.level === 'info') badgeBg = 'bg-cyan-400 ring-cyan-950';
-
-                  return (
-                    <div key={log.id} className="relative">
-                      <div className={`absolute -left-[19.5px] top-1 h-2 w-2 rounded-full ${badgeBg}`} />
-                      <div className="text-white/30">
-                        {log.timestamp} {' // '} {log.category}
-                      </div>
-                      <div className="text-white/80 mt-0.5">{log.message}</div>
-                    </div>
-                  );
-                })}
+          {/* Tab 2: Sandboxed Agent Browser */}
+          {rightPanelTab === 'browser' && (
+            <div className="space-y-3 flex flex-col h-full select-text">
+              {/* Browser Control Bar */}
+              <div className="flex items-center gap-1.5 bg-black/40 p-1.5 rounded-lg border border-white/5 font-mono text-[9px] pointer-events-auto">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  disabled={historyIndex <= 0}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none text-white/70 transition-colors"
+                  aria-label="Go back in embedded browser"
+                  title="Back"
+                >
+                  <ArrowLeft size={12} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
+                  aria-label="Refresh embedded browser frame"
+                  title="Refresh Frame"
+                >
+                  <RotateCw size={12} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleHome}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
+                  aria-label="Open embedded browser home page"
+                  title="Home Page"
+                >
+                  <Globe size={12} />
+                </button>
+                <div className="flex min-h-11 flex-1 items-center gap-1 rounded border border-white/5 bg-black/40 px-2 py-1">
+                  <input
+                    type="text"
+                    value={addressInput}
+                    onChange={(e) => setAddressInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleNavigate(addressInput);
+                      }
+                    }}
+                    className="min-h-11 w-full bg-transparent text-[8px] text-white/80 focus:outline-none placeholder:text-white/20 select-text"
+                    placeholder="URL or search query..."
+                    aria-label="Embedded browser URL or search query"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const opened = window.open(browserUrl, '_blank', 'noopener,noreferrer');
+                    if (opened) opened.opener = null;
+                  }}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-white/5 hover:bg-white/10 text-white/70 transition-colors"
+                  aria-label="Open embedded browser URL in new window"
+                  title="Open in new window"
+                >
+                  <ExtLink size={12} />
+                </button>
               </div>
-            ) : (
-              <div className="text-[9px] text-white/30 italic py-4">No events logged yet.</div>
-            )}
-          </div>
-        )}
 
-        {/* Tab 4: Diagnostic Engine */}
-        {rightPanelTab === 'diagnostics' && (
-          <div className="h-full">
-            <DiagnosticPanel />
-          </div>
-        )}
+              {/* Sandboxed iframe viewport */}
+              <div className="relative flex-1 flex h-[min(400px,45vh)] min-h-[220px] w-full flex-col overflow-hidden rounded-xl border border-white/5 bg-black shadow-lg pointer-events-auto flex items-center justify-center">
+                {window.location.search.includes('fallback') ? (
+                  <div className="text-cyan-400 font-mono text-[9px] text-center p-4">
+                    [BROWSER VIEWPORT MOCKED FOR: {browserUrl}]
+                  </div>
+                ) : (
+                  <iframe
+                    key={refreshKey}
+                    src={browserUrl}
+                    sandbox="allow-scripts allow-popups allow-forms"
+                    className="flex-1 h-full w-full border-none bg-black"
+                    title="Agent Browser Frame"
+                  />
+                )}
+              </div>
+            </div>
+          )}
 
-        {/* Tab 5: DataBus Telemetry */}
-        {rightPanelTab === 'telemetry' && (
-          <div className="h-full">
-            <TelemetryPanel />
-          </div>
-        )}
+          {/* Tab 3: Changes timeline */}
+          {rightPanelTab === 'changes' && (
+            <div className="space-y-3 font-mono">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-primary block mb-2">
+                SYSTEM TELEMETRY LOG
+              </span>
+              {changeLogs.length > 0 ? (
+                <div className="relative border-l border-white/10 pl-3.5 ml-1.5 space-y-4 text-[9px] py-1 max-h-[min(500px,45vh)] overflow-y-auto scroller">
+                  {changeLogs.map((log) => {
+                    let badgeBg = 'bg-primary ring-primary-hover/20';
+                    if (log.level === 'success') badgeBg = 'bg-green-500 ring-green-950';
+                    else if (log.level === 'warning') badgeBg = 'bg-yellow-500 ring-yellow-950';
+                    else if (log.level === 'error') badgeBg = 'bg-red-500 ring-red-950';
+                    else if (log.level === 'info') badgeBg = 'bg-cyan-400 ring-cyan-950';
 
-        {/* Tab 6: Odysseus Console */}
-        {rightPanelTab === 'odysseus' && (
-          <div className="h-full">
-            <OdysseusConsole />
-          </div>
-        )}
-      </div>
-    </aside>
+                    return (
+                      <div key={log.id} className="relative">
+                        <div className={`absolute -left-[19.5px] top-1 h-2 w-2 rounded-full ${badgeBg}`} />
+                        <div className="text-white/30">
+                          {log.timestamp} {' // '} {log.category}
+                        </div>
+                        <div className="text-white/80 mt-0.5">{log.message}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-[9px] text-white/30 italic py-4">No events logged yet.</div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 4: Diagnostic Engine */}
+          {rightPanelTab === 'diagnostics' && (
+            <div className="h-full">
+              <DiagnosticPanel />
+            </div>
+          )}
+
+          {/* Tab 5: DataBus Telemetry */}
+          {rightPanelTab === 'telemetry' && (
+            <div className="h-full">
+              <TelemetryPanel />
+            </div>
+          )}
+
+          {/* Tab 6: Odysseus Console */}
+          {rightPanelTab === 'odysseus' && (
+            <div className="h-full">
+              <OdysseusConsole />
+            </div>
+          )}
+        </div>
+      </aside>
     </>
   );
 }

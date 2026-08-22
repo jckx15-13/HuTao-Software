@@ -36,6 +36,49 @@ export function CenterPanel() {
   const modeSwitcherOpen = useUIStore((s) => s.modeSwitcherOpen);
   const setModeSwitcherOpen = useUIStore((s) => s.setModeSwitcherOpen);
 
+  /** Gap between the bottom of the mode pill and the top of the HUD row. */
+  const SPACE_HUD_GAP_PX = 6;
+  /**
+   * First-paint fallback only. The pill's real position comes from the clamp on
+   * .mode-switcher-anchor, which cannot be read until layout has run once, so
+   * this covers the single frame before the observer below reports a real value.
+   */
+  const SPACE_HUD_FALLBACK_TOP_PX = 150;
+
+  const [spaceHudTopPx, setSpaceHudTopPx] = React.useState(SPACE_HUD_FALLBACK_TOP_PX);
+
+  const modeSwitcherRef = useRef<HTMLDivElement>(null);
+  useChromeTopAnchor(modeSwitcherRef);
+
+  /**
+   * Measure the pill and place the HUD row directly beneath it.
+   *
+   * Offsets are taken relative to the shared positioned ancestor rather than the
+   * viewport, so this stays correct when the centre column is inset by the
+   * workspace rails (DockedLayout pads <main> by --workspace-*-rail).
+   */
+  useEffect(() => {
+    const pill = modeSwitcherRef.current;
+    if (!pill) return;
+
+    const measure = () => {
+      const parent = pill.offsetParent as HTMLElement | null;
+      const pillRect = pill.getBoundingClientRect();
+      const parentTop = parent ? parent.getBoundingClientRect().top : 0;
+      setSpaceHudTopPx(Math.max(0, Math.round(pillRect.bottom - parentTop + SPACE_HUD_GAP_PX)));
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(pill);
+    window.addEventListener('resize', measure);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [modeSwitcherOpen, interactionMode, spaceInteractionTarget]);
+
   // Track WWT error state for change log reporting
   const handleTelescopeError = useCallback((error: Error) => {
     console.warn('[CenterPanel] Telescope view error caught by boundary:', error.message);
@@ -73,9 +116,6 @@ export function CenterPanel() {
 
   const isSpaceMode = interactionMode === 'orbital' || interactionMode === 'telescope';
 
-  const modeSwitcherRef = useRef<HTMLDivElement>(null);
-  useChromeTopAnchor(modeSwitcherRef);
-
   return (
     // Root container: ALWAYS pointer-events-none to let Cesium globe receive drags underneath.
     // Each interactive child explicitly opts-in with pointer-events-auto.
@@ -104,23 +144,47 @@ export function CenterPanel() {
               data-active-mode={interactionMode === 'chat' ? 'chat' : 'space'}
             >
               <span className="mode-switcher-indicator" aria-hidden="true" />
-              <button type="button" onClick={() => setInteractionMode('chat')} aria-pressed={interactionMode === 'chat'} className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${interactionMode === 'chat' ? 'mode-tab-active text-white' : 'text-white/40 hover:text-white/80'}`}>
+              <button
+                type="button"
+                onClick={() => setInteractionMode('chat')}
+                aria-pressed={interactionMode === 'chat'}
+                className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${interactionMode === 'chat' ? 'mode-tab-active text-white' : 'text-white/40 hover:text-white/80'}`}
+              >
                 <MessageSquare className="h-3 w-3" />
                 <span>Chat</span>
               </button>
-              <button type="button" onClick={() => { setInteractionMode('orbital'); setSpaceInteractionTarget('earth'); }} aria-pressed={interactionMode === 'orbital'} className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${interactionMode === 'orbital' ? 'mode-tab-active text-white' : 'text-white/40 hover:text-white/80'}`}>
+              <button
+                type="button"
+                onClick={() => {
+                  setInteractionMode('orbital');
+                  setSpaceInteractionTarget('earth');
+                }}
+                aria-pressed={interactionMode === 'orbital'}
+                className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${interactionMode === 'orbital' ? 'mode-tab-active text-white' : 'text-white/40 hover:text-white/80'}`}
+              >
                 <Globe2 className="h-3 w-3" />
                 <span>Space</span>
               </button>
             </div>
-            {interactionMode === 'orbital' && spaceInteractionTarget !== 'telescope' && (
-              <div className="mt-1.5 flex justify-center">
-                <SpaceHudPillControls />
-              </div>
-            )}
           </div>
         )}
       </div>
+
+      {/* Space HUD row — a SIBLING of the mode pill, not a child.
+          As a child it inherited the pill's `-translate-x-1/2` and could never be
+          positioned independently, and its only anchor was the pill's hardcoded
+          clamp() — a second source of layout truth. It now reads the measured
+          bottom of the pill (same technique useChromeTopAnchor uses to publish
+          --chrome-top-y), so exactly one measured value decides where it sits,
+          which is what lets a slot engine own this rect later. */}
+      {modeSwitcherOpen && interactionMode === 'orbital' && spaceInteractionTarget !== 'telescope' && (
+        <div
+          className="absolute left-1/2 z-floating -translate-x-1/2 pointer-events-auto"
+          style={{ top: `${spaceHudTopPx}px` }}
+        >
+          <SpaceHudPillControls />
+        </div>
+      )}
 
       {/* Center Panel Content with Slide Transitions */}
       <div className="flex-1 w-full relative overflow-hidden">
@@ -130,7 +194,7 @@ export function CenterPanel() {
             className="absolute inset-x-0 bottom-0 z-content flex flex-col px-[clamp(0.75rem,3vw,1.5rem)] pb-4 opacity-100 pointer-events-auto"
             style={{ top: 'calc(var(--chrome-top-y, 8rem) - var(--chrome-parent-top-y, 0px) + 1rem)' }}
           >
-            <div className="mx-auto flex min-h-0 w-full max-w-[78rem] flex-1 flex-col justify-between overflow-hidden rounded-[32px] border border-white/10 bg-[#07090f]/94 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
+            <div className="mx-auto flex min-h-0 w-full max-w-[78rem] flex-1 flex-col justify-between overflow-hidden rounded-lg border border-white/10 bg-[#07090f]/94 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
               {/* Scrollable messages */}
               <div className="flex-1 overflow-hidden">
                 <ChatPanel />
@@ -139,9 +203,21 @@ export function CenterPanel() {
           </div>
         )}
 
-        {/* Combined Space & Telescope Viewport Container */}
+        {/* Combined Space & Telescope Viewport Container.
+            position:fixed escapes <main>'s rail padding, so `inset-0` made this
+            layer cover the whole viewport — and every absolutely-positioned
+            child inside it (.earth-status, .earth-controls, .earth-tour-guide)
+            then measured against the viewport rather than the stage, landing
+            underneath the side panels. Insetting by the same rail variables
+            DockedLayout publishes constrains the entire HUD layer in one place
+            instead of patching each child. Custom properties inherit, so this
+            reads the values set on the DockedLayout row above it. */}
         <div
-          className={`fixed inset-0 ${isSpaceMode ? 'z-content' : 'hidden pointer-events-none z-base'}`}
+          className={`fixed top-0 bottom-0 ${isSpaceMode ? 'z-content' : 'hidden pointer-events-none z-base'}`}
+          style={{
+            left: 'var(--workspace-left-rail, 0px)',
+            right: 'var(--workspace-right-rail, 0px)'
+          }}
           aria-hidden={!isSpaceMode}
         >
           {/* WorldWide Telescope controls overlay — wrapped in inline ErrorBoundary for graceful degradation */}

@@ -146,6 +146,74 @@ function testFavoritesSlice() {
   console.log("✔ FavoritesSlice strict contract tests passed.");
 }
 
+function testSilverWolfSlices() {
+  const { useLayoutStore } = require("../src/store/layoutStore");
+  const { useThemeStore } = require("../src/store/themeStore");
+  const { useChatStore } = require("../src/store/chatStore");
+  const { useTelemetryStore } = require("../src/store/telemetryStore");
+  const { useAstronomyStore } = require("../src/store/astronomyStore");
+  const { useUIStore } = require("../src/store/uiStore");
+
+  // 1. LayoutStore Test
+  const layout = useLayoutStore.getState();
+  assert.equal(typeof layout.leftPanelOpen, "boolean");
+  assert.equal(typeof layout.rightPanelOpen, "boolean");
+  layout.setLeftPanelOpen(false);
+  assert.equal(useLayoutStore.getState().leftPanelOpen, false);
+  layout.setLeftPanelOpen(true);
+  assert.equal(useLayoutStore.getState().leftPanelOpen, true);
+  assert.equal(useLayoutStore.getState().sidebarOpen, true);
+
+  // 2. ThemeStore Test
+  const theme = useThemeStore.getState();
+  theme.updatePersonalisation({ panelOpacity: 0.2, blurIntensity: 40, cornerRadius: 30 });
+  assert.equal(useThemeStore.getState().personalisation.panelOpacity, 0.72, "panelOpacity clamped to min 0.72");
+  assert.equal(useThemeStore.getState().personalisation.blurIntensity, 16, "blurIntensity clamped to max 16");
+  assert.equal(useThemeStore.getState().personalisation.cornerRadius, 14, "cornerRadius clamped to max 14");
+  theme.setActivePalette("cyberpunk");
+  assert.equal(useThemeStore.getState().activePalette, "cyberpunk");
+  theme.setActivePalette("holographic");
+
+  // 3. ChatStore Test
+  const chat = useChatStore.getState();
+  chat.setAiModel("gemini-3-flash");
+  assert.equal(useChatStore.getState().aiModel, "gemini-3-flash-preview", "aiModel alias normalized");
+  chat.setAiModel("local-assistant");
+  assert.equal(useChatStore.getState().aiModel, "local-assistant");
+  const initialMsgCount = chat.messages.length;
+  chat.addMessage({ id: "test-msg-1", sender: "user", content: "Hello", timestamp: Date.now() });
+  assert.equal(useChatStore.getState().messages.length, initialMsgCount + 1);
+
+  // 4. TelemetryStore Test
+  const telemetry = useTelemetryStore.getState();
+  telemetry.addChangeLog("TEST", "Slice test execution", "info");
+  assert.ok(useTelemetryStore.getState().changeLogs.length > 0);
+  assert.equal(useTelemetryStore.getState().changeLogs[0].category, "TEST");
+
+  // 5. AstronomyStore Test
+  const astronomy = useAstronomyStore.getState();
+  astronomy.setInteractionMode("orbital");
+  assert.equal(useAstronomyStore.getState().interactionMode, "orbital");
+  assert.equal(useAstronomyStore.getState().primaryView, "orbital");
+  astronomy.setInteractionMode("chat");
+  assert.equal(useAstronomyStore.getState().interactionMode, "chat");
+
+  // 6. Facade Unified Compatibility Test
+  const facade = useUIStore.getState();
+  assert.equal(facade.interactionMode, "chat");
+  assert.equal(facade.aiModel, "local-assistant");
+  assert.equal(facade.leftPanelOpen, true);
+  assert.equal(typeof useUIStore.subscribe, "function");
+  assert.equal(typeof useUIStore.setState, "function");
+  assert.equal(typeof useUIStore.getState, "function");
+
+  facade.updateSettings({ terminalFontSize: 18 });
+  assert.equal(useThemeStore.getState().terminalFontSize, 18);
+  facade.updateSettings({ terminalFontSize: 15 });
+
+  console.log("✔ Silver Wolf 5-slice and facade contract tests passed.");
+}
+
 function runAllStateSliceTests() {
   testUISlice();
   testLayersSlice();
@@ -153,7 +221,9 @@ function runAllStateSliceTests() {
   testFilterSlice();
   testConfigSlice();
   testFavoritesSlice();
-  console.log("All 8 Zustand State Slice strict contract tests passed successfully.");
+  testSilverWolfSlices();
+  console.log("All 8 WorldWideView slices + 5 Silver Wolf slices + facade strict contract tests passed successfully.");
 }
 
 runAllStateSliceTests();
+

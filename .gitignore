@@ -37,3 +37,7 @@ storybook-static
 tokens.json
 qa-tokens.json
 scripts/verification_harness/ui_error*
+
+# AgentGuard sandbox snapshots / npm cache from sandboxed runs
+.agentguard/
+.npm/

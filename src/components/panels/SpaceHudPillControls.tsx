@@ -73,7 +73,7 @@ export function SpaceHudPillControls() {
             aria-selected={spaceHudTab === tab.key}
             onClick={() => setSpaceHudTab(tab.key)}
             className={`rounded-full px-2.5 py-1 text-[8px] font-mono font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-              spaceHudTab === tab.key ? 'bg-primary text-white' : 'text-white/40 hover:text-white/70'
+              spaceHudTab === tab.key ? 'space-hud-tab-active' : 'text-white/40 hover:text-white/70'
             }`}
           >
             {tab.label}

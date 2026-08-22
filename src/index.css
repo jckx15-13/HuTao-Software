@@ -13,6 +13,15 @@
   
   --theme-secondary: #A3E4D7;     /* Silverwolf Cyan */
   --theme-secondary-text: #051010;
+
+  /* Space HUD active tab. Deliberately NOT --theme-primary: the mode pill swaps
+     to --theme-secondary in space mode (.mode-switcher-shell[data-active-mode="space"]
+     below), so a primary-purple tab sitting directly under a cyan pill held only
+     3.32:1 and read as a clash. This deep teal measures 5.87:1 against the pill
+     and 2.24:1 against the panel — the only candidate clearing both. Change this
+     single value to retheme the whole HUD row. */
+  --theme-hud-active: #12574C;
+  --theme-hud-active-text: #ffffff;
   
   --theme-success: #A9DFBF;
   --theme-warning: #F9E79F;
@@ -26,7 +35,7 @@
   /* UI personalisation — set by JS from store */
   --theme-ui-opacity: 0.88;
   --theme-ui-blur: 10px;
-  --theme-ui-radius: 20px;
+  --theme-ui-radius: 10px;
   --theme-ui-shadow-intensity: 0.45;
   --theme-ui-animation-speed: 1;
   --theme-ui-font-scale: 1;
@@ -149,6 +158,10 @@
   --z-index-overlay: var(--theme-z-overlay);
   --z-index-modal: var(--theme-z-modal);
   --z-index-effects: var(--theme-z-effects);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
 }
 
 body {
@@ -319,6 +332,32 @@ textarea:disabled {
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
+/* Active tab of the space HUD row. Mirrors .mode-switcher-indicator's gradient +
+   inset-highlight construction so the HUD reads as the same control family as the
+   CHAT/SPACE pill above it, rather than a flat utility fill. */
+.space-hud-tab-active {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--theme-hud-active) 88%, white), var(--theme-hud-active)),
+    var(--theme-hud-active);
+  color: var(--theme-hud-active-text);
+  box-shadow:
+    0 4px 12px color-mix(in srgb, var(--theme-hud-active) 34%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  animation: spaceHudTabPulse calc(2.6s / max(var(--theme-ui-animation-speed, 1), 0.2)) ease-in-out infinite;
+}
+
+/* Opacity-only pulse: the compositor handles it without repainting, which matters
+   because the globe below runs Cesium in requestRenderMode (useCesiumViewer.ts:91)
+   and a per-frame main-thread repaint would partly defeat that. */
+@keyframes spaceHudTabPulse {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 @keyframes modeSwitcherBreathe {
   0%, 100% {
     opacity: 0.48;
@@ -341,6 +380,11 @@ textarea:disabled {
 
   .mode-switcher-indicator {
     transition: none;
+  }
+
+  .space-hud-tab-active {
+    animation: none;
+    opacity: 1;
   }
 
   .space-hud-pill-controls {
@@ -369,7 +413,7 @@ textarea:disabled {
   background: rgba(15, 17, 26, var(--theme-ui-opacity, 0.92));
   backdrop-filter: blur(var(--theme-ui-blur, 8px));
   -webkit-backdrop-filter: blur(var(--theme-ui-blur, 8px));
-  border-radius: calc(var(--theme-ui-radius, 8px) * 1px);
+  border-radius: var(--theme-ui-radius, 10px);
   border: 1px solid rgba(255, 255, 255, var(--theme-ui-border-opacity, 0.08));
   box-shadow:
     0 8px 32px rgba(0, 0, 0, calc(var(--theme-ui-shadow-intensity, 0.5) * 0.6)),
@@ -380,7 +424,7 @@ textarea:disabled {
   background: rgba(15, 17, 26, var(--theme-ui-opacity, 0.92)) !important;
   backdrop-filter: blur(var(--theme-ui-blur, 8px)) !important;
   -webkit-backdrop-filter: blur(var(--theme-ui-blur, 8px)) !important;
-  border-radius: calc(var(--theme-ui-radius, 8px) * 1px);
+  border-radius: var(--theme-ui-radius, 10px);
   border: 1px solid rgba(255, 255, 255, var(--theme-ui-border-opacity, 0.08)) !important;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, calc(var(--theme-ui-shadow-intensity, 0.5) * 0.6)),
@@ -388,10 +432,10 @@ textarea:disabled {
 }
 
 .glass-panel-subtle {
-  background: rgba(15, 17, 26, calc(var(--theme-ui-opacity, 0.92) * 0.5));
+  background: rgba(15, 17, 26, max(0.80, calc(var(--theme-ui-opacity, 0.92) * 0.88)));
   backdrop-filter: blur(calc(var(--theme-ui-blur, 8px) * 0.5));
   -webkit-backdrop-filter: blur(calc(var(--theme-ui-blur, 8px) * 0.5));
-  border-radius: calc(var(--theme-ui-radius, 8px) * 1px);
+  border-radius: var(--theme-ui-radius, 10px);
   border: 1px solid rgba(255, 255, 255, calc(var(--theme-ui-border-opacity, 0.08) * 0.5));
 }
 
@@ -399,7 +443,7 @@ textarea:disabled {
   background: rgba(15, 17, 26, min(0.98, calc(var(--theme-ui-opacity, 0.92) * 1.08)));
   backdrop-filter: blur(calc(var(--theme-ui-blur, 8px) * 1.5));
   -webkit-backdrop-filter: blur(calc(var(--theme-ui-blur, 8px) * 1.5));
-  border-radius: calc(var(--theme-ui-radius, 8px) * 1px);
+  border-radius: var(--theme-ui-radius, 10px);
   border: 1px solid rgba(255, 255, 255, var(--theme-ui-border-opacity, 0.08));
   box-shadow:
     0 16px 48px rgba(0, 0, 0, calc(var(--theme-ui-shadow-intensity, 0.5) * 0.8)),

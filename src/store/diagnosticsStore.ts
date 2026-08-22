@@ -380,9 +380,12 @@ if (typeof window !== 'undefined') {
         }
 
         // 7. WebGL Context Loss listener on page canvases
+        // Observe only. Calling preventDefault() here would claim responsibility
+        // for restoring the context, and this store has no way to rebuild the
+        // viewer — that belongs to useCesiumViewer, which registers its own
+        // lost/restored pair on the live Cesium canvas.
         document.querySelectorAll('canvas').forEach((c) => {
-          c.addEventListener('webglcontextlost', (e) => {
-            e.preventDefault();
+          c.addEventListener('webglcontextlost', () => {
             useDiagnosticsStore.getState().add({
               level: 'error',
               message: 'WebGL context lost detected on active viewport canvas.',
