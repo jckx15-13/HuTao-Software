@@ -1,28 +1,16 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import {
   ChevronDown,
   Compass,
-  FolderKanban,
-  Layers,
-  Map,
   Minus,
   Navigation,
-  Pin,
   Plus,
-  Ruler,
-  Search,
-  Settings,
   UserCircle,
-  Waypoints,
   X,
   ChevronLeft,
   ChevronRight,
-  Eye,
-  Camera,
-  Play,
-  RotateCcw,
-  Check
+  Camera
 } from 'lucide-react';
 // Runtime/mocked wrapper to prevent static Cesium initialization crashes in headless environments
 const Cesium = {
@@ -669,22 +657,27 @@ export default function GoogleEarthRemix() {
     }
   }, [showBorders, hasCesium]);
 
-  // Sync Terrain layers to Cesium
+  // Sync terrain *elevation* to Cesium.
+  //
+  // This deliberately does NOT touch imagery layers or scene primitives. It used
+  // to set `layer.show = showTerrain` across every imagery layer and
+  // `primitive.show = showTerrain` across every primitive, which conflated three
+  // separate things:
+  //
+  //   terrain   -> the elevation mesh (what this toggle actually means)
+  //   imagery   -> the surface texture (owned by useImageryManager)
+  //   primitives-> satellites, models, tilesets (owned by their own renderers)
+  //
+  // Because `showTerrain` defaults to false and the store is persisted, that
+  // wiring shipped a globe with no map texture and no primitives by default —
+  // the "textureless globe". Terrain exaggeration is applied below; imagery and
+  // primitives are left to the systems that own them.
   useEffect(() => {
     const viewer = (window as any).cesiumViewer;
     if (!viewer || viewer.isDestroyed()) return;
 
     try {
-      for (let i = 0; i < viewer.scene.primitives.length; i++) {
-        const primitive = viewer.scene.primitives.get(i);
-        if (primitive.show !== undefined) {
-          primitive.show = showTerrain;
-        }
-      }
-      for (let i = 0; i < viewer.imageryLayers.length; i++) {
-        const layer = viewer.imageryLayers.get(i);
-        layer.show = showTerrain;
-      }
+      viewer.scene.globe.terrainExaggeration = showTerrain ? 1.0 : 0.0;
       viewer.scene.requestRender();
     } catch (err) {
       console.warn('[GoogleEarthRemix] Error syncing terrain:', err);
@@ -949,7 +942,9 @@ export default function GoogleEarthRemix() {
       data-chrome-tier={chromeTier}
       aria-label="Orbital explorer"
     >
-      {/* Orbital HUD bar removed — its controls now live in the CHAT/SPACE mode-switcher pill (CenterPanel.tsx SpaceHudPillControls). */}
+      {/* Orbital HUD bar removed. Its controls briefly moved to a pill row under
+          the CHAT/SPACE switcher, which was removed too — layer toggles now live
+          in Settings > Map, and camera/zoom controls in the globe's own edge rail. */}
       <div className="earth-workspace">
         {/* Core Stage */}
         <div className="earth-stage">

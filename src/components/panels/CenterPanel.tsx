@@ -1,10 +1,9 @@
-import React, { Suspense, useEffect, useCallback, useRef } from 'react';
+import React, { Suspense, useEffect, useCallback, useRef, useState } from 'react';
 import { MessageSquare, Globe2, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { ChatPanel } from '../ChatPanel';
 import { TouchControlOverlay } from '../common/TouchControlOverlay';
 import { useChromeTopAnchor } from '../../hooks/useChromeTopAnchor';
-import { SpaceHudPillControls } from './SpaceHudPillControls';
 const GoogleEarthRemix = React.lazy(() => import('../learning/GoogleEarthRemix'));
 const WorldWideTelescopeView = React.lazy(() => import('../learning/WorldWideTelescopeView'));
 import { ErrorBoundary } from '../ErrorBoundary';
@@ -36,48 +35,37 @@ export function CenterPanel() {
   const modeSwitcherOpen = useUIStore((s) => s.modeSwitcherOpen);
   const setModeSwitcherOpen = useUIStore((s) => s.setModeSwitcherOpen);
 
-  /** Gap between the bottom of the mode pill and the top of the HUD row. */
-  const SPACE_HUD_GAP_PX = 6;
-  /**
-   * First-paint fallback only. The pill's real position comes from the clamp on
-   * .mode-switcher-anchor, which cannot be read until layout has run once, so
-   * this covers the single frame before the observer below reports a real value.
-   */
-  const SPACE_HUD_FALLBACK_TOP_PX = 150;
-
-  const [spaceHudTopPx, setSpaceHudTopPx] = React.useState(SPACE_HUD_FALLBACK_TOP_PX);
-
   const modeSwitcherRef = useRef<HTMLDivElement>(null);
   useChromeTopAnchor(modeSwitcherRef);
 
-  /**
-   * Measure the pill and place the HUD row directly beneath it.
-   *
-   * Offsets are taken relative to the shared positioned ancestor rather than the
-   * viewport, so this stays correct when the centre column is inset by the
-   * workspace rails (DockedLayout pads <main> by --workspace-*-rail).
-   */
+  // Sliding indicator geometry. The shell used to be a two-column grid so both
+  // tabs shared one fixed 50/50 split — "SPACE" (5 letters) forced "CHAT" (4)
+  // into an equally-wide box it didn't need, padding it with dead space. The
+  // shell is now an unconstrained flex row so each tab hugs its own label, and
+  // this measures the *actual* active tab's box each time so the indicator can
+  // hug it too instead of assuming a fixed half-width.
+  const modeShellRef = useRef<HTMLDivElement>(null);
+  const chatTabRef = useRef<HTMLButtonElement>(null);
+  const spaceTabRef = useRef<HTMLButtonElement>(null);
+  const [indicatorRect, setIndicatorRect] = useState({ left: 4, width: 0 });
+
   useEffect(() => {
-    const pill = modeSwitcherRef.current;
-    if (!pill) return;
+    const shellEl = modeShellRef.current;
+    if (!shellEl) return;
 
     const measure = () => {
-      const parent = pill.offsetParent as HTMLElement | null;
-      const pillRect = pill.getBoundingClientRect();
-      const parentTop = parent ? parent.getBoundingClientRect().top : 0;
-      setSpaceHudTopPx(Math.max(0, Math.round(pillRect.bottom - parentTop + SPACE_HUD_GAP_PX)));
+      const activeEl = interactionMode === 'chat' ? chatTabRef.current : spaceTabRef.current;
+      if (!activeEl) return;
+      const shellBox = shellEl.getBoundingClientRect();
+      const activeBox = activeEl.getBoundingClientRect();
+      setIndicatorRect({ left: activeBox.left - shellBox.left, width: activeBox.width });
     };
 
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(pill);
-    window.addEventListener('resize', measure);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, [modeSwitcherOpen, interactionMode, spaceInteractionTarget]);
+    observer.observe(shellEl);
+    return () => observer.disconnect();
+  }, [interactionMode, modeSwitcherOpen]);
 
   // Track WWT error state for change log reporting
   const handleTelescopeError = useCallback((error: Error) => {
@@ -140,27 +128,34 @@ export function CenterPanel() {
         {modeSwitcherOpen && (
           <div className="mode-switcher-panel">
             <div
-              className="mode-switcher-shell glass-panel grid grid-cols-2 rounded-full border border-white/10 p-1 shadow-lg"
+              ref={modeShellRef}
+              className="mode-switcher-shell glass-panel inline-flex rounded-full border border-white/10 p-1 shadow-lg"
               data-active-mode={interactionMode === 'chat' ? 'chat' : 'space'}
             >
-              <span className="mode-switcher-indicator" aria-hidden="true" />
+              <span
+                className="mode-switcher-indicator"
+                aria-hidden="true"
+                style={{ left: indicatorRect.left, width: indicatorRect.width }}
+              />
               <button
+                ref={chatTabRef}
                 type="button"
                 onClick={() => setInteractionMode('chat')}
                 aria-pressed={interactionMode === 'chat'}
-                className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${interactionMode === 'chat' ? 'mode-tab-active text-white' : 'text-white/40 hover:text-white/80'}`}
+                className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${interactionMode === 'chat' ? 'mode-tab-active text-white' : 'text-white/40 hover:text-white/80'}`}
               >
                 <MessageSquare className="h-3 w-3" />
                 <span>Chat</span>
               </button>
               <button
+                ref={spaceTabRef}
                 type="button"
                 onClick={() => {
                   setInteractionMode('orbital');
                   setSpaceInteractionTarget('earth');
                 }}
                 aria-pressed={interactionMode === 'orbital'}
-                className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${interactionMode === 'orbital' ? 'mode-tab-active text-white' : 'text-white/40 hover:text-white/80'}`}
+                className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${interactionMode === 'orbital' ? 'mode-tab-active text-white' : 'text-white/40 hover:text-white/80'}`}
               >
                 <Globe2 className="h-3 w-3" />
                 <span>Space</span>
@@ -169,22 +164,6 @@ export function CenterPanel() {
           </div>
         )}
       </div>
-
-      {/* Space HUD row — a SIBLING of the mode pill, not a child.
-          As a child it inherited the pill's `-translate-x-1/2` and could never be
-          positioned independently, and its only anchor was the pill's hardcoded
-          clamp() — a second source of layout truth. It now reads the measured
-          bottom of the pill (same technique useChromeTopAnchor uses to publish
-          --chrome-top-y), so exactly one measured value decides where it sits,
-          which is what lets a slot engine own this rect later. */}
-      {modeSwitcherOpen && interactionMode === 'orbital' && spaceInteractionTarget !== 'telescope' && (
-        <div
-          className="absolute left-1/2 z-floating -translate-x-1/2 pointer-events-auto"
-          style={{ top: `${spaceHudTopPx}px` }}
-        >
-          <SpaceHudPillControls />
-        </div>
-      )}
 
       {/* Center Panel Content with Slide Transitions */}
       <div className="flex-1 w-full relative overflow-hidden">

@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { pluginManager } from '@/core/plugins/PluginManager';
-import { Bug, Eye, Database, Activity, Shield, RefreshCw, ChevronDown, ChevronRight, Box } from 'lucide-react';
-import { dataBus } from '@/core/data/DataBus';
+import { Bug, Database, Activity, Shield, RefreshCw, ChevronDown, ChevronRight, Box } from 'lucide-react';
 import { useDataBusMulti } from '@/hooks/useDataBus';
 
 export default function PluginInspector() {
@@ -12,7 +11,7 @@ export default function PluginInspector() {
 
   // Force re-render periodically to update entity counts
   useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 2000);
+    const interval = setInterval(() => setTick((t) => t + 1), 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -20,10 +19,10 @@ export default function PluginInspector() {
   useDataBusMulti({
     pluginRegistered: () => setPlugins(pluginManager.getAllPlugins()),
     pluginUnregistered: () => setPlugins(pluginManager.getAllPlugins()),
-    layerToggled: () => setPlugins(pluginManager.getAllPlugins()),
+    layerToggled: () => setPlugins(pluginManager.getAllPlugins())
   });
 
-  const selectedPlugin = plugins.find(p => p.plugin.id === selectedPluginId);
+  const selectedPlugin = plugins.find((p) => p.plugin.id === selectedPluginId);
   const entities = selectedPluginId ? pluginManager.getEntities(selectedPluginId) : [];
 
   return (
@@ -42,8 +41,8 @@ export default function PluginInspector() {
               type="button"
               onClick={() => setSelectedPluginId(p.plugin.id)}
               className={`min-h-11 w-full rounded border p-3 text-left transition-all cursor-pointer ${
-                selectedPluginId === p.plugin.id 
-                  ? 'border-primary bg-primary/10' 
+                selectedPluginId === p.plugin.id
+                  ? 'border-primary bg-primary/10'
                   : 'border-white/5 bg-black/20 hover:border-white/20'
               }`}
               aria-pressed={selectedPluginId === p.plugin.id}
@@ -51,15 +50,21 @@ export default function PluginInspector() {
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${p.enabled ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-white/20'}`} />
+                  <div
+                    className={`w-2 h-2 rounded-full ${p.enabled ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-white/20'}`}
+                  />
                   <span className="font-bold text-white/90">{p.plugin.name}</span>
                 </div>
                 <span className="text-[9px] text-white/30 uppercase">{p.plugin.version}</span>
               </div>
               <div className="flex items-center justify-between text-[9px] text-white/50 uppercase">
                 <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1"><Activity size={10} /> {p.entities.length} Entities</span>
-                  <span className="flex items-center gap-1"><Shield size={10} /> {p.plugin.category}</span>
+                  <span className="flex items-center gap-1">
+                    <Activity size={10} /> {p.entities.length} Entities
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Shield size={10} /> {p.plugin.category}
+                  </span>
                 </div>
                 <span>ID: {p.plugin.id}</span>
               </div>
@@ -75,9 +80,9 @@ export default function PluginInspector() {
               <span>{selectedPluginId ? `${selectedPluginId} Telemetry` : 'Select a plugin'}</span>
             </div>
             {selectedPluginId && (
-              <button 
+              <button
                 type="button"
-                onClick={() => setTick(t => t + 1)}
+                onClick={() => setTick((t) => t + 1)}
                 className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-white/40 transition-colors hover:bg-white/10"
                 aria-label="Refresh selected plugin telemetry"
               >
@@ -114,14 +119,18 @@ export default function PluginInspector() {
                       {entity.latitude.toFixed(4)}, {entity.longitude.toFixed(4)}
                     </span>
                   </button>
-                  
+
                   {expandedEntityId === entity.id && (
                     <div className="p-2 border-t border-white/5 bg-black/40">
                       <pre className="text-[9px] text-cyan-400/80 overflow-x-auto scroller max-h-[min(30vh,12rem)]">
-                        {JSON.stringify(entity.properties, (key, value) => {
-                          if (key === 'rawEntity') return '[Circular/Suppressed]';
-                          return value;
-                        }, 2)}
+                        {JSON.stringify(
+                          entity.properties,
+                          (key, value) => {
+                            if (key === 'rawEntity') return '[Circular/Suppressed]';
+                            return value;
+                          },
+                          2
+                        )}
                       </pre>
                     </div>
                   )}

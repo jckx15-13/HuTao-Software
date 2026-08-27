@@ -67,7 +67,7 @@ export function WorkspaceHeader() {
             <div className="absolute inset-0 rounded-full bg-primary animate-ping opacity-50" />
             <div className="relative h-1.5 w-1.5 rounded-full bg-primary" />
           </div>
-          <span className="glow-text inline">Silver Wolf VI</span>
+          <h1 className="glow-text inline">Silver Wolf VI</h1>
         </div>
 
         <button
@@ -134,10 +134,10 @@ export function WorkspaceHeader() {
 
 function Metric({ icon: Icon, value, label }: { icon: typeof Cpu; value: number; label: string }) {
   return (
-    <div className="flex items-center gap-1.5 text-[9px] text-white/30 font-mono">
+    <div className="flex items-center gap-1.5 text-[10px] text-white/75 font-mono">
       <Icon className="w-3 h-3" />
       <span className="w-6 text-right tabular-nums">{Math.round(value)}%</span>
-      <span className="opacity-40">{label}</span>
+      <span className="text-white/60">{label}</span>
     </div>
   );
 }

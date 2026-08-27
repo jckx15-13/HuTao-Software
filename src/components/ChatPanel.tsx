@@ -31,11 +31,7 @@ export function ChatPanel() {
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
 
-    if (
-      lastMessage &&
-      lastMessage.sender !== 'user' &&
-      lastMessage.id !== lastAnnouncedMessageIdRef.current
-    ) {
+    if (lastMessage && lastMessage.sender !== 'user' && lastMessage.id !== lastAnnouncedMessageIdRef.current) {
       lastAnnouncedMessageIdRef.current = lastMessage.id;
       playBlip();
     }
@@ -47,7 +43,7 @@ export function ChatPanel() {
     playClick();
     await paneControls.start({
       y: isHighLoad ? 1 : 2,
-      transition: { type: 'spring', stiffness: 1000, damping: 10 },
+      transition: { type: 'spring', stiffness: 1000, damping: 10 }
     });
     void paneControls.start({ y: 0, transition: { type: 'spring', stiffness: 400, damping: 25 } });
 
@@ -57,11 +53,7 @@ export function ChatPanel() {
   return (
     <motion.div className="flex h-full w-full flex-col overflow-hidden bg-transparent" animate={paneControls}>
       <ChatHeader onClear={clearMessages} />
-      <ChatFeed
-        messages={messages}
-        isProcessing={isProcessing}
-        fontSize={terminalFontSize}
-      />
+      <ChatFeed messages={messages} isProcessing={isProcessing} fontSize={terminalFontSize} />
       <ChatComposer disabled={isProcessing} fontSize={terminalFontSize} onSubmit={handleSend} />
     </motion.div>
   );
@@ -88,7 +80,7 @@ function ChatHeader({ onClear }: ChatHeaderProps) {
           <TerminalSquare className="h-4 w-4" />
         </div>
         <div className="flex flex-col leading-none">
-          <span>Chat</span>
+          <h2>Chat</h2>
           <span className="mt-1 text-[11px] font-medium tracking-[0.14em] text-text-muted/70">AI workspace</span>
         </div>
       </div>
@@ -119,7 +111,7 @@ function ChatFeed({ messages, isProcessing, fontSize }: ChatFeedProps) {
 
     virtuosoRef.current.scrollToIndex({
       index: messages.length - 1,
-      behavior: 'smooth',
+      behavior: 'smooth'
     });
   }, [messages.length]);
 
@@ -147,7 +139,7 @@ function ChatFeed({ messages, isProcessing, fontSize }: ChatFeedProps) {
               </div>
             ) : (
               <div className="h-6" />
-            ),
+            )
         }}
       />
     </div>

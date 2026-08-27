@@ -5,21 +5,18 @@ import type { GeoEntity } from '@/core/plugins/PluginTypes';
 import { DiagnosticPanel } from '../DiagnosticPanel';
 import { TelemetryPanel } from '../TelemetryPanel';
 import { OdysseusConsole } from '../dev/OdysseusConsole';
+import PluginSettingsList from '../settings/PluginSettingsList';
 import {
   ChevronRight,
   ChevronLeft,
   Globe,
-  Terminal,
   Info,
   MapPin,
   Radio,
-  Compass,
   X,
   ArrowLeft,
   RotateCw,
   ExternalLink as ExtLink,
-  Bug,
-  Activity,
   Plane,
   Camera,
   Shield
@@ -42,7 +39,9 @@ import { PanelToggleButton } from '../common/PanelToggleButton';
  * apply consistently.
  */
 const RIGHT_PANEL_TABS: ReadonlyArray<{ id: RightPanelTab; label: string }> = [
-  { id: 'context', label: 'Context' },
+  { id: 'context', label: 'Intel' },
+  { id: 'filters', label: 'Filters' },
+  { id: 'overlay', label: 'Overlay' },
   { id: 'browser', label: 'Browser' },
   { id: 'changes', label: 'Changes' },
   { id: 'diagnostics', label: 'Diagnostics' },
@@ -56,6 +55,12 @@ export function RightPanel() {
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
 
   const rightPanelTab = useUIStore((s) => s.rightPanelTab);
+  const showBorders = useUIStore((s) => s.showBorders);
+  const setShowBorders = useUIStore((s) => s.setShowBorders);
+  const showTerrain = useUIStore((s) => s.showTerrain);
+  const setShowTerrain = useUIStore((s) => s.setShowTerrain);
+  const showRoads = useUIStore((s) => s.showRoads);
+  const setShowRoads = useUIStore((s) => s.setShowRoads);
   const setRightPanelTab = useUIStore((s) => s.setRightPanelTab);
 
   const interactionMode = useUIStore((s) => s.interactionMode);
@@ -247,7 +252,7 @@ export function RightPanel() {
                     className={`inline-flex min-h-11 shrink-0 items-center rounded px-2 transition-colors ${
                       rightPanelTab === tab.id
                         ? 'text-primary bg-primary/10 font-bold'
-                        : 'text-white/40 hover:text-white/70'
+                        : 'text-white/70 hover:text-white/90'
                     }`}
                   >
                     {tab.label}
@@ -509,10 +514,10 @@ export function RightPanel() {
                 </div>
               ) : (
                 !issFeedOpen && (
-                  <div className="flex flex-col items-center justify-center py-20 text-center text-white/20 font-mono space-y-2">
-                    <Info className="h-8 w-8 text-white/10" />
-                    <span className="text-[10px] uppercase tracking-wider">No Subject Targetted</span>
-                    <span className="text-[8px] max-w-[200px] leading-relaxed">
+                  <div className="flex flex-col items-center justify-center py-20 text-center text-white/70 font-mono space-y-2">
+                    <Info className="h-8 w-8 text-white/40" />
+                    <span className="text-[11px] uppercase tracking-wider">No Subject Targetted</span>
+                    <span className="text-[10px] max-w-[200px] leading-relaxed text-white/60">
                       Select a marker on the globe or search locations to pull coordinates telemetry.
                     </span>
                   </div>
@@ -522,6 +527,54 @@ export function RightPanel() {
           )}
 
           {/* Tab 2: Sandboxed Agent Browser */}
+          {/* Tab: Filters — same store-bound toggles as the Layers section in
+              the left panel. This is deliberately the same state, not a copy:
+              WWV exposes layer/entity filters from its right sidebar too, so
+              two controls reading and writing the one source of truth matches
+              that pattern rather than forking a second set of switches. */}
+          {rightPanelTab === 'filters' && (
+            <div className="space-y-2">
+              <label className="flex min-h-11 items-center gap-2 cursor-pointer rounded px-1 hover:bg-white/5 hover:text-white transition-colors">
+                <input
+                  id="right-panel-show-borders"
+                  name="right-panel-show-borders"
+                  type="checkbox"
+                  checked={showBorders}
+                  onChange={(e) => setShowBorders(e.target.checked)}
+                  className="h-11 w-11 accent-primary"
+                />
+                <span>WWV Static Borders</span>
+              </label>
+              <label className="flex min-h-11 items-center gap-2 cursor-pointer rounded px-1 hover:bg-white/5 hover:text-white transition-colors">
+                <input
+                  id="right-panel-show-terrain"
+                  name="right-panel-show-terrain"
+                  type="checkbox"
+                  checked={showTerrain}
+                  onChange={(e) => setShowTerrain(e.target.checked)}
+                  className="h-11 w-11 accent-primary"
+                />
+                <span>3D Terrain Tiles</span>
+              </label>
+              <label className="flex min-h-11 items-center gap-2 cursor-pointer rounded px-1 hover:bg-white/5 hover:text-white transition-colors">
+                <input
+                  id="right-panel-show-roads"
+                  name="right-panel-show-roads"
+                  type="checkbox"
+                  checked={showRoads}
+                  onChange={(e) => setShowRoads(e.target.checked)}
+                  className="h-11 w-11 accent-primary"
+                />
+                <span>Atmospheric Shadows</span>
+              </label>
+            </div>
+          )}
+
+          {/* Tab: Overlay — matches WWV's Overlay/Config tab, which surfaces
+              active plugin/layer settings. Reuses the existing plugin settings
+              list rather than building a second one. */}
+          {rightPanelTab === 'overlay' && <PluginSettingsList />}
+
           {rightPanelTab === 'browser' && (
             <div className="space-y-3 flex flex-col h-full select-text">
               {/* Browser Control Bar */}

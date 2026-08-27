@@ -3,16 +3,14 @@ import { persist } from 'zustand/middleware';
 import { resolveStartupLayout } from '../core/defaults/uiDefaults';
 
 export type CurrentPage = 'launcher' | 'workspace' | 'settings';
-export type RightPanelTab = 'context' | 'browser' | 'changes' | 'diagnostics' | 'telemetry' | 'odysseus';
+// 'filters' and 'overlay' added to match WorldWideView's DataConfigPanel tab
+// set (Intel/Filters/Overlay); 'context' keeps its id everywhere it's already
+// referenced as a target (setRightPanelTab('context') call sites) and is only
+// relabeled "Intel" in the tab strip, not renamed as a value.
+export type RightPanelTab =
+  'context' | 'filters' | 'overlay' | 'browser' | 'changes' | 'diagnostics' | 'telemetry' | 'odysseus';
 export type SettingsCategory =
-  | 'personalisation'
-  | 'ai'
-  | 'connections'
-  | 'feedback'
-  | 'developer'
-  | 'about'
-  | 'map'
-  | 'plugins';
+  'personalisation' | 'ai' | 'connections' | 'feedback' | 'developer' | 'about' | 'map' | 'plugins';
 
 export interface LayoutState {
   // Panel States
@@ -93,7 +91,8 @@ export const useLayoutStore = create<LayoutState>()(
       setBottomBarOpen: (bottomBarOpen) => set({ bottomBarOpen }),
       setSpaceHudTab: (spaceHudTab) => set({ spaceHudTab }),
       setCurrentPage: (currentPage) => set({ currentPage, showSettings: currentPage === 'settings' }),
-      setLauncherDismissed: (launcherDismissed) => set({ launcherDismissed, currentPage: 'workspace', showSettings: false }),
+      setLauncherDismissed: (launcherDismissed) =>
+        set({ launcherDismissed, currentPage: 'workspace', showSettings: false }),
       setSettingsCategory: (settingsCategory) => set({ settingsCategory }),
       setSidebarOpen: (sidebarOpen) => {
         if (sidebarOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {

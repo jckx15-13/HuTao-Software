@@ -238,7 +238,15 @@ textarea:disabled {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  min-width: 188px;
+  /* No min-width: the shell is now an unconstrained flex row that hugs
+     whatever its two tabs actually measure — "sleek and hugged" per the
+     design note. It used to force a 188px two-column grid, which padded
+     "Chat" with the same slack "Space" needed for its longer label. */
+  /* The shell carries Tailwind's `rounded-full` in JSX, but it is also a
+     .glass-panel, whose `border-radius: var(--theme-ui-radius)` wins the
+     cascade and flattened it to the generic 10px panel corner. The sliding
+     indicator inside is a 999px pill, so the shell must match it. */
+  border-radius: 999px;
   box-shadow:
     0 14px 32px rgba(0, 0, 0, 0.32),
     0 0 0 1px color-mix(in srgb, var(--theme-secondary) 10%, transparent),
@@ -271,8 +279,10 @@ textarea:disabled {
   z-index: 0;
   top: 4px;
   bottom: 4px;
-  left: 4px;
-  width: calc(50% - 4px);
+  /* left/width are set inline per-frame from the active tab's *measured*
+     box (CenterPanel.tsx), not a fixed 50% half — that measurement is what
+     lets the indicator hug "Chat" tightly and "Space" tightly instead of
+     both sharing one oversized slot. */
   border-radius: 999px;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--theme-primary) 92%, white), var(--theme-primary)),
@@ -281,15 +291,13 @@ textarea:disabled {
     0 6px 16px color-mix(in srgb, var(--theme-primary) 30%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
   pointer-events: none;
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease;
+  transition: left 420ms cubic-bezier(0.22, 1, 0.36, 1), width 420ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease;
 }
 
-.mode-switcher-shell[data-active-mode="space"] .mode-switcher-indicator {
-  transform: translateX(100%);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--theme-secondary) 92%, white), var(--theme-secondary)),
-    var(--theme-secondary);
-}
+/* Space mode keeps the same primary-purple indicator as chat mode — the pale
+   --theme-secondary mint that used to fill this pill clashed against the purple
+   chrome around it, and the indicator's position already signals which mode
+   is active, so the colour no longer has to carry that job too. */
 
 .space-hud-pill-controls {
   animation: spaceControlsReveal 360ms cubic-bezier(0.22, 1, 0.36, 1) both;

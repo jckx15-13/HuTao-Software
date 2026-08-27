@@ -120,6 +120,9 @@ export default defineConfig(({ mode }) => {
     // locally and noise in a published build.
     esbuild: isGithubPages ? { drop: ['console', 'debugger'] } : undefined,
     server: {
+      fs: {
+        allow: ['..']
+      },
       // Dev-server host allowlist. Vite blocks unknown Host headers by default
       // (DNS-rebinding protection), which rejects tunnelled origins used to view
       // this dev server from another device. Opt in explicitly via

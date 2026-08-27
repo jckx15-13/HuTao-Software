@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Sparkles,
   Compass,
   Eye,
   RefreshCw,
@@ -12,19 +11,14 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
   Play,
   Pause,
   Calendar,
   Clock,
   Image as ImageIcon,
-  Layers,
   Search,
-  MapPin,
   Grid,
   Plus,
-  Check,
-  Info,
   Radio,
   Star
 } from 'lucide-react';
@@ -430,44 +424,48 @@ export default function WorldWideTelescopeView({
   const wwtRuntimeHealthy = wwtRuntimeState === 'WWT iframe loaded';
 
   // Post message to WWT iframe helper — with full error handling
-  const postToWWT = useCallback((message: any) => {
-    if (controlsOnly && typeof window !== 'undefined' && (window as any).postToWWTBackground) {
-      (window as any).postToWWTBackground(message);
-      return;
-    }
-    try {
-      const iframe = typeof document !== 'undefined'
-        ? (document.getElementById('wwt-research-app-iframe') as HTMLIFrameElement | null) ||
-          (document.querySelector('iframe[title="WorldWide Telescope Viewport"]') as HTMLIFrameElement | null)
-        : null;
-      if (!iframe || !iframe.contentWindow) return;
-      let actualOrigin = '';
-      try {
-        const src = iframe.getAttribute?.('src') || iframe.src || '';
-        actualOrigin = src ? new URL(src).origin : '';
-      } catch (e) {
-        actualOrigin = '';
-      }
-
-      let targetOrigin = actualOrigin;
-      if (!targetOrigin) {
-        try {
-          targetOrigin = new URL(WWT_RESEARCH_APP_URL).origin;
-        } catch (e) {
-          targetOrigin = '';
-        }
-      }
-
-      if (!targetOrigin) {
-        console.warn('[WorldWideTelescopeView] postToWWT skipped: no concrete target origin');
+  const postToWWT = useCallback(
+    (message: any) => {
+      if (controlsOnly && typeof window !== 'undefined' && (window as any).postToWWTBackground) {
+        (window as any).postToWWTBackground(message);
         return;
       }
+      try {
+        const iframe =
+          typeof document !== 'undefined'
+            ? (document.getElementById('wwt-research-app-iframe') as HTMLIFrameElement | null) ||
+              (document.querySelector('iframe[title="WorldWide Telescope Viewport"]') as HTMLIFrameElement | null)
+            : null;
+        if (!iframe || !iframe.contentWindow) return;
+        let actualOrigin = '';
+        try {
+          const src = iframe.getAttribute?.('src') || iframe.src || '';
+          actualOrigin = src ? new URL(src).origin : '';
+        } catch (e) {
+          actualOrigin = '';
+        }
 
-      iframe.contentWindow.postMessage(message, targetOrigin);
-    } catch (err) {
-      console.warn('[WorldWideTelescopeView] postToWWT failed:', err);
-    }
-  }, [controlsOnly]);
+        let targetOrigin = actualOrigin;
+        if (!targetOrigin) {
+          try {
+            targetOrigin = new URL(WWT_RESEARCH_APP_URL).origin;
+          } catch (e) {
+            targetOrigin = '';
+          }
+        }
+
+        if (!targetOrigin) {
+          console.warn('[WorldWideTelescopeView] postToWWT skipped: no concrete target origin');
+          return;
+        }
+
+        iframe.contentWindow.postMessage(message, targetOrigin);
+      } catch (err) {
+        console.warn('[WorldWideTelescopeView] postToWWT failed:', err);
+      }
+    },
+    [controlsOnly]
+  );
 
   // --- Camera Sync Integration ---
   // Connects WWT and Cesium via the useCameraSync Mutex and postMessage listener
@@ -731,58 +729,64 @@ export default function WorldWideTelescopeView({
   }, [bgOnly, controlsOnly, iframeLoaded, refreshKey, telescopeTarget?.url, telescopeWindowActive]);
 
   // Load WTML collection event trigger
-  const handleLoadCollection = useCallback((url: string, name: string) => {
-    if (!url) return;
-    const validation = validateWtmlUrl(url);
-    if (!validation.url) {
-      setWtmlStatus('error');
-      useUIStore.getState().addChangeLog('TELESCOPE', `Cannot load ${name}: ${validation.error}`, 'warning');
-      setTimeout(() => setWtmlStatus('idle'), 3000);
-      return;
-    }
+  const handleLoadCollection = useCallback(
+    (url: string, name: string) => {
+      if (!url) return;
+      const validation = validateWtmlUrl(url);
+      if (!validation.url) {
+        setWtmlStatus('error');
+        useUIStore.getState().addChangeLog('TELESCOPE', `Cannot load ${name}: ${validation.error}`, 'warning');
+        setTimeout(() => setWtmlStatus('idle'), 3000);
+        return;
+      }
 
-    if (!wwtRuntimeHealthy) {
-      setWtmlStatus('error');
-      useUIStore
-        .getState()
-        .addChangeLog('TELESCOPE', `Cannot load ${name}: WWT client is ${wwtRuntimeState}.`, 'warning');
-      setTimeout(() => setWtmlStatus('idle'), 3000);
-      return;
-    }
-    setWtmlStatus('loading');
-    try {
-      postToWWT({
-        event: 'load_image_collection',
-        url: validation.url
-      });
-      setWtmlStatus('success');
-      useUIStore.getState().addChangeLog('TELESCOPE', `Ingested stellar photo collection: ${name}`, 'success');
-      setTimeout(() => setWtmlStatus('idle'), 3000);
-    } catch (err) {
-      setWtmlStatus('error');
-      setTimeout(() => setWtmlStatus('idle'), 3000);
-    }
-  }, [postToWWT, wwtRuntimeHealthy, wwtRuntimeState]);
+      if (!wwtRuntimeHealthy) {
+        setWtmlStatus('error');
+        useUIStore
+          .getState()
+          .addChangeLog('TELESCOPE', `Cannot load ${name}: WWT client is ${wwtRuntimeState}.`, 'warning');
+        setTimeout(() => setWtmlStatus('idle'), 3000);
+        return;
+      }
+      setWtmlStatus('loading');
+      try {
+        postToWWT({
+          event: 'load_image_collection',
+          url: validation.url
+        });
+        setWtmlStatus('success');
+        useUIStore.getState().addChangeLog('TELESCOPE', `Ingested stellar photo collection: ${name}`, 'success');
+        setTimeout(() => setWtmlStatus('idle'), 3000);
+      } catch (err) {
+        setWtmlStatus('error');
+        setTimeout(() => setWtmlStatus('idle'), 3000);
+      }
+    },
+    [postToWWT, wwtRuntimeHealthy, wwtRuntimeState]
+  );
 
   // Set Background Image Set layer
-  const handleSetBackground = useCallback((layerName: string) => {
-    setWwtBackgroundLayer(layerName);
-    if (!wwtRuntimeHealthy) {
-      useUIStore
-        .getState()
-        .addChangeLog(
-          'TELESCOPE',
-          `Cannot change WWT background imagery while client is ${wwtRuntimeState}.`,
-          'warning'
-        );
-      return;
-    }
-    postToWWT({
-      event: 'set_background_by_name',
-      name: layerName
-    });
-    useUIStore.getState().addChangeLog('TELESCOPE', `Background imagery array set to: ${layerName}`, 'info');
-  }, [postToWWT, setWwtBackgroundLayer, wwtRuntimeHealthy, wwtRuntimeState]);
+  const handleSetBackground = useCallback(
+    (layerName: string) => {
+      setWwtBackgroundLayer(layerName);
+      if (!wwtRuntimeHealthy) {
+        useUIStore
+          .getState()
+          .addChangeLog(
+            'TELESCOPE',
+            `Cannot change WWT background imagery while client is ${wwtRuntimeState}.`,
+            'warning'
+          );
+        return;
+      }
+      postToWWT({
+        event: 'set_background_by_name',
+        name: layerName
+      });
+      useUIStore.getState().addChangeLog('TELESCOPE', `Background imagery array set to: ${layerName}`, 'info');
+    },
+    [postToWWT, setWwtBackgroundLayer, wwtRuntimeHealthy, wwtRuntimeState]
+  );
 
   // Register window callbacks in background mode for communication from controls
   useEffect(() => {

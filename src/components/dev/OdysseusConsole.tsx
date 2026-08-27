@@ -1,21 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUIStore } from '@/store/uiStore';
-import {
-  Activity,
-  Database,
-  Clock,
-  Cpu,
-  RefreshCw,
-  Play,
-  Pause,
-  CheckCircle,
-  XCircle,
-  Server,
-  Terminal,
-  Layers,
-  HelpCircle,
-  ExternalLink
-} from 'lucide-react';
+import { Database, Clock, Cpu, RefreshCw, Play, Pause, Server, Layers, ExternalLink } from 'lucide-react';
 import {
   ODYSSEUS_ASSET_ROOT,
   ODYSSEUS_ASSET_AUDIT,
