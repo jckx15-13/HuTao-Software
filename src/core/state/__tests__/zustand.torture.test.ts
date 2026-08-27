@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import type { GeoEntity } from '@/core/plugins/PluginTypes';
 
 // Global polyfill for localStorage and window before store initialization
 const storage: Record<string, string> = {};
@@ -36,12 +37,16 @@ describe('Zustand Adversarial Stress & Torture Test Suite', () => {
 
     const promises = Array.from({ length: mutationCount }, (_, i) => {
       return new Promise<void>((resolve) => {
-        useStore.getState().addFavorite({
+        const entity: GeoEntity = {
           id: `fav-stress-${i}`,
           pluginId: 'test-plugin',
-          title: `Favorite item ${i}`,
-          timestamp: Date.now(),
-        });
+          label: `Favorite item ${i}`,
+          latitude: 0,
+          longitude: 0,
+          timestamp: new Date(),
+          properties: {},
+        };
+        useStore.getState().addFavorite(entity, 'Test Plugin');
         resolve();
       });
     });
@@ -64,13 +69,18 @@ describe('Zustand Adversarial Stress & Torture Test Suite', () => {
   });
 
   it('sanitizes extreme and malformed favorite payloads gracefully', () => {
+    const extremeEntity: GeoEntity = {
+      id: 'extreme-fav-payload',
+      pluginId: '<script>alert("xss")</script>',
+      label: 'X'.repeat(50000), // Extreme string length
+      latitude: NaN,
+      longitude: NaN,
+      timestamp: new Date(),
+      properties: {},
+    };
+
     expect(() => {
-      useStore.getState().addFavorite({
-        id: 'extreme-fav-payload',
-        pluginId: '<script>alert("xss")</script>',
-        title: 'X'.repeat(50000), // Extreme string length
-        timestamp: NaN,
-      });
+      useStore.getState().addFavorite(extremeEntity, 'Test Plugin');
     }).not.toThrow();
 
     const favorites = useStore.getState().favorites;
@@ -80,12 +90,17 @@ describe('Zustand Adversarial Stress & Torture Test Suite', () => {
 
   it('maintains state immutability across rapid store reads and writes', () => {
     const initialFavorites = useStore.getState().favorites;
-    useStore.getState().addFavorite({
+    const testEntity: GeoEntity = {
       id: 'immutability-check',
       pluginId: 'test',
-      title: 'Immutability test',
-      timestamp: Date.now(),
-    });
+      label: 'Immutability test',
+      latitude: 10,
+      longitude: 10,
+      timestamp: new Date(),
+      properties: {},
+    };
+
+    useStore.getState().addFavorite(testEntity, 'Test Plugin');
 
     const newFavorites = useStore.getState().favorites;
     expect(initialFavorites).not.toBe(newFavorites);
