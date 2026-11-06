@@ -15,7 +15,7 @@ export interface OrbitParams {
 
 /**
  * OrbitEngine
- * 
+ *
  * An Object-Oriented physics engine for orbital mechanics and satellite tracking.
  * Encapsulates calculation state, TLE caches, and provides robust numerical guards.
  */
@@ -78,7 +78,7 @@ export class OrbitEngine {
       altitudeMeters: OrbitEngine.ISS_ALTITUDE_M,
       inclinationRad: OrbitEngine.ISS_INCLINATION_RAD,
       omega0: 0.0,
-      argLat0: 0.0,
+      argLat0: 0.0
     }
   ): Coordinates {
     if (!Number.isFinite(elapsedSeconds)) return { lat: 0, lng: 0 };
@@ -138,9 +138,10 @@ export class OrbitEngine {
    */
   private getSatRec(tleLines: string[]): satellite.SatRec | null {
     if (!tleLines || tleLines.length < 3) return null;
-    const id = tleLines[0];
-    const tle1 = tleLines[1];
-    const tle2 = tleLines[2];
+    // Safe: length check above guarantees indices 0, 1, 2 exist.
+    const id = tleLines[0]!;
+    const tle1 = tleLines[1]!;
+    const tle2 = tleLines[2]!;
 
     const cached = this.satrecCache.get(id);
     if (!cached || cached.tle1 !== tle1 || cached.tle2 !== tle2) {
@@ -159,10 +160,7 @@ export class OrbitEngine {
   /**
    * High-level helper to propagate a satellite's TLE to a given Date.
    */
-  public propagateSatelliteTle(
-    tleLines: string[],
-    date: Date = new Date()
-  ): Coordinates | null {
+  public propagateSatelliteTle(tleLines: string[], date: Date = new Date()): Coordinates | null {
     const satrec = this.getSatRec(tleLines);
     if (!satrec) return null;
 

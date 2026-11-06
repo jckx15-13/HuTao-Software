@@ -43,11 +43,43 @@ App detects low-spec devices and automatically:
 
 ## Performance Benchmarks
 
-### Estimated Improvements
+### Historical Estimates (Not Re-measured)
 - GPU memory usage: **50% reduction** (500MB → 250MB)
 - CPU idle usage: **70% reduction** (25% → 5%)
 - Animation frame drops: **Eliminated** (smoother 60fps)
 - Battery drain: **40% reduction** on mobile/laptops
+
+These figures are estimates from the earlier optimization pass, not measurements
+from the current performance check. Treat them as hypotheses until validated on a
+specified device and browser.
+
+### Recorded Check — 2026-10-26
+
+Command: `npm run perf:check` (standard profile; 6 configured rounds; browser
+timings and compressed bundle scan enabled). The checker examined the existing
+`dist/` output and did not rebuild it.
+
+| Area | Result | Notes |
+|---|---|---|
+| Bridge `/status` | Not measured | `127.0.0.1:8001` was unavailable; 0 samples (`fetch failed`). |
+| Bridge `/chat`, `/git/status`, chat stream | Not measured | Bridge unavailable; 0 latency samples and chat stream connection failed. |
+| Frontend load / DOM / LCP | Not measured | `127.0.0.1:3005` was unavailable; HTML preflight failed before browser sampling. |
+| Bundle scan | Completed | 198 JS/CSS assets in existing `dist/`; 1 asset exceeds 400 KB raw. |
+
+Largest assets found by the bundle scan:
+
+| Asset | Raw | Gzip | Brotli |
+|---|---:|---:|---:|
+| `cesium/Cesium.js` | 5.64 MiB | 1.65 MiB | 1.28 MiB |
+| `assets/ai-B92YrVKl.js` | 282.3 KiB | 55.1 KiB | 42.2 KiB |
+| `assets/index-B8uzTCUW.js` | 246.3 KiB | 79.0 KiB | 68.5 KiB |
+| `assets/WWVInitializer-C-ov78vo.js` | 225.9 KiB | 70.4 KiB | 50.7 KiB |
+| `cesium/ThirdParty/google-earth-dbroot-parser.js` | 213.6 KiB | 27.6 KiB | 22.0 KiB |
+
+The check is **incomplete for runtime performance**: unavailable local services
+prevented frontend and bridge timings. The bundle figures describe the current
+`dist/` directory at check time only; repeat the check after a production build
+when the frontend and bridge are running to get comparable runtime samples.
 
 ## Settings for Further Customization
 

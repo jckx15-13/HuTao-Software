@@ -7,7 +7,7 @@ export type ViewportSize = {
 
 const FALLBACK_VIEWPORT: ViewportSize = {
   width: 1280,
-  height: 720,
+  height: 720
 };
 
 const resolveViewportSize = (): ViewportSize => {
@@ -55,12 +55,30 @@ export function useViewportSize(): ViewportSize {
     window.addEventListener('resize', updateViewport, { passive: true });
     viewport?.addEventListener('resize', updateViewport, { passive: true });
     viewport?.addEventListener('scroll', updateViewport, { passive: true });
+
+    // Observe the document element as well as listening for `resize`.
+    //
+    // The listeners above only fire when the browser dispatches a window
+    // `resize`, and a layout can change size without one — an embedded frame
+    // resized by its host is the case that exposed this, where the viewport
+    // genuinely reported the new width while every consumer of this hook kept
+    // rendering the previous size's geometry (measured: an 820px viewport still
+    // resolving 403px desktop rails, leaving a 14px centre stage).
+    // ResizeObserver reports the box actually used for layout, so it catches
+    // that class of change whether or not an event was dispatched.
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(updateViewport);
+      observer.observe(document.documentElement);
+    }
+
     updateViewport();
 
     return () => {
       window.removeEventListener('resize', updateViewport);
       viewport?.removeEventListener('resize', updateViewport);
       viewport?.removeEventListener('scroll', updateViewport);
+      observer?.disconnect();
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;

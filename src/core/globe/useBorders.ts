@@ -1,33 +1,32 @@
 /* eslint-disable react-hooks/refs */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react';
 import {
-    GeoJsonDataSource,
-    Color,
-    Cartesian3,
-    Cartesian2,
-    PolygonHierarchy,
-    JulianDate,
-    WallGeometry,
-    GeometryInstance,
-    ColorGeometryInstanceAttribute,
-    Primitive,
-    MaterialAppearance,
-    Material,
-    LabelCollection,
-    VerticalOrigin,
-    HorizontalOrigin,
-    LabelStyle,
-    HeightReference,
-    NearFarScalar,
-    
-    Cartographic,
-} from "cesium";
-import type { Viewer as CesiumViewer } from "cesium";
-import { getWwtAssetLocalCandidateUrls, getWwtAssetRemoteUrl, WWT_ASSET_PATHS } from "@/lib/wwt/repositoryData";
+  GeoJsonDataSource,
+  Color,
+  Cartesian3,
+  Cartesian2,
+  PolygonHierarchy,
+  JulianDate,
+  WallGeometry,
+  GeometryInstance,
+  ColorGeometryInstanceAttribute,
+  Primitive,
+  MaterialAppearance,
+  Material,
+  LabelCollection,
+  VerticalOrigin,
+  HorizontalOrigin,
+  LabelStyle,
+  HeightReference,
+  NearFarScalar,
+  Cartographic
+} from 'cesium';
+import type { Viewer as CesiumViewer } from 'cesium';
+import { getWwtAssetLocalCandidateUrls, getWwtAssetRemoteUrl, WWT_ASSET_PATHS } from '@/lib/wwt/repositoryData';
 
 const WWV_BORDERS_DATASET_URLS = [
-    ...getWwtAssetLocalCandidateUrls(WWT_ASSET_PATHS.bordersDataset),
-    getWwtAssetRemoteUrl(WWT_ASSET_PATHS.bordersDataset),
+  ...getWwtAssetLocalCandidateUrls(WWT_ASSET_PATHS.bordersDataset),
+  getWwtAssetRemoteUrl(WWT_ASSET_PATHS.bordersDataset)
 ];
 
 /**
@@ -40,251 +39,260 @@ const WWV_BORDERS_DATASET_URLS = [
  * across the globe regardless of Zoom/Visibility distance conditions.
  */
 export function useBorders(
-    viewer: CesiumViewer | null,
-    enabled: boolean,
-    isGoogle3D: boolean = false, // Kept for signature compatibility
+  viewer: CesiumViewer | null,
+  enabled: boolean,
+  _isGoogle3D: boolean = false // Kept for signature compatibility
 ) {
-    const bordersDataRef = useRef<{
-        primitives: Primitive[];
-        labels: LabelCollection;
-    } | null>(null);
-    const isBuildingRef = useRef(false);
+  const bordersDataRef = useRef<{
+    primitives: Primitive[];
+    labels: LabelCollection;
+  } | null>(null);
+  const isBuildingRef = useRef(false);
 
-    // Always keep track of the absolute latest toggle state during a render.
-    // If the user toggles it off mid-load, the ongoing build will finish safely
-    // and turn itself invisible instead of unpredictably popping up.
-    const enabledRef = useRef(enabled);
-    enabledRef.current = enabled;
+  // Always keep track of the absolute latest toggle state during a render.
+  // If the user toggles it off mid-load, the ongoing build will finish safely
+  // and turn itself invisible instead of unpredictably popping up.
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
 
-    useEffect(() => {
-        if (!viewer || viewer.isDestroyed()) return;
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed()) return;
 
-        let cancelled = false;
+    let cancelled = false;
 
-        // If data is already built, instantly toggle visibility without rebuilding
-        if (bordersDataRef.current) {
-            bordersDataRef.current.primitives.forEach((p) => p.show = enabled);
-            const {labels} = bordersDataRef.current;
-            for (let i = 0; i < labels.length; ++i) {
-                labels.get(i).show = enabled;
+    // If data is already built, instantly toggle visibility without rebuilding
+    if (bordersDataRef.current) {
+      bordersDataRef.current.primitives.forEach((p) => (p.show = enabled));
+      const { labels } = bordersDataRef.current;
+      for (let i = 0; i < labels.length; ++i) {
+        labels.get(i).show = enabled;
+      }
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // Only kick off a build if it's enabled and a build isn't already running
+    if (enabled && !isBuildingRef.current) {
+      buildBorders();
+    }
+
+    async function buildBorders() {
+      isBuildingRef.current = true;
+      const labels = new LabelCollection({ scene: viewer!.scene });
+      viewer!.scene.primitives.add(labels);
+      const primitivesList: Primitive[] = [];
+
+      const cleanupPartial = () => {
+        if (viewer && !viewer.isDestroyed()) {
+          if (viewer.scene.primitives.contains(labels)) {
+            viewer.scene.primitives.remove(labels);
+          }
+          if (typeof (labels as any).destroy === 'function') {
+            (labels as any).destroy();
+          }
+          primitivesList.forEach((p) => {
+            if (viewer.scene.primitives.contains(p)) {
+              viewer.scene.primitives.remove(p);
             }
-            return () => { cancelled = true; };
+            if (typeof (p as any).destroy === 'function') {
+              (p as any).destroy();
+            }
+          });
+        }
+      };
+
+      try {
+        console.time('[useBorders] 1. GeoJSON parse');
+        let dataSource: GeoJsonDataSource | null = null;
+        let loadedDatasetUrl = '';
+        let lastLoadError: unknown;
+
+        for (const datasetUrl of WWV_BORDERS_DATASET_URLS) {
+          try {
+            const candidate = new GeoJsonDataSource('borders_temp_wwv');
+            await candidate.load(datasetUrl);
+            dataSource = candidate;
+            loadedDatasetUrl = datasetUrl;
+            break;
+          } catch (err) {
+            lastLoadError = err;
+          }
         }
 
-        // Only kick off a build if it's enabled and a build isn't already running
-        if (enabled && !isBuildingRef.current) {
-            buildBorders();
+        if (!dataSource) {
+          throw lastLoadError instanceof Error ? lastLoadError : new Error('Unable to load WWV borders dataset');
+        }
+        console.info(`[useBorders] Loaded static borders dataset from ${loadedDatasetUrl}`);
+        console.timeEnd('[useBorders] 1. GeoJSON parse');
+
+        if (viewer!.isDestroyed() || cancelled) {
+          cleanupPartial();
+          return;
         }
 
-        async function buildBorders() {
-            isBuildingRef.current = true;
-            const labels = new LabelCollection({ scene: viewer!.scene });
-            viewer!.scene.primitives.add(labels);
-            const primitivesList: Primitive[] = [];
+        console.time('[useBorders] 2. Build Batched Geometry Instances');
+        const entities = dataSource.entities.values;
+        const now = JulianDate.now();
+        const instances: GeometryInstance[] = [];
 
-            const cleanupPartial = () => {
-                if (viewer && !viewer.isDestroyed()) {
-                    if (viewer.scene.primitives.contains(labels)) {
-                        viewer.scene.primitives.remove(labels);
-                    }
-                    if (typeof (labels as any).destroy === 'function') {
-                        (labels as any).destroy();
-                    }
-                    primitivesList.forEach((p) => {
-                        if (viewer.scene.primitives.contains(p)) {
-                            viewer.scene.primitives.remove(p);
-                        }
-                        if (typeof (p as any).destroy === 'function') {
-                            (p as any).destroy();
-                        }
-                    });
-                }
-            };
-
-            try {
-                console.time("[useBorders] 1. GeoJSON parse");
-                let dataSource: GeoJsonDataSource | null = null;
-                let loadedDatasetUrl = "";
-                let lastLoadError: unknown;
-
-                for (const datasetUrl of WWV_BORDERS_DATASET_URLS) {
-                    try {
-                        const candidate = new GeoJsonDataSource("borders_temp_wwv");
-                        await candidate.load(datasetUrl);
-                        dataSource = candidate;
-                        loadedDatasetUrl = datasetUrl;
-                        break;
-                    } catch (err) {
-                        lastLoadError = err;
-                    }
-                }
-
-                if (!dataSource) {
-                    throw lastLoadError instanceof Error ? lastLoadError : new Error("Unable to load WWV borders dataset");
-                }
-                console.info(`[useBorders] Loaded static borders dataset from ${loadedDatasetUrl}`);
-                console.timeEnd("[useBorders] 1. GeoJSON parse");
-
-                if (viewer!.isDestroyed() || cancelled) {
-                    cleanupPartial();
-                    return;
-                }
-
-                console.time("[useBorders] 2. Build Batched Geometry Instances");
-                const entities = dataSource.entities.values;
-                const now = JulianDate.now();
-                const instances: GeometryInstance[] = [];
-
-                let lastYield = performance.now();
-                for (const entity of entities) {
-                    // Time-based yielding: process as many entities as possible within an 8ms frame budget.
-                    // This is 30-40x faster than fixed-interval chunking while still preventing the UI from freezing.
-                    if (performance.now() - lastYield > 8) {
-                        await new Promise((resolve) => setTimeout(resolve, 0));
-                        if (viewer!.isDestroyed() || cancelled) {
-                            cleanupPartial();
-                            return;
-                        }
-                        lastYield = performance.now();
-                    }
-
-                    const props = entity.properties ? entity.properties.getValue(now) : undefined;
-                    const name = props?.sovereignt || props?.admin || props?.name || "";
-
-                    let positions: Cartesian3[] | undefined;
-
-                    if (entity.polygon) {
-                        const hierarchy = entity.polygon.hierarchy?.getValue(now) as PolygonHierarchy | undefined;
-                        if (hierarchy) {
-                            positions = hierarchy.positions;
-                        }
-                    } else if (entity.polyline) {
-                        positions = entity.polyline.positions?.getValue(now);
-                    }
-
-                    if (positions && positions.length > 0) {
-                        // Close the loop if not closed
-                        if (entity.polygon && !Cartesian3.equals(positions[0], positions[positions.length - 1])) {
-                            positions = [...positions, positions[0]];
-                        }
-
-                        // Compile into an unmanaged geometry instance
-                        instances.push(new GeometryInstance({
-                            geometry: new WallGeometry({
-                                positions,
-                                minimumHeights: new Array(positions.length).fill(-500), // 500m underground
-                                maximumHeights: new Array(positions.length).fill(2000), // 2km above ground
-                            }),
-                            attributes: {
-                                // Base color, which the appearance will multiply against
-                                color: ColorGeometryInstanceAttribute.fromColor(Color.WHITE)
-                            }
-                        }));
-
-                        if (name) {
-                            // Compute centroid of the polygon in lat/lon to place the label at the country center
-                            let sumLat = 0; let
-sumLon = 0;
-                            for (let j = 0; j < positions.length; j++) {
-                                const carto = Cartographic.fromCartesian(positions[j]);
-                                sumLat += carto.latitude;
-                                sumLon += carto.longitude;
-                            }
-                            const centroid = Cartesian3.fromRadians(
-                                sumLon / positions.length,
-                                sumLat / positions.length,
-                                100000 // Place at the wall top height
-                            );
-
-                            labels.add({
-                                position: centroid,
-                                text: name,
-                                font: 'bold 20px sans-serif',
-                                fillColor: Color.WHITE,
-                                outlineColor: Color.BLACK,
-                                outlineWidth: 3,
-                                style: LabelStyle.FILL_AND_OUTLINE,
-                                verticalOrigin: VerticalOrigin.CENTER,
-                                horizontalOrigin: HorizontalOrigin.CENTER,
-                                heightReference: HeightReference.NONE,
-                                pixelOffset: new Cartesian2(0, 0),
-                                disableDepthTestDistance: 0,
-                                scaleByDistance: new NearFarScalar(1.5e5, 1.5, 8.0e6, 0.0),
-                                show: true // Default true during generation
-                            });
-                        }
-                    }
-                }
-                console.timeEnd("[useBorders] 2. Build Batched Geometry Instances");
-
-                console.time("[useBorders] 3. Compile Master Primitives");
-
-                const BATCH_SIZE = 25; // Dispatch 25 country instances per Web Worker payload
-
-                for (let i = 0; i < instances.length; i += BATCH_SIZE) {
-                    const batchInstances = instances.slice(i, i + BATCH_SIZE);
-                    const primitive = new Primitive({
-                        geometryInstances: batchInstances,
-                        appearance: new MaterialAppearance({
-                            material: Material.fromType('Color', { color: Color.fromCssColorString('rgba(138, 91, 199, 0.35)') }),
-                            translucent: true,
-                            closed: false
-                        }),
-                        asynchronous: true, // Generate geometry in a Web Worker to avoid freezing the main UI
-                        show: true
-                    });
-
-                    viewer!.scene.primitives.add(primitive);
-                    primitivesList.push(primitive);
-
-                    // Reduced 50ms yield loop down to 5ms: just long enough for WebWorkers to claim execution cycles.
-                    await new Promise((resolve) => setTimeout(resolve, 5));
-                    if (viewer!.isDestroyed() || cancelled) {
-                        cleanupPartial();
-                        return;
-                    }
-                }
-
-                console.timeEnd("[useBorders] 3. Compile Master Primitives");
-
-                bordersDataRef.current = { primitives: primitivesList, labels };
-
-                // Ensure the ultimate state perfectly aligns with what the user requested during the load time.
-                const currentlyEnabled = enabledRef.current;
-                primitivesList.forEach((p) => p.show = currentlyEnabled);
-                for (let i = 0; i < labels.length; ++i) {
-                    labels.get(i).show = currentlyEnabled;
-                }
-            } catch (err) {
-                console.warn("[useBorders] Failed to compile low-level 3D borders", err);
-                cleanupPartial();
-            } finally {
-                isBuildingRef.current = false;
+        let lastYield = performance.now();
+        for (const entity of entities) {
+          // Time-based yielding: process as many entities as possible within an 8ms frame budget.
+          // This is 30-40x faster than fixed-interval chunking while still preventing the UI from freezing.
+          if (performance.now() - lastYield > 8) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            if (viewer!.isDestroyed() || cancelled) {
+              cleanupPartial();
+              return;
             }
+            lastYield = performance.now();
+          }
+
+          const props = entity.properties ? entity.properties.getValue(now) : undefined;
+          const name = props?.sovereignt || props?.admin || props?.name || '';
+
+          let positions: Cartesian3[] | undefined;
+
+          if (entity.polygon) {
+            const hierarchy = entity.polygon.hierarchy?.getValue(now) as PolygonHierarchy | undefined;
+            if (hierarchy) {
+              positions = hierarchy.positions;
+            }
+          } else if (entity.polyline) {
+            positions = entity.polyline.positions?.getValue(now);
+          }
+
+          if (positions && positions.length > 0) {
+            // Close the loop if not closed
+            if (entity.polygon && !Cartesian3.equals(positions[0], positions[positions.length - 1])) {
+              // Safe: guarded by `positions.length > 0` above.
+              positions = [...positions, positions[0]!];
+            }
+
+            // Compile into an unmanaged geometry instance
+            instances.push(
+              new GeometryInstance({
+                geometry: new WallGeometry({
+                  positions,
+                  minimumHeights: new Array(positions.length).fill(-500), // 500m underground
+                  maximumHeights: new Array(positions.length).fill(2000) // 2km above ground
+                }),
+                attributes: {
+                  // Base color, which the appearance will multiply against
+                  color: ColorGeometryInstanceAttribute.fromColor(Color.WHITE)
+                }
+              })
+            );
+
+            if (name) {
+              // Compute centroid of the polygon in lat/lon to place the label at the country center
+              let sumLat = 0;
+              let sumLon = 0;
+              for (let j = 0; j < positions.length; j++) {
+                // Safe: j < positions.length.
+                const carto = Cartographic.fromCartesian(positions[j]!);
+                sumLat += carto.latitude;
+                sumLon += carto.longitude;
+              }
+              const centroid = Cartesian3.fromRadians(
+                sumLon / positions.length,
+                sumLat / positions.length,
+                100000 // Place at the wall top height
+              );
+
+              labels.add({
+                position: centroid,
+                text: name,
+                font: 'bold 20px sans-serif',
+                fillColor: Color.WHITE,
+                outlineColor: Color.BLACK,
+                outlineWidth: 3,
+                style: LabelStyle.FILL_AND_OUTLINE,
+                verticalOrigin: VerticalOrigin.CENTER,
+                horizontalOrigin: HorizontalOrigin.CENTER,
+                heightReference: HeightReference.NONE,
+                pixelOffset: new Cartesian2(0, 0),
+                disableDepthTestDistance: 0,
+                scaleByDistance: new NearFarScalar(1.5e5, 1.5, 8.0e6, 0.0),
+                show: true // Default true during generation
+              });
+            }
+          }
         }
-        return () => {
-            cancelled = true;
-        };
-    }, [viewer, enabled]);
+        console.timeEnd('[useBorders] 2. Build Batched Geometry Instances');
 
-    // Cleanup on unmount
-    useEffect(() => () => {
-            if (viewer && !viewer.isDestroyed() && bordersDataRef.current) {
-                bordersDataRef.current.primitives.forEach((p) => {
-                    if (viewer.scene.primitives.contains(p)) {
-                        viewer.scene.primitives.remove(p);
-                    }
-                    if (typeof (p as any).destroy === 'function') {
-                        (p as any).destroy();
-                    }
-                });
-                if (viewer.scene.primitives.contains(bordersDataRef.current.labels)) {
-                    viewer.scene.primitives.remove(bordersDataRef.current.labels);
-                }
-                if (typeof (bordersDataRef.current.labels as any).destroy === 'function') {
-                    (bordersDataRef.current.labels as any).destroy();
-                }
-                bordersDataRef.current = null;
-            }
-        }, [viewer]);
+        console.time('[useBorders] 3. Compile Master Primitives');
+
+        const BATCH_SIZE = 25; // Dispatch 25 country instances per Web Worker payload
+
+        for (let i = 0; i < instances.length; i += BATCH_SIZE) {
+          const batchInstances = instances.slice(i, i + BATCH_SIZE);
+          const primitive = new Primitive({
+            geometryInstances: batchInstances,
+            appearance: new MaterialAppearance({
+              material: Material.fromType('Color', { color: Color.fromCssColorString('rgba(138, 91, 199, 0.35)') }),
+              translucent: true,
+              closed: false
+            }),
+            asynchronous: true, // Generate geometry in a Web Worker to avoid freezing the main UI
+            show: true
+          });
+
+          viewer!.scene.primitives.add(primitive);
+          primitivesList.push(primitive);
+
+          // Reduced 50ms yield loop down to 5ms: just long enough for WebWorkers to claim execution cycles.
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          if (viewer!.isDestroyed() || cancelled) {
+            cleanupPartial();
+            return;
+          }
+        }
+
+        console.timeEnd('[useBorders] 3. Compile Master Primitives');
+
+        bordersDataRef.current = { primitives: primitivesList, labels };
+
+        // Ensure the ultimate state perfectly aligns with what the user requested during the load time.
+        const currentlyEnabled = enabledRef.current;
+        primitivesList.forEach((p) => (p.show = currentlyEnabled));
+        for (let i = 0; i < labels.length; ++i) {
+          labels.get(i).show = currentlyEnabled;
+        }
+      } catch (err) {
+        console.warn('[useBorders] Failed to compile low-level 3D borders', err);
+        cleanupPartial();
+      } finally {
+        isBuildingRef.current = false;
+      }
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [viewer, enabled]);
+
+  // Cleanup on unmount
+  useEffect(
+    () => () => {
+      if (viewer && !viewer.isDestroyed() && bordersDataRef.current) {
+        bordersDataRef.current.primitives.forEach((p) => {
+          if (viewer.scene.primitives.contains(p)) {
+            viewer.scene.primitives.remove(p);
+          }
+          if (typeof (p as any).destroy === 'function') {
+            (p as any).destroy();
+          }
+        });
+        if (viewer.scene.primitives.contains(bordersDataRef.current.labels)) {
+          viewer.scene.primitives.remove(bordersDataRef.current.labels);
+        }
+        if (typeof (bordersDataRef.current.labels as any).destroy === 'function') {
+          (bordersDataRef.current.labels as any).destroy();
+        }
+        bordersDataRef.current = null;
+      }
+    },
+    [viewer]
+  );
 }

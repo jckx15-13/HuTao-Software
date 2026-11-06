@@ -4,7 +4,8 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, "prototype/**"]
+  workflow_dispatch:
 
 concurrency:
   group: qa-${{ github.ref }}
@@ -14,20 +15,38 @@ permissions:
   contents: read
 
 jobs:
+  silver-wolf-quality:
+    name: Silver Wolf VI – Typecheck, Lint, and Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:strict
+      - run: npm run test:vitest
+      - run: npm audit
+      - name: Build for GitHub Pages
+        run: npm run build
+        env:
+          GITHUB_PAGES: "true"
+
   # ─── Security & Dependency Scanning (Snyk) ───────────────────────────
   snyk-frontend:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     name: Snyk – Frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          node-version: 24
+          cache: npm
+      - run: npm ci
       - uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -35,63 +54,66 @@ jobs:
           args: --file=package.json --severity-threshold=high
 
   snyk-backend:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     name: Snyk – Python Bridge
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install -r bridge/requirements.txt
-      - uses: snyk/actions/python@master
+      - uses: snyk/actions/setup@master
+      - name: Scan the installed Python environment
+        run: snyk test --file=bridge/requirements.txt --package-manager=pip --command=python3 --severity-threshold=high
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --file=bridge/requirements.txt --severity-threshold=high
 
   # ─── Visual Regression & Design Review (Chromatic) ───────────────────
   chromatic:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     name: Chromatic – Visual Regression
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
         with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          node-version: 24
+          cache: npm
+      - run: npm ci
       - uses: chromaui/action@latest
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           buildScriptName: build-storybook
           exitZeroOnChanges: false
-          exitOnceUploaded: true
+          exitOnceUploaded: false
           onlyChanged: true
           # Enforce design tokens — any visual diff triggers review
           autoAcceptChanges: false
 
-  # ─── Runtime Telemetry – Sentry Source Maps ──────────────────────────
-  sentry-sourcemaps:
-    name: Sentry – Upload Source Maps
+  # Production source maps are uploaded from the actual Pages artifact.
+  sentry-configuration:
+    name: Sentry – Verify Configuration
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build:sourcemaps
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check Sentry configuration
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG || vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT || vars.SENTRY_PROJECT }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN || vars.VITE_SENTRY_DSN }}
+        run: |
+          : "${SENTRY_AUTH_TOKEN:?Set SENTRY_AUTH_TOKEN}"
+          : "${SENTRY_ORG:?Set SENTRY_ORG}"
+          : "${SENTRY_PROJECT:?Set SENTRY_PROJECT}"
+          : "${VITE_SENTRY_DSN:?Set VITE_SENTRY_DSN}"
+          npx --no-install sentry-cli info

@@ -20,12 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
 
       - name: Install dependencies
@@ -37,7 +37,38 @@ jobs:
           # VITE_BRIDGE_URL to the "off" sentinel, so the static build boots
           # into demo mode instead of polling 127.0.0.1:8001 forever.
           GITHUB_PAGES: 'true'
-        run: npm run build
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN || vars.VITE_SENTRY_DSN }}
+          VITE_SENTRY_RELEASE: ${{ github.sha }}
+          VITE_ASTRONOMY_URL: ${{ vars.VITE_ASTRONOMY_URL }}
+        run: npm run build -- --sourcemap hidden
+
+      - name: Upload source maps for the deployed build
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG || vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT || vars.SENTRY_PROJECT }}
+          SENTRY_RELEASE: ${{ github.sha }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN || vars.VITE_SENTRY_DSN }}
+        run: |
+          if [[ -z "$VITE_SENTRY_DSN" ]]; then
+            echo "Sentry disabled: VITE_SENTRY_DSN is not configured." >> "$GITHUB_STEP_SUMMARY"
+          else
+            : "${SENTRY_AUTH_TOKEN:?Set SENTRY_AUTH_TOKEN}"
+            : "${SENTRY_ORG:?Set SENTRY_ORG}"
+            : "${SENTRY_PROJECT:?Set SENTRY_PROJECT}"
+            npx --no-install sentry-cli sourcemaps inject ./dist
+            npx --no-install sentry-cli sourcemaps upload --release "$SENTRY_RELEASE" ./dist
+            echo "Sentry source maps uploaded for release $SENTRY_RELEASE." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Remove private source maps from the public site
+        run: find dist -type f -name '*.map' -delete
+
+      - name: Build flowchart editor
+        run: |
+          npm ci --prefix flowchart-editor
+          npm run build --prefix flowchart-editor
+          cp -R flowchart-editor/dist dist/flowchart
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

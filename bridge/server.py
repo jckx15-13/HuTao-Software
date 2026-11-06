@@ -1387,6 +1387,22 @@ def repository_status(repo_id: str, label: str, relative_path: str, required_fil
         "missing_files": [item for item in required_files if item not in present_files],
     }
 
+def integration_progress(integration_id: str, label: str, checks: list[tuple[str, bool, str]]) -> dict:
+    """Expose evidence coverage as a checklist percentage, not a quality score."""
+    completed = sum(1 for _, passed, _ in checks if passed)
+    total = len(checks)
+    return {
+        "id": integration_id,
+        "label": label,
+        "percent": round(completed * 100 / total) if total else 0,
+        "completed_checks": completed,
+        "total_checks": total,
+        "checks": [
+            {"label": check_label, "status": "evidenced" if passed else "incomplete", "evidence": evidence}
+            for check_label, passed, evidence in checks
+        ],
+    }
+
 VERIFICATION_REPORT_STALE_AFTER_SECONDS = 24 * 60 * 60
 
 def build_feature_reality_ledger() -> dict:
@@ -1423,15 +1439,54 @@ def build_feature_reality_ledger() -> dict:
             "bridge/server.py",
             "scripts/test_integration_contracts.cjs",
         ]),
-        repository_status("worldwideview", "WorldWideView source integration", "worldwideview", [
+        repository_status("worldwideview", "WorldWideView source integration", "../world-wide-view/worldwideview", [
             "package.json",
             "public/logo/logo-icon.svg",
             "public/airplane/scene.gltf",
+        ]),
+        repository_status("wwv-data-engine", "WWV data engine", "../world-wide-view/wwv-data-engine", [
+            "package.json",
+            "src/server.ts",
+            "tsconfig.json",
+        ]),
+        repository_status("wwv-seeders", "WWV seeders", "../world-wide-view/wwv-seeders", [
+            "package.json",
+            "README.md",
         ]),
         repository_status("odysseus", "Odysseus companion backend", "odysseus", [
             "pyproject.toml",
             "package.json",
             "docs",
+        ]),
+    ]
+
+    # These are evidence coverage bars, not a claim that a product is this
+    # percentage complete. Runtime checks are only credited when a fresh
+    # verification report contains the relevant successful observation.
+    integrations = [
+        integration_progress("silver-wolf-vi", "Silver Wolf VI core", [
+            ("App source present", path_exists("src/App.tsx"), "src/App.tsx"),
+            ("Integration contract present", path_exists("scripts/test_integration_contracts.cjs"), "scripts/test_integration_contracts.cjs"),
+            ("Fresh runtime verification", not report_is_stale and report.get("overall_status") == "PASS", "verification_report.json"),
+            ("Chat flow runtime verified", not report_is_stale and (report.get("proxy_chat_flow") or {}).get("status") == "success", "verification_report.proxy_chat_flow"),
+        ]),
+        integration_progress("worldwideview", "WorldWideView", [
+            ("Source checkout present", path_exists("../world-wide-view/worldwideview/package.json"), "../world-wide-view/worldwideview/package.json"),
+            ("Mapped asset contract present", path_exists("src/assets/wwvVisualAssets.ts"), "src/assets/wwvVisualAssets.ts"),
+            ("WWV plugin bundles available", all(path_exists(path) for path in [
+                "../world-wide-view/worldwideview-plugins/packages/wwv-plugin-aviation/dist/frontend.mjs",
+                "../world-wide-view/worldwideview-plugins/packages/wwv-plugin-maritime/dist/frontend.mjs",
+                "../world-wide-view/worldwideview-plugins/packages/wwv-plugin-undersea-cables/dist/frontend.mjs",
+                "../world-wide-view/worldwideview-plugins/packages/wwv-plugin-volcanoes/dist/frontend.mjs",
+                "../world-wide-view/worldwideview-plugins/packages/wwv-plugin-military-aviation/dist/frontend.mjs",
+            ]), "worldwideview-plugins/*/dist/frontend.mjs"),
+            ("Fresh runtime verification", not report_is_stale and (services.get("worldwideview") or {}).get("status") == "online", "verification_report.services.worldwideview"),
+        ]),
+        integration_progress("wwv-data-engine-seeders", "WWV data engine + seeders", [
+            ("Data-engine source present", path_exists("../world-wide-view/wwv-data-engine/src/server.ts"), "../world-wide-view/wwv-data-engine/src/server.ts"),
+            ("Seeders source present", path_exists("../world-wide-view/wwv-seeders/package.json") or path_exists("../world-wide-view/worldwideview/local-seeders/community/package.json"), "seeder checkout or local-seeders/community/package.json"),
+            ("Client routing and manifest discovery present", path_exists("src/core/data/resolveEngineUrl.ts") and path_exists("src/core/data/engineManifest.ts"), "src/core/data/{resolveEngineUrl,engineManifest}.ts"),
+            ("Fresh engine and feed runtime verification", not report_is_stale and (services.get("wwv-data-engine") or {}).get("status") == "online" and (report.get("wwv_feed_flow") or {}).get("status") == "success", "verification_report.services.wwv-data-engine + wwv_feed_flow"),
         ]),
     ]
 
@@ -1553,6 +1608,7 @@ def build_feature_reality_ledger() -> dict:
         "integration_score": integration_score,
         "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "repositories": repositories,
+        "integrations": integrations,
         "features": features,
         "runtime_report_status": report.get("overall_status") or "missing",
         "partial_reasons": report.get("partial_reasons") or [],

@@ -1,0 +1,21 @@
+.world-telescope { position:absolute; inset:220px 12px auto; pointer-events:none; color:var(--color-text, #e4eaf0); font:12px/1.5 Inter,sans-serif; }
+.world-telescope-toolbar { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:8px; width:fit-content; max-width:100%; margin:auto; padding:10px; background:rgba(9,16,25,.94); border:1px solid rgba(170,220,220,.25); border-radius:16px; pointer-events:auto; }
+.world-telescope button { min-height:40px; padding:7px 12px; background:rgba(170,220,220,.08); border:1px solid rgba(170,220,220,.22); border-radius:8px; color:inherit; cursor:pointer; }
+.world-telescope-explorer { padding:9px 12px; border:1px solid #91dcca; border-radius:8px; color:#a9f5e0; text-decoration:underline; }
+.world-telescope button:hover,.world-telescope button[aria-pressed=true] { background:rgba(130,240,210,.18); border-color:#91dcca; }
+.world-telescope button:focus-visible,.world-telescope input:focus-visible { outline:2px solid #91dcca; outline-offset:3px; }
+.world-telescope button:disabled { opacity:.45; cursor:wait; }
+.world-telescope-hint,.world-telescope-status { text-align:center; width:fit-content; max-width:100%; margin:8px auto; background:rgba(9,16,25,.85); padding:4px 10px; border-radius:8px; }
+.world-telescope-catalog { pointer-events:auto; background:rgba(9,16,25,.97); border:1px solid rgba(170,220,220,.25); border-radius:14px; padding:14px; margin:12px auto; width:340px; max-width:100%; max-height:calc(100dvh - 340px); overflow:auto; }
+.world-telescope-catalog label { display:block; margin-bottom:12px; }
+.world-telescope-catalog input:not([type=checkbox]) { display:block; width:100%; background:#151e2d; color:inherit; padding:9px; margin-top:4px; border:1px solid #45546a; border-radius:7px; color-scheme:dark; }
+.world-telescope-check input { margin-right:8px; }
+.world-telescope-catalog select { display:block; width:100%; margin:6px 0; padding:10px; border:1px solid #45546a; border-radius:7px; background:#151e2d; color:inherit; }
+.world-body-actions { display:flex; flex-wrap:wrap; gap:6px; }
+.world-telescope-catalog a { color:#b6a0e8; text-decoration:underline; }
+.world-telescope-results { max-height:220px; overflow:auto; }
+.world-telescope-results button { width:100%; text-align:left; margin:3px 0; }
+.world-telescope-catalog p { color:#a8b7c6; font-size:11px; }
+.world-telescope-error { pointer-events:auto; max-width:440px; margin:10px auto; padding:12px; background:#372326; border:1px solid #b47c80; border-radius:12px; }
+.world-telescope-error button { display:block; margin-top:8px; }
+@media(max-width:700px) { .world-telescope { top:210px; inset-inline:8px; } .world-telescope-toolbar strong { width:100%; text-align:center; } .world-telescope-catalog { max-height:calc(100dvh - 440px); } }

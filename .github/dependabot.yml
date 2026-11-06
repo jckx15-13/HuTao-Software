@@ -20,3 +20,13 @@ updates:
         update-types:
           - "patch"
           - "minor"
+
+  - package-ecosystem: "npm"
+    directory: "/flowchart-editor"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

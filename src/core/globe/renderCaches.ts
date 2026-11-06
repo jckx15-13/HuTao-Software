@@ -4,9 +4,9 @@
  * Centralizes cache utilities that are shared across EntityRenderer,
  * AnimationLoop, and other rendering modules.
  */
-import { Cartesian3, Color, Ellipsoid } from "cesium";
-import type { CesiumEntityOptions } from "@/core/plugins/PluginTypes";
-import type { AnimatableItem } from "./EntityRenderer";
+import { Cartesian3, Color } from 'cesium';
+import type { CesiumEntityOptions } from '@/core/plugins/PluginTypes';
+import type { AnimatableItem } from './EntityRenderer';
 
 // ── Scratch Cartesian3 for position computation ─────────────
 // Reused across all renderSingleEntity calls to avoid heap alloc per entity.
@@ -20,13 +20,13 @@ const colorCache = new Map<string, Color>();
 
 /** Resolve a CSS color string to a cached Color instance. */
 export function getCachedColor(css: string | undefined): Color {
-    if (!css) return Color.CYAN;
-    let c = colorCache.get(css);
-    if (!c) {
-        c = Color.fromCssColorString(css);
-        colorCache.set(css, c);
-    }
-    return c;
+  if (!css) return Color.CYAN;
+  let c = colorCache.get(css);
+  if (!c) {
+    c = Color.fromCssColorString(css);
+    colorCache.set(css, c);
+  }
+  return c;
 }
 
 /**
@@ -34,7 +34,7 @@ export function getCachedColor(css: string | undefined): Color {
  * Uses the color cache for zero-allocation on repeated CSS strings.
  */
 export function getEntityColor(options: CesiumEntityOptions): Color {
-    return getCachedColor(options.color);
+  return getCachedColor(options.color);
 }
 
 // ── Stable array cache ──────────────────────────────────────
@@ -44,14 +44,14 @@ let stableArrayDirty = true;
 
 /** Mark that the animatables map changed and the stable array needs rebuilding. */
 export function markAnimatablesDirty(): void {
-    stableArrayDirty = true;
+  stableArrayDirty = true;
 }
 
 /** Return a stable array of AnimatableItems, only rebuilding when dirty. */
 export function getStableAnimatables(map: Map<string, AnimatableItem>): AnimatableItem[] {
-    if (stableArrayDirty) {
-        stableAnimatables = Array.from(map.values());
-        stableArrayDirty = false;
-    }
-    return stableAnimatables;
+  if (stableArrayDirty) {
+    stableAnimatables = Array.from(map.values());
+    stableArrayDirty = false;
+  }
+  return stableAnimatables;
 }

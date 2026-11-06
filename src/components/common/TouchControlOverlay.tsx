@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ZoomIn, ZoomOut, Compass, Move, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { useState } from 'react';
+import { ZoomIn, ZoomOut, Compass, Move, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 
 export function TouchControlOverlay() {

@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { currentSyncSource, setSyncSource } from './useWWTListener';
+import { ecefToCelestial, raHoursToDegrees } from '@/lib/coordinateTransforms';
+import type { Viewer } from 'cesium';
 
 const EARTH_RADIUS_METERS = 6371000;
 
@@ -19,13 +21,15 @@ export function calculateHorizonFOV(altitudeMeters: number): number {
  * Synchronizes camera parameters between Cesium 3D Globe and WWT All-Sky View.
  */
 export function useCameraSync(
-  cesiumViewer?: any,
-  postToWWT?: (cmd: string, args: Record<string, unknown>) => void,
+  cesiumViewer?: Viewer | null,
+  postToWWT?: (message: Record<string, unknown>) => void,
+  observationTime?: string,
 ) {
   const lastSyncTs = useRef<number>(0);
 
   useEffect(() => {
     if (!cesiumViewer || !postToWWT) return;
+    let releaseTimer: ReturnType<typeof setTimeout> | undefined;
 
     const removeListener = cesiumViewer.camera?.changed?.addEventListener(() => {
       const now = Date.now();
@@ -37,32 +41,29 @@ export function useCameraSync(
         return;
       }
 
-      setSyncSource('cesium');
-
       const camera = cesiumViewer.camera;
       if (!camera) return;
 
       const cartographic = camera.positionCartographic;
       if (!cartographic) return;
 
-      const alt = cartographic.height;
-      const fov = calculateHorizonFOV(alt);
-
-      // Convert lat/lon to RA/Dec
-      const latDeg = (cartographic.latitude * 180) / Math.PI;
-      const lonDeg = (cartographic.longitude * 180) / Math.PI;
-      
-      const ra = (lonDeg + 360) % 360;
-      const dec = latDeg;
-
-      postToWWT('set_view', {
-        ra,
-        dec,
+      const direction = camera.directionWC;
+      const date = observationTime ? new Date(observationTime) : new Date();
+      if (!direction || !Number.isFinite(date.getTime())) return;
+      const coordinates = ecefToCelestial(direction, date);
+      const fovy = 'fovy' in camera.frustum ? camera.frustum.fovy : undefined;
+      const fov = typeof fovy === 'number' ? fovy * 180 / Math.PI : calculateHorizonFOV(cartographic.height);
+      setSyncSource('cesium');
+      postToWWT({
+        event: 'center_on_coordinates',
+        ra: raHoursToDegrees(coordinates.ra),
+        dec: coordinates.dec,
         fov,
         instant: true,
       });
 
-      setTimeout(() => {
+      clearTimeout(releaseTimer);
+      releaseTimer = setTimeout(() => {
         if (currentSyncSource === 'cesium') {
           setSyncSource('none');
         }
@@ -70,9 +71,11 @@ export function useCameraSync(
     });
 
     return () => {
+      clearTimeout(releaseTimer);
+      if (currentSyncSource === 'cesium') setSyncSource('none');
       if (removeListener && typeof removeListener === 'function') {
         removeListener();
       }
     };
-  }, [cesiumViewer, postToWWT]);
+  }, [cesiumViewer, postToWWT, observationTime]);
 }

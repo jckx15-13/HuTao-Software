@@ -1,0 +1,103 @@
+{
+  "metadata": {
+    "description": "Registry of the all-sky surveys the native celestial layer can display. `layerValue` is the identifier the existing SilverWolf telescope controls already write into uiStore.wwtBackgroundLayer, so this registry attaches provenance and imagery to the controls that already exist rather than replacing them.",
+    "storedEpoch": "J2000",
+    "tileFormat": "Surveys are published by their archives as HiPS or TOAST tile pyramids referenced from WTML manifests. SilverWolf renders an all-sky preview texture on the celestial sphere by default and only requests deeper tiles when a manifest supplies them, so no unbounded tile cache is ever committed to the repository.",
+    "offlineBehavior": "When a survey has no cached preview the layer keeps its palette, grid, stars, boundaries and pins and reports the survey as unavailable in the telescope data-configuration panel. It never silently renders a different survey."
+  },
+  "surveys": [
+    {
+      "id": "solar-system",
+      "layerValue": "3D Solar System View",
+      "name": "3D Solar System (Earth-centered)",
+      "band": "context",
+      "palette": { "star": "#dff8ff", "grid": "#51e0ff", "glow": "#16b5d7" },
+      "allSkyPreview": null,
+      "attribution": "SilverWolf native solar-system context view.",
+      "license": "N/A - rendered geometry, no third-party imagery.",
+      "offlinePriority": "required"
+    },
+    {
+      "id": "dss",
+      "layerValue": "Digitized Sky Survey (Color)",
+      "name": "Digitized Sky Survey (Color)",
+      "band": "visible",
+      "palette": { "star": "#d5edff", "grid": "#78b9e8", "glow": "#5bb8ff" },
+      "allSkyPreview": {
+        "localPath": "/astronomy/surveys/dss-allsky.jpg",
+        "sourceUrl": "https://archive.stsci.edu/dss/",
+        "sha256": null
+      },
+      "attribution": "Digitized Sky Survey, STScI/AURA; based on photographic data from the Palomar and UK Schmidt telescopes.",
+      "license": "STScI DSS terms - non-commercial use with attribution.",
+      "offlinePriority": "preferred"
+    },
+    {
+      "id": "visible",
+      "layerValue": "Visible Imagery",
+      "name": "Visible Imagery",
+      "band": "visible",
+      "palette": { "star": "#e8f4ff", "grid": "#8fc7f0", "glow": "#6ec3ff" },
+      "allSkyPreview": null,
+      "attribution": "Optical composite context layer.",
+      "license": "N/A - rendered composite.",
+      "offlinePriority": "optional"
+    },
+    {
+      "id": "hubble",
+      "layerValue": "Hubble Space Telescope Imagery",
+      "name": "Hubble Space Telescope",
+      "band": "visible",
+      "palette": { "star": "#f2ddff", "grid": "#bc8bff", "glow": "#ab5cff" },
+      "allSkyPreview": null,
+      "attribution": "NASA/ESA Hubble Space Telescope.",
+      "license": "NASA/ESA Hubble imagery is generally free to use with credit; check the individual release.",
+      "offlinePriority": "optional"
+    },
+    {
+      "id": "chandra",
+      "layerValue": "RASS: ROSAT All Sky Survey (X-ray)",
+      "name": "Chandra (X-Ray)",
+      "band": "x-ray",
+      "palette": { "star": "#d6faff", "grid": "#39dcff", "glow": "#00b8ff" },
+      "allSkyPreview": {
+        "localPath": "/astronomy/surveys/rass-allsky.jpg",
+        "sourceUrl": "https://heasarc.gsfc.nasa.gov/docs/rosat/rhp_archive.html",
+        "sha256": null
+      },
+      "attribution": "ROSAT All-Sky Survey, MPE / NASA HEASARC.",
+      "license": "Public domain (NASA HEASARC archive).",
+      "offlinePriority": "preferred"
+    },
+    {
+      "id": "planck",
+      "layerValue": "Planck Dust & Gas",
+      "name": "Planck Dust & Gas",
+      "band": "microwave",
+      "palette": { "star": "#ffe7b5", "grid": "#f0a850", "glow": "#ff7b36" },
+      "allSkyPreview": {
+        "localPath": "/astronomy/surveys/planck-allsky.jpg",
+        "sourceUrl": "https://pla.esac.esa.int/",
+        "sha256": null
+      },
+      "attribution": "ESA / Planck Collaboration.",
+      "license": "ESA Planck Legacy Archive terms - use with attribution.",
+      "offlinePriority": "preferred"
+    },
+    {
+      "id": "radio",
+      "layerValue": "VLSS: VLA Low-frequency Sky Survey (Radio)",
+      "name": "Radio (VLSS)",
+      "band": "radio",
+      "palette": { "star": "#d8ffd9", "grid": "#64df88", "glow": "#22b573" },
+      "allSkyPreview": {
+        "localPath": "/astronomy/surveys/vlss-allsky.jpg",
+        "sourceUrl": "https://www.cv.nrao.edu/vlss/",
+        "sha256": null
+      },
+      "attribution": "VLA Low-frequency Sky Survey, NRAO/AUI/NSF.",
+      "license": "NRAO imagery - free to use with credit.",
+      "offlinePriority": "preferred"
+    }
+  ]
+}

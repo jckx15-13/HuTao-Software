@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "authority": "IAU constellation boundaries, defined by Delporte (1930) on the B1875.0 equinox. Machine-readable vertex catalogue: Davenhall & Leggett (1989), VizieR VI/49.",
+    "authorityUrl": "https://cdsarc.cds.unistra.fr/viz-bin/cat/VI/49",
+    "sourceEpoch": "B1875",
+    "storedEpoch": "J2000",
+    "coverage": "seed",
+    "simplified": true,
+    "simplificationNote": "Seed data stores each constellation's published J2000 RA/Dec extent as a closed rectangular region, not the full stepped IAU polygon. IAU boundaries run along arcs of constant RA and constant Dec, so an extent is a faithful but coarse subset of the real boundary. Run scripts/generate-constellation-boundaries.mjs while online to replace this seed with the full VI/49 vertex lists.",
+    "license": "IAU boundary definitions are public domain.",
+    "attribution": "IAU / Delporte 1930; machine-readable form Davenhall & Leggett 1989.",
+    "offlinePriority": "required"
+  },
+  "boundaries": [
+    {
+      "id": "orion",
+      "name": "Orion",
+      "abbreviation": "Ori",
+      "geometry": "extent",
+      "raHoursMin": 4.7167,
+      "raHoursMax": 6.4167,
+      "decDegreesMin": -10.97,
+      "decDegreesMax": 22.87,
+      "wrapsRaZero": false
+    },
+    {
+      "id": "ursa_major",
+      "name": "Ursa Major",
+      "abbreviation": "UMa",
+      "geometry": "extent",
+      "raHoursMin": 8.15,
+      "raHoursMax": 14.48,
+      "decDegreesMin": 28.3,
+      "decDegreesMax": 73.14,
+      "wrapsRaZero": false
+    },
+    {
+      "id": "cassiopeia",
+      "name": "Cassiopeia",
+      "abbreviation": "Cas",
+      "geometry": "extent",
+      "raHoursMin": 22.95,
+      "raHoursMax": 3.42,
+      "decDegreesMin": 46.68,
+      "decDegreesMax": 77.69,
+      "wrapsRaZero": true
+    }
+  ]
+}

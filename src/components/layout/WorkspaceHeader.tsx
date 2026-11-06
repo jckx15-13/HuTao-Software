@@ -1,5 +1,6 @@
 import { Cpu, Wifi, Battery, Menu, Bell, User, PanelRight, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
+import { PanelToggleButton } from '../common/PanelToggleButton';
 
 export function WorkspaceHeader() {
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
@@ -66,7 +67,7 @@ export function WorkspaceHeader() {
             <div className="absolute inset-0 rounded-full bg-primary animate-ping opacity-50" />
             <div className="relative h-1.5 w-1.5 rounded-full bg-primary" />
           </div>
-          <span className="glow-text inline">Silver Wolf VI</span>
+          <h1 className="glow-text inline whitespace-nowrap">Silver Wolf VI</h1>
         </div>
 
         <button
@@ -81,8 +82,16 @@ export function WorkspaceHeader() {
           <span className="hidden text-[9px] font-bold uppercase tracking-wider min-[760px]:inline">Modes</span>
         </button>
 
-        {/* System metrics */}
-        <div className="hidden md:flex items-center gap-3 border-l border-white/5 pl-4 h-5">
+        {/* System metrics. `md:flex` alone doesn't help here — it reacts to
+            viewport width, but this header only spans the gap between the
+            two docked side panels, which can narrow to ~526px on a 1366px
+            viewport with both open. At that width these three metrics were
+            the least essential content, so they're the first to drop. */}
+        <div
+          className={`items-center gap-3 border-l border-white/5 pl-4 h-5 ${
+            leftPanelOpen && rightPanelOpen ? 'hidden lg:flex' : 'hidden md:flex'
+          }`}
+        >
           <Metric icon={Cpu} value={cpuLoad * 100} label="CPU" />
           <Metric icon={Wifi} value={metrics.networkLatency * 100} label="NET" />
           <Metric icon={Battery} value={metrics.batteryLevel * 100} label="PWR" />
@@ -122,15 +131,10 @@ export function WorkspaceHeader() {
           <span className="hidden text-[10px] font-mono uppercase tracking-wider md:inline">Operator</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setTopBarOpen(false)}
-          className="group inline-flex min-h-10 min-w-10 items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/10 hover:text-white sm:min-h-11 sm:min-w-11 cursor-pointer"
-          aria-label="Hide top bar (Alt+T)"
-          title="Hide top bar (Alt+T)"
-        >
-          <ChevronDown className="h-4 w-4 rotate-180 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:text-primary" />
-        </button>
+        {/* Shared control: identical box, icon and hit area to the two side
+            panel toggles. Previously an h-4 chevron rotated 180deg inside a
+            rounded-md min-h-10 box, matching neither panel. */}
+        <PanelToggleButton side="top" open={topBarOpen} onToggle={() => setTopBarOpen(false)} label="top bar (Alt+T)" />
       </div>
     </header>
   );
@@ -138,10 +142,10 @@ export function WorkspaceHeader() {
 
 function Metric({ icon: Icon, value, label }: { icon: typeof Cpu; value: number; label: string }) {
   return (
-    <div className="flex items-center gap-1.5 text-[9px] text-white/30 font-mono">
+    <div className="flex items-center gap-1.5 text-[10px] text-white/75 font-mono">
       <Icon className="w-3 h-3" />
       <span className="w-6 text-right tabular-nums">{Math.round(value)}%</span>
-      <span className="opacity-40">{label}</span>
+      <span className="text-white/60">{label}</span>
     </div>
   );
 }

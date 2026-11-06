@@ -1,0 +1,1246 @@
+{
+  "source": "https://web.wwtassets.org/engine/assets/ConstellationNamePositions_v2_EN.txt",
+  "retrievedAt": "2026-11-06",
+  "coordinateFrame": "WWT catalogue equatorial J2000, degrees",
+  "description": "WWT constellation label centers, not boundaries or stellar positions. RA converted from hours to degrees. Serpens retains both regions.",
+  "constellations": [
+    {
+      "id": "AND",
+      "name": "Andromeda",
+      "ra_deg": 12.115000000000006,
+      "dec_deg": 37.4318333333333,
+      "regions": [
+        {
+          "id": "AND",
+          "name": "Andromeda",
+          "ra_deg": 12.115000000000006,
+          "dec_deg": 37.4318333333333
+        }
+      ]
+    },
+    {
+      "id": "ANT",
+      "name": "Antlia",
+      "ra_deg": 154.1074999999995,
+      "dec_deg": -31.5165,
+      "regions": [
+        {
+          "id": "ANT",
+          "name": "Antlia",
+          "ra_deg": 154.1074999999995,
+          "dec_deg": -31.5165
+        }
+      ]
+    },
+    {
+      "id": "APS",
+      "name": "Apus",
+      "ra_deg": 242.16250000000048,
+      "dec_deg": -74.7,
+      "regions": [
+        {
+          "id": "APS",
+          "name": "Apus",
+          "ra_deg": 242.16250000000048,
+          "dec_deg": -74.7
+        }
+      ]
+    },
+    {
+      "id": "AQR",
+      "name": "Aquarius",
+      "ra_deg": 334.34500000000054,
+      "dec_deg": -8.5,
+      "regions": [
+        {
+          "id": "AQR",
+          "name": "Aquarius",
+          "ra_deg": 334.34500000000054,
+          "dec_deg": -8.5
+        }
+      ]
+    },
+    {
+      "id": "AQL",
+      "name": "Aquila",
+      "ra_deg": 295.005,
+      "dec_deg": 3.41083333333333,
+      "regions": [
+        {
+          "id": "AQL",
+          "name": "Aquila",
+          "ra_deg": 295.005,
+          "dec_deg": 3.41083333333333
+        }
+      ]
+    },
+    {
+      "id": "ARA",
+      "name": "Ara",
+      "ra_deg": 260.6224999999995,
+      "dec_deg": -55.4116666666667,
+      "regions": [
+        {
+          "id": "ARA",
+          "name": "Ara",
+          "ra_deg": 260.6224999999995,
+          "dec_deg": -55.4116666666667
+        }
+      ]
+    },
+    {
+      "id": "ARI",
+      "name": "Aries",
+      "ra_deg": 39.54,
+      "dec_deg": 20.7923333333333,
+      "regions": [
+        {
+          "id": "ARI",
+          "name": "Aries",
+          "ra_deg": 39.54,
+          "dec_deg": 20.7923333333333
+        }
+      ]
+    },
+    {
+      "id": "AUR",
+      "name": "Auriga",
+      "ra_deg": 91.10500000000005,
+      "dec_deg": 42.028,
+      "regions": [
+        {
+          "id": "AUR",
+          "name": "Auriga",
+          "ra_deg": 91.10500000000005,
+          "dec_deg": 42.028
+        }
+      ]
+    },
+    {
+      "id": "BOO",
+      "name": "Boötes",
+      "ra_deg": 220.6600000000005,
+      "dec_deg": 31.2026666666667,
+      "regions": [
+        {
+          "id": "BOO",
+          "name": "Boötes",
+          "ra_deg": 220.6600000000005,
+          "dec_deg": 31.2026666666667
+        }
+      ]
+    },
+    {
+      "id": "CAE",
+      "name": "Caelum",
+      "ra_deg": 70.56750000000001,
+      "dec_deg": -38.2,
+      "regions": [
+        {
+          "id": "CAE",
+          "name": "Caelum",
+          "ra_deg": 70.56750000000001,
+          "dec_deg": -38.2
+        }
+      ]
+    },
+    {
+      "id": "CAM",
+      "name": "Camelopardalis",
+      "ra_deg": 90,
+      "dec_deg": 72,
+      "regions": [
+        {
+          "id": "CAM",
+          "name": "Camelopardalis",
+          "ra_deg": 90,
+          "dec_deg": 72
+        }
+      ]
+    },
+    {
+      "id": "CNC",
+      "name": "Cancer",
+      "ra_deg": 129.73999999999995,
+      "dec_deg": 21,
+      "regions": [
+        {
+          "id": "CNC",
+          "name": "Cancer",
+          "ra_deg": 129.73999999999995,
+          "dec_deg": 21
+        }
+      ]
+    },
+    {
+      "id": "CVN",
+      "name": "Canes Venatici",
+      "ra_deg": 196.74,
+      "dec_deg": 40.1018333333333,
+      "regions": [
+        {
+          "id": "CVN",
+          "name": "Canes Venatici",
+          "ra_deg": 196.74,
+          "dec_deg": 40.1018333333333
+        }
+      ]
+    },
+    {
+      "id": "CMA",
+      "name": "Canis Major",
+      "ra_deg": 102.435,
+      "dec_deg": -21.8596666666667,
+      "regions": [
+        {
+          "id": "CMA",
+          "name": "Canis Major",
+          "ra_deg": 102.435,
+          "dec_deg": -21.8596666666667
+        }
+      ]
+    },
+    {
+      "id": "CMI",
+      "name": "Canis Minor",
+      "ra_deg": 114.79249999999995,
+      "dec_deg": 6.42716666666667,
+      "regions": [
+        {
+          "id": "CMI",
+          "name": "Canis Minor",
+          "ra_deg": 114.79249999999995,
+          "dec_deg": 6.42716666666667
+        }
+      ]
+    },
+    {
+      "id": "CAP",
+      "name": "Capricornus",
+      "ra_deg": 315.7324999999995,
+      "dec_deg": -19,
+      "regions": [
+        {
+          "id": "CAP",
+          "name": "Capricornus",
+          "ra_deg": 315.7324999999995,
+          "dec_deg": -19
+        }
+      ]
+    },
+    {
+      "id": "CAR",
+      "name": "Carina",
+      "ra_deg": 130.425,
+      "dec_deg": -62.7806666666667,
+      "regions": [
+        {
+          "id": "CAR",
+          "name": "Carina",
+          "ra_deg": 130.425,
+          "dec_deg": -62.7806666666667
+        }
+      ]
+    },
+    {
+      "id": "CAS",
+      "name": "Cassiopeia",
+      "ra_deg": 19.78999999999995,
+      "dec_deg": 62.184,
+      "regions": [
+        {
+          "id": "CAS",
+          "name": "Cassiopeia",
+          "ra_deg": 19.78999999999995,
+          "dec_deg": 62.184
+        }
+      ]
+    },
+    {
+      "id": "CEN",
+      "name": "Centaurus",
+      "ra_deg": 196.0675000000005,
+      "dec_deg": -46.6546666666667,
+      "regions": [
+        {
+          "id": "CEN",
+          "name": "Centaurus",
+          "ra_deg": 196.0675000000005,
+          "dec_deg": -46.6546666666667
+        }
+      ]
+    },
+    {
+      "id": "CEP",
+      "name": "Cepheus",
+      "ra_deg": 330,
+      "dec_deg": 71.0085,
+      "regions": [
+        {
+          "id": "CEP",
+          "name": "Cepheus",
+          "ra_deg": 330,
+          "dec_deg": 71.0085
+        }
+      ]
+    },
+    {
+      "id": "CET",
+      "name": "Cetus",
+      "ra_deg": 25.02499999999995,
+      "dec_deg": -6.82066666666667,
+      "regions": [
+        {
+          "id": "CET",
+          "name": "Cetus",
+          "ra_deg": 25.02499999999995,
+          "dec_deg": -6.82066666666667
+        }
+      ]
+    },
+    {
+      "id": "CHA",
+      "name": "Chamaeleon",
+      "ra_deg": 160.3825000000005,
+      "dec_deg": -78.795,
+      "regions": [
+        {
+          "id": "CHA",
+          "name": "Chamaeleon",
+          "ra_deg": 160.3825000000005,
+          "dec_deg": -78.795
+        }
+      ]
+    },
+    {
+      "id": "CIR",
+      "name": "Circinus",
+      "ra_deg": 216,
+      "dec_deg": -66.5,
+      "regions": [
+        {
+          "id": "CIR",
+          "name": "Circinus",
+          "ra_deg": 216,
+          "dec_deg": -66.5
+        }
+      ]
+    },
+    {
+      "id": "COL",
+      "name": "Columba",
+      "ra_deg": 87.94000000000005,
+      "dec_deg": -34.9055,
+      "regions": [
+        {
+          "id": "COL",
+          "name": "Columba",
+          "ra_deg": 87.94000000000005,
+          "dec_deg": -34.9055
+        }
+      ]
+    },
+    {
+      "id": "COM",
+      "name": "Coma Berenices",
+      "ra_deg": 191.81749999999948,
+      "dec_deg": 23.3056666666667,
+      "regions": [
+        {
+          "id": "COM",
+          "name": "Coma Berenices",
+          "ra_deg": 191.81749999999948,
+          "dec_deg": 23.3056666666667
+        }
+      ]
+    },
+    {
+      "id": "CRA",
+      "name": "Corona Australis",
+      "ra_deg": 279.6975,
+      "dec_deg": -40.8525,
+      "regions": [
+        {
+          "id": "CRA",
+          "name": "Corona Australis",
+          "ra_deg": 279.6975,
+          "dec_deg": -40.8525
+        }
+      ]
+    },
+    {
+      "id": "CRB",
+      "name": "Corona Borealis",
+      "ra_deg": 237.64750000000052,
+      "dec_deg": 30.6,
+      "regions": [
+        {
+          "id": "CRB",
+          "name": "Corona Borealis",
+          "ra_deg": 237.64750000000052,
+          "dec_deg": 30.6
+        }
+      ]
+    },
+    {
+      "id": "CRV",
+      "name": "Corvus",
+      "ra_deg": 186.63,
+      "dec_deg": -17.5633333333333,
+      "regions": [
+        {
+          "id": "CRV",
+          "name": "Corvus",
+          "ra_deg": 186.63,
+          "dec_deg": -17.5633333333333
+        }
+      ]
+    },
+    {
+      "id": "CRT",
+      "name": "Crater",
+      "ra_deg": 170.9374999999995,
+      "dec_deg": -14.071,
+      "regions": [
+        {
+          "id": "CRT",
+          "name": "Crater",
+          "ra_deg": 170.9374999999995,
+          "dec_deg": -14.071
+        }
+      ]
+    },
+    {
+      "id": "CRU",
+      "name": "Crux",
+      "ra_deg": 186.74749999999952,
+      "dec_deg": -59.8135,
+      "regions": [
+        {
+          "id": "CRU",
+          "name": "Crux",
+          "ra_deg": 186.74749999999952,
+          "dec_deg": -59.8135
+        }
+      ]
+    },
+    {
+      "id": "CYG",
+      "name": "Cygnus",
+      "ra_deg": 308.82,
+      "dec_deg": 44.545,
+      "regions": [
+        {
+          "id": "CYG",
+          "name": "Cygnus",
+          "ra_deg": 308.82,
+          "dec_deg": 44.545
+        }
+      ]
+    },
+    {
+      "id": "DEL",
+      "name": "Delphinus",
+      "ra_deg": 310.40250000000003,
+      "dec_deg": 11.671,
+      "regions": [
+        {
+          "id": "DEL",
+          "name": "Delphinus",
+          "ra_deg": 310.40250000000003,
+          "dec_deg": 11.671
+        }
+      ]
+    },
+    {
+      "id": "DOR",
+      "name": "Dorado",
+      "ra_deg": 75.75,
+      "dec_deg": -58.613,
+      "regions": [
+        {
+          "id": "DOR",
+          "name": "Dorado",
+          "ra_deg": 75.75,
+          "dec_deg": -58.613
+        }
+      ]
+    },
+    {
+      "id": "DRA",
+      "name": "Draco",
+      "ra_deg": 225,
+      "dec_deg": 62,
+      "regions": [
+        {
+          "id": "DRA",
+          "name": "Draco",
+          "ra_deg": 225,
+          "dec_deg": 62
+        }
+      ]
+    },
+    {
+      "id": "EQU",
+      "name": "Equuleus",
+      "ra_deg": 318.15000000000003,
+      "dec_deg": 7.75816666666667,
+      "regions": [
+        {
+          "id": "EQU",
+          "name": "Equuleus",
+          "ra_deg": 318.15000000000003,
+          "dec_deg": 7.75816666666667
+        }
+      ]
+    },
+    {
+      "id": "ERI",
+      "name": "Eridanus",
+      "ra_deg": 60,
+      "dec_deg": -23,
+      "regions": [
+        {
+          "id": "ERI",
+          "name": "Eridanus",
+          "ra_deg": 60,
+          "dec_deg": -23
+        }
+      ]
+    },
+    {
+      "id": "FOR",
+      "name": "Fornax",
+      "ra_deg": 41.97,
+      "dec_deg": -30.3655,
+      "regions": [
+        {
+          "id": "FOR",
+          "name": "Fornax",
+          "ra_deg": 41.97,
+          "dec_deg": -30.3655
+        }
+      ]
+    },
+    {
+      "id": "GEM",
+      "name": "Gemini",
+      "ra_deg": 106.06000000000006,
+      "dec_deg": 24.6,
+      "regions": [
+        {
+          "id": "GEM",
+          "name": "Gemini",
+          "ra_deg": 106.06000000000006,
+          "dec_deg": 24.6
+        }
+      ]
+    },
+    {
+      "id": "GRU",
+      "name": "Grus",
+      "ra_deg": 336.84749999999997,
+      "dec_deg": -45.6481666666667,
+      "regions": [
+        {
+          "id": "GRU",
+          "name": "Grus",
+          "ra_deg": 336.84749999999997,
+          "dec_deg": -45.6481666666667
+        }
+      ]
+    },
+    {
+      "id": "HER",
+      "name": "Hercules",
+      "ra_deg": 260.78999999999996,
+      "dec_deg": 27.4988333333333,
+      "regions": [
+        {
+          "id": "HER",
+          "name": "Hercules",
+          "ra_deg": 260.78999999999996,
+          "dec_deg": 27.4988333333333
+        }
+      ]
+    },
+    {
+      "id": "HOR",
+      "name": "Horologium",
+      "ra_deg": 49.14,
+      "dec_deg": -50.4,
+      "regions": [
+        {
+          "id": "HOR",
+          "name": "Horologium",
+          "ra_deg": 49.14,
+          "dec_deg": -50.4
+        }
+      ]
+    },
+    {
+      "id": "HYA",
+      "name": "Hydra",
+      "ra_deg": 174.18250000000052,
+      "dec_deg": -28,
+      "regions": [
+        {
+          "id": "HYA",
+          "name": "Hydra",
+          "ra_deg": 174.18250000000052,
+          "dec_deg": -28
+        }
+      ]
+    },
+    {
+      "id": "HYI",
+      "name": "Hydrus",
+      "ra_deg": 35.16250000000005,
+      "dec_deg": -72,
+      "regions": [
+        {
+          "id": "HYI",
+          "name": "Hydrus",
+          "ra_deg": 35.16250000000005,
+          "dec_deg": -72
+        }
+      ]
+    },
+    {
+      "id": "IND",
+      "name": "Indus",
+      "ra_deg": 319.5,
+      "dec_deg": -55,
+      "regions": [
+        {
+          "id": "IND",
+          "name": "Indus",
+          "ra_deg": 319.5,
+          "dec_deg": -55
+        }
+      ]
+    },
+    {
+      "id": "LAC",
+      "name": "Lacerta",
+      "ra_deg": 336.9199999999995,
+      "dec_deg": 46.0418333333333,
+      "regions": [
+        {
+          "id": "LAC",
+          "name": "Lacerta",
+          "ra_deg": 336.9199999999995,
+          "dec_deg": 46.0418333333333
+        }
+      ]
+    },
+    {
+      "id": "LEO",
+      "name": "Leo",
+      "ra_deg": 160.0075000000005,
+      "dec_deg": 13.1386666666667,
+      "regions": [
+        {
+          "id": "LEO",
+          "name": "Leo",
+          "ra_deg": 160.0075000000005,
+          "dec_deg": 13.1386666666667
+        }
+      ]
+    },
+    {
+      "id": "LMI",
+      "name": "Leo Minor",
+      "ra_deg": 153.6799999999995,
+      "dec_deg": 35,
+      "regions": [
+        {
+          "id": "LMI",
+          "name": "Leo Minor",
+          "ra_deg": 153.6799999999995,
+          "dec_deg": 35
+        }
+      ]
+    },
+    {
+      "id": "LEP",
+      "name": "Lepus",
+      "ra_deg": 83.48749999999995,
+      "dec_deg": -18.9536666666667,
+      "regions": [
+        {
+          "id": "LEP",
+          "name": "Lepus",
+          "ra_deg": 83.48749999999995,
+          "dec_deg": -18.9536666666667
+        }
+      ]
+    },
+    {
+      "id": "LIB",
+      "name": "Libra",
+      "ra_deg": 227.9899999999995,
+      "dec_deg": -14.7653333333333,
+      "regions": [
+        {
+          "id": "LIB",
+          "name": "Libra",
+          "ra_deg": 227.9899999999995,
+          "dec_deg": -14.7653333333333
+        }
+      ]
+    },
+    {
+      "id": "LUP",
+      "name": "Lupus",
+      "ra_deg": 232.5,
+      "dec_deg": -41.2911666666667,
+      "regions": [
+        {
+          "id": "LUP",
+          "name": "Lupus",
+          "ra_deg": 232.5,
+          "dec_deg": -41.2911666666667
+        }
+      ]
+    },
+    {
+      "id": "LYN",
+      "name": "Lynx",
+      "ra_deg": 119.88250000000005,
+      "dec_deg": 47.4666666666667,
+      "regions": [
+        {
+          "id": "LYN",
+          "name": "Lynx",
+          "ra_deg": 119.88250000000005,
+          "dec_deg": 47.4666666666667
+        }
+      ]
+    },
+    {
+      "id": "LYR",
+      "name": "Lyra",
+      "ra_deg": 282.7924999999995,
+      "dec_deg": 36.6893333333333,
+      "regions": [
+        {
+          "id": "LYR",
+          "name": "Lyra",
+          "ra_deg": 282.7924999999995,
+          "dec_deg": 36.6893333333333
+        }
+      ]
+    },
+    {
+      "id": "MEN",
+      "name": "Mensa",
+      "ra_deg": 81.225,
+      "dec_deg": -76.496,
+      "regions": [
+        {
+          "id": "MEN",
+          "name": "Mensa",
+          "ra_deg": 81.225,
+          "dec_deg": -76.496
+        }
+      ]
+    },
+    {
+      "id": "MIC",
+      "name": "Microscopium",
+      "ra_deg": 314.47000000000054,
+      "dec_deg": -35.7251666666667,
+      "regions": [
+        {
+          "id": "MIC",
+          "name": "Microscopium",
+          "ra_deg": 314.47000000000054,
+          "dec_deg": -35.7251666666667
+        }
+      ]
+    },
+    {
+      "id": "MON",
+      "name": "Monoceros",
+      "ra_deg": 105.9075,
+      "dec_deg": -2.2,
+      "regions": [
+        {
+          "id": "MON",
+          "name": "Monoceros",
+          "ra_deg": 105.9075,
+          "dec_deg": -2.2
+        }
+      ]
+    },
+    {
+      "id": "MUS",
+      "name": "Musca",
+      "ra_deg": 188.82,
+      "dec_deg": -69.839,
+      "regions": [
+        {
+          "id": "MUS",
+          "name": "Musca",
+          "ra_deg": 188.82,
+          "dec_deg": -69.839
+        }
+      ]
+    },
+    {
+      "id": "NOR",
+      "name": "Norma",
+      "ra_deg": 238.54500000000002,
+      "dec_deg": -50.6485,
+      "regions": [
+        {
+          "id": "NOR",
+          "name": "Norma",
+          "ra_deg": 238.54500000000002,
+          "dec_deg": -50.6485
+        }
+      ]
+    },
+    {
+      "id": "OCT",
+      "name": "Octans",
+      "ra_deg": 315,
+      "dec_deg": -81.848,
+      "regions": [
+        {
+          "id": "OCT",
+          "name": "Octans",
+          "ra_deg": 315,
+          "dec_deg": -81.848
+        }
+      ]
+    },
+    {
+      "id": "OPH",
+      "name": "Ophiuchus",
+      "ra_deg": 260.9224999999995,
+      "dec_deg": -6.08766666666667,
+      "regions": [
+        {
+          "id": "OPH",
+          "name": "Ophiuchus",
+          "ra_deg": 260.9224999999995,
+          "dec_deg": -6.08766666666667
+        }
+      ]
+    },
+    {
+      "id": "ORI",
+      "name": "Orion",
+      "ra_deg": 83.64750000000001,
+      "dec_deg": 5.949,
+      "regions": [
+        {
+          "id": "ORI",
+          "name": "Orion",
+          "ra_deg": 83.64750000000001,
+          "dec_deg": 5.949
+        }
+      ]
+    },
+    {
+      "id": "PAV",
+      "name": "Pavo",
+      "ra_deg": 294.1774999999995,
+      "dec_deg": -64.2185,
+      "regions": [
+        {
+          "id": "PAV",
+          "name": "Pavo",
+          "ra_deg": 294.1774999999995,
+          "dec_deg": -64.2185
+        }
+      ]
+    },
+    {
+      "id": "PEG",
+      "name": "Pegasus",
+      "ra_deg": 340.4599999999995,
+      "dec_deg": 19.4663333333333,
+      "regions": [
+        {
+          "id": "PEG",
+          "name": "Pegasus",
+          "ra_deg": 340.4599999999995,
+          "dec_deg": 19.4663333333333
+        }
+      ]
+    },
+    {
+      "id": "PER",
+      "name": "Perseus",
+      "ra_deg": 47.625,
+      "dec_deg": 45.0131666666667,
+      "regions": [
+        {
+          "id": "PER",
+          "name": "Perseus",
+          "ra_deg": 47.625,
+          "dec_deg": 45.0131666666667
+        }
+      ]
+    },
+    {
+      "id": "PHE",
+      "name": "Phoenix",
+      "ra_deg": 13.977499999999994,
+      "dec_deg": -47.4193333333333,
+      "regions": [
+        {
+          "id": "PHE",
+          "name": "Phoenix",
+          "ra_deg": 13.977499999999994,
+          "dec_deg": -47.4193333333333
+        }
+      ]
+    },
+    {
+      "id": "PIC",
+      "name": "Pictor",
+      "ra_deg": 85.61500000000005,
+      "dec_deg": -52.5258333333333,
+      "regions": [
+        {
+          "id": "PIC",
+          "name": "Pictor",
+          "ra_deg": 85.61500000000005,
+          "dec_deg": -52.5258333333333
+        }
+      ]
+    },
+    {
+      "id": "PSC",
+      "name": "Pisces",
+      "ra_deg": 7.242499999999995,
+      "dec_deg": 13.6871666666667,
+      "regions": [
+        {
+          "id": "PSC",
+          "name": "Pisces",
+          "ra_deg": 7.242499999999995,
+          "dec_deg": 13.6871666666667
+        }
+      ]
+    },
+    {
+      "id": "PSA",
+      "name": "Piscis Austrinus",
+      "ra_deg": 334.26750000000004,
+      "dec_deg": -29.3578333333333,
+      "regions": [
+        {
+          "id": "PSA",
+          "name": "Piscis Austrinus",
+          "ra_deg": 334.26750000000004,
+          "dec_deg": -29.3578333333333
+        }
+      ]
+    },
+    {
+      "id": "PUP",
+      "name": "Puppis",
+      "ra_deg": 112.5,
+      "dec_deg": -35,
+      "regions": [
+        {
+          "id": "PUP",
+          "name": "Puppis",
+          "ra_deg": 112.5,
+          "dec_deg": -35
+        }
+      ]
+    },
+    {
+      "id": "PYX",
+      "name": "Pyxis",
+      "ra_deg": 134.29000000000005,
+      "dec_deg": -26.6483333333333,
+      "regions": [
+        {
+          "id": "PYX",
+          "name": "Pyxis",
+          "ra_deg": 134.29000000000005,
+          "dec_deg": -26.6483333333333
+        }
+      ]
+    },
+    {
+      "id": "RET",
+      "name": "Reticulum",
+      "ra_deg": 58.817500000000045,
+      "dec_deg": -62,
+      "regions": [
+        {
+          "id": "RET",
+          "name": "Reticulum",
+          "ra_deg": 58.817500000000045,
+          "dec_deg": -62
+        }
+      ]
+    },
+    {
+      "id": "SGE",
+      "name": "Sagitta",
+      "ra_deg": 294.7624999999995,
+      "dec_deg": 18,
+      "regions": [
+        {
+          "id": "SGE",
+          "name": "Sagitta",
+          "ra_deg": 294.7624999999995,
+          "dec_deg": 18
+        }
+      ]
+    },
+    {
+      "id": "SGR",
+      "name": "Sagittarius",
+      "ra_deg": 286.485,
+      "dec_deg": -27.5231666666667,
+      "regions": [
+        {
+          "id": "SGR",
+          "name": "Sagittarius",
+          "ra_deg": 286.485,
+          "dec_deg": -27.5231666666667
+        }
+      ]
+    },
+    {
+      "id": "SCO",
+      "name": "Scorpius",
+      "ra_deg": 255,
+      "dec_deg": -32,
+      "regions": [
+        {
+          "id": "SCO",
+          "name": "Scorpius",
+          "ra_deg": 255,
+          "dec_deg": -32
+        }
+      ]
+    },
+    {
+      "id": "SCL",
+      "name": "Sculptor",
+      "ra_deg": 6.57,
+      "dec_deg": -31.9116666666667,
+      "regions": [
+        {
+          "id": "SCL",
+          "name": "Sculptor",
+          "ra_deg": 6.57,
+          "dec_deg": -31.9116666666667
+        }
+      ]
+    },
+    {
+      "id": "SCT",
+      "name": "Scutum",
+      "ra_deg": 280.0975000000005,
+      "dec_deg": -8.11133333333333,
+      "regions": [
+        {
+          "id": "SCT",
+          "name": "Scutum",
+          "ra_deg": 280.0975000000005,
+          "dec_deg": -8.11133333333333
+        }
+      ]
+    },
+    {
+      "id": "SER",
+      "name": "Serpens",
+      "ra_deg": 235.35,
+      "dec_deg": 10,
+      "regions": [
+        {
+          "id": "SER1",
+          "name": "Serpens Caput",
+          "ra_deg": 235.35,
+          "dec_deg": 10
+        },
+        {
+          "id": "SER2",
+          "name": "Serpens Cauda",
+          "ra_deg": 266.25,
+          "dec_deg": -13.6
+        }
+      ]
+    },
+    {
+      "id": "SEX",
+      "name": "Sextans",
+      "ra_deg": 154.0725,
+      "dec_deg": -1.38533333333333,
+      "regions": [
+        {
+          "id": "SEX",
+          "name": "Sextans",
+          "ra_deg": 154.0725,
+          "dec_deg": -1.38533333333333
+        }
+      ]
+    },
+    {
+      "id": "TAU",
+      "name": "Taurus",
+      "ra_deg": 60,
+      "dec_deg": 14.8771666666667,
+      "regions": [
+        {
+          "id": "TAU",
+          "name": "Taurus",
+          "ra_deg": 60,
+          "dec_deg": 14.8771666666667
+        }
+      ]
+    },
+    {
+      "id": "TEL",
+      "name": "Telescopium",
+      "ra_deg": 289.8850000000005,
+      "dec_deg": -50.9631666666667,
+      "regions": [
+        {
+          "id": "TEL",
+          "name": "Telescopium",
+          "ra_deg": 289.8850000000005,
+          "dec_deg": -50.9631666666667
+        }
+      ]
+    },
+    {
+      "id": "TRI",
+      "name": "Triangulum",
+      "ra_deg": 32.7675,
+      "dec_deg": 31.476,
+      "regions": [
+        {
+          "id": "TRI",
+          "name": "Triangulum",
+          "ra_deg": 32.7675,
+          "dec_deg": 31.476
+        }
+      ]
+    },
+    {
+      "id": "TRA",
+      "name": "Triangulum Australe",
+      "ra_deg": 241.23749999999998,
+      "dec_deg": -66,
+      "regions": [
+        {
+          "id": "TRA",
+          "name": "Triangulum Australe",
+          "ra_deg": 241.23749999999998,
+          "dec_deg": -66
+        }
+      ]
+    },
+    {
+      "id": "TUC",
+      "name": "Tucana",
+      "ra_deg": 356.6599999999995,
+      "dec_deg": -64.17,
+      "regions": [
+        {
+          "id": "TUC",
+          "name": "Tucana",
+          "ra_deg": 356.6599999999995,
+          "dec_deg": -64.17
+        }
+      ]
+    },
+    {
+      "id": "UMA",
+      "name": "Ursa Major",
+      "ra_deg": 169.6900000000005,
+      "dec_deg": 50.7211666666667,
+      "regions": [
+        {
+          "id": "UMA",
+          "name": "Ursa Major",
+          "ra_deg": 169.6900000000005,
+          "dec_deg": 50.7211666666667
+        }
+      ]
+    },
+    {
+      "id": "UMI",
+      "name": "Ursa Minor",
+      "ra_deg": 225,
+      "dec_deg": 77.6998333333333,
+      "regions": [
+        {
+          "id": "UMI",
+          "name": "Ursa Minor",
+          "ra_deg": 225,
+          "dec_deg": 77.6998333333333
+        }
+      ]
+    },
+    {
+      "id": "VEL",
+      "name": "Vela",
+      "ra_deg": 143.65999999999994,
+      "dec_deg": -46.8328333333333,
+      "regions": [
+        {
+          "id": "VEL",
+          "name": "Vela",
+          "ra_deg": 143.65999999999994,
+          "dec_deg": -46.8328333333333
+        }
+      ]
+    },
+    {
+      "id": "VIR",
+      "name": "Virgo",
+      "ra_deg": 201.0975,
+      "dec_deg": -3.8415,
+      "regions": [
+        {
+          "id": "VIR",
+          "name": "Virgo",
+          "ra_deg": 201.0975,
+          "dec_deg": -3.8415
+        }
+      ]
+    },
+    {
+      "id": "VOL",
+      "name": "Volans",
+      "ra_deg": 116.93249999999999,
+      "dec_deg": -68.1988333333333,
+      "regions": [
+        {
+          "id": "VOL",
+          "name": "Volans",
+          "ra_deg": 116.93249999999999,
+          "dec_deg": -68.1988333333333
+        }
+      ]
+    },
+    {
+      "id": "VUL",
+      "name": "Vulpecula",
+      "ra_deg": 303.4699999999995,
+      "dec_deg": 24.4426666666667,
+      "regions": [
+        {
+          "id": "VUL",
+          "name": "Vulpecula",
+          "ra_deg": 303.4699999999995,
+          "dec_deg": 24.4426666666667
+        }
+      ]
+    }
+  ]
+}

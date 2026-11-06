@@ -6,6 +6,7 @@ import { useDiagnosticsStore } from './store/diagnosticsStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useThemeVariables } from './hooks/useThemeVariables';
 import { useUIStore } from './store/uiStore';
+import { isFallbackRuntime } from './lib/runtimeMode';
 
 const DockedLayout = React.lazy(() =>
   import('./components/layout/DockedLayout').then((m) => ({ default: m.DockedLayout }))
@@ -38,7 +39,6 @@ const SettingsPage = React.lazy(() =>
 const MountUnmountHarness = React.lazy(() => import('./components/dev/MountUnmountHarness'));
 const DiagnosticPanel = React.lazy(() => import('./components/dev/DiagnosticPanel'));
 
-const WorldWideTelescopeView = React.lazy(() => import('./components/learning/WorldWideTelescopeView'));
 
 export default function App() {
   useKeyboardShortcuts();
@@ -53,9 +53,7 @@ export default function App() {
   const cosmosBackgroundMode = useUIStore((state) => state.cosmosBackgroundMode);
   const spaceInteractionTarget = useUIStore((state) => state.spaceInteractionTarget);
 
-  const isHeadless =
-    typeof window !== 'undefined' &&
-    (/HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback'));
+  const isFallbackMode = isFallbackRuntime();
 
   const isLowPerformance =
     typeof window !== 'undefined' &&
@@ -80,10 +78,10 @@ export default function App() {
   const isEarthTarget = spaceInteractionTarget === 'earth' && interactionMode !== 'telescope';
 
   React.useEffect(() => {
-    if (isHeadless || showHarness || showDiagnostics) {
+    if (isFallbackMode || showHarness || showDiagnostics) {
       setCurrentPage('workspace');
     }
-  }, [isHeadless, showHarness, showDiagnostics, setCurrentPage]);
+  }, [isFallbackMode, showHarness, showDiagnostics, setCurrentPage]);
 
   React.useEffect(() => {
     if (launcherDismissed && currentPage === 'launcher') {
@@ -92,9 +90,9 @@ export default function App() {
   }, [currentPage, launcherDismissed, setCurrentPage]);
 
   React.useEffect(() => {
-    document.documentElement.classList.toggle('is-headless', isHeadless);
-    document.body.classList.toggle('is-headless', isHeadless);
-  }, [isHeadless]);
+    document.documentElement.classList.toggle('is-headless', isFallbackMode);
+    document.body.classList.toggle('is-headless', isFallbackMode);
+  }, [isFallbackMode]);
 
   React.useEffect(() => {
     useDiagnosticsStore.getState().add({
@@ -117,7 +115,7 @@ export default function App() {
   const backgroundStyle = customWallpaper
     ? { backgroundImage: `url(${customWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : undefined;
-  const workspaceIsolationProps = currentPage === 'settings' && !isHeadless ? { inert: true, 'aria-hidden': true } : {};
+  const workspaceIsolationProps = currentPage === 'settings' && !isFallbackMode ? { inert: true, 'aria-hidden': true } : {};
   const settingsOverlay =
     currentPage === 'settings' ? (
       <Suspense fallback={null}>
@@ -129,11 +127,11 @@ export default function App() {
 
   return (
     <ConfigProvider>
-      <MotionConfig reducedMotion={isHeadless ? 'always' : 'user'}>
+      <MotionConfig reducedMotion={isFallbackMode ? 'always' : 'user'}>
         <div
           className={`relative flex h-[100dvh] min-h-[100dvh] w-full overflow-hidden bg-base font-sans text-text-main transition-colors duration-500 ${
             isHighLoad ? 'state-high-load' : ''
-          } ${isHeadless ? 'is-headless' : ''}`}
+          } ${isFallbackMode ? 'is-headless' : ''}`}
           style={{ ...appStyle, ...backgroundStyle }}
         >
           {!customWallpaper && (
@@ -144,32 +142,18 @@ export default function App() {
                     aria-hidden="true"
                   />
                 )}
-                {isSpaceMode && isTelescopeTarget && cosmosBackgroundMode === 'wwt-milkyway' && (!isHeadless || isTelescopeTarget) && (
-                <div
-                  className="absolute inset-0 z-base transition-opacity duration-500"
-                  style={{
-                    opacity: isTelescopeTarget ? 0.26 : 1,
-                    mixBlendMode: isTelescopeTarget ? 'screen' : 'normal'
-                  }}
-                >
-                  <Suspense fallback={null}>
-                    <WorldWideTelescopeView bgOnly />
-                  </Suspense>
-                </div>
-              )}
               <div
                 className="absolute inset-0 transition-all duration-500 ease-in-out"
                 style={{
                   zIndex: 'calc(var(--theme-z-base) + 1)',
-                  // Telescope mode belongs to WWT. Keeping Cesium's imagery
-                  // visible here paints its geographic survey tiles over the
-                  // WWT solar-system canvas.
-                  opacity: isSpaceMode && isTelescopeTarget ? 0 : 1.0,
-                  pointerEvents: isSpaceMode && isEarthTarget ? 'auto' : 'none'
+                  // Cesium owns terrestrial, orbital, and native celestial modes.
+                  // The telescope controls remain an overlay; there is no second viewer.
+                  opacity: 1,
+                  pointerEvents: isSpaceMode && (isEarthTarget || isTelescopeTarget) ? 'auto' : 'none'
                 }}
               >
                 <Suspense fallback={null}>
-                  <CesiumBackground interactive={isSpaceMode && isEarthTarget} />
+                  <CesiumBackground interactive={isSpaceMode && (isEarthTarget || isTelescopeTarget)} />
                 </Suspense>
               </div>
             </div>
@@ -218,7 +202,7 @@ export default function App() {
                 )}
               </div>
 
-              {isHeadless ? settingsOverlay : <AnimatePresence>{settingsOverlay}</AnimatePresence>}
+              {isFallbackMode ? settingsOverlay : <AnimatePresence>{settingsOverlay}</AnimatePresence>}
             </>
           )}
         </div>

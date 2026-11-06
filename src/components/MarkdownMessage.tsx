@@ -14,7 +14,7 @@ export function MarkdownMessage({ content }: { content: string }) {
           const { children, className, node, ref, ...rest } = props;
           const match = /language-(\w+)/.exec(className || '');
           const isInline = !match && !className?.includes('language-');
-          
+
           if (isInline) {
             return (
               <code className="bg-black/20 px-1.5 py-0.5 rounded text-sm font-mono text-primary-text" {...rest}>
@@ -24,10 +24,7 @@ export function MarkdownMessage({ content }: { content: string }) {
           }
 
           return (
-            <CodeBlock 
-              language={match ? match[1] : 'text'} 
-              value={String(children).replace(/\n$/, '')} 
-            />
+            <CodeBlock language={match ? (match[1] ?? 'text') : 'text'} value={String(children).replace(/\n$/, '')} />
           );
         }
       }}
@@ -37,7 +34,7 @@ export function MarkdownMessage({ content }: { content: string }) {
   );
 }
 
-function CodeBlock({ language, value }: { language: string, value: string }) {
+function CodeBlock({ language, value }: { language: string; value: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -50,7 +47,7 @@ function CodeBlock({ language, value }: { language: string, value: string }) {
     <div className="my-6 overflow-hidden rounded-lg border border-panel-border/70 bg-base/70 shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_2px_10px_rgba(255,255,255,0.02)] backdrop-blur-md transition-transform duration-300 hover:-translate-y-0.5">
       <div className="flex items-center justify-between border-b border-panel-border/60 bg-panel/40 px-4 py-2">
         <span className="font-mono text-[11px] uppercase tracking-wider text-primary">{language}</span>
-        <button 
+        <button
           type="button"
           onClick={() => handleCopy().catch(() => undefined)}
           className="flex min-h-11 items-center gap-2 rounded bg-base/60 px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-text-muted transition-colors hover:text-primary"

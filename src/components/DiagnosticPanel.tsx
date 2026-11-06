@@ -1,6 +1,19 @@
 import React, { useEffect } from 'react';
 import { useDiagnosticsStore } from '../store/diagnosticsStore';
-import { AlertCircle, AlertTriangle, Info, Bug, Trash2, Download, Terminal, Shield, Camera, Eye, Cpu, Monitor, CheckCircle, RefreshCw } from 'lucide-react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  Bug,
+  Trash2,
+  Download,
+  Terminal,
+  Shield,
+  Camera,
+  Eye,
+  Monitor,
+  RefreshCw
+} from 'lucide-react';
 
 export function DiagnosticPanel() {
   const {
@@ -33,7 +46,7 @@ export function DiagnosticPanel() {
   const errorsCount = entries.filter((e) => e.level === 'error').length;
   const warningsCount = entries.filter((e) => e.level === 'warning').length;
   const infoCount = entries.filter((e) => e.level === 'info' || e.level === 'debug').length;
-  const healthScore = Math.max(0, 100 - (errorsCount * 15) - (warningsCount * 3));
+  const healthScore = Math.max(0, 100 - errorsCount * 15 - warningsCount * 3);
 
   const handleDownload = () => {
     const data = exportLogs();
@@ -96,7 +109,9 @@ export function DiagnosticPanel() {
         <button
           onClick={() => setPanelTab('events')}
           className={`flex-1 py-1 rounded-lg text-center uppercase text-[8.5px] font-bold tracking-wider transition-all ${
-            panelTab === 'events' ? 'bg-primary/20 text-primary border border-primary/30 shadow' : 'text-white/40 hover:text-white/70'
+            panelTab === 'events'
+              ? 'bg-primary/20 text-primary border border-primary/30 shadow'
+              : 'text-white/40 hover:text-white/70'
           }`}
         >
           Logs & Vitals ({entries.length})
@@ -104,7 +119,9 @@ export function DiagnosticPanel() {
         <button
           onClick={() => setPanelTab('integrations')}
           className={`flex-1 py-1 rounded-lg text-center uppercase text-[8.5px] font-bold tracking-wider transition-all ${
-            panelTab === 'integrations' ? 'bg-primary/20 text-primary border border-primary/30 shadow' : 'text-white/40 hover:text-white/70'
+            panelTab === 'integrations'
+              ? 'bg-primary/20 text-primary border border-primary/30 shadow'
+              : 'text-white/40 hover:text-white/70'
           }`}
         >
           Integrations
@@ -112,7 +129,9 @@ export function DiagnosticPanel() {
         <button
           onClick={() => setPanelTab('vision')}
           className={`flex-1 py-1 rounded-lg text-center uppercase text-[8.5px] font-bold tracking-wider transition-all flex items-center justify-center gap-1 ${
-            panelTab === 'vision' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow' : 'text-white/40 hover:text-white/70'
+            panelTab === 'vision'
+              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow'
+              : 'text-white/40 hover:text-white/70'
           }`}
         >
           <Eye size={10} />
@@ -126,20 +145,24 @@ export function DiagnosticPanel() {
           <div className="glass-panel p-3 border border-white/5 bg-black/25 rounded-xl space-y-2 mb-3">
             <div className="flex justify-between items-center text-[9px] text-white/30 uppercase tracking-widest font-bold">
               <span>System Vitals Score</span>
-              <span className={`font-mono font-bold ${
-                healthScore > 80 ? 'text-green-400' : healthScore > 50 ? 'text-yellow-400' : 'text-red-400'
-              }`}>
+              <span
+                className={`font-mono font-bold ${
+                  healthScore > 80 ? 'text-green-400' : healthScore > 50 ? 'text-yellow-400' : 'text-red-400'
+                }`}
+              >
                 {healthScore}%
               </span>
             </div>
-            
+
             {/* Neon Progress Bar */}
             <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
-              <div 
+              <div
                 className={`h-full transition-all duration-500 ${
-                  healthScore > 80 ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' :
-                  healthScore > 50 ? 'bg-yellow-500 shadow-[0_0_8px_#eab308]' :
-                  'bg-red-500 shadow-[0_0_8px_#ef4444]'
+                  healthScore > 80
+                    ? 'bg-green-500 shadow-[0_0_8px_#22c55e]'
+                    : healthScore > 50
+                      ? 'bg-yellow-500 shadow-[0_0_8px_#eab308]'
+                      : 'bg-red-500 shadow-[0_0_8px_#ef4444]'
                 }`}
                 style={{ width: `${healthScore}%` }}
               />
@@ -169,9 +192,7 @@ export function DiagnosticPanel() {
                 key={tab}
                 onClick={() => setFilter(tab)}
                 className={`flex-1 py-1 rounded text-center uppercase text-[8px] font-bold tracking-wider transition-all duration-150 ${
-                  filter === tab 
-                    ? 'bg-primary/20 text-primary font-bold shadow' 
-                    : 'text-white/40 hover:text-white/70'
+                  filter === tab ? 'bg-primary/20 text-primary font-bold shadow' : 'text-white/40 hover:text-white/70'
                 }`}
               >
                 {tab}
@@ -191,9 +212,13 @@ export function DiagnosticPanel() {
                 <div
                   key={entry.id}
                   className={`p-3 rounded-xl border bg-black/20 ${
-                    entry.level === 'error' ? 'border-red-500/25 bg-red-950/5' :
-                    entry.level === 'warning' ? 'border-yellow-500/25 bg-yellow-950/5' :
-                    entry.level === 'info' ? 'border-cyan-500/25 bg-cyan-950/5' : 'border-white/10'
+                    entry.level === 'error'
+                      ? 'border-red-500/25 bg-red-950/5'
+                      : entry.level === 'warning'
+                        ? 'border-yellow-500/25 bg-yellow-950/5'
+                        : entry.level === 'info'
+                          ? 'border-cyan-500/25 bg-cyan-950/5'
+                          : 'border-white/10'
                   }`}
                 >
                   <div className="flex items-start gap-2.5">
@@ -203,14 +228,20 @@ export function DiagnosticPanel() {
                       {entry.level === 'info' && <Info size={13} className="text-cyan-400" />}
                       {entry.level === 'debug' && <Bug size={13} className="text-purple-400" />}
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2 mb-1 border-b border-white/5 pb-1">
-                        <span className={`font-bold uppercase tracking-wider text-[8px] ${
-                          entry.level === 'error' ? 'text-red-400' :
-                          entry.level === 'warning' ? 'text-yellow-400' :
-                          entry.level === 'info' ? 'text-cyan-400' : 'text-purple-400'
-                        }`}>
+                        <span
+                          className={`font-bold uppercase tracking-wider text-[8px] ${
+                            entry.level === 'error'
+                              ? 'text-red-400'
+                              : entry.level === 'warning'
+                                ? 'text-yellow-400'
+                                : entry.level === 'info'
+                                  ? 'text-cyan-400'
+                                  : 'text-purple-400'
+                          }`}
+                        >
                           {entry.level}
                         </span>
                         <span className="text-white/20 text-[8px] tabular-nums">
@@ -277,13 +308,18 @@ export function DiagnosticPanel() {
               </button>
             </div>
             <div className="text-[8.5px] text-white/60 leading-relaxed">
-              Profile: <span className="text-orange-300 font-bold uppercase">{codeRabbitAudit?.profile || 'chill'}</span> • Rule Paths: <span className="text-white/80">{codeRabbitAudit?.rulesCount || 4} path targets</span>
+              Profile:{' '}
+              <span className="text-orange-300 font-bold uppercase">{codeRabbitAudit?.profile || 'assertive'}</span> • Rule
+              Paths: <span className="text-white/80">{codeRabbitAudit?.rulesCount ?? 7} path targets</span>
             </div>
             {codeRabbitAudit && (
               <div className="space-y-1 pt-1 border-t border-white/5">
                 {codeRabbitAudit.checks.map((check, idx) => (
-                  <div key={idx} className="flex items-start gap-1.5 text-[8px] bg-black/30 p-1.5 rounded border border-white/5">
-                    <CheckCircle size={10} className="text-green-400 shrink-0 mt-0.5" />
+                  <div
+                    key={idx}
+                    className="flex items-start gap-1.5 text-[8px] bg-black/30 p-1.5 rounded border border-white/5"
+                  >
+                    <AlertTriangle size={10} className="text-yellow-400 shrink-0 mt-0.5" />
                     <div>
                       <span className="font-bold text-white/80">{check.ruleName}</span> ({check.path})
                       <div className="text-white/40 text-[7.5px]">{check.message}</div>
@@ -309,13 +345,21 @@ export function DiagnosticPanel() {
               </button>
             </div>
             <div className="text-[8.5px] text-white/60 leading-relaxed">
-              Status: <span className={`font-bold ${sentryEnabled ? 'text-green-400' : 'text-yellow-400'}`}>{sentryEnabled ? 'Connected (Remote DSN)' : 'Local Telemetry Sandbox'}</span>
-              <div className="text-white/30 text-[7.5px] truncate mt-0.5">DSN: {sentryDsn || 'None set (logs captured locally)'}</div>
+              Status:{' '}
+              <span className={`font-bold ${sentryEnabled ? 'text-green-400' : 'text-yellow-400'}`}>
+                {sentryEnabled ? 'Sentry SDK configured' : 'Local Telemetry Buffer'}
+              </span>
+              <div className="text-white/30 text-[7.5px] truncate mt-0.5">
+                DSN: {sentryDsn || 'None set (logs captured locally)'}
+              </div>
             </div>
           </div>
 
           {showDsnModal && (
-            <form onSubmit={handleSaveSentryDsn} className="p-3 bg-black/80 border border-purple-500/30 rounded-xl space-y-2">
+            <form
+              onSubmit={handleSaveSentryDsn}
+              className="p-3 bg-black/80 border border-purple-500/30 rounded-xl space-y-2"
+            >
               <div className="text-[9px] font-bold text-purple-300 uppercase">Set Sentry DSN</div>
               <input
                 type="text"
@@ -356,14 +400,17 @@ export function DiagnosticPanel() {
               <button
                 onClick={() => setAIVisionEnabled(!aiVisionEnabled)}
                 className={`px-2 py-1 rounded text-[8px] uppercase font-bold transition-colors ${
-                  aiVisionEnabled ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40' : 'bg-white/5 text-white/40'
+                  aiVisionEnabled
+                    ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40'
+                    : 'bg-white/5 text-white/40'
                 }`}
               >
                 {aiVisionEnabled ? 'Sync: ON' : 'Sync: OFF'}
               </button>
             </div>
             <div className="text-[8.5px] text-white/60 leading-relaxed">
-              Sends your exact hardware specifications, display scaling, WebGL GPU details, and live canvas frame metadata into AI chat prompts.
+              Sends your exact hardware specifications, display scaling, WebGL GPU details, and live canvas frame
+              metadata into AI chat prompts.
             </div>
 
             <button
@@ -386,11 +433,16 @@ export function DiagnosticPanel() {
               <div className="space-y-1 text-[8px] text-white/70">
                 <div className="flex justify-between">
                   <span className="text-white/30">Display Monitor:</span>
-                  <span className="font-bold text-white/90">{hardwareSpecs.screenWidth}x{hardwareSpecs.screenHeight} ({hardwareSpecs.viewportWidth}x{hardwareSpecs.viewportHeight} Viewport)</span>
+                  <span className="font-bold text-white/90">
+                    {hardwareSpecs.screenWidth}x{hardwareSpecs.screenHeight} ({hardwareSpecs.viewportWidth}x
+                    {hardwareSpecs.viewportHeight} Viewport)
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/30">Scale & Depth:</span>
-                  <span>{hardwareSpecs.devicePixelRatio}x Pixel Ratio • {hardwareSpecs.colorDepth}-bit</span>
+                  <span>
+                    {hardwareSpecs.devicePixelRatio}x Pixel Ratio • {hardwareSpecs.colorDepth}-bit
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/30">CPU Threads:</span>
@@ -398,12 +450,17 @@ export function DiagnosticPanel() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/30">WebGL GPU:</span>
-                  <span className="font-bold text-cyan-300 truncate max-w-[170px]" title={hardwareSpecs.webglRenderer}>{hardwareSpecs.webglRenderer}</span>
+                  <span className="font-bold text-cyan-300 truncate max-w-[170px]" title={hardwareSpecs.webglRenderer}>
+                    {hardwareSpecs.webglRenderer}
+                  </span>
                 </div>
                 {hardwareSpecs.backendHardware && (
                   <div className="flex justify-between pt-1 border-t border-white/5">
                     <span className="text-white/30">Backend Mode:</span>
-                    <span className="text-green-400 font-bold uppercase">{hardwareSpecs.backendHardware.inference_mode} ({hardwareSpecs.backendHardware.model_budget_gib} GiB)</span>
+                    <span className="text-green-400 font-bold uppercase">
+                      {hardwareSpecs.backendHardware.inference_mode} ({hardwareSpecs.backendHardware.model_budget_gib}{' '}
+                      GiB)
+                    </span>
                   </div>
                 )}
               </div>
@@ -415,7 +472,9 @@ export function DiagnosticPanel() {
             <div className="glass-panel p-3 border border-white/5 bg-black/30 rounded-xl space-y-2">
               <div className="flex items-center justify-between text-white/50 uppercase text-[8.5px] font-bold">
                 <span>Active Screen Capture</span>
-                <span className="text-cyan-400">{latestVisualSnapshot.dimensions.width}x{latestVisualSnapshot.dimensions.height}</span>
+                <span className="text-cyan-400">
+                  {latestVisualSnapshot.dimensions.width}x{latestVisualSnapshot.dimensions.height}
+                </span>
               </div>
               {latestVisualSnapshot.dataUrl && (
                 <img
@@ -424,9 +483,7 @@ export function DiagnosticPanel() {
                   className="w-full rounded border border-white/10 object-cover max-h-32"
                 />
               )}
-              <div className="text-[7.5px] text-white/40 leading-tight">
-                {latestVisualSnapshot.summaryText}
-              </div>
+              <div className="text-[7.5px] text-white/40 leading-tight">{latestVisualSnapshot.summaryText}</div>
             </div>
           )}
         </div>

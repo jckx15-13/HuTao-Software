@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
+import { isTrustedWwtMessage, readWwtView } from '@/lib/wwt/researchProtocol';
 
 export type SyncSource = 'none' | 'cesium' | 'wwt';
 
 export interface WWTViewStatePayload {
   type: 'wwt_view_state';
-  ra: number;      // Right Ascension in degrees or hours
+  ra: number;      // Right Ascension in degrees
   dec: number;     // Declination in degrees
   fov: number;     // Field of View in degrees
   roll?: number;   // Camera Roll in degrees
@@ -24,10 +25,12 @@ export function useWWTListener(onViewStateChange?: (payload: WWTViewStatePayload
   const lastEventTs = useRef<number>(0);
 
   useEffect(() => {
+    let releaseTimer: ReturnType<typeof setTimeout> | undefined;
     function handleMessage(event: MessageEvent) {
-      if (!event.data || typeof event.data !== 'object') return;
-      
-      const data = event.data as WWTViewStatePayload;
+      const frame = document.getElementById('wwt-research-app-iframe') as HTMLIFrameElement | null;
+      if (!frame || !isTrustedWwtMessage(event, frame)) return;
+      const data = readWwtView(event.data);
+      if (!data) return;
       if (data.type === 'wwt_view_state') {
         const now = Date.now();
         // 32ms throttle (~30-60 FPS)
@@ -45,7 +48,8 @@ export function useWWTListener(onViewStateChange?: (payload: WWTViewStatePayload
         }
 
         // Release mutex after timeout
-        setTimeout(() => {
+        clearTimeout(releaseTimer);
+        releaseTimer = setTimeout(() => {
           if (currentSyncSource === 'wwt') {
             setSyncSource('none');
           }
@@ -54,6 +58,6 @@ export function useWWTListener(onViewStateChange?: (payload: WWTViewStatePayload
     }
 
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    return () => { window.removeEventListener('message', handleMessage); clearTimeout(releaseTimer); if (currentSyncSource === 'wwt') setSyncSource('none'); };
   }, [onViewStateChange]);
 }

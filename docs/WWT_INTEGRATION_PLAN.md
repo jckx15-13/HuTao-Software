@@ -1,6 +1,10 @@
 # Comprehensive Dual-Source Application Architecture & Master Integration Plan
 
-This document details the **exhaustive file inventory**, **supporting ecosystem repositories**, **interconnected source architecture diagrams**, **mathematical derivations**, and **execution roadmap** for integrating **WorldWideView (WWV)** (`https://github.com/silvertakana/worldwideview`), **wwv-data-engine** (`https://github.com/silvertakana/wwv-data-engine`), **wwv-seeders** (`https://github.com/silvertakana/wwv-seeders`), and **World Wide Telescope (WWT)** into **Silver Wolf VI**.
+> **Review note (2026-10-26):** This is a historical integration plan, not an exhaustive or currently verified inventory. See [the codebase review](CODEBASE_REVIEW_2026-10-26.md) for checked paths and evidence levels. The workspace currently contains Silver Wolf VI, WorldWideView, and `wwv-data-engine`; no separate `wwv-seeders` checkout is present at the expected sibling path. Seeder code/source appears in other locations, so its repository ownership and active runtime wiring still need to be established.
+
+> **WWT scope correction:** This file is a mixed WWV ecosystem inventory and should not be used as the implementation specification for World Wide Telescope. It describes a remote WWT iframe while [`ASSET_DATA_ARCHITECTURE.md`](ASSET_DATA_ARCHITECTURE.md) describes the separate native Cesium celestial layer. The decision, risks, and local-first WWT sequence are now in [`WWT_INTEGRATION_PREPARATION.md`](WWT_INTEGRATION_PREPARATION.md). The mapping table below remains historical/proposed and contains machine-local `file://` links; verify each target before using it.
+
+This document records proposed architecture and integration work for **WorldWideView (WWV)** (`https://github.com/silvertakana/worldwideview`), **wwv-data-engine** (`https://github.com/silvertakana/wwv-data-engine`), **wwv-seeders** (`https://github.com/silvertakana/wwv-seeders`), and **World Wide Telescope (WWT)** in **Silver Wolf VI**. Statements below that describe target files or runtime behavior are proposals unless separately verified in the codebase review.
 
 ---
 

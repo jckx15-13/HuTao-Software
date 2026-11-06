@@ -42,8 +42,38 @@ The Bridge exposes `/api/integration/status` as the runtime feature reality ledg
 - **Ignore Path:** The `worldwideview/` directory is ignored by the root Git repository to avoid path length issues and recursive tracking conflicts on Windows.
 - **Git Config:** If you encounter path length warnings on Windows, run `git config core.longpaths true` in your terminal.
 
+## GitHub builds and deployment
+
+The root app uses npm and `package-lock.json`, with Node.js 24 in GitHub Actions.
+QA runs on pull requests and pushes to `main` and `prototype/**`; it checks types,
+lint, strict contracts, Vitest, dependency advisories, and the Pages build.
+The root Pages workflow publishes Silver Wolf and the separately built flowchart
+editor at `/HuTao-Software/flowchart/`. The flowchart check never replaces the root site.
+Cloudflare deployment is available through its manual workflow.
+
+GitHub Pages serves static files. Python observer calculations require a separately
+hosted astronomy service, configured through `VITE_ASTRONOMY_URL` at build time.
+Set the service's `ASTRONOMY_CORS_ORIGINS` to the allowed frontend origins
+(for this Pages site, `https://jckx15-13.github.io`).
+Without that setting the observatory explains the missing service instead of
+requesting Python routes from Pages. The local diagnostic engine is disabled in
+the Pages build unless an explicit endpoint is provided.
+
+Browser Sentry requires `VITE_SENTRY_DSN`; source-map upload also requires
+`SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` as Actions secrets
+(DSN/org/project may also be Actions variables). Source maps are uploaded from
+the actual Pages build, then removed from the public artifact. Browser telemetry
+and the optional Python bridge have separate configuration; see
+[QA architecture](docs/QA_ARCHITECTURE.md).
+
+The optional `@google/design.md` CLI was removed because its dependency chain
+contained unpatched advisories. `DESIGN.md` remains the visual design reference.
+
 ## Project Notes
 
 - Architecture, critique, and design notes live in [DOCS.md](DOCS.md).
+- Proposed next features and priorities: [feature roadmap](docs/FEATURE_ROADMAP.md).
+- Advertised versus implemented capabilities: [feature reality audit](docs/FEATURE_REALITY_AUDIT.md).
+- Open **Telescope → Open WWT explorer** for online WWT sky surveys, solar-system viewing and WTML imports. The sky catalogue is bundled; precise observer readouts still require the separate astronomy service.
 - The main app code is split across `src/components`, `src/hooks`, `src/lib`, and `src/store`.
 - Build verification: `npm run lint`, `npm test`, and `npm run build`.

@@ -21,7 +21,7 @@ function createParticle(width: number, height: number): MainThreadParticle {
     r: Math.random() * 1.5 + 0.5,
     dx: (Math.random() - 0.5) * PARTICLE_SPEED,
     dy: (Math.random() - 0.5) * PARTICLE_SPEED,
-    alpha: Math.random() * 0.5 + 0.1,
+    alpha: Math.random() * 0.5 + 0.1
   };
 }
 
@@ -29,11 +29,9 @@ export function ParticleOverlay({ forceEnabled = false }: { forceEnabled?: boole
   const particleEffects = useUIStore((s) => s.particleEffects);
   const particlesEnabled = particleEffects || forceEnabled;
 
-  const isHeadless = typeof window !== 'undefined' && (
-    /HeadlessChrome/i.test(navigator.userAgent) ||
-    navigator.webdriver ||
-    window.location.search.includes('fallback')
-  );
+  const isHeadless =
+    typeof window !== 'undefined' &&
+    (/HeadlessChrome/i.test(navigator.userAgent) || navigator.webdriver || window.location.search.includes('fallback'));
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<Float32Array | null>(null);
@@ -86,9 +84,10 @@ export function ParticleOverlay({ forceEnabled = false }: { forceEnabled?: boole
         const count = frame.length / 4;
         for (let i = 0; i < count; i += 1) {
           const base = i * 4;
-          ctx.globalAlpha = frame[base + 3];
+          // Safe: base = i * 4 with i < count = frame.length / 4, so base..base+3 < frame.length.
+          ctx.globalAlpha = frame[base + 3]!;
           ctx.beginPath();
-          ctx.arc(frame[base], frame[base + 1], frame[base + 2], 0, Math.PI * 2);
+          ctx.arc(frame[base]!, frame[base + 1]!, frame[base + 2]!, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -115,7 +114,8 @@ export function ParticleOverlay({ forceEnabled = false }: { forceEnabled?: boole
         const packed = new Float32Array(mainParticles.length * 4);
         for (let i = 0; i < mainParticles.length; i += 1) {
           const base = i * 4;
-          const p = mainParticles[i];
+          // Safe: i < mainParticles.length in the loop bound above.
+          const p = mainParticles[i]!;
           packed[base] = p.x;
           packed[base + 1] = p.y;
           packed[base + 2] = p.r;
@@ -155,7 +155,7 @@ export function ParticleOverlay({ forceEnabled = false }: { forceEnabled?: boole
           width,
           height,
           count: PARTICLE_COUNT,
-          speed: PARTICLE_SPEED,
+          speed: PARTICLE_SPEED
         };
         worker.postMessage(init);
 
@@ -172,7 +172,7 @@ export function ParticleOverlay({ forceEnabled = false }: { forceEnabled?: boole
           const tick: ParticleWorkerMessage = {
             type: 'tick',
             deltaMs: now - lastTick,
-            isVisible: document.visibilityState === 'visible',
+            isVisible: document.visibilityState === 'visible'
           };
           lastTick = now;
           worker.postMessage(tick);

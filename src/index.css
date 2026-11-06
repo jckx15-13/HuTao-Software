@@ -1,6 +1,56 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
+/* WWV-format left bar tab strip — values (timing, easing, structure) ported
+   exactly from world-wide-view/worldwideview src/app/globals.css .panel-tabs
+   / .panel-tab (150ms transition, same padding/font-size/border-radius
+   scale). Only the active-state colour is SWV's own --theme-primary in place
+   of WWV's --accent-cyan, per "everything other than colors the exact same". */
+.wwv-panel-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.wwv-panel-tabs:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.wwv-panel-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--theme-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  width: 100%;
+  transition: all 150ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.wwv-panel-tab:hover {
+  color: var(--theme-text-main);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.wwv-panel-tab--active,
+.wwv-panel-tab--active:hover {
+  color: var(--theme-primary);
+  background: color-mix(in srgb, var(--theme-primary) 10%, transparent);
+  font-weight: 600;
+}
+
 :root {
   /* HOLOGRAPHIC THEME - SILVERWOLF */
   --theme-bg-base: #0a0b10;
@@ -13,6 +63,15 @@
   
   --theme-secondary: #A3E4D7;     /* Silverwolf Cyan */
   --theme-secondary-text: #051010;
+
+  /* Space HUD active tab. Deliberately NOT --theme-primary: the mode pill swaps
+     to --theme-secondary in space mode (.mode-switcher-shell[data-active-mode="space"]
+     below), so a primary-purple tab sitting directly under a cyan pill held only
+     3.32:1 and read as a clash. This deep teal measures 5.87:1 against the pill
+     and 2.24:1 against the panel — the only candidate clearing both. Change this
+     single value to retheme the whole HUD row. */
+  --theme-hud-active: #12574C;
+  --theme-hud-active-text: #ffffff;
   
   --theme-success: #A9DFBF;
   --theme-warning: #F9E79F;
@@ -26,7 +85,7 @@
   /* UI personalisation — set by JS from store */
   --theme-ui-opacity: 0.88;
   --theme-ui-blur: 10px;
-  --theme-ui-radius: 20px;
+  --theme-ui-radius: 10px;
   --theme-ui-shadow-intensity: 0.45;
   --theme-ui-animation-speed: 1;
   --theme-ui-font-scale: 1;
@@ -149,6 +208,10 @@
   --z-index-overlay: var(--theme-z-overlay);
   --z-index-modal: var(--theme-z-modal);
   --z-index-effects: var(--theme-z-effects);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
 }
 
 body {
@@ -223,9 +286,17 @@ textarea:disabled {
 
 .mode-switcher-shell {
   position: relative;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100vw - 1rem);
   overflow: hidden;
   isolation: isolate;
-  min-width: 188px;
+  /* Keep the shell's corners circular and let it grow around the complete
+     three-button row. Explicitly override glass-panel's lower-specificity
+     radius and prevent its pseudo-element from painting over the button track. */
+  min-width: max-content;
+  border-radius: 9999px !important;
+  background-clip: padding-box;
   box-shadow:
     0 14px 32px rgba(0, 0, 0, 0.32),
     0 0 0 1px color-mix(in srgb, var(--theme-secondary) 10%, transparent),
@@ -236,7 +307,7 @@ textarea:disabled {
   content: "";
   position: absolute;
   inset: -1px;
-  z-index: var(--theme-z-below);
+  z-index: 0;
   border-radius: inherit;
   background:
     radial-gradient(circle at var(--mode-glow-x, 28%) 50%, color-mix(in srgb, var(--theme-primary) 24%, transparent), transparent 34%),
@@ -248,19 +319,21 @@ textarea:disabled {
 .mode-tab {
   position: relative;
   overflow: hidden;
-  z-index: 1;
+  z-index: 2;
   transform: translateZ(0);
   transition: color 180ms ease, transform 180ms ease;
 }
 
 .mode-switcher-indicator {
   position: absolute;
-  z-index: 0;
-  top: 4px;
-  bottom: 4px;
-  left: 4px;
-  width: calc(50% - 4px);
-  border-radius: 999px;
+  z-index: 1;
+  top: 5px;
+  bottom: 5px;
+  /* left/width are set inline per-frame from the active tab's *measured*
+     box (CenterPanel.tsx), not a fixed 50% half — that measurement is what
+     lets the indicator hug "Chat" tightly and "Space" tightly instead of
+     both sharing one oversized slot. */
+  border-radius: 9999px;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--theme-primary) 92%, white), var(--theme-primary)),
     var(--theme-primary);
@@ -268,15 +341,13 @@ textarea:disabled {
     0 6px 16px color-mix(in srgb, var(--theme-primary) 30%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
   pointer-events: none;
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease;
+  transition: left 420ms cubic-bezier(0.22, 1, 0.36, 1), width 420ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease;
 }
 
-.mode-switcher-shell[data-active-mode="space"] .mode-switcher-indicator {
-  transform: translateX(100%);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--theme-secondary) 92%, white), var(--theme-secondary)),
-    var(--theme-secondary);
-}
+/* Space mode keeps the same primary-purple indicator as chat mode — the pale
+   --theme-secondary mint that used to fill this pill clashed against the purple
+   chrome around it, and the indicator's position already signals which mode
+   is active, so the colour no longer has to carry that job too. */
 
 .space-hud-pill-controls {
   animation: spaceControlsReveal 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -319,6 +390,32 @@ textarea:disabled {
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
+/* Active tab of the space HUD row. Mirrors .mode-switcher-indicator's gradient +
+   inset-highlight construction so the HUD reads as the same control family as the
+   CHAT/SPACE pill above it, rather than a flat utility fill. */
+.space-hud-tab-active {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--theme-hud-active) 88%, white), var(--theme-hud-active)),
+    var(--theme-hud-active);
+  color: var(--theme-hud-active-text);
+  box-shadow:
+    0 4px 12px color-mix(in srgb, var(--theme-hud-active) 34%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  animation: spaceHudTabPulse calc(2.6s / max(var(--theme-ui-animation-speed, 1), 0.2)) ease-in-out infinite;
+}
+
+/* Opacity-only pulse: the compositor handles it without repainting, which matters
+   because the globe below runs Cesium in requestRenderMode (useCesiumViewer.ts:91)
+   and a per-frame main-thread repaint would partly defeat that. */
+@keyframes spaceHudTabPulse {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 @keyframes modeSwitcherBreathe {
   0%, 100% {
     opacity: 0.48;
@@ -341,6 +438,11 @@ textarea:disabled {
 
   .mode-switcher-indicator {
     transition: none;
+  }
+
+  .space-hud-tab-active {
+    animation: none;
+    opacity: 1;
   }
 
   .space-hud-pill-controls {
@@ -369,7 +471,7 @@ textarea:disabled {
   background: rgba(15, 17, 26, var(--theme-ui-opacity, 0.92));
   backdrop-filter: blur(var(--theme-ui-blur, 8px));
   -webkit-backdrop-filter: blur(var(--theme-ui-blur, 8px));
-  border-radius: calc(var(--theme-ui-radius, 8px) * 1px);
+  border-radius: var(--theme-ui-radius, 10px);
   border: 1px solid rgba(255, 255, 255, var(--theme-ui-border-opacity, 0.08));
   box-shadow:
     0 8px 32px rgba(0, 0, 0, calc(var(--theme-ui-shadow-intensity, 0.5) * 0.6)),
@@ -380,7 +482,7 @@ textarea:disabled {
   background: rgba(15, 17, 26, var(--theme-ui-opacity, 0.92)) !important;
   backdrop-filter: blur(var(--theme-ui-blur, 8px)) !important;
   -webkit-backdrop-filter: blur(var(--theme-ui-blur, 8px)) !important;
-  border-radius: calc(var(--theme-ui-radius, 8px) * 1px);
+  border-radius: var(--theme-ui-radius, 10px);
   border: 1px solid rgba(255, 255, 255, var(--theme-ui-border-opacity, 0.08)) !important;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, calc(var(--theme-ui-shadow-intensity, 0.5) * 0.6)),
@@ -388,10 +490,10 @@ textarea:disabled {
 }
 
 .glass-panel-subtle {
-  background: rgba(15, 17, 26, calc(var(--theme-ui-opacity, 0.92) * 0.5));
+  background: rgba(15, 17, 26, max(0.80, calc(var(--theme-ui-opacity, 0.92) * 0.88)));
   backdrop-filter: blur(calc(var(--theme-ui-blur, 8px) * 0.5));
   -webkit-backdrop-filter: blur(calc(var(--theme-ui-blur, 8px) * 0.5));
-  border-radius: calc(var(--theme-ui-radius, 8px) * 1px);
+  border-radius: var(--theme-ui-radius, 10px);
   border: 1px solid rgba(255, 255, 255, calc(var(--theme-ui-border-opacity, 0.08) * 0.5));
 }
 
@@ -399,7 +501,7 @@ textarea:disabled {
   background: rgba(15, 17, 26, min(0.98, calc(var(--theme-ui-opacity, 0.92) * 1.08)));
   backdrop-filter: blur(calc(var(--theme-ui-blur, 8px) * 1.5));
   -webkit-backdrop-filter: blur(calc(var(--theme-ui-blur, 8px) * 1.5));
-  border-radius: calc(var(--theme-ui-radius, 8px) * 1px);
+  border-radius: var(--theme-ui-radius, 10px);
   border: 1px solid rgba(255, 255, 255, var(--theme-ui-border-opacity, 0.08));
   box-shadow:
     0 16px 48px rgba(0, 0, 0, calc(var(--theme-ui-shadow-intensity, 0.5) * 0.8)),

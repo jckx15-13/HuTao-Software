@@ -29,11 +29,14 @@ export async function extractThemeFromImage(url: string): Promise<Partial<ThemeV
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height).data;
   const samples: ColorSample[] = [];
 
+  // Safe: imageData is a Uint8ClampedArray of RGBA pixels (length is always a
+  // multiple of 4), and the loop bound `index < imageData.length` with step 4
+  // keeps index..index+3 in range.
   for (let index = 0; index < imageData.length; index += 4) {
-    const alpha = imageData[index + 3];
+    const alpha = imageData[index + 3]!;
     if (alpha < MIN_ALPHA) continue;
 
-    samples.push(createSample(imageData[index], imageData[index + 1], imageData[index + 2]));
+    samples.push(createSample(imageData[index]!, imageData[index + 1]!, imageData[index + 2]!));
   }
 
   if (samples.length === 0) {
@@ -42,8 +45,14 @@ export async function extractThemeFromImage(url: string): Promise<Partial<ThemeV
 
   const vibrant = pickSample(samples, (sample) => sample.saturation * 1.3 + balanceScore(sample.luminance, 0.55));
   const lightVibrant = pickSample(samples, (sample) => sample.luminance * 1.1 + sample.saturation);
-  const muted = pickSample(samples, (sample) => balanceScore(sample.saturation, 0.32) + balanceScore(sample.luminance, 0.5));
-  const darkMuted = pickSample(samples, (sample) => (1 - sample.luminance) * 1.25 + balanceScore(sample.saturation, 0.28));
+  const muted = pickSample(
+    samples,
+    (sample) => balanceScore(sample.saturation, 0.32) + balanceScore(sample.luminance, 0.5)
+  );
+  const darkMuted = pickSample(
+    samples,
+    (sample) => (1 - sample.luminance) * 1.25 + balanceScore(sample.saturation, 0.28)
+  );
 
   return {
     '--theme-bg-base': darkMuted.hex,
@@ -59,7 +68,7 @@ export async function extractThemeFromImage(url: string): Promise<Partial<ThemeV
     '--theme-danger': '#F5B7B1',
     '--theme-text-main': readableTextColor(darkMuted),
     '--theme-text-muted': muted.hex,
-    ...generateMathAccents(vibrant.hex),
+    ...generateMathAccents(vibrant.hex)
   };
 }
 
@@ -81,12 +90,16 @@ function createSample(r: number, g: number, b: number): ColorSample {
     b,
     hex: rgbToHex(r, g, b),
     luminance: relativeLuminance(r, g, b),
-    saturation,
+    saturation
   };
 }
 
-function pickSample(samples: ColorSample[], score: (sample: ColorSample) => number) {
-  return samples.reduce((best, sample) => (score(sample) > score(best) ? sample : best), samples[0]);
+function pickSample(samples: ColorSample[], score: (sample: ColorSample) => number): ColorSample {
+  const [first, ...rest] = samples;
+  if (!first) {
+    throw new Error('pickSample requires at least one sample.');
+  }
+  return rest.reduce((best, sample) => (score(sample) > score(best) ? sample : best), first);
 }
 
 function balanceScore(value: number, target: number) {
@@ -112,10 +125,13 @@ function rgbToHsl(r: number, g: number, b: number) {
 }
 
 function relativeLuminance(r: number, g: number, b: number) {
-  const [red, green, blue] = [r, g, b].map((value) => {
+  const toLinear = (value: number) => {
     const channel = value / 255;
     return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-  });
+  };
+  const red = toLinear(r);
+  const green = toLinear(g);
+  const blue = toLinear(b);
 
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }

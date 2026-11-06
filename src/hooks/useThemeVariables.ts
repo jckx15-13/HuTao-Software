@@ -41,23 +41,36 @@ export function useThemeVariables(): AppliedTheme {
     const root = document.documentElement;
     root.style.setProperty('--theme-ui-opacity', panelOpacity.toString());
     root.style.setProperty('--theme-ui-blur', `${blurIntensity}px`);
-    root.style.setProperty('--theme-ui-radius', personalisation.cornerRadius.toString());
+    // Must carry an explicit unit. `border-radius: 10` is invalid CSS and
+    // computes to 0, and because the variable IS defined the `var(..., 10px)`
+    // fallback never fires — which squared off every .glass-panel surface.
+    root.style.setProperty('--theme-ui-radius', `${personalisation.cornerRadius}px`);
     root.style.setProperty('--theme-ui-shadow-intensity', personalisation.shadowIntensity.toString());
     root.style.setProperty('--theme-ui-animation-speed', personalisation.animationIntensity.toString());
     root.style.setProperty('--theme-ui-font-scale', personalisation.fontScale.toString());
-    
+
     // Convert UI density to row height
     const densityMap = { compact: '32px', comfortable: '38px', spacious: '44px' };
     root.style.setProperty('--theme-ui-density-row-height', densityMap[personalisation.uiDensity] || '38px');
-    
+
     // Border opacity scale
-    const borderOpacity = personalisation.borderStyle === 'solid' ? '0.25' : 
-                          personalisation.borderStyle === 'glow' ? '0.15' : 
-                          personalisation.borderStyle === 'none' ? '0' : '0.08';
+    const borderOpacity =
+      personalisation.borderStyle === 'solid'
+        ? '0.25'
+        : personalisation.borderStyle === 'glow'
+          ? '0.15'
+          : personalisation.borderStyle === 'none'
+            ? '0'
+            : '0.08';
     root.style.setProperty('--theme-ui-border-opacity', borderOpacity);
 
     // Apply global border style class
-    document.body.classList.remove('border-style-subtle', 'border-style-glow', 'border-style-solid', 'border-style-none');
+    document.body.classList.remove(
+      'border-style-subtle',
+      'border-style-glow',
+      'border-style-solid',
+      'border-style-none'
+    );
     document.body.classList.add(`border-style-${personalisation.borderStyle}`);
     if (personalisation.minimalMode) {
       document.body.classList.add('is-minimal-ui');
@@ -77,12 +90,12 @@ export function useThemeVariables(): AppliedTheme {
       ...themeStyle,
       backgroundImage: `linear-gradient(color-mix(in srgb, var(--theme-bg-base) 54%, transparent), color-mix(in srgb, var(--theme-bg-base) 72%, transparent)), url(${customWallpaper})`,
       backgroundPosition: 'center',
-      backgroundSize: 'cover',
+      backgroundSize: 'cover'
     };
   }, [currentPalette, customWallpaper]);
 
   return {
     appStyle,
-    isHighLoad: cpuLoad > 0.8,
+    isHighLoad: cpuLoad > 0.8
   };
 }

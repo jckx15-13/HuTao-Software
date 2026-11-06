@@ -7,18 +7,23 @@ export type CursorDesign = {
   description?: string;
 };
 
-export const CURSOR_DESIGNS: CursorDesign[] = [
+const CURSOR_DESIGNS: CursorDesign[] = [
   {
     id: 'reticle-v1',
     name: 'Reticle',
     preview: (
       <svg width="48" height="48" viewBox="0 0 48 48">
         <circle cx="24" cy="24" r="12" stroke="#A67BEA" strokeWidth="1.5" fill="none" />
-        <path d="M24 6 L24 12 M24 36 L24 42 M6 24 L12 24 M36 24 L42 24" stroke="#FFF" strokeWidth="1.2" strokeLinecap="round" />
+        <path
+          d="M24 6 L24 12 M24 36 L24 42 M6 24 L12 24 M36 24 L42 24"
+          stroke="#FFF"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+        />
         <circle cx="24" cy="24" r="3" fill="#FFF" />
       </svg>
     ),
-    description: 'Directional reticle with subtle glow and center dot',
+    description: 'Directional reticle with subtle glow and center dot'
   },
   {
     id: 'dot-trail',
@@ -30,7 +35,7 @@ export const CURSOR_DESIGNS: CursorDesign[] = [
         <circle cx="32" cy="24" r="6" fill="#2BD0FF" opacity="0.25" />
       </svg>
     ),
-    description: 'Core dot with fading trailing dots (low-profile)',
+    description: 'Core dot with fading trailing dots (low-profile)'
   },
   {
     id: 'comet-tail',
@@ -47,7 +52,7 @@ export const CURSOR_DESIGNS: CursorDesign[] = [
         <circle cx="38" cy="24" r="4" fill="#fff" />
       </svg>
     ),
-    description: 'Elongated glowing tail like a comet',
+    description: 'Elongated glowing tail like a comet'
   },
   {
     id: 'crosshair',
@@ -58,7 +63,7 @@ export const CURSOR_DESIGNS: CursorDesign[] = [
         <circle cx="24" cy="24" r="2.5" fill="#A67BEA" />
       </svg>
     ),
-    description: 'Minimal crosshair with a colored center',
+    description: 'Minimal crosshair with a colored center'
   },
   {
     id: 'ring-pulse',
@@ -69,7 +74,7 @@ export const CURSOR_DESIGNS: CursorDesign[] = [
         <circle cx="24" cy="24" r="3" fill="#7DE3C9" />
       </svg>
     ),
-    description: 'Concentric rings that pulse on click',
+    description: 'Concentric rings that pulse on click'
   },
   {
     id: 'orbit',
@@ -81,7 +86,7 @@ export const CURSOR_DESIGNS: CursorDesign[] = [
         <circle cx="18" cy="30" r="2" fill="#9EE7FF" />
       </svg>
     ),
-    description: 'Multiple small bodies orbiting the cursor center',
+    description: 'Multiple small bodies orbiting the cursor center'
   },
   {
     id: 'pixel',
@@ -92,7 +97,7 @@ export const CURSOR_DESIGNS: CursorDesign[] = [
         <rect x="20" y="16" width="8" height="8" fill="#8A5BC7" />
       </svg>
     ),
-    description: 'Blocky pixel-art inspired pointer',
+    description: 'Blocky pixel-art inspired pointer'
   },
   {
     id: 'radar',
@@ -103,7 +108,7 @@ export const CURSOR_DESIGNS: CursorDesign[] = [
         <path d="M24 24 L36 18" stroke="#74F5C4" strokeWidth="1.2" strokeLinecap="round" />
       </svg>
     ),
-    description: 'Sweeping radar-like scan arc',
+    description: 'Sweeping radar-like scan arc'
   },
   {
     id: 'arrow',
@@ -113,7 +118,7 @@ export const CURSOR_DESIGNS: CursorDesign[] = [
         <path d="M14 8 L34 24 L22 28 L18 36 L14 8" fill="#FFF" />
       </svg>
     ),
-    description: 'Familiar arrow pointer with crisp edges',
+    description: 'Familiar arrow pointer with crisp edges'
   },
   {
     id: 'vortex',
@@ -125,8 +130,8 @@ export const CURSOR_DESIGNS: CursorDesign[] = [
         <circle cx="28" cy="30" r="1.5" fill="#C7A6FF" />
       </svg>
     ),
-    description: 'Swirling particles that orbit and decay',
-  },
+    description: 'Swirling particles that orbit and decay'
+  }
 ];
 
 export default CURSOR_DESIGNS;

@@ -3,6 +3,7 @@ import { bridgeUrl, getBridgeBaseUrl, isBridgeEnabled } from '../lib/bridgeConfi
 import { sentryService } from '../services/sentryService';
 import { coderabbitService, CodeRabbitAuditResult } from '../services/coderabbitService';
 import { visualInspectorService, HardwareSpecs, VisualSnapshot } from '../services/visualInspectorService';
+import { isDiagnosticIngestRequest, reportToEngine } from '../services/diagnosticEngineClient';
 
 export type DiagnosticLevel = 'error' | 'warning' | 'info' | 'debug';
 
@@ -44,6 +45,8 @@ const TRACKED_FETCH_PATHS = ['/api/', '/chat', '/status', '/git/status', '/sync'
 
 function shouldTrackFetchLatency(url: string): boolean {
   if (!url || typeof url !== 'string') return false;
+  if (isDiagnosticIngestRequest(url)) return false;
+  if (sentryService.isTelemetryRequest(url)) return false;
   if (url.includes('/log')) return false;
   return TRACKED_FETCH_PATHS.some((path) => url.includes(path));
 }
@@ -153,6 +156,9 @@ export const useDiagnosticsStore = create<DiagnosticsState>((set, get) => ({
     }
 
     set((s) => ({ entries: [full, ...s.entries].slice(0, 500) }));
+
+    // Additive forward to diagnostic-engine (fire-and-forget, no-ops if not running)
+    reportToEngine(full);
   },
   clear: () => set({ entries: [] }),
   export: () => JSON.stringify(get().entries, null, 2),
@@ -208,7 +214,9 @@ if (typeof window !== 'undefined') {
             suggestion: 'Verify network connection, asset path correctness, or resource CORS policies.'
           });
         }
-      } catch (e) { /* ignore error listener error */ }
+      } catch (e) {
+        /* ignore error listener error */
+      }
     },
     true
   );
@@ -308,7 +316,9 @@ if (typeof window !== 'undefined') {
         message: `Console Error: ${msg.substring(0, 300)}`,
         suggestion: 'Trace this error using browser devtools stack trace or check related components.'
       });
-    } catch (e) { /* ignore console intercept error */ }
+    } catch (e) {
+      /* ignore console intercept error */
+    }
   };
 
   console.warn = function (...args) {
@@ -321,7 +331,9 @@ if (typeof window !== 'undefined') {
         message: `Console Warning: ${msg.substring(0, 300)}`,
         suggestion: 'Resolve warnings to ensure optimal performance and standard-compliant rendering.'
       });
-    } catch (e) { /* ignore console intercept error */ }
+    } catch (e) {
+      /* ignore console intercept error */
+    }
   };
 
   // 6. Navigation Performance and Vitals check
@@ -370,9 +382,12 @@ if (typeof window !== 'undefined') {
         }
 
         // 7. WebGL Context Loss listener on page canvases
+        // Observe only. Calling preventDefault() here would claim responsibility
+        // for restoring the context, and this store has no way to rebuild the
+        // viewer — that belongs to useCesiumViewer, which registers its own
+        // lost/restored pair on the live Cesium canvas.
         document.querySelectorAll('canvas').forEach((c) => {
-          c.addEventListener('webglcontextlost', (e) => {
-            e.preventDefault();
+          c.addEventListener('webglcontextlost', () => {
             useDiagnosticsStore.getState().add({
               level: 'error',
               message: 'WebGL context lost detected on active viewport canvas.',
@@ -456,5 +471,3 @@ if (typeof window !== 'undefined') {
     }, 1000);
   });
 }
-
-export default useDiagnosticsStore;

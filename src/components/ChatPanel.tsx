@@ -31,11 +31,7 @@ export function ChatPanel() {
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
 
-    if (
-      lastMessage &&
-      lastMessage.sender !== 'user' &&
-      lastMessage.id !== lastAnnouncedMessageIdRef.current
-    ) {
+    if (lastMessage && lastMessage.sender !== 'user' && lastMessage.id !== lastAnnouncedMessageIdRef.current) {
       lastAnnouncedMessageIdRef.current = lastMessage.id;
       playBlip();
     }
@@ -47,7 +43,7 @@ export function ChatPanel() {
     playClick();
     await paneControls.start({
       y: isHighLoad ? 1 : 2,
-      transition: { type: 'spring', stiffness: 1000, damping: 10 },
+      transition: { type: 'spring', stiffness: 1000, damping: 10 }
     });
     void paneControls.start({ y: 0, transition: { type: 'spring', stiffness: 400, damping: 25 } });
 
@@ -57,11 +53,7 @@ export function ChatPanel() {
   return (
     <motion.div className="flex h-full w-full flex-col overflow-hidden bg-transparent" animate={paneControls}>
       <ChatHeader onClear={clearMessages} />
-      <ChatFeed
-        messages={messages}
-        isProcessing={isProcessing}
-        fontSize={terminalFontSize}
-      />
+      <ChatFeed messages={messages} isProcessing={isProcessing} fontSize={terminalFontSize} />
       <ChatComposer disabled={isProcessing} fontSize={terminalFontSize} onSubmit={handleSend} />
     </motion.div>
   );
@@ -88,7 +80,7 @@ function ChatHeader({ onClear }: ChatHeaderProps) {
           <TerminalSquare className="h-4 w-4" />
         </div>
         <div className="flex flex-col leading-none">
-          <span>Chat</span>
+          <h2>Chat</h2>
           <span className="mt-1 text-[11px] font-medium tracking-[0.14em] text-text-muted/70">AI workspace</span>
         </div>
       </div>
@@ -119,7 +111,7 @@ function ChatFeed({ messages, isProcessing, fontSize }: ChatFeedProps) {
 
     virtuosoRef.current.scrollToIndex({
       index: messages.length - 1,
-      behavior: 'smooth',
+      behavior: 'smooth'
     });
   }, [messages.length]);
 
@@ -147,7 +139,7 @@ function ChatFeed({ messages, isProcessing, fontSize }: ChatFeedProps) {
               </div>
             ) : (
               <div className="h-6" />
-            ),
+            )
         }}
       />
     </div>
@@ -178,15 +170,15 @@ const MessageBubble = memo(function MessageBubble({ message, fontSize }: Message
   let bubbleClass = 'relative min-w-0 max-w-[calc(100%-5rem)] px-4 py-2.5 text-xs leading-relaxed transition-all ';
   if (isSystem) {
     bubbleClass =
-      'relative min-w-0 max-w-[calc(100%-5rem)] rounded-2xl border border-white/10 bg-panel/85 px-3 py-2 font-mono text-[11px] leading-relaxed text-text-muted shadow-sm ';
+      'relative min-w-0 max-w-[calc(100%-5rem)] rounded-md border border-white/10 bg-panel/85 px-3 py-2 font-mono text-[11px] leading-relaxed text-text-muted shadow-sm ';
   } else if (chatBubbleStyle === 'glass') {
     bubbleClass += isUser
-      ? 'bg-primary/10 border border-primary/25 text-white/90 backdrop-blur-md shadow-lg shadow-primary/5 rounded-2xl rounded-tr-sm'
-      : 'bg-white/5 border border-white/10 text-white/80 backdrop-blur-md shadow-lg rounded-2xl rounded-tl-sm';
+      ? 'bg-primary/10 border border-primary/25 text-white/90 backdrop-blur-md shadow-lg shadow-primary/5 rounded-md rounded-tr-sm'
+      : 'bg-white/5 border border-white/10 text-white/80 backdrop-blur-md shadow-lg rounded-md rounded-tl-sm';
   } else if (chatBubbleStyle === 'solid') {
     bubbleClass += isUser
-      ? 'bg-primary text-primary-text border border-primary-hover shadow-md rounded-2xl rounded-tr-sm'
-      : 'bg-panel border border-panel-border text-text-main shadow-md rounded-2xl rounded-tl-sm';
+      ? 'bg-primary text-primary-text border border-primary-hover shadow-md rounded-md rounded-tr-sm'
+      : 'bg-panel border border-panel-border text-text-main shadow-md rounded-md rounded-tl-sm';
   } else {
     bubbleClass += isUser
       ? 'bg-transparent border-r-2 border-primary text-white/90 rounded-none px-3 py-1 shadow-none'
@@ -272,7 +264,7 @@ function ChatComposer({ disabled, fontSize, onSubmit }: ChatComposerProps) {
 
   return (
     <div className="relative z-chrome shrink-0 bg-gradient-to-t from-background/85 via-background/45 to-transparent px-4 pb-5 pt-3 sm:px-6">
-      <motion.div className="panel-glass relative flex flex-col gap-2 overflow-hidden rounded-[28px] border border-primary/25 bg-panel/78 p-3 shadow-[0_18px_45px_rgba(0,0,0,0.35),0_0_24px_color-mix(in_srgb,var(--theme-primary)_10%,transparent)_inset] transition-all focus-within:border-primary/60 focus-within:shadow-[0_18px_45px_rgba(0,0,0,0.35),0_0_30px_color-mix(in_srgb,var(--theme-primary)_18%,transparent)_inset]">
+      <motion.div className="panel-glass relative flex flex-col gap-2 overflow-hidden rounded-lg border border-primary/25 bg-panel/78 p-3 shadow-[0_18px_45px_rgba(0,0,0,0.35),0_0_24px_color-mix(in_srgb,var(--theme-primary)_10%,transparent)_inset] transition-all focus-within:border-primary/60 focus-within:shadow-[0_18px_45px_rgba(0,0,0,0.35),0_0_30px_color-mix(in_srgb,var(--theme-primary)_18%,transparent)_inset]">
         <TextareaAutosize
           minRows={1}
           maxRows={8}

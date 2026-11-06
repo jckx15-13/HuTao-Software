@@ -21,35 +21,127 @@ export interface ProjectResult {
 // Pre-defined set of (lat, lng) coordinates representing simplified global landmasses
 export const LANDMASS_POINTS: [number, number][] = [
   // North America
-  [45, -100], [55, -120], [60, -110], [50, -90], [35, -100], [30, -110], [40, -120],
-  [45, -80], [35, -85], [30, -90], [25, -80], [20, -100], [65, -150], [60, -140],
-  [55, -60], [50, -65], [70, -100], [75, -80],
+  [45, -100],
+  [55, -120],
+  [60, -110],
+  [50, -90],
+  [35, -100],
+  [30, -110],
+  [40, -120],
+  [45, -80],
+  [35, -85],
+  [30, -90],
+  [25, -80],
+  [20, -100],
+  [65, -150],
+  [60, -140],
+  [55, -60],
+  [50, -65],
+  [70, -100],
+  [75, -80],
   // Greenland
-  [75, -40], [70, -40], [80, -30], [65, -50],
+  [75, -40],
+  [70, -40],
+  [80, -30],
+  [65, -50],
   // South America
-  [-5, -60], [-15, -60], [-25, -60], [-35, -65], [-45, -70], [-50, -70],
-  [-10, -50], [-20, -50], [-5, -70], [5, -70], [5, -60],
+  [-5, -60],
+  [-15, -60],
+  [-25, -60],
+  [-35, -65],
+  [-45, -70],
+  [-50, -70],
+  [-10, -50],
+  [-20, -50],
+  [-5, -70],
+  [5, -70],
+  [5, -60],
   // Africa
-  [25, 15], [25, 25], [20, 10], [15, 15], [15, 30], [5, 20], [5, 30],
-  [-5, 20], [-15, 25], [-25, 25], [-30, 20], [10, 40], [5, 45], [0, 40],
-  [30, 5], [30, 30], [20, -10], [15, -15],
+  [25, 15],
+  [25, 25],
+  [20, 10],
+  [15, 15],
+  [15, 30],
+  [5, 20],
+  [5, 30],
+  [-5, 20],
+  [-15, 25],
+  [-25, 25],
+  [-30, 20],
+  [10, 40],
+  [5, 45],
+  [0, 40],
+  [30, 5],
+  [30, 30],
+  [20, -10],
+  [15, -15],
   // Madagascar
   [-20, 47],
   // Europe
-  [45, 15], [50, 10], [50, 20], [55, 15], [60, 20], [60, 10], [65, 15],
-  [40, -5], [40, 15], [38, 25], [38, 30], [60, -10],
+  [45, 15],
+  [50, 10],
+  [50, 20],
+  [55, 15],
+  [60, 20],
+  [60, 10],
+  [65, 15],
+  [40, -5],
+  [40, 15],
+  [38, 25],
+  [38, 30],
+  [60, -10],
   // Asia
-  [55, 40], [60, 50], [65, 60], [70, 70], [60, 80], [55, 90], [65, 100],
-  [60, 120], [65, 130], [60, 140], [55, 150], [50, 160], [50, 140],
-  [45, 80], [45, 100], [40, 90], [40, 110], [35, 105], [30, 110],
-  [35, 120], [35, 135], [40, 135], [35, 75], [30, 75], [25, 80],
-  [20, 80], [22, 90], [15, 100], [15, 105], [10, 105], [5, 100],
-  [15, 120], [10, 120], [5, 115], [0, 115], [-5, 120],
-  [15, 45], [20, 45], [25, 45], [20, 55], [15, 55],
+  [55, 40],
+  [60, 50],
+  [65, 60],
+  [70, 70],
+  [60, 80],
+  [55, 90],
+  [65, 100],
+  [60, 120],
+  [65, 130],
+  [60, 140],
+  [55, 150],
+  [50, 160],
+  [50, 140],
+  [45, 80],
+  [45, 100],
+  [40, 90],
+  [40, 110],
+  [35, 105],
+  [30, 110],
+  [35, 120],
+  [35, 135],
+  [40, 135],
+  [35, 75],
+  [30, 75],
+  [25, 80],
+  [20, 80],
+  [22, 90],
+  [15, 100],
+  [15, 105],
+  [10, 105],
+  [5, 100],
+  [15, 120],
+  [10, 120],
+  [5, 115],
+  [0, 115],
+  [-5, 120],
+  [15, 45],
+  [20, 45],
+  [25, 45],
+  [20, 55],
+  [15, 55],
   // Australia
-  [-25, 135], [-30, 140], [-20, 130], [-25, 145], [-30, 115], [-20, 115],
+  [-25, 135],
+  [-30, 140],
+  [-20, 130],
+  [-25, 145],
+  [-30, 115],
+  [-20, 115],
   // New Zealand
-  [-40, 175], [-45, 170],
+  [-40, 175],
+  [-45, 170]
 ];
 
 /**
@@ -61,14 +153,15 @@ export function latLngToVector(lat: number, lng: number): Vector3D {
   return {
     x: Math.cos(phi) * Math.cos(lambda),
     y: Math.cos(phi) * Math.sin(lambda),
-    z: Math.sin(phi),
+    z: Math.sin(phi)
   };
 }
 
 // Precomputes the 3D unit vectors for all continent landmarks
 export const LANDMASS_POINTS_3D = new Float32Array(LANDMASS_POINTS.length * 3);
 for (let i = 0; i < LANDMASS_POINTS.length; i++) {
-  const [lat, lng] = LANDMASS_POINTS[i];
+  // Safe: i < LANDMASS_POINTS.length.
+  const [lat, lng] = LANDMASS_POINTS[i]!;
   const v = latLngToVector(lat, lng);
   LANDMASS_POINTS_3D[i * 3] = v.x;
   LANDMASS_POINTS_3D[i * 3 + 1] = v.y;
@@ -108,7 +201,7 @@ for (let lat = -60; lat <= 60; lat += 30) {
 /**
  * Projects a precomputed 3D unit vector onto 2D screen space.
  * Avoids any trigonometric evaluations by consuming cached sin/cos of rotation and tilt.
- * 
+ *
  * Rotation is around Z-axis (earth rotation), tilt is around X-axis (axial tilt).
  */
 export function projectUnitVector(
@@ -138,7 +231,7 @@ export function projectUnitVector(
     x: cx + x * radius,
     y: cy - y * radius, // Invert Y for canvas coordinate system
     visible: z >= 0,
-    z,
+    z
   };
 }
 
@@ -211,7 +304,7 @@ export function slerp(v1: Vector3D, v2: Vector3D, t: number): Vector3D {
     return {
       x: v1.x + t * (v2.x - v1.x),
       y: v1.y + t * (v2.y - v1.y),
-      z: v1.z + t * (v2.z - v1.z),
+      z: v1.z + t * (v2.z - v1.z)
     };
   }
   const sinTheta = Math.sin(theta);
@@ -220,6 +313,6 @@ export function slerp(v1: Vector3D, v2: Vector3D, t: number): Vector3D {
   return {
     x: w1 * v1.x + w2 * v2.x,
     y: w1 * v1.y + w2 * v2.y,
-    z: w1 * v1.z + w2 * v2.z,
+    z: w1 * v1.z + w2 * v2.z
   };
 }

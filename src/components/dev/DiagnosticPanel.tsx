@@ -1,8 +1,14 @@
-import React from 'react';
 import { useDiagnosticsStore } from '@/store/diagnosticsStore';
 
 function LevelBadge({ level }: { level: string }) {
-  const color = level === 'error' ? 'bg-red-600' : level === 'warning' ? 'bg-amber-500' : level === 'info' ? 'bg-blue-500' : 'bg-gray-500';
+  const color =
+    level === 'error'
+      ? 'bg-red-600'
+      : level === 'warning'
+        ? 'bg-amber-500'
+        : level === 'info'
+          ? 'bg-blue-500'
+          : 'bg-gray-500';
   return <span className={`px-2 py-0.5 rounded text-[11px] font-mono ${color} text-white`}>{level.toUpperCase()}</span>;
 }
 
@@ -18,16 +24,14 @@ export default function DiagnosticPanel() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => { navigator.clipboard?.writeText(exp()); }}
+            onClick={() => {
+              navigator.clipboard?.writeText(exp());
+            }}
             className="min-h-11 rounded bg-white/5 px-3 py-1"
           >
             Copy JSON
           </button>
-          <button
-            type="button"
-            onClick={() => clear()}
-            className="min-h-11 rounded bg-amber-700/10 px-3 py-1"
-          >
+          <button type="button" onClick={() => clear()} className="min-h-11 rounded bg-amber-700/10 px-3 py-1">
             Clear
           </button>
         </div>
@@ -45,9 +49,7 @@ export default function DiagnosticPanel() {
               </div>
               <div className="text-[11px] text-white/40">{new Date(e.timestamp).toLocaleString()}</div>
             </div>
-            {e.suggestion && (
-              <div className="mt-1 text-[12px] text-amber-200">Suggested: {e.suggestion}</div>
-            )}
+            {e.suggestion && <div className="mt-1 text-[12px] text-amber-200">Suggested: {e.suggestion}</div>}
             {e.stack && (
               <pre className="mt-2 text-[11px] text-white/60 whitespace-pre-wrap max-h-40 overflow-auto">{e.stack}</pre>
             )}

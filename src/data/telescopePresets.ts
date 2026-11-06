@@ -131,3 +131,8 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
     color: '#5BFFD2'
   }
 ];
+
+// TELESCOPE_PRESETS is a static, non-empty catalog literal defined above,
+// so index 0 is always present. Exposed as a typed fallback so call sites
+// don't need to re-derive an unsafe `TELESCOPE_PRESETS[0]` each time.
+export const DEFAULT_TELESCOPE_PRESET: TelescopePreset = TELESCOPE_PRESETS[0]!;

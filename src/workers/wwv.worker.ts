@@ -7,9 +7,6 @@
 import { propagateSatelliteTleInto, propagateCircularOrbitInto } from '../lib/simulation';
 import { LANDMASS_POINTS_3D, projectUnitVectorInto } from '../lib/globeProjection';
 
-// Local cache for TLE data to avoid repeated lookups
-const tleCache: Record<string, string[]> = {};
-
 onmessage = (event) => {
   const { type, payload } = event.data;
 
@@ -18,27 +15,28 @@ onmessage = (event) => {
     const results = satellites.map((sat: any) => {
       const orbitOut = new Float32Array(2); // [lat, lng]
       let success = false;
-      
+
       if (sat.tle) {
         success = propagateSatelliteTleInto(orbitOut, 0, sat.tle, new Date(timestamp));
       }
-      
+
       if (!success) {
         // Fallback to circular orbit if TLE is missing or fails
         propagateCircularOrbitInto(
-          orbitOut, 
-          0, 
-          timestamp / 1000, 
-          sat.altitudeM || 420000, 
-          sat.inclinationRad || 0.9, 
-          sat.omega0 || 0, 
+          orbitOut,
+          0,
+          timestamp / 1000,
+          sat.altitudeM || 420000,
+          sat.inclinationRad || 0.9,
+          sat.omega0 || 0,
           sat.argLat0 || 0
         );
       }
 
-      const lat = orbitOut[0];
-      const lng = orbitOut[1];
-      
+      // Safe: orbitOut is a fixed-length Float32Array(2).
+      const lat = orbitOut[0]!;
+      const lng = orbitOut[1]!;
+
       // Projection math (inlined or imported)
       const phi = (lat * Math.PI) / 180;
       const lambda = (lng * Math.PI) / 180;
@@ -61,7 +59,8 @@ onmessage = (event) => {
         z: pointOut[2],
         lat,
         lng,
-        visible: pointOut[2] >= 0
+        // Safe: pointOut is a fixed-length Float32Array(3).
+        visible: pointOut[2]! >= 0
       };
     });
 
@@ -78,13 +77,15 @@ onmessage = (event) => {
     const pointsLen = LANDMASS_POINTS_3D.length;
     const results = new Float32Array(pointsLen); // [x, y, z, x, y, z, ...]
 
+    // Safe: LANDMASS_POINTS_3D is a flat [x, y, z, ...] buffer and the loop
+    // bound `i < pointsLen` with step 3 keeps i, i+1, i+2 in range.
     for (let i = 0; i < pointsLen; i += 3) {
       projectUnitVectorInto(
         results,
         i,
-        LANDMASS_POINTS_3D[i],
-        LANDMASS_POINTS_3D[i + 1],
-        LANDMASS_POINTS_3D[i + 2],
+        LANDMASS_POINTS_3D[i]!,
+        LANDMASS_POINTS_3D[i + 1]!,
+        LANDMASS_POINTS_3D[i + 2]!,
         sinRot,
         cosRot,
         sinTilt,

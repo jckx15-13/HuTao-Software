@@ -148,7 +148,7 @@ function testSentryQACircularPayloadStrictness() {
     extra: { circular: circularObj },
   });
 
-  assert.ok(eventId.startsWith("qa-evt-"), "Sentry QA must handle circular reference payloads safely");
+  assert.match(eventId, /^[a-f0-9]{32}$/, "Sentry QA must handle circular reference payloads safely");
   console.log("✔ Sentry QA circular payload strictness assertions passed.");
 }
 

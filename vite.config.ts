@@ -95,7 +95,14 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       __SILVER_WOLF_BRIDGE_URL__: JSON.stringify(bridgeUrl),
+      __SILVER_WOLF_ASTRONOMY_URL__: JSON.stringify(env.VITE_ASTRONOMY_URL || (isGithubPages ? 'off' : '/api/astronomy')),
       __SILVER_WOLF_ODYSSEUS_CORE_URL__: JSON.stringify(env.VITE_ODYSSEUS_CORE_URL || ''),
+      // diagnosticEngineClient.ts references this constant to locate the
+      // diagnostic-engine ingest endpoint. Without this define the bundler
+      // would leave the identifier unresolved and throw a ReferenceError at
+      // runtime. An empty string makes the module fall back to its hard-coded
+      // FALLBACK_ENGINE_URL (127.0.0.1:9500).
+      __SILVER_WOLF_DIAGNOSTIC_ENGINE_URL__: JSON.stringify(env.VITE_DIAGNOSTIC_ENGINE_URL || (isGithubPages ? 'off' : '')),
       // src/core/edition.ts reads this, but Vite only exposes VITE_-prefixed vars
       // on import.meta.env, so it must be inlined explicitly. The Pages build runs
       // as the "demo" edition, which routes favorites to cookies instead of the
@@ -114,6 +121,12 @@ export default defineConfig(({ mode }) => {
     // locally and noise in a published build.
     esbuild: isGithubPages ? { drop: ['console', 'debugger'] } : undefined,
     server: {
+      proxy: {
+        '/api/astronomy': 'http://127.0.0.1:8011'
+      },
+      fs: {
+        allow: ['..']
+      },
       // Dev-server host allowlist. Vite blocks unknown Host headers by default
       // (DNS-rebinding protection), which rejects tunnelled origins used to view
       // this dev server from another device. Opt in explicitly via
@@ -152,15 +165,19 @@ export default defineConfig(({ mode }) => {
       minify: 'esbuild',
       rollupOptions: {
         output: {
-          manualChunks: {
-            'react-core': ['react', 'react-dom', 'zustand', 'react-textarea-autosize'],
-            ai: ['@google/genai'],
-            markdown: ['react-markdown', 'remark-gfm'],
-            motion: ['motion'],
-            lucide: ['lucide-react'],
-            virtualization: ['react-virtuoso'],
-            satellite: ['satellite.js'],
-            wwv: ['@wwtelescope/engine', '@wwtelescope/engine-types']
+          manualChunks(id) {
+            if (id.includes('/node_modules/cesium/')) return 'cesium-engine';
+            if (id.includes('/node_modules/@wwtelescope/engine/')) return 'wwt-engine';
+            if (id.includes('/node_modules/three/')) return 'three';
+            if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/') || id.includes('/node_modules/react-textarea-autosize/')) return 'react-core';
+            if (id.includes('/node_modules/zustand/')) return 'state';
+            if (id.includes('/node_modules/@google/genai/')) return 'ai';
+            if (id.includes('/node_modules/react-markdown/') || id.includes('/node_modules/remark-gfm/')) return 'markdown';
+            if (id.includes('/node_modules/motion/')) return 'motion';
+            if (id.includes('/node_modules/lucide-react/')) return 'lucide';
+            if (id.includes('/node_modules/react-virtuoso/')) return 'virtualization';
+            if (id.includes('/node_modules/satellite.js/')) return 'satellite';
+            return undefined;
           }
         }
       },

@@ -1,28 +1,15 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
 import {
   ChevronDown,
   Compass,
-  FolderKanban,
-  Layers,
-  Map,
   Minus,
   Navigation,
-  Pin,
   Plus,
-  Ruler,
-  Search,
-  Settings,
   UserCircle,
-  Waypoints,
   X,
   ChevronLeft,
   ChevronRight,
-  Eye,
-  Camera,
-  Play,
-  RotateCcw,
-  Check
+  Camera
 } from 'lucide-react';
 // Runtime/mocked wrapper to prevent static Cesium initialization crashes in headless environments
 const Cesium = {
@@ -56,73 +43,33 @@ const Cesium = {
   }
 };
 import { useUIStore } from '@/store/uiStore';
-import { useStore } from '../../core/state/store';
-import { pluginManager } from '../../core/plugins/PluginManager';
 import { resolveChromeTierForWidth } from '@/core/layout/deviceProfile';
 import { locations, type LocationData } from '../../data/locations';
-import { tours, type Tour, type TourStep } from '../../data/tours';
+import { type TourStep } from '../../data/tours';
 import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
 import { useViewportSize } from '@/hooks/useViewportSize';
 import { useDeviceProfile } from '@/hooks/useDeviceProfile';
-import { buildWorkspaceRailPx } from '../panels/panelGeometry';
-import {
-  LANDMASS_POINTS_3D,
-  MERIDIANS_3D,
-  PARALLELS_3D,
-  projectUnitVector,
-  projectLatLng,
-  latLngToVector,
-  slerp
-} from '../../lib/globeProjection';
+import { isFallbackRuntime } from '@/lib/runtimeMode';
+import { useLayout } from '../../core/layout/engine/useLayout';
+import { LANDMASS_POINTS_3D, projectUnitVector, projectLatLng, latLngToVector, slerp } from '../../lib/globeProjection';
 import './GoogleEarthRemix.css';
 
-const menuItems = ['File', 'Edit', 'View', 'Add', 'Tools', 'Help'];
-const mapLabels = ['India', 'China', 'Thailand', 'Vietnam', 'Malaysia', 'Indonesia', 'Japan', 'Australia'];
-
-const cleanSatelliteName = (fullName: string): string => {
-  return fullName
-    .replace(/^[^\s\w]+\s*/g, '') // remove leading emojis/symbols
-    .split(' (')[0] // remove parenthetical info like "(SPACE STATION)"
-    .trim();
-};
-
-// Calculate distance formula (Haversine)
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; // Radius of earth in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
 export default function GoogleEarthRemix() {
-  const isHeadless =
-    typeof window !== 'undefined' &&
-    (/HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback'));
+  const isFallbackMode = isFallbackRuntime();
 
   // 1. Primitive useState hooks
-  const [query, setQuery] = useState('');
   const [zoom, setZoom] = useState(42);
 
   // Connected to global Zustand uiStore to sync with Cesium background
   const showBorders = useUIStore((s) => s.showBorders);
-  const setShowBorders = useUIStore((s) => s.setShowBorders);
   const showTerrain = useUIStore((s) => s.showTerrain);
-  const setShowTerrain = useUIStore((s) => s.setShowTerrain);
-  const showRoads = useUIStore((s) => s.showRoads);
-  const setShowRoads = useUIStore((s) => s.setShowRoads);
 
   const selectedTour = useUIStore((s) => s.activeTour);
   const setSelectedTour = useUIStore((s) => s.setActiveTour);
   const currentStepIndex = useUIStore((s) => s.activeTourStepIndex);
   const setCurrentStepIndex = useUIStore((s) => s.setActiveTourStepIndex);
   const measureStart = useUIStore((s) => s.measureStart);
-  const setMeasureStart = useUIStore((s) => s.setMeasureStart);
   const measureEnd = useUIStore((s) => s.measureEnd);
-  const setMeasureEnd = useUIStore((s) => s.setMeasureEnd);
   const [activePanorama, setActivePanorama] = useState<string | null>(null);
   const [hasCesium, setHasCesium] = useState(false);
 
@@ -131,22 +78,16 @@ export default function GoogleEarthRemix() {
   const setActiveLocation = useUIStore((s) => s.setActiveLocation);
   const setIssFeedOpen = useUIStore((s) => s.setIssFeedOpen);
   const forceFallback = useUIStore((s) => s.forceFallback);
-  const activeSatelliteId = useUIStore((s) => s.activeSatelliteId);
   const leftPanelOpen = useUIStore((s) => s.leftPanelOpen);
-  const setLeftPanelOpen = useUIStore((s) => s.setLeftPanelOpen);
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen);
   const topBarOpen = useUIStore((s) => s.topBarOpen);
   const bottomBarOpen = useUIStore((s) => s.bottomBarOpen);
   const setBottomBarOpen = useUIStore((s) => s.setBottomBarOpen);
-  const telescopeFocus = useUIStore((s) => s.spaceInteractionTarget === 'telescope');
   const viewportSize = useViewportSize();
-  const deviceProfile = useDeviceProfile(leftPanelOpen && rightPanelOpen);
+  useDeviceProfile(leftPanelOpen && rightPanelOpen);
   const [isChromeTransitioning, setIsChromeTransitioning] = useState(false);
 
-  const mapConfig = useStore((s) => s.mapConfig);
-  const updateMapConfig = useStore((s) => s.updateMapConfig);
-  const layers = useStore((s) => s.layers);
-  const { satellites } = useSatelliteCatalog();
+  useSatelliteCatalog();
 
   // 3. Fallback Interactive Canvas Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -157,11 +98,16 @@ export default function GoogleEarthRemix() {
   const clickStartPosRef = useRef({ x: 0, y: 0 });
   const hoverLocationRef = useRef<LocationData | null>(null);
 
-  const chromeTier = useMemo(() => {
-    const leftRail = buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'left', deviceProfile);
-    const rightRail = buildWorkspaceRailPx(viewportSize, leftPanelOpen, rightPanelOpen, 'right', deviceProfile);
-    return resolveChromeTierForWidth(Math.max(1, viewportSize.width - leftRail - rightRail));
-  }, [deviceProfile, leftPanelOpen, rightPanelOpen, viewportSize]);
+  // centreStage.width IS "viewport minus whatever rails were actually granted",
+  // so it already accounts for a rail the engine dropped to protect the stage.
+  // Re-deriving it from buildWorkspaceRailPx here would disagree with
+  // DockedLayout the moment that happens — the second source of layout truth
+  // this engine exists to eliminate.
+  const { slots: layoutSlots } = useLayout();
+  const chromeTier = useMemo(
+    () => resolveChromeTierForWidth(Math.max(1, layoutSlots.centreStage?.width ?? viewportSize.width)),
+    [layoutSlots, viewportSize.width]
+  );
 
   useEffect(() => {
     let active = true;
@@ -177,12 +123,15 @@ export default function GoogleEarthRemix() {
       setIsChromeTransitioning(false);
     };
 
-    setIsChromeTransitioning(true);
+    const raf = requestAnimationFrame(() => {
+      if (active) setIsChromeTransitioning(true);
+    });
     window.addEventListener('transitionend', requestCesiumResize, { once: true });
     fallbackTimer = window.setTimeout(requestCesiumResize, 320);
 
     return () => {
       active = false;
+      cancelAnimationFrame(raf);
       window.removeEventListener('transitionend', requestCesiumResize);
       if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
     };
@@ -197,11 +146,6 @@ export default function GoogleEarthRemix() {
       };
     }
   }, [activeLocation]);
-
-  const selectedSatellite = useMemo(
-    () => satellites.find((satellite) => satellite.id === activeSatelliteId),
-    [activeSatelliteId, satellites]
-  );
 
   // Set initial camera position if location selected on load
   useEffect(() => {
@@ -293,7 +237,8 @@ export default function GoogleEarthRemix() {
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (e.touches.length === 1) {
       isDraggingRef.current = true;
-      const touch = e.touches[0];
+      // Safe: e.touches.length === 1 guarantees index 0 exists.
+      const touch = e.touches[0]!;
       lastMousePosRef.current = { x: touch.clientX, y: touch.clientY };
       clickStartPosRef.current = { x: touch.clientX, y: touch.clientY };
     }
@@ -304,7 +249,8 @@ export default function GoogleEarthRemix() {
     if (!canvas) return;
 
     if (isDraggingRef.current && e.touches.length === 1) {
-      const touch = e.touches[0];
+      // Safe: e.touches.length === 1 guarantees index 0 exists.
+      const touch = e.touches[0]!;
       const dx = touch.clientX - lastMousePosRef.current.x;
       const dy = touch.clientY - lastMousePosRef.current.y;
 
@@ -323,7 +269,8 @@ export default function GoogleEarthRemix() {
   const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
     isDraggingRef.current = false;
     if (e.changedTouches.length === 1) {
-      const touch = e.changedTouches[0];
+      // Safe: e.changedTouches.length === 1 guarantees index 0 exists.
+      const touch = e.changedTouches[0]!;
       const dx = Math.abs(touch.clientX - clickStartPosRef.current.x);
       const dy = Math.abs(touch.clientY - clickStartPosRef.current.y);
       if (dx < 5 && dy < 5) {
@@ -365,10 +312,7 @@ export default function GoogleEarthRemix() {
 
     let active = true;
     let lastFrameTime = 0;
-    const isHeadless =
-      typeof window !== 'undefined' &&
-      (/HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback'));
-    const FRAME_INTERVAL = isHeadless ? 2000 : 1000 / 30; // Throttled in headless mode to prevent crashes
+    const FRAME_INTERVAL = isFallbackMode ? 2000 : 1000 / 30; // Throttle the fallback renderer in audit mode
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -387,7 +331,7 @@ export default function GoogleEarthRemix() {
       if (!active) return;
 
       const now = timestamp ?? performance.now();
-      if (!isHeadless && now - lastFrameTime < FRAME_INTERVAL) {
+      if (!isFallbackMode && now - lastFrameTime < FRAME_INTERVAL) {
         requestAnimationFrame(renderFrame);
         return;
       }
@@ -403,7 +347,7 @@ export default function GoogleEarthRemix() {
       const current = cameraRef.current;
       const target = targetRef.current;
 
-      if (isHeadless) {
+      if (isFallbackMode) {
         current.lng = target.lng;
         current.lat = target.lat;
       } else {
@@ -426,7 +370,7 @@ export default function GoogleEarthRemix() {
       // Clear viewport
       ctx.clearRect(0, 0, rect.width, rect.height);
 
-      if (isHeadless) {
+      if (isFallbackMode) {
         // Simple mock globe drawing for headless tests to prevent rasterizer crashes
         ctx.fillStyle = '#15397a';
         ctx.beginPath();
@@ -462,10 +406,12 @@ export default function GoogleEarthRemix() {
       const pointSize = Math.max(1, 1.8 * (zoom / 42));
       const pointsLen = LANDMASS_POINTS_3D.length;
       for (let i = 0; i < pointsLen; i += 3) {
+        // Safe: LANDMASS_POINTS_3D is a flat [x, y, z, ...] buffer and the loop
+        // bound `i < pointsLen` with step 3 keeps i, i+1, i+2 in range.
         const p = projectUnitVector(
-          LANDMASS_POINTS_3D[i],
-          LANDMASS_POINTS_3D[i + 1],
-          LANDMASS_POINTS_3D[i + 2],
+          LANDMASS_POINTS_3D[i]!,
+          LANDMASS_POINTS_3D[i + 1]!,
+          LANDMASS_POINTS_3D[i + 2]!,
           sinRot,
           cosRot,
           sinTilt,
@@ -582,7 +528,8 @@ export default function GoogleEarthRemix() {
             ctx.shadowOffsetX = 1;
             ctx.shadowOffsetY = 1;
             ctx.textAlign = 'left';
-            ctx.fillText(loc.name.split(',')[0], p.x + 8, p.y + 3);
+            // Safe: String.split always returns an array with at least one element.
+            ctx.fillText(loc.name.split(',')[0]!, p.x + 8, p.y + 3);
 
             // Clear text shadow context
             ctx.shadowBlur = 0;
@@ -592,7 +539,7 @@ export default function GoogleEarthRemix() {
         }
       }
 
-      if (!isHeadless) {
+      if (!isFallbackMode) {
         requestAnimationFrame(renderFrame);
       }
     };
@@ -605,11 +552,18 @@ export default function GoogleEarthRemix() {
   }, [hasCesium, zoom, measureStart, measureEnd, showBorders, activeLocation]);
 
   useEffect(() => {
+    let active = true;
     if (forceFallback) {
-      setHasCesium(false);
-      return;
+      const raf = requestAnimationFrame(() => {
+        if (active) setHasCesium(false);
+      });
+      return () => {
+        active = false;
+        cancelAnimationFrame(raf);
+      };
     }
     const checkCesium = () => {
+      if (!active) return false;
       const viewer = (window as any).cesiumViewer;
       if (viewer && !viewer.isDestroyed?.()) {
         setHasCesium(true);
@@ -618,13 +572,19 @@ export default function GoogleEarthRemix() {
       setHasCesium(false);
       return false;
     };
-    if (checkCesium()) return;
+    const timer = setTimeout(() => {
+      if (checkCesium()) return;
+    }, 0);
     const interval = setInterval(() => {
       if (checkCesium()) {
         clearInterval(interval);
       }
     }, 150);
-    return () => clearInterval(interval);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [forceFallback]);
 
   // Sync Borders and Labels visibility to Cesium
@@ -648,22 +608,27 @@ export default function GoogleEarthRemix() {
     }
   }, [showBorders, hasCesium]);
 
-  // Sync Terrain layers to Cesium
+  // Sync terrain *elevation* to Cesium.
+  //
+  // This deliberately does NOT touch imagery layers or scene primitives. It used
+  // to set `layer.show = showTerrain` across every imagery layer and
+  // `primitive.show = showTerrain` across every primitive, which conflated three
+  // separate things:
+  //
+  //   terrain   -> the elevation mesh (what this toggle actually means)
+  //   imagery   -> the surface texture (owned by useImageryManager)
+  //   primitives-> satellites, models, tilesets (owned by their own renderers)
+  //
+  // Because `showTerrain` defaults to false and the store is persisted, that
+  // wiring shipped a globe with no map texture and no primitives by default —
+  // the "textureless globe". Terrain exaggeration is applied below; imagery and
+  // primitives are left to the systems that own them.
   useEffect(() => {
     const viewer = (window as any).cesiumViewer;
     if (!viewer || viewer.isDestroyed()) return;
 
     try {
-      for (let i = 0; i < viewer.scene.primitives.length; i++) {
-        const primitive = viewer.scene.primitives.get(i);
-        if (primitive.show !== undefined) {
-          primitive.show = showTerrain;
-        }
-      }
-      for (let i = 0; i < viewer.imageryLayers.length; i++) {
-        const layer = viewer.imageryLayers.get(i);
-        layer.show = showTerrain;
-      }
+      viewer.scene.globe.terrainExaggeration = showTerrain ? 1.0 : 0.0;
       viewer.scene.requestRender();
     } catch (err) {
       console.warn('[GoogleEarthRemix] Error syncing terrain:', err);
@@ -711,97 +676,6 @@ export default function GoogleEarthRemix() {
       }
     };
   }, [measureStart, measureEnd, hasCesium]);
-
-  // Search filter for both landmarks and active plugin entities
-  const filteredResults = useMemo(() => {
-    const term = query.trim().toLowerCase();
-
-    interface SearchItem {
-      id: string;
-      name: string;
-      country: string;
-      category: string;
-      lat: number;
-      lng: number;
-      type: 'landmark' | 'entity';
-      raw: any;
-    }
-
-    // Map static locations
-    const staticMatches: SearchItem[] = locations.map((l) => ({
-      id: l.id,
-      name: l.name,
-      country: l.country,
-      category: l.category,
-      lat: l.lat,
-      lng: l.lng,
-      type: 'landmark' as const,
-      raw: l
-    }));
-
-    // Map plugin entities
-    const pluginMatches: SearchItem[] = [];
-    const entitiesByPlugin = useStore.getState().entitiesByPlugin;
-    Object.entries(entitiesByPlugin).forEach(([pluginId, entities]) => {
-      entities.forEach((entity) => {
-        const name = entity.label || entity.id;
-        const category = pluginManager.getPlugin(pluginId)?.plugin.category || 'plugin';
-        pluginMatches.push({
-          id: entity.id,
-          name,
-          country: pluginId.toUpperCase(),
-          category,
-          lat: entity.latitude,
-          lng: entity.longitude,
-          type: 'entity' as const,
-          raw: entity
-        });
-      });
-    });
-
-    const allItems = [...staticMatches, ...pluginMatches];
-    if (!term) return allItems.slice(0, 5);
-
-    return allItems.filter((item) => `${item.name} ${item.country} ${item.category}`.toLowerCase().includes(term));
-  }, [query, layers]);
-
-  const applyGraphicsPreset = (preset: 'low' | 'high') => {
-    if (preset === 'low') {
-      updateMapConfig({
-        shadowsEnabled: false,
-        enableLighting: false,
-        resolutionScale: 0.7,
-        antiAliasing: 'none',
-        maxScreenSpaceError: 64,
-        showOsmBuildings: false
-      });
-      useUIStore.getState().setShowBorders(true);
-      useUIStore.getState().setShowTerrain(true);
-      useUIStore
-        .getState()
-        .addChangeLog('GRAPHICS', 'Performance Preset Applied: shadows off, 0.7x scale, AA off.', 'info');
-    } else {
-      updateMapConfig({
-        shadowsEnabled: true,
-        enableLighting: true,
-        resolutionScale: 1.0,
-        antiAliasing: 'msaa4x',
-        maxScreenSpaceError: 16,
-        showOsmBuildings: true
-      });
-      useUIStore.getState().setShowBorders(true);
-      useUIStore.getState().setShowTerrain(true);
-      useUIStore
-        .getState()
-        .addChangeLog(
-          'GRAPHICS',
-          'Cinematic Preset Applied: shadows on, 1.0x scale, MSAA 4x, OSM buildings active.',
-          'success'
-        );
-    }
-  };
-
-  // Inner calculateDistance removed
 
   // Camera flights
   const handleZoomIn = () => {
@@ -878,24 +752,20 @@ export default function GoogleEarthRemix() {
   };
 
   // Tour Step Handlers
-  const handleStartTour = (tour: Tour) => {
-    setSelectedTour(tour);
-    setCurrentStepIndex(0);
-    flyToStep(tour.steps[0]);
-  };
-
   const handleNextStep = () => {
     if (!selectedTour) return;
     const nextIndex = (currentStepIndex + 1) % selectedTour.steps.length;
     setCurrentStepIndex(nextIndex);
-    flyToStep(selectedTour.steps[nextIndex]);
+    const nextStep = selectedTour.steps[nextIndex];
+    if (nextStep) flyToStep(nextStep);
   };
 
   const handlePrevStep = () => {
     if (!selectedTour) return;
     const prevIndex = (currentStepIndex - 1 + selectedTour.steps.length) % selectedTour.steps.length;
     setCurrentStepIndex(prevIndex);
-    flyToStep(selectedTour.steps[prevIndex]);
+    const prevStep = selectedTour.steps[prevIndex];
+    if (prevStep) flyToStep(prevStep);
   };
 
   const flyToStep = (step: TourStep) => {
@@ -918,7 +788,7 @@ export default function GoogleEarthRemix() {
 
   const activeTourStep = selectedTour?.steps[currentStepIndex];
 
-  if (isHeadless) {
+  if (isFallbackMode) {
     return null;
   }
 
@@ -928,7 +798,9 @@ export default function GoogleEarthRemix() {
       data-chrome-tier={chromeTier}
       aria-label="Orbital explorer"
     >
-      {/* Orbital HUD bar removed — its controls now live in the CHAT/SPACE mode-switcher pill (CenterPanel.tsx SpaceHudPillControls). */}
+      {/* Orbital HUD bar removed. Its controls briefly moved to a pill row under
+          the CHAT/SPACE switcher, which was removed too — layer toggles now live
+          in Settings > Map, and camera/zoom controls in the globe's own edge rail. */}
       <div className="earth-workspace">
         {/* Core Stage */}
         <div className="earth-stage">
@@ -1188,34 +1060,4 @@ function PanoramaViewer({ imageUrl, onClose }: { imageUrl: string; onClose: () =
       <div className="earth-panorama-help">DRAG MOUSE TO PAN 360° STREET VIEW // PRESS ESC OR CLICK CLOSE TO EXIT</div>
     </div>
   );
-}
-
-function ToolbarIcon({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <button type="button" className="earth-tool" aria-label={label} title={label}>
-      {children}
-    </button>
-  );
-}
-
-function markerStyle(location: LocationData) {
-  return {
-    left: `${Math.max(8, Math.min(92, ((location.lng + 180) / 360) * 100))}%`,
-    top: `${Math.max(10, Math.min(88, ((90 - location.lat) / 180) * 100))}%`
-  };
-}
-
-function labelStyle(index: number) {
-  const points = [
-    [37, 43],
-    [55, 29],
-    [61, 52],
-    [66, 50],
-    [58, 70],
-    [69, 75],
-    [79, 31],
-    [74, 91]
-  ];
-  const [left, top] = points[index] || [50, 50];
-  return { left: `${left}%`, top: `${top}%` };
 }

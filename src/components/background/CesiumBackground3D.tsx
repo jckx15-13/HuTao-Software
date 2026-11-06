@@ -5,6 +5,8 @@ import { useAutoRotation } from '../../hooks/cesium/useAutoRotation';
 import { useWWVGlobe } from '../../hooks/cesium/useWWVGlobe';
 import { useConstellations } from '../../hooks/cesium/useConstellations';
 import { useTelescopePresets } from '../../hooks/cesium/useTelescopePresets';
+import { useTelescopeCamera } from '../../hooks/cesium/useTelescopeCamera';
+import { useNativeCelestialSky } from '@/core/celestial/useNativeCelestialSky';
 import { useImageryManager } from '../../core/globe/useImageryManager';
 import { useBorders } from '../../core/globe/useBorders';
 import { useCameraActions } from '../../core/globe/hooks/useCameraActions';
@@ -33,6 +35,19 @@ export default function CesiumBackground3D({ interactive, onError, onStatusChang
   // Initialize Cesium Viewer
   const { viewer, isLoaded, status, error } = useCesiumViewer(containerRef);
 
+  // Keep the legacy shared viewer handle aligned with this mounted viewer.
+  // Other workspace overlays use it to coordinate camera controls; tying the
+  // handle to component state prevents it from being left null after a viewer
+  // rebuild or config-driven effect cleanup.
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed()) return;
+    (window as Window & { cesiumViewer?: typeof viewer }).cesiumViewer = viewer;
+    return () => {
+      const sharedWindow = window as Window & { cesiumViewer?: typeof viewer };
+      if (sharedWindow.cesiumViewer === viewer) sharedWindow.cesiumViewer = undefined;
+    };
+  }, [viewer]);
+
   useEffect(() => {
     if (onStatusChange) {
       onStatusChange(status);
@@ -50,8 +65,10 @@ export default function CesiumBackground3D({ interactive, onError, onStatusChang
   useLandmarks(viewer);
   useAutoRotation(viewer, interactive);
   useWWVGlobe(viewer);
+  useNativeCelestialSky(viewer);
   useConstellations(viewer);
   useTelescopePresets(viewer);
+  useTelescopeCamera(viewer);
   
   // Imagery and map data layers integration
   useImageryManager(viewer, isLoaded);
