@@ -212,9 +212,14 @@ function createEventId(): string {
 function redactTelemetryText(value: string): string {
   return value
     .replace(/\b(Bearer\s+)[^\s"']+/gi, '$1[REDACTED]')
-    .replace(/((?:api[_-]?key|token|password|secret|authorization)[=:\s]+)[^\s&"']+/gi, '$1[REDACTED]')
+    .replace(/((?:api[_-]?key|token|password|secret|authorization)["']?\s*[=:\s]\s*["']?)[^\s&"'},]+/gi, '$1[REDACTED]')
     .replace(/\b(?:sk-[\w-]+|gh[pousr]_[\w]+)\b/g, '[REDACTED]')
-    .replace(/https?:\/\/[^\s"']+/gi, (url) => url.split(/[?#]/)[0] || '');
+    .replace(/https?:\/\/[^\s"']+/gi, (value) => {
+      try {
+        const url = new URL(value);
+        return `${url.origin}${url.pathname}`;
+      } catch { return '[REDACTED URL]'; }
+    });
 }
 
 export const sentryService = new SentryIntegrationService();

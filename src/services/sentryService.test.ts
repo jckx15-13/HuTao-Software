@@ -45,7 +45,7 @@ describe('Sentry delivery', () => {
 
   it('sends a real SDK exception envelope while keeping metadata and credentials local', async () => {
     service.setDSN('https://public@example.invalid/123');
-    const event = service.captureException(new Error('Failed token=private-value at https://service.test/api?key=private'), {
+    const event = service.captureException(new Error('Failed token=private-value {"apiKey":"secret-json"} at https://name:private-password@service.test/api?key=private'), {
       prompt: 'private conversation', apiKey: 'secret-value',
     });
     expect(await service.flush()).toBe(true);
@@ -57,6 +57,8 @@ describe('Sentry delivery', () => {
     expect(body).not.toContain('private-value');
     expect(body).not.toContain('private conversation');
     expect(body).not.toContain('secret-value');
+    expect(body).not.toContain('secret-json');
+    expect(body).not.toContain('private-password');
     expect(body).not.toContain('?key=');
     expect(service.getStats().eventsSentCount).toBe(1);
     expect(service.isTelemetryRequest('https://example.invalid/api/123/envelope/')).toBe(true);
