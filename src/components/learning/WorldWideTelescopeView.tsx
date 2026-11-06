@@ -35,6 +35,8 @@ import TimelineLanes from './TimelineLanes';
 import { pluginManager } from '@/core/plugins/PluginManager';
 import { useCameraSync } from '@/hooks/useCameraSync';
 import { useWWTListener } from '@/hooks/useWWTListener';
+import { connectWwtResearchApp } from '@/lib/wwt/researchProtocol';
+import { useEmbeddedWwtCollections } from '@/hooks/useEmbeddedWwtCollections';
 import { formatRA, formatDec, precessEquatorialJ2000ToDate, raHoursToDegrees } from '@/lib/coordinateTransforms';
 import { projectTelescopeTargetToEarth, projectTelescopeTargetToObserverView } from '@/lib/earthObserverProjection';
 
@@ -277,7 +279,7 @@ export default function WorldWideTelescopeView({
             : clampPx(viewportSize.height * 0.205, 132, 206)
           : clampPx(viewportSize.height * 0.075, 62, 84)
     }),
-    [leftPanelInset, rightPanelInset, spaceInteractionTarget, telemetryTimelineCollapsed]
+    [leftPanelInset, rightPanelInset, spaceInteractionTarget, telemetryTimelineCollapsed, viewportSize.height]
   );
 
   const drawerWidth = clampPx(
@@ -348,6 +350,9 @@ export default function WorldWideTelescopeView({
 
   // Iframe reference
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const disconnectWwtRef = useRef<() => void>(() => {});
+  const requestCollection = useEmbeddedWwtCollections(refreshKey);
+  useEffect(() => () => disconnectWwtRef.current(), [refreshKey]);
   const overlayRootRef = useRef<HTMLDivElement>(null);
 
   // Utility: safely parse dates from a variety of inputs
@@ -474,12 +479,12 @@ export default function WorldWideTelescopeView({
   // --- Camera Sync Integration ---
   // Connects WWT and Cesium via the useCameraSync Mutex and postMessage listener
   const cesiumViewer = typeof window !== 'undefined' ? (window as any).cesiumViewer : null;
-  useCameraSync(cesiumViewer, postToWWT);
+  useCameraSync(wwtRuntimeHealthy ? cesiumViewer : null, postToWWT, parseDateSafe(currentTime)?.toISOString());
   useWWTListener();
 
   // Sync Coordinates on activePreset change (smooth pans!)
   useEffect(() => {
-    if (!activePreset) return;
+    if (!activePreset || !wwtRuntimeHealthy) return;
 
     // Check if WWT iframe is ready and target coordinates are available
     if (activePreset.lookAt) {
@@ -505,10 +510,11 @@ export default function WorldWideTelescopeView({
           'success'
         );
     }
-  }, [activePreset, activePresetCoordinates, refreshKey]);
+  }, [activePreset, activePresetCoordinates, refreshKey, wwtRuntimeHealthy, postToWWT]);
 
   // Sync datetime on currentTime change (defensive)
   useEffect(() => {
+    if (!wwtRuntimeHealthy) return;
     const d = parseDateSafe(currentTime);
     if (d) {
       try {
@@ -517,28 +523,28 @@ export default function WorldWideTelescopeView({
         console.error('[WorldWideTelescopeView] Failed to format date for WWT sync', err);
       }
     }
-  }, [currentTime]);
+  }, [currentTime, wwtRuntimeHealthy, postToWWT]);
 
   // Sync Overlay Settings when they change
   useEffect(() => {
-    postToWWT({ event: 'modify_setting', setting: 'showConstellationFigures', value: showConstellationFigures });
-  }, [showConstellationFigures]);
+    if (wwtRuntimeHealthy) postToWWT({ event: 'modify_setting', setting: 'showConstellationPictures', value: showConstellationFigures });
+  }, [showConstellationFigures, wwtRuntimeHealthy, postToWWT]);
 
   useEffect(() => {
-    postToWWT({ event: 'modify_setting', setting: 'showConstellationLines', value: showConstellationLines });
-  }, [showConstellationLines]);
+    if (wwtRuntimeHealthy) postToWWT({ event: 'modify_setting', setting: 'showConstellationFigures', value: showConstellationLines });
+  }, [showConstellationLines, wwtRuntimeHealthy, postToWWT]);
 
   useEffect(() => {
-    postToWWT({ event: 'modify_setting', setting: 'showConstellationBoundries', value: showConstellationBoundries });
-  }, [showConstellationBoundries]);
+    if (wwtRuntimeHealthy) postToWWT({ event: 'modify_setting', setting: 'showConstellationBoundries', value: showConstellationBoundries });
+  }, [showConstellationBoundries, wwtRuntimeHealthy, postToWWT]);
 
   useEffect(() => {
-    postToWWT({ event: 'modify_setting', setting: 'showConstellationSelection', value: showConstellationSelection });
-  }, [showConstellationSelection]);
+    if (wwtRuntimeHealthy) postToWWT({ event: 'modify_setting', setting: 'showConstellationSelection', value: showConstellationSelection });
+  }, [showConstellationSelection, wwtRuntimeHealthy, postToWWT]);
 
   useEffect(() => {
-    postToWWT({ event: 'modify_setting', setting: 'showGrid', value: showGrid });
-  }, [showGrid]);
+    if (wwtRuntimeHealthy) postToWWT({ event: 'modify_setting', setting: 'showGrid', value: showGrid });
+  }, [showGrid, wwtRuntimeHealthy, postToWWT]);
 
   useEffect(() => {
     if (!wwtBackgroundLayer || !wwtRuntimeHealthy) return;
@@ -651,6 +657,13 @@ export default function WorldWideTelescopeView({
 
   // Iframe load and error handlers
   const handleIframeLoad = () => {
+    const frame = iframeRef.current;
+    if (!frame || fallbackRuntime) return;
+    setIframeLoaded(false);
+    setIframeError(false);
+    publishWwtRuntimeState('Connecting');
+    disconnectWwtRef.current();
+    disconnectWwtRef.current = connectWwtResearchApp(frame, () => {
     setIframeLoaded(true);
     setIframeError(false);
     publishWwtRuntimeState('WWT iframe loaded');
@@ -662,9 +675,11 @@ export default function WorldWideTelescopeView({
       clearTimeout(watchdogTimerRef.current);
       watchdogTimerRef.current = null;
     }
+    });
   };
 
   const handleIframeError = () => {
+    disconnectWwtRef.current();
     setIframeError(true);
     setIframeLoaded(false);
     publishWwtRuntimeState('WWT unavailable');
@@ -677,7 +692,7 @@ export default function WorldWideTelescopeView({
   // Connection watchdog for the external WWT client. It can be slow in embedded browsers,
   // so only declare degraded mode after the iframe has had a realistic load window.
   useEffect(() => {
-    if (isFallbackRuntime()) return;
+    if (isFallbackRuntime() || iframeLoaded || iframeError) return;
 
     let active = true;
     const iframeMounted = bgOnly || !controlsOnly || telescopeWindowActive;
@@ -704,8 +719,6 @@ export default function WorldWideTelescopeView({
       }
     });
 
-    if (iframeLoaded) return;
-
     if (watchdogTimerRef.current) {
       clearTimeout(watchdogTimerRef.current);
     }
@@ -713,6 +726,7 @@ export default function WorldWideTelescopeView({
     watchdogTimerRef.current = setTimeout(() => {
       if (!active) return;
       if (!iframeLoaded) {
+        disconnectWwtRef.current();
         setIframeError(true);
         publishWwtRuntimeState('WWT unavailable');
         console.warn(
@@ -730,7 +744,7 @@ export default function WorldWideTelescopeView({
         watchdogTimerRef.current = null;
       }
     };
-  }, [bgOnly, controlsOnly, iframeLoaded, refreshKey, telescopeTarget?.url, telescopeWindowActive]);
+  }, [bgOnly, controlsOnly, iframeLoaded, iframeError, refreshKey, telescopeTarget?.url, telescopeWindowActive]);
 
   // Load WTML collection event trigger
   const handleLoadCollection = useCallback(
@@ -754,19 +768,21 @@ export default function WorldWideTelescopeView({
       }
       setWtmlStatus('loading');
       try {
-        postToWWT({
-          event: 'load_image_collection',
-          url: validation.url
+        const frame = document.getElementById('wwt-research-app-iframe') as HTMLIFrameElement | null;
+        if (!frame) throw new Error('WWT viewport unavailable');
+        requestCollection(frame, validation.url, () => {
+          setWtmlStatus('success');
+          useUIStore.getState().addChangeLog('TELESCOPE', `WWT confirmed collection: ${name}`, 'success');
+        }, () => {
+          setWtmlStatus('error');
+          useUIStore.getState().addChangeLog('TELESCOPE', `WWT did not confirm collection: ${name}. Check the connection and CORS policy.`, 'warning');
         });
-        setWtmlStatus('success');
-        useUIStore.getState().addChangeLog('TELESCOPE', `Ingested stellar photo collection: ${name}`, 'success');
-        setTimeout(() => setWtmlStatus('idle'), 3000);
       } catch (err) {
         setWtmlStatus('error');
         setTimeout(() => setWtmlStatus('idle'), 3000);
       }
     },
-    [postToWWT, wwtRuntimeHealthy, wwtRuntimeState]
+    [requestCollection, wwtRuntimeHealthy, wwtRuntimeState]
   );
 
   // Set Background Image Set layer

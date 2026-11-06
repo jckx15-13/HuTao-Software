@@ -17,6 +17,7 @@ type SkyRegion = SkyTarget & { direction: [number, number, number] };
 /** Astronomy controls and labels over the existing Cesium world, without another canvas. */
 export default function WorldTelescopeOverlay() {
   const utc = useObservatory((s) => s.utc);
+  const target = useObservatory((s) => s.target);
   const navigation = useObservatory((s) => s.navigation);
   const set = useObservatory((s) => s.set);
   const { catalog, error: catalogError, retry } = useConstellationCatalog();
@@ -80,6 +81,7 @@ export default function WorldTelescopeOverlay() {
   return <section className="world-telescope" aria-label="World telescope controls">
     <div className="world-telescope-toolbar">
       <strong>Telescope · {navigation === 'look' ? 'Look around' : 'Body orbit'}</strong>
+      <a className="world-telescope-explorer" href={`${import.meta.env.BASE_URL}?view=observatory&target=${encodeURIComponent(target.id)}&utc=${encodeURIComponent(utc)}`}>Open WWT explorer</a>
       <button onClick={() => { const viewer = getCesiumViewer(); if (viewer) face(Cesium.Cartesian3.negate(viewer.camera.directionWC, new Cesium.Cartesian3())); setSelected(''); }}>Look behind</button>
       <button onClick={() => { const viewer = getCesiumViewer(); if (viewer) face(Cesium.Cartesian3.negate(viewer.camera.positionWC, new Cesium.Cartesian3())); setSelected(''); }}>Face Earth</button>
       <button aria-expanded={expanded} onClick={() => { setExpanded(!expanded); setBodiesExpanded(false); }}>Constellations ({catalog.length || '…'})</button>

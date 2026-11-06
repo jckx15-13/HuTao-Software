@@ -73,5 +73,7 @@ contained unpatched advisories. `DESIGN.md` remains the visual design reference.
 
 - Architecture, critique, and design notes live in [DOCS.md](DOCS.md).
 - Proposed next features and priorities: [feature roadmap](docs/FEATURE_ROADMAP.md).
+- Advertised versus implemented capabilities: [feature reality audit](docs/FEATURE_REALITY_AUDIT.md).
+- Open **Telescope → Open WWT explorer** for online WWT sky surveys, solar-system viewing and WTML imports. The sky catalogue is bundled; precise observer readouts still require the separate astronomy service.
 - The main app code is split across `src/components`, `src/hooks`, `src/lib`, and `src/store`.
 - Build verification: `npm run lint`, `npm test`, and `npm run build`.

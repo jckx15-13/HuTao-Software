@@ -1,6 +1,7 @@
 import { astronomyFetch } from './astronomyApi';
 import { useEffect, useState } from 'react';
 import { useObservatory, type ConstellationEntry } from '@/core/state/observatoryStore';
+import wwtCatalog from '@/data/astronomy/wwtConstellations.json';
 
 export type Vector3 = [number, number, number];
 export interface AstronomyScene {
@@ -21,17 +22,8 @@ async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
 }
 
 export function useConstellationCatalog() {
-  const [catalog, setCatalog] = useState<ConstellationEntry[]>([]);
-  const [error, setError] = useState('');
-  const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    getJson<{ constellations: ConstellationEntry[] }>('constellations', controller.signal)
-      .then((data) => { if (!controller.signal.aborted) { setCatalog(data.constellations); setError(''); } })
-      .catch((e) => { if (!controller.signal.aborted) setError(e.message); });
-    return () => controller.abort();
-  }, [retry]);
-  return { catalog, error, retry: () => setRetry((n) => n + 1) };
+  // Label centres are static WWT data, independent of Python observer geometry.
+  return { catalog: wwtCatalog.constellations as ConstellationEntry[], error: '', retry: () => {} };
 }
 
 export function useAstronomy() {

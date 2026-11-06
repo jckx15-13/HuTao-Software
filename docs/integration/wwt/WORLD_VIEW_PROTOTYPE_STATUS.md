@@ -1,10 +1,12 @@
 # World-view telescope prototype — implementation status
 
-Updated 26 October 2026, after the daily report snapshot.
+Historical snapshot: 26 October 2026. For the 6 November implementation and current
+limits, see [feature reality audit](../../FEATURE_REALITY_AUDIT.md).
 
 ## Current branch
 
-`prototype/wwt-online-observatory`. Changes remain in the shared local working tree.
+`prototype/wwt-online-observatory`. The snapshot below describes that date; later
+changes are committed to the same branch and tracked in PR #27.
 
 ## Added to the existing world view
 
