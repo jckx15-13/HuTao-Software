@@ -33,8 +33,9 @@ describe('Sentry delivery', () => {
   afterEach(() => { service?.setDSN(''); vi.unstubAllGlobals(); });
 
   it('stays local without a valid DSN and does not count captures as deliveries', async () => {
+    vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) });
     service.setDSN('not-a-dsn');
-    service.captureMessage('local only');
+    expect(service.captureMessage('local only').eventId).toMatch(/^[a-f0-9]{32}$/);
     await service.flush();
     expect(service.isEnabled()).toBe(false);
     expect(service.getStats().eventsCapturedCount).toBe(1);

@@ -159,7 +159,7 @@ export class SentryIntegrationService {
     const stack = typeof error === 'object' && error.stack ? error.stack : undefined;
 
     const event: SentryEvent = {
-      eventId: crypto.randomUUID().replaceAll('-', ''),
+      eventId: createEventId(),
       timestamp: new Date().toISOString(),
       level: 'error',
       message,
@@ -179,7 +179,7 @@ export class SentryIntegrationService {
 
   public captureMessage(message: string, level: SentryEvent['level'] = 'info', extraContext: Record<string, unknown> = {}): SentryEvent {
     const event: SentryEvent = {
-      eventId: crypto.randomUUID().replaceAll('-', ''),
+      eventId: createEventId(),
       timestamp: new Date().toISOString(),
       level,
       message,
@@ -200,6 +200,13 @@ export class SentryIntegrationService {
     this.lastEvent = event;
 
   }
+}
+
+function createEventId(): string {
+  // getRandomValues also works on HTTP development hosts, where randomUUID is
+  // unavailable. Event IDs must not make diagnostic capture itself throw.
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+    byte.toString(16).padStart(2, '0')).join('');
 }
 
 function redactTelemetryText(value: string): string {

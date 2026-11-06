@@ -10,7 +10,7 @@ work described below is the current implementation scope.
 | 3 | Observation planner | Plan a night around target visibility and local time | Observer location, date/time, altitude visibility and rise/set calculations; clear handling of circumpolar targets; hosted astronomy service required |
 | 4 | Live data freshness | Know which globe overlays are current | Per-layer source, last update, stale state and retry; bounded polling with cleanup |
 | 5 | Evidence-linked assistant | Ask about a selected object or visible layer | Explicit selected-object context, cited data source/time, streaming cancellation and offline fallback |
-| 6 | Favorites and alerts | Follow objects and events of interest | Saved targets and filters; in-app alerts with deduplication; server worker required for alerts while the app is closed |
+| 6 | Favorites monitoring and alerts | Follow objects and events of interest | Extend existing favorites with saved filters and in-app alerts with deduplication; server worker required for alerts while the app is closed |
 | 7 | Guided astronomy tours | Learn through a sequence of telescope targets | Pause/resume, captions, camera transitions and keyboard navigation |
 | 8 | Shareable views | Open a link to a reproducible view | Versioned URL state for target/time/layers; exclude credentials and private chat |
 
