@@ -1,3 +1,4 @@
+import { astronomyFetch } from './astronomyApi';
 import { useEffect, useState } from 'react';
 import * as Cesium from 'cesium';
 import { getCesiumViewer } from '@/lib/cesiumViewerRegistry';
@@ -15,8 +16,8 @@ export function useWorldSurvey(utc: string, enabled: boolean) {
     let objectUrl: string | undefined;
     let timer: number | undefined;
     void Promise.all([
-      fetch(`/api/astronomy/survey-mesh?${new URLSearchParams({ utc })}`, { signal: controller.signal }).then(async (r) => { if (!r.ok) throw new Error(); return r.json() as Promise<SurveyMesh>; }),
-      fetch('/api/astronomy/survey-image', { signal: controller.signal }).then(async (r) => { if (!r.ok) throw new Error(); return r.blob(); }),
+      astronomyFetch(`survey-mesh?${new URLSearchParams({ utc })}`, { signal: controller.signal }).then(async (r) => { if (!r.ok) throw new Error(); return r.json() as Promise<SurveyMesh>; }),
+      astronomyFetch('survey-image', { signal: controller.signal }).then(async (r) => { if (!r.ok) throw new Error(); return r.blob(); }),
     ]).then(([mesh, blob]) => {
       if (disposed) return;
       objectUrl = URL.createObjectURL(blob);

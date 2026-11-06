@@ -27,7 +27,8 @@ class SentryQAService {
 
   constructor() {
     // Read from environment if available
-    this.dsn = import.meta.env.VITE_SENTRY_DSN || process.env.SENTRY_DSN || null;
+    this.dsn = import.meta.env.VITE_SENTRY_DSN ||
+      (typeof process !== 'undefined' ? process.env.SENTRY_DSN : undefined) || null;
   }
 
   public init(customDsn?: string): void {

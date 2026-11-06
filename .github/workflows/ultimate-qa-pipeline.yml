@@ -4,7 +4,8 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, "prototype/**"]
+  workflow_dispatch:
 
 concurrency:
   group: qa-${{ github.ref }}
@@ -18,30 +19,34 @@ jobs:
     name: Silver Wolf VI – Typecheck, Lint, and Contracts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test:strict
+      - run: npm run test:vitest
+      - run: npm audit
+      - name: Build for GitHub Pages
+        run: npm run build
+        env:
+          GITHUB_PAGES: "true"
 
   # ─── Security & Dependency Scanning (Snyk) ───────────────────────────
   snyk-frontend:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     name: Snyk – Frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          node-version: 24
+          cache: npm
+      - run: npm ci
       - uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -49,11 +54,12 @@ jobs:
           args: --file=package.json --severity-threshold=high
 
   snyk-backend:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     name: Snyk – Python Bridge
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install -r bridge/requirements.txt
@@ -65,20 +71,18 @@ jobs:
 
   # ─── Visual Regression & Design Review (Chromatic) ───────────────────
   chromatic:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     name: Chromatic – Visual Regression
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
         with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          node-version: 24
+          cache: npm
+      - run: npm ci
       - uses: chromaui/action@latest
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
@@ -95,17 +99,27 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build:sourcemaps
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check Sentry configuration
+        id: sentry
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG || vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT || vars.SENTRY_PROJECT }}
+        run: |
+          if [[ -n "$SENTRY_AUTH_TOKEN" && -n "$SENTRY_ORG" && -n "$SENTRY_PROJECT" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Sentry upload not configured: set SENTRY_AUTH_TOKEN, SENTRY_ORG, and SENTRY_PROJECT." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - run: npm run build:sourcemaps
+        if: steps.sentry.outputs.configured == 'true'
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG || vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT || vars.SENTRY_PROJECT }}

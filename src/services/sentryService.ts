@@ -29,7 +29,10 @@ class SentryIntegrationService {
   constructor() {
     // Check environment or localStorage for Sentry DSN
     const envDsn = getEnvVar('VITE_SENTRY_DSN');
-    const storedDsn = typeof localStorage !== 'undefined' ? localStorage.getItem('sw_sentry_dsn') || '' : '';
+    let storedDsn = '';
+    try {
+      storedDsn = typeof localStorage !== 'undefined' ? localStorage.getItem('sw_sentry_dsn') || '' : '';
+    } catch { /* Browser storage may be denied; telemetry must not block startup. */ }
     this.dsn = envDsn || storedDsn;
     this.enabled = Boolean(this.dsn);
   }

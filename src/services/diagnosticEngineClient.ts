@@ -53,6 +53,7 @@ function safeStringify(value: unknown): string {
  */
 export function reportToEngine(entry: DiagnosticEntry, source = 'silver-wolf-vi'): void {
   if (typeof window === 'undefined' || typeof fetch === 'undefined') return;
+  if (engineUrl() === 'off') return;
   if (engineUnreachable && Date.now() - lastFailureLogAt < 60_000) return;
 
   try {

@@ -1,0 +1,3 @@
+[submodule "odysseus"]
+	path = odysseus
+	url = https://github.com/odysseus-dev/odysseus.git

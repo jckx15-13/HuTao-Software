@@ -1,3 +1,4 @@
+import { astronomyFetch } from './astronomyApi';
 import { useEffect, useState } from 'react';
 import { useObservatory, type ConstellationEntry } from '@/core/state/observatoryStore';
 
@@ -11,7 +12,7 @@ export interface AstronomyScene {
 }
 
 async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
-  const result = await fetch(url, { signal });
+  const result = await astronomyFetch(url, { signal });
   if (!result.ok) {
     const body = await result.json().catch(() => null);
     throw new Error(typeof body?.detail === 'string' ? body.detail : 'Astronomy service is unavailable. Start the Python service and retry.');
@@ -25,8 +26,8 @@ export function useConstellationCatalog() {
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    getJson<{ constellations: ConstellationEntry[] }>('api/astronomy/constellations', controller.signal)
-      .then((data) => setCatalog(data.constellations))
+    getJson<{ constellations: ConstellationEntry[] }>('constellations', controller.signal)
+      .then((data) => { if (!controller.signal.aborted) { setCatalog(data.constellations); setError(''); } })
       .catch((e) => { if (!controller.signal.aborted) setError(e.message); });
     return () => controller.abort();
   }, [retry]);
@@ -42,7 +43,7 @@ export function useAstronomy() {
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       const query = new URLSearchParams({ utc, latitude: String(latitude), longitude: String(longitude), altitude_km: String(altitude_km), ra_deg: String(target.ra_deg), dec_deg: String(target.dec_deg) });
-      getJson<AstronomyScene>(`api/astronomy/scene?${query}`, controller.signal)
+      getJson<AstronomyScene>(`scene?${query}`, controller.signal)
         .then((data) => { setScene(data); setError(''); setPending(false); })
         .catch((e) => { if (!controller.signal.aborted) { setError(e.message); setPending(false); } });
     }, 150);

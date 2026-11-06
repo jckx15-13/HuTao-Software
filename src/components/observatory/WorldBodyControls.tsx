@@ -1,3 +1,4 @@
+import { astronomyFetch } from './astronomyApi';
 import { useEffect, useRef, useState } from 'react';
 import * as Cesium from 'cesium';
 import { getCesiumViewer } from '@/lib/cesiumViewerRegistry';
@@ -17,9 +18,9 @@ export function WorldBodyControls({ utc, expanded, attempt }: { utc: string; exp
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/astronomy/bodies?${new URLSearchParams({ utc })}`, { signal: controller.signal })
+    astronomyFetch(`bodies?${new URLSearchParams({ utc })}`, { signal: controller.signal })
       .then(async (response) => { if (!response.ok) throw new Error('Solar-system positions unavailable. Retry astronomy.'); return response.json() as Promise<{ bodies: Body[] }>; })
-      .then((data) => setBodies(data.bodies))
+      .then((data) => { if (!controller.signal.aborted) { setBodies(data.bodies); setError(''); } })
       .catch((reason: unknown) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Body data unavailable'); });
     return () => controller.abort();
   }, [utc, attempt]);

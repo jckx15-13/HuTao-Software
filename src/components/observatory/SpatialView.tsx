@@ -24,6 +24,9 @@ export default function SpatialView({ scene, asteroid }: { scene: AstronomyScene
   const host = useRef<HTMLDivElement>(null);
   const [outer, setOuter] = useState(false);
   const [reset, setReset] = useState(0);
+  const [status, setStatus] = useState('');
+  const currentScene = useRef(scene);
+  useEffect(() => { currentScene.current = scene; }, [scene]);
   const sceneReady = Boolean(scene);
 
   useEffect(() => {
@@ -32,7 +35,11 @@ export default function SpatialView({ scene, asteroid }: { scene: AstronomyScene
     let disposed = false;
     let renderer: THREE.WebGLRenderer;
     try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
-    catch { return; }
+    catch {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- WebGL resource construction can fail synchronously.
+      setStatus('WebGL is unavailable. Enable graphics acceleration and reload.');
+      return;
+    }
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setClearColor('#07090e');
     element.appendChild(renderer.domElement);
@@ -64,9 +71,10 @@ export default function SpatialView({ scene, asteroid }: { scene: AstronomyScene
         const scale = 2 / Math.max(size.x, size.y, size.z);
         gltf.scene.position.copy(center).multiplyScalar(-scale); gltf.scene.scale.setScalar(scale);
         world.add(gltf.scene);
-      });
+        setStatus('NASA Bennu shape model loaded');
+      }, undefined, () => { if (!disposed) setStatus('NASA model unavailable. Check the connection and retry.'); });
     } else {
-      for (const body of scene!.bodies) {
+      for (const body of currentScene.current!.bodies) {
         if (!outer && ['jupiter', 'saturn', 'uranus', 'neptune'].includes(body.id)) continue;
         // All centers preserve one linear distance scale; body radii are enlarged.
         const radius = (outer ? 0.2 : 0.025) * (body.id === 'sun' ? 2.3 : body.id === 'jupiter' ? 1.6 : 1);
@@ -88,7 +96,7 @@ export default function SpatialView({ scene, asteroid }: { scene: AstronomyScene
     let frame = 0;
     const draw = () => {
       if (disposed) return;
-      const data = scene;
+      const data = currentScene.current;
       if (!asteroid && data) {
         data.bodies.forEach((body) => bodies.get(body.id)?.position.fromArray(body.heliocentric_ecliptic_km).divideScalar(AU));
         observer?.position.fromArray(data.observer.heliocentric_ecliptic_km).divideScalar(AU);
@@ -104,13 +112,13 @@ export default function SpatialView({ scene, asteroid }: { scene: AstronomyScene
     };
     draw();
     return () => { disposed = true; cancelAnimationFrame(frame); observerResize.disconnect(); controls.dispose(); disposeTree(world); renderer.dispose(); renderer.domElement.remove(); labels.forEach((l) => l.element.remove()); };
-  }, [asteroid, outer, reset, sceneReady, scene]);
+  }, [asteroid, outer, reset, sceneReady]);
 
   return <div className="obs-spatial">
     <div className="obs-spatial-canvas" ref={host} aria-label={asteroid ? 'Interactive three-dimensional Bennu model' : 'Third-person Solar System and observer position'} />
     <div className="obs-canvas-caption"><strong>{asteroid ? '101955 Bennu' : 'Where you are looking from'}</strong><span>{asteroid ? 'NASA shape model · drag to orbit · scroll to zoom' : 'Sun-centered positions · mint arrow shows the selected sky direction'}</span></div>
     {!asteroid && !sceneReady ? <div className="obs-loading">Waiting for Python observer calculations…</div> : null}
-    {!scene && !asteroid ? <div className="obs-loading">Waiting for Python observer calculations…</div> : null}
+    {status ? <div className="obs-model-status" role="status">{status}</div> : null}
     <div className="obs-map-footer"><p>{asteroid ? <><a href="https://science.nasa.gov/resource/bennu-3d-model/" target="_blank" rel="noreferrer">NASA model credit</a> · Shape inspection; no orbital position or spin simulation.</> : <>Distances use a linear AU scale. Spheres and observer marker are enlarged. Grid {outer ? '5' : '0.5'} AU.</>}</p><div>{!asteroid ? <button onClick={() => setOuter(!outer)}>{outer ? 'Inner planets' : 'All planets'}</button> : null}<button onClick={() => setReset((n) => n+1)}>Reset view</button></div></div>
   </div>;
 }

@@ -42,6 +42,30 @@ The Bridge exposes `/api/integration/status` as the runtime feature reality ledg
 - **Ignore Path:** The `worldwideview/` directory is ignored by the root Git repository to avoid path length issues and recursive tracking conflicts on Windows.
 - **Git Config:** If you encounter path length warnings on Windows, run `git config core.longpaths true` in your terminal.
 
+## GitHub builds and deployment
+
+The root app uses npm and `package-lock.json`, with Node.js 24 in GitHub Actions.
+QA runs on pull requests and pushes to `main` and `prototype/**`; it checks types,
+lint, strict contracts, Vitest, dependency advisories, and the Pages build.
+The root Pages workflow publishes Silver Wolf and the separately built flowchart
+editor at `/HuTao-Software/flowchart/`. The flowchart check never replaces the root site.
+Cloudflare deployment is available through its manual workflow.
+
+GitHub Pages serves static files. Python observer calculations require a separately
+hosted astronomy service, configured through `VITE_ASTRONOMY_URL` at build time.
+Without that setting the observatory explains the missing service instead of
+requesting Python routes from Pages. The local diagnostic engine is disabled in
+the Pages build unless an explicit endpoint is provided.
+
+Sentry source-map upload requires `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and
+`SENTRY_PROJECT` as Actions secrets (org/project may also be Actions variables).
+Missing configuration is recorded in the job summary. Browser telemetry and the
+optional Python bridge have separate delivery capabilities; see
+[QA architecture](docs/QA_ARCHITECTURE.md).
+
+The optional `@google/design.md` CLI was removed because its dependency chain
+contained unpatched advisories. `DESIGN.md` remains the visual design reference.
+
 ## Project Notes
 
 - Architecture, critique, and design notes live in [DOCS.md](DOCS.md).

@@ -1,3 +1,4 @@
+import { astronomyFetch } from './astronomyApi';
 import { useEffect, useRef, useState } from 'react';
 import * as Cesium from 'cesium';
 import { getCesiumViewer } from '@/lib/cesiumViewerRegistry';
@@ -21,9 +22,9 @@ export function useWorldSkyGeometry(utc: string, figures: boolean, boundaries: b
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/astronomy/sky-geometry?${new URLSearchParams({ utc })}`, { signal: controller.signal })
+    astronomyFetch(`sky-geometry?${new URLSearchParams({ utc })}`, { signal: controller.signal })
       .then(async (response) => { if (!response.ok) throw new Error('WWT star/constellation geometry unavailable. Retry astronomy to reconnect.'); return response.json() as Promise<SkyGeometry>; })
-      .then(setData)
+      .then((data) => { if (!controller.signal.aborted) { setData(data); setError(''); } })
       .catch((reason: unknown) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Sky geometry unavailable'); });
     return () => controller.abort();
   }, [utc, attempt]);

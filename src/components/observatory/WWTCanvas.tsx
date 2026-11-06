@@ -59,7 +59,7 @@ export default function WWTCanvas({ onStatus }: { onStatus: (value: string) => v
         }
       };
       frame = requestAnimationFrame(render);
-    }).catch((e) => { if (!disposed) { setFailure(e.message); onStatus('WWT unavailable'); } });
+    }).catch((e) => { if (!disposed) { clearTimeout(timeout); setFailure(e.message); onStatus('WWT unavailable'); } });
     return () => { disposed = true; clearTimeout(timeout); cancelAnimationFrame(frame); removeReady?.(); engine.current = null; document.getElementById('observatory-wwt')?.replaceChildren(); };
   }, [generation, onStatus]);
 
@@ -101,7 +101,7 @@ export default function WWTCanvas({ onStatus }: { onStatus: (value: string) => v
 
   return <>
     <div id="observatory-wwt" className="obs-wwt" aria-label="Interactive WorldWide Telescope view" />
-    {!ready || failure ? <div className="obs-loading" role="status"><p>{failure || 'Connecting to WorldWide Telescope…'}</p>{failure ? <button onClick={() => setGeneration((n) => n + 1)}>Retry WWT</button> : <small>Loading online surveys and constellation geometry</small>}</div> : null}
+    {!ready || failure ? <div className="obs-loading" role="status"><p>{failure || 'Connecting to WorldWide Telescope…'}</p>{failure ? <button onClick={() => { setFailure(''); setReady(false); setGeneration((n) => n + 1); }}>Retry WWT</button> : <small>Loading online surveys and constellation geometry</small>}</div> : null}
     <div className="obs-canvas-caption"><strong>{state.mode === 'solar' ? state.body : state.target.name}</strong><span>{state.mode === 'solar' ? '3D body · drag to orbit · scroll to zoom' : 'Drag to explore · scroll to zoom'}</span></div>
     <div className="obs-canvas-bottom">
       <span className="obs-coordinates">RA {view.ra.toFixed(3)}° &nbsp; DEC {view.dec.toFixed(3)}°</span>

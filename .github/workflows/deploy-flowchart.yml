@@ -1,51 +1,25 @@
-name: Deploy Flowchart to GitHub Pages
+name: Check Flowchart Editor
 
 on:
   push:
-    branches:
-      - main
+    branches: [main, "prototype/**"]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: 'pages'
-  cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 24
+          cache: npm
           cache-dependency-path: flowchart-editor/package-lock.json
-
-      - name: Install & Build Flowchart Editor
-        run: |
-          cd flowchart-editor
-          npm ci || npm install
-          npm run build
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: flowchart-editor/dist
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - run: npm ci --prefix flowchart-editor
+      - run: npm audit --prefix flowchart-editor
+      - run: npm run build --prefix flowchart-editor

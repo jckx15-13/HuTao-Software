@@ -1,3 +1,4 @@
+import { astronomyFetch } from './astronomyApi';
 import { useEffect, useState } from 'react';
 import * as Cesium from 'cesium';
 import { getCesiumViewer } from '@/lib/cesiumViewerRegistry';
@@ -35,9 +36,9 @@ export default function WorldTelescopeOverlay() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/astronomy/sky?${new URLSearchParams({ utc })}`, { signal: controller.signal })
+    astronomyFetch(`sky?${new URLSearchParams({ utc })}`, { signal: controller.signal })
       .then(async (response) => { if (!response.ok) throw new Error('Python sky calculations unavailable. Start the astronomy service and retry.'); return response.json() as Promise<{ regions: SkyRegion[] }>; })
-      .then((data) => setRegions(data.regions))
+      .then((data) => { if (!controller.signal.aborted) { setRegions(data.regions); setError(''); } })
       .catch((reason: unknown) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Sky calculation failed'); });
     return () => controller.abort();
   }, [utc, attempt]);

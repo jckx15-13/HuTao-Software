@@ -13,8 +13,6 @@
 name: Deploy to Cloudflare Pages (private)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -30,11 +28,11 @@ jobs:
     # Skip cleanly on forks, where the secrets are absent, rather than failing.
     if: github.event_name == 'workflow_dispatch' || github.repository_owner == 'jckx15-13'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - run: npm ci
