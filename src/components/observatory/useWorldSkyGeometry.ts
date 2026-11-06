@@ -1,3 +1,4 @@
+import { watchCesiumViewer } from '@/lib/watchCesiumViewer';
 import { astronomyFetch } from './astronomyApi';
 import { useEffect, useRef, useState } from 'react';
 import * as Cesium from 'cesium';
@@ -31,10 +32,7 @@ export function useWorldSkyGeometry(utc: string, figures: boolean, boundaries: b
 
   useEffect(() => {
     if (!data) return;
-    let cleanup: (() => void) | undefined;
-    const connect = () => {
-      const viewer = getCesiumViewer();
-      if (!viewer || cleanup) return;
+    return watchCesiumViewer((viewer) => {
       const stars = viewer.scene.primitives.add(new Cesium.PointPrimitiveCollection()) as Cesium.PointPrimitiveCollection;
       const lines = viewer.scene.primitives.add(new Cesium.PolylineCollection()) as Cesium.PolylineCollection;
       const borders = viewer.scene.primitives.add(new Cesium.PolylineCollection()) as Cesium.PolylineCollection;
@@ -58,14 +56,11 @@ export function useWorldSkyGeometry(utc: string, figures: boolean, boundaries: b
         for (const collection of [stars, lines, borders]) Cesium.Matrix4.fromTranslation(viewer.camera.positionWC, collection.modelMatrix);
       });
       viewer.scene.requestRender();
-      cleanup = () => {
+      return () => {
         remove(); primitives.current = null;
         if (!viewer.isDestroyed()) for (const collection of [stars, lines, borders]) viewer.scene.primitives.remove(collection);
       };
-    };
-    connect();
-    const timer = window.setInterval(connect, 300);
-    return () => { clearInterval(timer); cleanup?.(); };
+    });
   }, [data]);
 
   useEffect(() => {

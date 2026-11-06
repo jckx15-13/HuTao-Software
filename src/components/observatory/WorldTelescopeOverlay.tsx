@@ -1,3 +1,4 @@
+import { watchCesiumViewer } from '@/lib/watchCesiumViewer';
 import { astronomyFetch } from './astronomyApi';
 import { useEffect, useState } from 'react';
 import * as Cesium from 'cesium';
@@ -44,10 +45,7 @@ export default function WorldTelescopeOverlay() {
   }, [utc, attempt]);
 
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
-    const connect = () => {
-      const viewer = getCesiumViewer();
-      if (!viewer || cleanup) return;
+    return watchCesiumViewer((viewer) => {
       const collection = viewer.scene.primitives.add(new Cesium.LabelCollection()) as Cesium.LabelCollection;
       for (const region of regions) collection.add({
         id: `wwt-region-${region.id}`, text: region.name,
@@ -66,11 +64,8 @@ export default function WorldTelescopeOverlay() {
       const timer = window.setInterval(updateFov, 300);
       updateFov();
       viewer.scene.requestRender();
-      cleanup = () => { clearInterval(timer); remove(); if (!viewer.isDestroyed()) viewer.scene.primitives.remove(collection); };
-    };
-    connect();
-    const poll = window.setInterval(connect, 300);
-    return () => { clearInterval(poll); cleanup?.(); };
+      return () => { clearInterval(timer); remove(); if (!viewer.isDestroyed()) viewer.scene.primitives.remove(collection); };
+    });
   }, [regions, labels]);
 
   const choose = (regionId: string) => {

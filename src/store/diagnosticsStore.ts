@@ -3,7 +3,7 @@ import { bridgeUrl, getBridgeBaseUrl, isBridgeEnabled } from '../lib/bridgeConfi
 import { sentryService } from '../services/sentryService';
 import { coderabbitService, CodeRabbitAuditResult } from '../services/coderabbitService';
 import { visualInspectorService, HardwareSpecs, VisualSnapshot } from '../services/visualInspectorService';
-import { reportToEngine } from '../services/diagnosticEngineClient';
+import { isDiagnosticIngestRequest, reportToEngine } from '../services/diagnosticEngineClient';
 
 export type DiagnosticLevel = 'error' | 'warning' | 'info' | 'debug';
 
@@ -45,6 +45,7 @@ const TRACKED_FETCH_PATHS = ['/api/', '/chat', '/status', '/git/status', '/sync'
 
 function shouldTrackFetchLatency(url: string): boolean {
   if (!url || typeof url !== 'string') return false;
+  if (isDiagnosticIngestRequest(url)) return false;
   if (url.includes('/log')) return false;
   return TRACKED_FETCH_PATHS.some((path) => url.includes(path));
 }

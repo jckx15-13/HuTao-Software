@@ -1,3 +1,4 @@
+import { domainStorage, mergeDomainState } from './domainPersistence';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { WeatherData } from '../services/weatherService';
@@ -173,6 +174,8 @@ export const useTelemetryStore = create<TelemetryState>()(
     }),
     {
       name: 'silver-wolf-v6-telemetry',
+      storage: domainStorage,
+      merge: mergeDomainState,
       partialize: (s) => ({
         changeLogs: s.changeLogs,
         activeSatelliteId: s.activeSatelliteId,

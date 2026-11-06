@@ -10,6 +10,10 @@ declare const __SILVER_WOLF_DIAGNOSTIC_ENGINE_URL__: string | undefined;
 
 const FALLBACK_ENGINE_URL = 'http://127.0.0.1:9500';
 
+export function isDiagnosticIngestRequest(url: string): boolean {
+  return url.includes('/api/diagnostics/ingest');
+}
+
 const LEVEL_TO_SEVERITY: Record<DiagnosticLevel, string> = {
   error: 'error',
   warning: 'warn',
@@ -77,6 +81,9 @@ export function reportToEngine(entry: DiagnosticEntry, source = 'silver-wolf-vi'
       .then((res) => {
         if (res.ok) {
           engineUnreachable = false;
+        } else {
+          engineUnreachable = true;
+          lastFailureLogAt = Date.now();
         }
       })
       .catch(() => {

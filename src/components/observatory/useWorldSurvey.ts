@@ -1,7 +1,7 @@
+import { watchCesiumViewer } from '@/lib/watchCesiumViewer';
 import { astronomyFetch } from './astronomyApi';
 import { useEffect, useState } from 'react';
 import * as Cesium from 'cesium';
-import { getCesiumViewer } from '@/lib/cesiumViewerRegistry';
 
 type SurveyMesh = { directions: [number, number, number][]; uv: [number, number][]; indices: number[] };
 
@@ -14,16 +14,13 @@ export function useWorldSurvey(utc: string, enabled: boolean) {
     let disposed = false;
     let cleanup: (() => void) | undefined;
     let objectUrl: string | undefined;
-    let timer: number | undefined;
     void Promise.all([
       astronomyFetch(`survey-mesh?${new URLSearchParams({ utc })}`, { signal: controller.signal }).then(async (r) => { if (!r.ok) throw new Error(); return r.json() as Promise<SurveyMesh>; }),
       astronomyFetch('survey-image', { signal: controller.signal }).then(async (r) => { if (!r.ok) throw new Error(); return r.blob(); }),
     ]).then(([mesh, blob]) => {
       if (disposed) return;
       objectUrl = URL.createObjectURL(blob);
-      const connect = () => {
-        const viewer = getCesiumViewer();
-        if (!viewer || cleanup || disposed) return;
+      cleanup = watchCesiumViewer((viewer) => {
         const positions = new Float64Array(mesh.directions.flatMap((v) => v.map((n) => n * 2e16)));
         const attributes = new Cesium.GeometryAttributes();
         attributes.position = new Cesium.GeometryAttribute({ componentDatatype: Cesium.ComponentDatatype.DOUBLE, componentsPerAttribute: 3, values: positions });
@@ -47,11 +44,10 @@ export function useWorldSurvey(utc: string, enabled: boolean) {
         });
         viewer.scene.requestRender();
         setStatus('DSS overview loaded · low resolution; detailed zoom tiles pending');
-        cleanup = () => { remove(); if (!viewer.isDestroyed()) viewer.scene.primitives.remove(primitive); };
-      };
-      connect(); timer = window.setInterval(connect, 300);
+        return () => { remove(); if (!viewer.isDestroyed()) viewer.scene.primitives.remove(primitive); };
+      });
     }).catch(() => { if (!disposed) setStatus('DSS overview unavailable · retry astronomy to reconnect'); });
-    return () => { disposed = true; controller.abort(); clearInterval(timer); cleanup?.(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    return () => { disposed = true; controller.abort(); cleanup?.(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [utc, enabled]);
   return displayStatus;
 }

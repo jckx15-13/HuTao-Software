@@ -1,3 +1,4 @@
+import type { StoreApi } from 'zustand';
 import { useLayoutStore, type LayoutState } from './layoutStore';
 import { useThemeStore, type ThemeState } from './themeStore';
 import { useChatStore, type ChatState } from './chatStore';
@@ -35,6 +36,20 @@ export type UIStore = LayoutState &
     updateSettings: (settings: Partial<UIStore>) => void;
   };
 
+function patchDomain<S extends object>(store: Pick<StoreApi<S>, 'setState' | 'getInitialState'>, settings: Partial<UIStore>): void {
+  const initial = store.getInitialState();
+  const patch = Object.fromEntries(Object.entries(settings).filter(([key]) => Object.hasOwn(initial, key))) as Partial<S>;
+  if (Object.keys(patch).length) store.setState(patch);
+}
+
+function updateSettings(settings: Partial<UIStore>): void {
+  patchDomain(useLayoutStore, settings);
+  patchDomain(useThemeStore, settings);
+  patchDomain(useChatStore, settings);
+  patchDomain(useTelemetryStore, settings);
+  patchDomain(useAstronomyStore, settings);
+}
+
 // Unified snapshot getter
 function getUnifiedState(): UIStore {
   const layout = useLayoutStore.getState();
@@ -49,13 +64,7 @@ function getUnifiedState(): UIStore {
     ...chat,
     ...telemetry,
     ...astronomy,
-    updateSettings: (settings: Partial<UIStore>) => {
-      useLayoutStore.setState(settings as Partial<LayoutState>);
-      useThemeStore.setState(settings as Partial<ThemeState>);
-      useChatStore.setState(settings as Partial<ChatState>);
-      useTelemetryStore.setState(settings as Partial<TelemetryState>);
-      useAstronomyStore.setState(settings as Partial<AstronomyState>);
-    }
+    updateSettings
   };
 }
 
@@ -75,13 +84,7 @@ export function useUIStore<U>(selector?: (state: UIStore) => U): U | UIStore {
     ...chat,
     ...telemetry,
     ...astronomy,
-    updateSettings: (settings) => {
-      useLayoutStore.setState(settings as Partial<LayoutState>);
-      useThemeStore.setState(settings as Partial<ThemeState>);
-      useChatStore.setState(settings as Partial<ChatState>);
-      useTelemetryStore.setState(settings as Partial<TelemetryState>);
-      useAstronomyStore.setState(settings as Partial<AstronomyState>);
-    }
+    updateSettings
   };
 
   return selector ? selector(combined) : combined;
@@ -90,11 +93,7 @@ export function useUIStore<U>(selector?: (state: UIStore) => U): U | UIStore {
 useUIStore.getState = getUnifiedState;
 useUIStore.setState = (partial: Partial<UIStore> | ((state: UIStore) => Partial<UIStore>)) => {
   const next = typeof partial === 'function' ? partial(getUnifiedState()) : partial;
-  useLayoutStore.setState(next as Partial<LayoutState>);
-  useThemeStore.setState(next as Partial<ThemeState>);
-  useChatStore.setState(next as Partial<ChatState>);
-  useTelemetryStore.setState(next as Partial<TelemetryState>);
-  useAstronomyStore.setState(next as Partial<AstronomyState>);
+  updateSettings(next);
 };
 
 useUIStore.subscribe = (listener: (state: UIStore, prevState: UIStore) => void) => {
@@ -119,5 +118,5 @@ useUIStore.subscribe = (listener: (state: UIStore, prevState: UIStore) => void) 
 };
 
 if (typeof window !== 'undefined') {
-  (window as any).useUIStore = useUIStore;
+  (window as Window & { useUIStore?: typeof useUIStore }).useUIStore = useUIStore;
 }

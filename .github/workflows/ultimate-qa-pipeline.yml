@@ -63,11 +63,11 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r bridge/requirements.txt
-      - uses: snyk/actions/python@master
+      - uses: snyk/actions/setup@master
+      - name: Scan the installed Python environment
+        run: snyk test --file=bridge/requirements.txt --package-manager=pip --command=python3 --severity-threshold=high
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --file=bridge/requirements.txt --severity-threshold=high
 
   # ─── Visual Regression & Design Review (Chromatic) ───────────────────
   chromatic:

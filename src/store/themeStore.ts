@@ -1,3 +1,4 @@
+import { domainStorage, mergeDomainState } from './domainPersistence';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { PaletteKey, ThemeVars } from '../lib/themeEngine';
@@ -65,9 +66,11 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: 'silver-wolf-v6-theme',
+      storage: domainStorage,
+      merge: mergeDomainState,
       partialize: (s) => ({
         activePalette: s.activePalette,
-        customWallpaper: s.customWallpaper,
+        customWallpaper: s.customWallpaper?.startsWith('blob:') ? null : s.customWallpaper,
         personalisation: s.personalisation,
         cursorDesign: s.cursorDesign,
         particleEffects: s.particleEffects,

@@ -1,3 +1,4 @@
+import { watchCesiumViewer } from '@/lib/watchCesiumViewer';
 import { astronomyFetch } from './astronomyApi';
 import { useEffect, useRef, useState } from 'react';
 import * as Cesium from 'cesium';
@@ -27,10 +28,8 @@ export function WorldBodyControls({ utc, expanded, attempt }: { utc: string; exp
 
   useEffect(() => {
     if (!bodies.length) return;
-    let cleanup: (() => void) | undefined;
-    const connect = () => {
-      const viewer = getCesiumViewer();
-      if (!viewer || cleanup) return;
+    return watchCesiumViewer((viewer) => {
+      let disposed = false;
       const source = new Cesium.CustomDataSource('wwt-python-solar-system');
       const sunVisible = viewer.scene.sun?.show;
       const moonVisible = viewer.scene.moon?.show;
@@ -47,17 +46,14 @@ export function WorldBodyControls({ utc, expanded, attempt }: { utc: string; exp
       }
       void viewer.dataSources.add(source).then(() => { if (disposed && !viewer.isDestroyed()) viewer.dataSources.remove(source, true); });
       viewer.scene.requestRender();
-      cleanup = () => {
+      return () => {
+        disposed = true;
         if (viewer.isDestroyed()) return;
         viewer.dataSources.remove(source, true);
         if (viewer.scene.sun && sunVisible !== undefined) viewer.scene.sun.show = sunVisible;
         if (viewer.scene.moon && moonVisible !== undefined) viewer.scene.moon.show = moonVisible;
       };
-    };
-    let disposed = false;
-    connect();
-    const timer = window.setInterval(connect, 300);
-    return () => { disposed = true; clearInterval(timer); cleanup?.(); };
+    });
   }, [bodies]);
 
   useEffect(() => {

@@ -1,3 +1,4 @@
+import { domainStorage, mergeDomainState } from './domainPersistence';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { LocationData } from '../data/locations';
@@ -148,6 +149,8 @@ export const useAstronomyStore = create<AstronomyState>()(
     }),
     {
       name: 'silver-wolf-v6-astronomy',
+      storage: domainStorage,
+      merge: mergeDomainState,
       partialize: (s) => ({
         interactionMode: s.interactionMode,
         cameraSensitivity: s.cameraSensitivity,

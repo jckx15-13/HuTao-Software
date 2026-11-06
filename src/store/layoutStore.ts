@@ -1,3 +1,4 @@
+import { domainStorage, mergeDomainState } from './domainPersistence';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { resolveStartupLayout } from '../core/defaults/uiDefaults';
@@ -107,6 +108,8 @@ export const useLayoutStore = create<LayoutState>()(
     }),
     {
       name: 'silver-wolf-v6-layout',
+      storage: domainStorage,
+      merge: mergeDomainState,
       partialize: (s) => ({
         leftPanelOpen: s.leftPanelOpen,
         rightPanelOpen: s.rightPanelOpen,

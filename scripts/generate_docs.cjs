@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const docsPath = path.join(root, 'DOCS.md');
@@ -8,12 +9,16 @@ const startMarker = '<!-- GENERATED:START -->';
 const endMarker = '<!-- GENERATED:END -->';
 
 function readDirectories(relativePath) {
-  const absolutePath = path.join(root, relativePath);
-  return fs
-    .readdirSync(absolutePath, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
-    .map((entry) => entry.name)
-    .sort();
+  // Ignore local scratch/build directories so a clean CI checkout produces
+  // the same inventory as a developer workspace. Include new source files.
+  const files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z', relativePath], {
+    cwd: root,
+    encoding: 'utf8',
+  }).split('\0');
+  const directories = files.map((file) => file.slice(relativePath.length + 1).split('/'))
+    .filter((parts) => parts.length > 1 && !parts[0].startsWith('.'))
+    .map((parts) => parts[0]);
+  return [...new Set(directories)].sort();
 }
 
 function buildGeneratedSection() {

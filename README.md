@@ -53,6 +53,8 @@ Cloudflare deployment is available through its manual workflow.
 
 GitHub Pages serves static files. Python observer calculations require a separately
 hosted astronomy service, configured through `VITE_ASTRONOMY_URL` at build time.
+Set the service's `ASTRONOMY_CORS_ORIGINS` to the allowed frontend origins
+(for this Pages site, `https://jckx15-13.github.io`).
 Without that setting the observatory explains the missing service instead of
 requesting Python routes from Pages. The local diagnostic engine is disabled in
 the Pages build unless an explicit endpoint is provided.

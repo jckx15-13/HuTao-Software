@@ -1,10 +1,22 @@
 """Run: python -m uvicorn bridge.astronomy_api:app --host 127.0.0.1 --port 8011."""
+import os
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from .astronomy_survey import survey_image, survey_mesh
 from .astronomy_physics import calculate_scene, constellations, sky_regions, sky_geometry, solar_bodies, CATALOG_URL
 
 app = FastAPI(title="Silver Wolf Observatory", docs_url=None, redoc_url=None)
+allowed_origins = [origin.strip() for origin in os.getenv(
+    "ASTRONOMY_CORS_ORIGINS", "http://localhost:3005,http://127.0.0.1:3005"
+).split(",") if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=False,
+    allow_methods=["GET"],
+    allow_headers=[],
+)
 
 
 @app.get("/api/astronomy/survey-image")

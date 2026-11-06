@@ -1,3 +1,4 @@
+import { domainStorage, mergeDomainState } from './domainPersistence';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { createInitialMessages, createResetMessages, type Message } from '../lib/messages';
@@ -213,6 +214,8 @@ export const useChatStore = create<ChatState>()(
     },
     {
       name: 'silver-wolf-v6-chat',
+      storage: domainStorage,
+      merge: mergeDomainState,
       partialize: (s) => ({
         aiModel: s.aiModel,
         systemInstructions: s.systemInstructions,
