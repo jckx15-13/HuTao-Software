@@ -1,0 +1,37 @@
+[
+  {
+    "name": "Charon New Horizons Enhanced Color",
+    "url": "https://data1.wwtassets.org/moons/Charon_NH_Enhanced_ColorL0X0Y0.png",
+    "bytes": 109299,
+    "content_type": "application/octet-stream",
+    "last_modified": "Thu, 28 May 2020 16:03:20 GMT"
+  },
+  {
+    "name": "Charon New Horizons Colorized Terrain",
+    "url": "https://data1.wwtassets.org/moons/Charon_NewHorizons_ColorizedTerrainL0X0Y0.png",
+    "bytes": 89952,
+    "content_type": "application/octet-stream",
+    "last_modified": "Thu, 28 May 2020 04:50:46 GMT"
+  },
+  {
+    "name": "Pluto New Horizons Enhanced Color",
+    "url": "https://data1.wwtassets.org/planets/Pluto_NH_Enhanced_ColorL0X0Y0.png",
+    "bytes": 142455,
+    "content_type": "application/octet-stream",
+    "last_modified": "Thu, 03 Jan 2019 02:41:16 GMT"
+  },
+  {
+    "name": "A New Look at the Crab Nebula",
+    "url": "https://data1.wwtassets.org/feeds/nrao/nrao_gallery_nrao17df04b/L0X0Y0.png",
+    "bytes": 52685,
+    "content_type": "application/octet-stream",
+    "last_modified": "Tue, 31 Mar 2020 17:06:51 GMT"
+  },
+  {
+    "name": "SN 1987A fades",
+    "url": "https://data1.wwtassets.org/feeds/eso/03_sn-1987a_cc/L0X0Y0.png",
+    "bytes": 88469,
+    "content_type": "image/png",
+    "last_modified": "Wed, 12 Jan 2022 03:43:46 GMT"
+  }
+]

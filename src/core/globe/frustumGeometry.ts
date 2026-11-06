@@ -18,40 +18,40 @@ const EARTH_RADIUS = 6_371_000; // metres
 // ─── Public types ────────────────────────────────────────────
 
 export interface Point3D {
-    lat: number;
-    lon: number;
-    alt: number;
+  lat: number;
+  lon: number;
+  alt: number;
 }
 
 /** The 4 far-plane corners + the apex, ready for rendering. */
 export interface FrustumEdges {
-    apex: Point3D;
-    topLeft: Point3D;
-    topRight: Point3D;
-    bottomLeft: Point3D;
-    bottomRight: Point3D;
+  apex: Point3D;
+  topLeft: Point3D;
+  topRight: Point3D;
+  bottomLeft: Point3D;
+  bottomRight: Point3D;
 }
 
 export interface FrustumParams {
-    lat: number;
-    lon: number;
-    alt: number; // metres above ground
-    headingDeg: number; // 0 = north, 90 = east
-    pitchDeg: number; // 0 = horizontal, negative = looking down
-    hFovDeg: number; // horizontal field of view
-    vFovDeg: number; // vertical field of view (or derived from aspect)
-    rangeMtrs: number; // max visible distance
+  lat: number;
+  lon: number;
+  alt: number; // metres above ground
+  headingDeg: number; // 0 = north, 90 = east
+  pitchDeg: number; // 0 = horizontal, negative = looking down
+  hFovDeg: number; // horizontal field of view
+  vFovDeg: number; // vertical field of view (or derived from aspect)
+  rangeMtrs: number; // max visible distance
 }
 
 // ─── Defaults ────────────────────────────────────────────────
 
 export const FRUSTUM_DEFAULTS = {
-    alt: 8,
-    headingDeg: 0,
-    pitchDeg: -10,
-    hFovDeg: 50,
-    vFovDeg: 35,
-    rangeMtrs: 200,
+  alt: 8,
+  headingDeg: 0,
+  pitchDeg: -10,
+  hFovDeg: 50,
+  vFovDeg: 35,
+  rangeMtrs: 200
 } as const;
 
 // ─── Core computation ────────────────────────────────────────
@@ -64,66 +64,62 @@ export const FRUSTUM_DEFAULTS = {
  * to each corner, or passed to a ground-projection step.
  */
 export function computeFrustumEdges(params: FrustumParams): FrustumEdges {
-    const {
- lat, lon, alt, headingDeg, pitchDeg, hFovDeg, vFovDeg, rangeMtrs
-} = params;
+  const { lat, lon, alt, headingDeg, pitchDeg, hFovDeg, vFovDeg, rangeMtrs } = params;
 
-    const apex: Point3D = { lat, lon, alt };
+  const apex: Point3D = { lat, lon, alt };
 
-    const halfH = (hFovDeg / 2) * DEG2RAD;
-    const halfV = (vFovDeg / 2) * DEG2RAD;
-    const heading = headingDeg * DEG2RAD;
-    const pitch = pitchDeg * DEG2RAD;
+  const halfH = (hFovDeg / 2) * DEG2RAD;
+  const halfV = (vFovDeg / 2) * DEG2RAD;
+  const heading = headingDeg * DEG2RAD;
+  const pitch = pitchDeg * DEG2RAD;
 
-    // For each corner we compute horizontal bearing offset ± halfH
-    // and vertical pitch offset ± halfV, then project to a destination.
-    const corners: [number, number][] = [
-        [-halfH, halfV], // topLeft
-        [halfH, halfV], // topRight
-        [-halfH, -halfV], // bottomLeft
-        [halfH, -halfV], // bottomRight
-    ];
+  // For each corner we compute horizontal bearing offset ± halfH
+  // and vertical pitch offset ± halfV, then project to a destination.
+  const topLeft = projectCorner(lat, lon, alt, heading, pitch, -halfH, halfV, rangeMtrs);
+  const topRight = projectCorner(lat, lon, alt, heading, pitch, halfH, halfV, rangeMtrs);
+  const bottomLeft = projectCorner(lat, lon, alt, heading, pitch, -halfH, -halfV, rangeMtrs);
+  const bottomRight = projectCorner(lat, lon, alt, heading, pitch, halfH, -halfV, rangeMtrs);
 
-    const [topLeft, topRight, bottomLeft, bottomRight] = corners.map(
-        ([hOff, vOff]) => projectCorner(lat, lon, alt, heading, pitch, hOff, vOff, rangeMtrs),
-    );
-
-    return {
- apex, topLeft, topRight, bottomLeft, bottomRight
-};
+  return {
+    apex,
+    topLeft,
+    topRight,
+    bottomLeft,
+    bottomRight
+  };
 }
 
 // ─── Cardinal direction helper ───────────────────────────────
 
 const CARDINAL_MAP: Record<string, number> = {
-    n: 0,
-north: 0,
-nb: 0,
-northbound: 0,
-    ne: 45,
-northeast: 45,
-neb: 45,
-    e: 90,
-east: 90,
-eb: 90,
-eastbound: 90,
-    se: 135,
-southeast: 135,
-seb: 135,
-    s: 180,
-south: 180,
-sb: 180,
-southbound: 180,
-    sw: 225,
-southwest: 225,
-swb: 225,
-    w: 270,
-west: 270,
-wb: 270,
-westbound: 270,
-    nw: 315,
-northwest: 315,
-nwb: 315,
+  n: 0,
+  north: 0,
+  nb: 0,
+  northbound: 0,
+  ne: 45,
+  northeast: 45,
+  neb: 45,
+  e: 90,
+  east: 90,
+  eb: 90,
+  eastbound: 90,
+  se: 135,
+  southeast: 135,
+  seb: 135,
+  s: 180,
+  south: 180,
+  sb: 180,
+  southbound: 180,
+  sw: 225,
+  southwest: 225,
+  swb: 225,
+  w: 270,
+  west: 270,
+  wb: 270,
+  westbound: 270,
+  nw: 315,
+  northwest: 315,
+  nwb: 315
 };
 
 /**
@@ -131,7 +127,7 @@ nwb: 315,
  * Returns `undefined` if not recognised.
  */
 export function cardinalToHeading(dir: string): number | undefined {
-    return CARDINAL_MAP[dir.trim().toLowerCase()];
+  return CARDINAL_MAP[dir.trim().toLowerCase()];
 }
 
 // ─── Internal math ───────────────────────────────────────────
@@ -145,28 +141,28 @@ export function cardinalToHeading(dir: string): number | undefined {
  * 4. Use haversine destination formula for the ground position
  */
 function projectCorner(
-    latDeg: number,
-lonDeg: number,
-altM: number,
-    headingRad: number,
-pitchRad: number,
-    hOffRad: number,
-vOffRad: number,
-    range: number,
+  latDeg: number,
+  lonDeg: number,
+  altM: number,
+  headingRad: number,
+  pitchRad: number,
+  hOffRad: number,
+  vOffRad: number,
+  range: number
 ): Point3D {
-    const bearing = headingRad + hOffRad;
-    const elevation = pitchRad + vOffRad;
+  const bearing = headingRad + hOffRad;
+  const elevation = pitchRad + vOffRad;
 
-    const groundDist = range * Math.cos(elevation);
-    const altDelta = range * Math.sin(elevation);
+  const groundDist = range * Math.cos(elevation);
+  const altDelta = range * Math.sin(elevation);
 
-    const dest = destinationPoint(latDeg, lonDeg, Math.abs(groundDist), bearing);
+  const dest = destinationPoint(latDeg, lonDeg, Math.abs(groundDist), bearing);
 
-    return {
-        lat: dest.lat,
-        lon: dest.lon,
-        alt: Math.max(0, altM + altDelta),
-    };
+  return {
+    lat: dest.lat,
+    lon: dest.lon,
+    alt: Math.max(0, altM + altDelta)
+  };
 }
 
 /**
@@ -174,27 +170,22 @@ vOffRad: number,
  * distance (m), and bearing (rad).
  */
 function destinationPoint(
-    latDeg: number,
-lonDeg: number,
-    distMetres: number,
-bearingRad: number,
+  latDeg: number,
+  lonDeg: number,
+  distMetres: number,
+  bearingRad: number
 ): { lat: number; lon: number } {
-    const lat1 = latDeg * DEG2RAD;
-    const lon1 = lonDeg * DEG2RAD;
-    const angularDist = distMetres / EARTH_RADIUS;
+  const lat1 = latDeg * DEG2RAD;
+  const lon1 = lonDeg * DEG2RAD;
+  const angularDist = distMetres / EARTH_RADIUS;
 
-    const sinLat1 = Math.sin(lat1);
-    const cosLat1 = Math.cos(lat1);
-    const sinD = Math.sin(angularDist);
-    const cosD = Math.cos(angularDist);
+  const sinLat1 = Math.sin(lat1);
+  const cosLat1 = Math.cos(lat1);
+  const sinD = Math.sin(angularDist);
+  const cosD = Math.cos(angularDist);
 
-    const lat2 = Math.asin(
-        sinLat1 * cosD + cosLat1 * sinD * Math.cos(bearingRad),
-    );
-    const lon2 = lon1 + Math.atan2(
-        Math.sin(bearingRad) * sinD * cosLat1,
-        cosD - sinLat1 * Math.sin(lat2),
-    );
+  const lat2 = Math.asin(sinLat1 * cosD + cosLat1 * sinD * Math.cos(bearingRad));
+  const lon2 = lon1 + Math.atan2(Math.sin(bearingRad) * sinD * cosLat1, cosD - sinLat1 * Math.sin(lat2));
 
-    return { lat: lat2 / DEG2RAD, lon: lon2 / DEG2RAD };
+  return { lat: lat2 / DEG2RAD, lon: lon2 / DEG2RAD };
 }

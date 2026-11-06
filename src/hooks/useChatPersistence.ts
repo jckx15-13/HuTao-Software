@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { CHAT_HISTORY_STORAGE_KEY, type Message } from '../lib/messages';
+import {
+  CHAT_HISTORY_STORAGE_KEY,
+  CURRENT_CHAT_SCHEMA_VERSION,
+  migrateChatHistory,
+  type Message,
+  type VersionedChatHistory,
+} from '../lib/messages';
 
 export function useChatPersistence(messages: Message[], setMessages: (messages: Message[]) => void) {
   const [isHydrated, setIsHydrated] = useState(false);
@@ -14,7 +20,8 @@ export function useChatPersistence(messages: Message[], setMessages: (messages: 
 
           if (savedMessages && active) {
             try {
-              setMessages(JSON.parse(savedMessages));
+              const parsed: unknown = JSON.parse(savedMessages);
+              setMessages(migrateChatHistory(parsed));
             } catch (error) {
               console.error('Failed to load chat history', error);
               try {
@@ -45,7 +52,12 @@ export function useChatPersistence(messages: Message[], setMessages: (messages: 
 
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(messages));
+        const payload: VersionedChatHistory = {
+          version: CURRENT_CHAT_SCHEMA_VERSION,
+          messages,
+          updatedAt: Date.now(),
+        };
+        localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(payload));
       }
     } catch (e) {
       console.warn('Failed to save chat history to localStorage', e);

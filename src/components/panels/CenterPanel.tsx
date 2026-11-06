@@ -1,11 +1,12 @@
 import React, { Suspense, useEffect, useCallback, useRef, useState } from 'react';
-import { MessageSquare, Globe2, ChevronRight } from 'lucide-react';
+import { MessageSquare, Globe2, Telescope, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { ChatPanel } from '../ChatPanel';
 import { TouchControlOverlay } from '../common/TouchControlOverlay';
 import { useChromeTopAnchor } from '../../hooks/useChromeTopAnchor';
 const GoogleEarthRemix = React.lazy(() => import('../learning/GoogleEarthRemix'));
 const WorldWideTelescopeView = React.lazy(() => import('../learning/WorldWideTelescopeView'));
+const WorldTelescopeOverlay = React.lazy(() => import('../observatory/WorldTelescopeOverlay'));
 import { ErrorBoundary } from '../ErrorBoundary';
 
 function SidebarTrigger() {
@@ -38,23 +39,26 @@ export function CenterPanel() {
   const modeSwitcherRef = useRef<HTMLDivElement>(null);
   useChromeTopAnchor(modeSwitcherRef);
 
-  // Sliding indicator geometry. The shell used to be a two-column grid so both
-  // tabs shared one fixed 50/50 split — "SPACE" (5 letters) forced "CHAT" (4)
-  // into an equally-wide box it didn't need, padding it with dead space. The
-  // shell is now an unconstrained flex row so each tab hugs its own label, and
-  // this measures the *actual* active tab's box each time so the indicator can
-  // hug it too instead of assuming a fixed half-width.
+  // Measure the active tab directly so the indicator follows each label's
+  // natural width, including the longer Telescope mode.
   const modeShellRef = useRef<HTMLDivElement>(null);
   const chatTabRef = useRef<HTMLButtonElement>(null);
   const spaceTabRef = useRef<HTMLButtonElement>(null);
+  const telescopeTabRef = useRef<HTMLButtonElement>(null);
+  const isTelescopeMode = interactionMode === 'telescope' || spaceInteractionTarget === 'telescope';
   const [indicatorRect, setIndicatorRect] = useState({ left: 4, width: 0 });
+
 
   useEffect(() => {
     const shellEl = modeShellRef.current;
     if (!shellEl) return;
 
     const measure = () => {
-      const activeEl = interactionMode === 'chat' ? chatTabRef.current : spaceTabRef.current;
+      const activeEl = interactionMode === 'chat'
+        ? chatTabRef.current
+        : isTelescopeMode
+          ? telescopeTabRef.current
+          : spaceTabRef.current;
       if (!activeEl) return;
       const shellBox = shellEl.getBoundingClientRect();
       const activeBox = activeEl.getBoundingClientRect();
@@ -65,7 +69,7 @@ export function CenterPanel() {
     const observer = new ResizeObserver(measure);
     observer.observe(shellEl);
     return () => observer.disconnect();
-  }, [interactionMode, modeSwitcherOpen]);
+  }, [interactionMode, isTelescopeMode, modeSwitcherOpen]);
 
   // Track WWT error state for change log reporting
   const handleTelescopeError = useCallback((error: Error) => {
@@ -89,7 +93,7 @@ export function CenterPanel() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [interactionMode, modeSwitcherOpen, spaceInteractionTarget, setInteractionMode, setSpaceInteractionTarget]);
+  }, [interactionMode, modeSwitcherOpen, spaceInteractionTarget, setInteractionMode, setSpaceInteractionTarget, setModeSwitcherOpen]);
 
   useEffect(() => {
     const handleModeCommand = (event: KeyboardEvent) => {
@@ -100,7 +104,7 @@ export function CenterPanel() {
     };
     window.addEventListener('keydown', handleModeCommand);
     return () => window.removeEventListener('keydown', handleModeCommand);
-  }, []);
+  }, [setModeSwitcherOpen]);
 
   const isSpaceMode = interactionMode === 'orbital' || interactionMode === 'telescope';
 
@@ -129,8 +133,10 @@ export function CenterPanel() {
           <div className="mode-switcher-panel">
             <div
               ref={modeShellRef}
-              className="mode-switcher-shell glass-panel inline-flex rounded-full border border-white/10 p-1 shadow-lg"
-              data-active-mode={interactionMode === 'chat' ? 'chat' : 'space'}
+              className="mode-switcher-shell glass-panel inline-flex max-w-[calc(100vw-1rem)] rounded-full border border-white/10 p-1.5 shadow-lg"
+              role="group"
+              aria-label="Workspace mode"
+              data-active-mode={interactionMode === 'chat' ? 'chat' : isTelescopeMode ? 'telescope' : 'space'}
             >
               <span
                 className="mode-switcher-indicator"
@@ -140,7 +146,7 @@ export function CenterPanel() {
               <button
                 ref={chatTabRef}
                 type="button"
-                onClick={() => setInteractionMode('chat')}
+                onClick={() => { setInteractionMode('chat'); setSpaceInteractionTarget('earth'); }}
                 aria-pressed={interactionMode === 'chat'}
                 className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${interactionMode === 'chat' ? 'mode-tab-active text-white' : 'text-white/40 hover:text-white/80'}`}
               >
@@ -159,6 +165,19 @@ export function CenterPanel() {
               >
                 <Globe2 className="h-3 w-3" />
                 <span>Space</span>
+              </button>
+              <button
+                ref={telescopeTabRef}
+                type="button"
+                onClick={() => {
+                  setInteractionMode('telescope');
+                  setSpaceInteractionTarget('telescope');
+                }}
+                aria-pressed={isTelescopeMode}
+                className={`mode-tab flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${isTelescopeMode ? 'mode-tab-active text-white' : 'text-white/40 hover:text-white/80'}`}
+              >
+                <Telescope className="h-3 w-3" />
+                <span>Telescope</span>
               </button>
             </div>
           </div>
@@ -204,14 +223,14 @@ export function CenterPanel() {
             <div className="absolute inset-0 pointer-events-none z-chrome">
               <ErrorBoundary variant="inline" fallbackMessage="Telescope Controls Error" onError={handleTelescopeError}>
                 <Suspense fallback={null}>
-                  <WorldWideTelescopeView controlsOnly />
+                  {isTelescopeMode ? <WorldTelescopeOverlay /> : <WorldWideTelescopeView controlsOnly />}
                 </Suspense>
               </ErrorBoundary>
             </div>
           )}
 
           {/* GoogleEarthRemix overlay — pointer-events-none so globe underneath gets drags */}
-          {isSpaceMode && (
+          {isSpaceMode && !isTelescopeMode && (
             <div className="absolute inset-0 pointer-events-none z-content">
               <Suspense fallback={null}>
                 <GoogleEarthRemix />

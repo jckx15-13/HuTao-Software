@@ -1,4 +1,4 @@
-import { OrbitEngine, OrbitParams } from '../core/satellites/OrbitEngine';
+import { OrbitEngine } from '../core/satellites/OrbitEngine';
 
 /**
  * Simulation Library

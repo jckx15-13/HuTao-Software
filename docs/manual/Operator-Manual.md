@@ -1,4 +1,6 @@
-# Silver Wolf VI Provisional Capability Audit
+# Silver Wolf VI provisional capability and UX audit
+
+> **Document status:** Evidence snapshot, not an end-user operating manual. This file records provisional capability claims, observed UX risks, and validation gaps. See [`DESIGN.md`](../../DESIGN.md) for the design system and [`README.md`](../../README.md) for setup and usage guidance.
 
 This document is a provisional capability audit for Silver Wolf VI. It records what is supported by source inspection, what was visible in limited fallback checks, what remains unverified, and where current behavior may confuse or harm user trust.
 

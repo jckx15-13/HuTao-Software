@@ -36,15 +36,6 @@ interface ServerStatus {
   odysseus_health: string;
 }
 
-interface ModelEndpoint {
-  id: string;
-  name: string;
-  provider: string;
-  models: string[];
-  base_url?: string;
-  active?: boolean;
-}
-
 interface OdysseusTask {
   id: string;
   name: string;

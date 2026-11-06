@@ -63,9 +63,7 @@ export function RightPanel() {
   const setShowRoads = useUIStore((s) => s.setShowRoads);
   const setRightPanelTab = useUIStore((s) => s.setRightPanelTab);
 
-  const interactionMode = useUIStore((s) => s.interactionMode);
   const activeLocation = useUIStore((s) => s.activeLocation);
-  const setActiveLocation = useUIStore((s) => s.setActiveLocation);
 
   const issFeedOpen = useUIStore((s) => s.issFeedOpen);
   const setIssFeedOpen = useUIStore((s) => s.setIssFeedOpen);
@@ -76,7 +74,6 @@ export function RightPanel() {
   const changeLogs = useUIStore((s) => s.changeLogs);
 
   const activeSatelliteId = useUIStore((s) => s.activeSatelliteId);
-  const setActiveSatelliteId = useUIStore((s) => s.setActiveSatelliteId);
 
   // Core Zustand state
   const selectedEntity = useStore((s) => s.selectedEntity);
@@ -155,7 +152,8 @@ export function RightPanel() {
     if (historyIndex > 0) {
       const prevIndex = historyIndex - 1;
       setHistoryIndex(prevIndex);
-      setBrowserUrl(history[prevIndex]);
+      // Safe: historyIndex > 0 guarantees prevIndex is a valid existing index.
+      setBrowserUrl(history[prevIndex]!);
     }
   };
 
@@ -190,8 +188,6 @@ export function RightPanel() {
   }, [rightPanelTab, rightPanelOpen, hasOverflow, revealChild]);
 
   if (!rightPanelOpen) return null;
-
-  const isSpatialMode = interactionMode === 'orbital' || interactionMode === 'telescope';
 
   // When the engine drops this panel's rail to protect the centre stage, the
   // panel no longer has reserved space — it is hanging over the workspace. Show

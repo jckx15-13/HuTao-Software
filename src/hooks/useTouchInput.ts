@@ -81,7 +81,8 @@ export function useTouchInput(options: TouchInputOptions = {}) {
       }));
 
       if (touches.length === 1) {
-        const touch = touches[0];
+        // Safe: touches.length === 1 guarantees index 0 exists.
+        const touch = touches[0]!;
         const screenWidth = window.innerWidth;
         let edge: 'left' | 'right' | null = null;
 
@@ -114,8 +115,9 @@ export function useTouchInput(options: TouchInputOptions = {}) {
           lastTapRef.current = { x: touch.clientX, y: touch.clientY, time: now };
         }
       } else if (touches.length === 2) {
-        const dx = touches[0].clientX - touches[1].clientX;
-        const dy = touches[0].clientY - touches[1].clientY;
+        // Safe: touches.length === 2 guarantees index 0 and 1 exist.
+        const dx = touches[0]!.clientX - touches[1]!.clientX;
+        const dy = touches[0]!.clientY - touches[1]!.clientY;
         initialPinchDistRef.current = Math.hypot(dx, dy);
       }
     };
@@ -125,8 +127,9 @@ export function useTouchInput(options: TouchInputOptions = {}) {
       const touches = touchEvent.touches;
 
       if (touches.length === 2 && initialPinchDistRef.current) {
-        const dx = touches[0].clientX - touches[1].clientX;
-        const dy = touches[0].clientY - touches[1].clientY;
+        // Safe: touches.length === 2 guarantees index 0 and 1 exist.
+        const dx = touches[0]!.clientX - touches[1]!.clientX;
+        const dy = touches[0]!.clientY - touches[1]!.clientY;
         const newDist = Math.hypot(dx, dy);
         const scale = newDist / initialPinchDistRef.current;
         const delta = scale - currentPinchScaleRef.current;
@@ -147,7 +150,8 @@ export function useTouchInput(options: TouchInputOptions = {}) {
       }));
 
       if (touchStartPosRef.current && touchEvent.changedTouches.length > 0) {
-        const touch = touchEvent.changedTouches[0];
+        // Safe: changedTouches.length > 0 guarantees index 0 exists.
+        const touch = touchEvent.changedTouches[0]!;
         const dx = touch.clientX - touchStartPosRef.current.x;
         const dy = touch.clientY - touchStartPosRef.current.y;
         const absX = Math.abs(dx);

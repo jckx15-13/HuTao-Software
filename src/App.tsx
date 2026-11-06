@@ -6,6 +6,7 @@ import { useDiagnosticsStore } from './store/diagnosticsStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useThemeVariables } from './hooks/useThemeVariables';
 import { useUIStore } from './store/uiStore';
+import { isFallbackRuntime } from './lib/runtimeMode';
 
 const DockedLayout = React.lazy(() =>
   import('./components/layout/DockedLayout').then((m) => ({ default: m.DockedLayout }))
@@ -52,9 +53,7 @@ export default function App() {
   const cosmosBackgroundMode = useUIStore((state) => state.cosmosBackgroundMode);
   const spaceInteractionTarget = useUIStore((state) => state.spaceInteractionTarget);
 
-  const isHeadless =
-    typeof window !== 'undefined' &&
-    (/HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback'));
+  const isFallbackMode = isFallbackRuntime();
 
   const isLowPerformance =
     typeof window !== 'undefined' &&
@@ -79,10 +78,10 @@ export default function App() {
   const isEarthTarget = spaceInteractionTarget === 'earth' && interactionMode !== 'telescope';
 
   React.useEffect(() => {
-    if (isHeadless || showHarness || showDiagnostics) {
+    if (isFallbackMode || showHarness || showDiagnostics) {
       setCurrentPage('workspace');
     }
-  }, [isHeadless, showHarness, showDiagnostics, setCurrentPage]);
+  }, [isFallbackMode, showHarness, showDiagnostics, setCurrentPage]);
 
   React.useEffect(() => {
     if (launcherDismissed && currentPage === 'launcher') {
@@ -91,9 +90,9 @@ export default function App() {
   }, [currentPage, launcherDismissed, setCurrentPage]);
 
   React.useEffect(() => {
-    document.documentElement.classList.toggle('is-headless', isHeadless);
-    document.body.classList.toggle('is-headless', isHeadless);
-  }, [isHeadless]);
+    document.documentElement.classList.toggle('is-headless', isFallbackMode);
+    document.body.classList.toggle('is-headless', isFallbackMode);
+  }, [isFallbackMode]);
 
   React.useEffect(() => {
     useDiagnosticsStore.getState().add({
@@ -116,7 +115,7 @@ export default function App() {
   const backgroundStyle = customWallpaper
     ? { backgroundImage: `url(${customWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : undefined;
-  const workspaceIsolationProps = currentPage === 'settings' && !isHeadless ? { inert: true, 'aria-hidden': true } : {};
+  const workspaceIsolationProps = currentPage === 'settings' && !isFallbackMode ? { inert: true, 'aria-hidden': true } : {};
   const settingsOverlay =
     currentPage === 'settings' ? (
       <Suspense fallback={null}>
@@ -128,11 +127,11 @@ export default function App() {
 
   return (
     <ConfigProvider>
-      <MotionConfig reducedMotion={isHeadless ? 'always' : 'user'}>
+      <MotionConfig reducedMotion={isFallbackMode ? 'always' : 'user'}>
         <div
           className={`relative flex h-[100dvh] min-h-[100dvh] w-full overflow-hidden bg-base font-sans text-text-main transition-colors duration-500 ${
             isHighLoad ? 'state-high-load' : ''
-          } ${isHeadless ? 'is-headless' : ''}`}
+          } ${isFallbackMode ? 'is-headless' : ''}`}
           style={{ ...appStyle, ...backgroundStyle }}
         >
           {!customWallpaper && (
@@ -154,7 +153,7 @@ export default function App() {
                 }}
               >
                 <Suspense fallback={null}>
-                  <CesiumBackground interactive={isSpaceMode && isEarthTarget} />
+                  <CesiumBackground interactive={isSpaceMode && (isEarthTarget || isTelescopeTarget)} />
                 </Suspense>
               </div>
             </div>
@@ -203,7 +202,7 @@ export default function App() {
                 )}
               </div>
 
-              {isHeadless ? settingsOverlay : <AnimatePresence>{settingsOverlay}</AnimatePresence>}
+              {isFallbackMode ? settingsOverlay : <AnimatePresence>{settingsOverlay}</AnimatePresence>}
             </>
           )}
         </div>

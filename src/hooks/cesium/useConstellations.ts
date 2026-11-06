@@ -5,7 +5,7 @@ import { useStore } from '@/core/state/store';
 import { constellations } from '@/data/constellations';
 import { getGreenwichMeanSiderealDegrees } from '@/lib/earthObserverProjection';
 import { precessEquatorialJ2000ToDate } from '@/lib/coordinateTransforms';
-import { TELESCOPE_PRESETS } from '@/data/telescopePresets';
+import { TELESCOPE_PRESETS, DEFAULT_TELESCOPE_PRESET } from '@/data/telescopePresets';
 import {
   boundaryRingRaDec,
   getConstellationBoundary,
@@ -86,16 +86,16 @@ export function useConstellations(viewer: Cesium.Viewer | null) {
   // Resolve the operator's current target the same way the telescope panel
   // does, so "selected region" means the same thing in both renderers.
   const activePreset = useMemo(
-    () => TELESCOPE_PRESETS.find((preset) => preset.name === telescopeTarget?.name) ?? TELESCOPE_PRESETS[0],
+    () => TELESCOPE_PRESETS.find((preset) => preset.name === telescopeTarget?.name) ?? DEFAULT_TELESCOPE_PRESET,
     [telescopeTarget]
   );
 
   const constellationEntities = useRef<Map<string, ConstellationRenderNodes>>(new Map());
 
-  // Constellations belong to both the orbital view and the native celestial
-  // (telescope) view — they are one scene, so both modes render them.
+  // Keep legacy seeds in the orbital view. Telescope draws the complete online
+  // WWT catalog through WorldTelescopeOverlay in this same Cesium scene.
   const celestialActive =
-    interactionMode === 'orbital' || interactionMode === 'telescope' || spaceInteractionTarget === 'telescope';
+    interactionMode === 'orbital' && spaceInteractionTarget !== 'telescope';
 
   // Create constellation entities once per mode/preset change, then mutate their positions.
   useEffect(() => {

@@ -23,8 +23,13 @@ import {
   Star
 } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
+import { isFallbackRuntime } from '@/lib/runtimeMode';
 import { useStore } from '@/core/state/store';
-import { TELESCOPE_PRESETS as presets, resolveTelescopePresetCoordinates } from '@/data/telescopePresets';
+import {
+  TELESCOPE_PRESETS as presets,
+  DEFAULT_TELESCOPE_PRESET,
+  resolveTelescopePresetCoordinates
+} from '@/data/telescopePresets';
 import { constellations } from '@/data/constellations';
 import TimelineLanes from './TimelineLanes';
 import { pluginManager } from '@/core/plugins/PluginManager';
@@ -181,10 +186,10 @@ export default function WorldWideTelescopeView({
           // leave as string -> invalid
         }
       }
-      if (!tgt || typeof tgt !== 'object' || !tgt.name || !tgt.url) return presets[0];
+      if (!tgt || typeof tgt !== 'object' || !tgt.name || !tgt.url) return DEFAULT_TELESCOPE_PRESET;
       return tgt;
     } catch (e) {
-      return presets[0];
+      return DEFAULT_TELESCOPE_PRESET;
     }
   }, [storeTarget]);
 
@@ -202,8 +207,8 @@ export default function WorldWideTelescopeView({
 
   // Resolve telescopeTarget to data-level TelescopePreset
   const activePreset = useMemo(() => {
-    if (!telescopeTarget || !telescopeTarget.name) return presets[0];
-    return presets.find((p) => p.name === telescopeTarget.name) || presets[0];
+    if (!telescopeTarget || !telescopeTarget.name) return DEFAULT_TELESCOPE_PRESET;
+    return presets.find((p) => p.name === telescopeTarget.name) || DEFAULT_TELESCOPE_PRESET;
   }, [telescopeTarget]);
 
   // Core Zustand state for timeline syncing
@@ -216,7 +221,6 @@ export default function WorldWideTelescopeView({
   const isPlaybackMode = useStore((s) => s.isPlaybackMode);
   const setPlaybackMode = useStore((s) => s.setPlaybackMode);
   const timeRange = useStore((s) => s.timeRange);
-  const setTimeRange = useStore((s) => s.setTimeRange);
 
   // Safe derived values
   const [defaultTime] = useState(() => Date.now());
@@ -321,7 +325,7 @@ export default function WorldWideTelescopeView({
   const getDefaultPos = (size: 'normal' | 'large' | 'minimized' = windowSize) =>
     clampPipPosition(
       pipViewportBounds.width - workspaceInsets.right - windowPixelDimensions[size].width,
-      workspaceInsets.top,
+      Math.max(workspaceInsets.top, clampPx(viewportSize.height * 0.28, 216, 264)),
       size
     );
   const [pos, setPos] = useState(() => getDefaultPos(initialWindowSize));
@@ -412,15 +416,15 @@ export default function WorldWideTelescopeView({
     readSharedWwtRuntimeState()
   );
   const watchdogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isFallbackRuntime = typeof window !== 'undefined' && window.location.search.includes('fallback');
-  const localWwtRuntimeState: WwtRuntimeState = isFallbackRuntime
+  const fallbackRuntime = isFallbackRuntime();
+  const localWwtRuntimeState: WwtRuntimeState = fallbackRuntime
     ? 'Static fallback'
     : iframeError
       ? 'WWT unavailable'
       : iframeLoaded
         ? 'WWT iframe loaded'
         : 'Connecting';
-  const wwtRuntimeState = controlsOnly && !isFallbackRuntime ? sharedWwtRuntimeState : localWwtRuntimeState;
+  const wwtRuntimeState = controlsOnly && !fallbackRuntime ? sharedWwtRuntimeState : localWwtRuntimeState;
   const wwtRuntimeHealthy = wwtRuntimeState === 'WWT iframe loaded';
 
   // Post message to WWT iframe helper — with full error handling
@@ -673,7 +677,7 @@ export default function WorldWideTelescopeView({
   // Connection watchdog for the external WWT client. It can be slow in embedded browsers,
   // so only declare degraded mode after the iframe has had a realistic load window.
   useEffect(() => {
-    if (window.location.search.includes('fallback')) return;
+    if (isFallbackRuntime()) return;
 
     let active = true;
     const iframeMounted = bgOnly || !controlsOnly || telescopeWindowActive;
@@ -791,7 +795,7 @@ export default function WorldWideTelescopeView({
   // Register window callbacks in background mode for communication from controls
   useEffect(() => {
     if (bgOnly && typeof window !== 'undefined') {
-      publishWwtRuntimeState(isFallbackRuntime ? 'Static fallback' : localWwtRuntimeState);
+      publishWwtRuntimeState(fallbackRuntime ? 'Static fallback' : localWwtRuntimeState);
       (window as any).postToWWTBackground = postToWWT;
       (window as any).refreshWwtIframe = () => setRefreshKey((k) => k + 1);
       (window as any).wwtLoadCollection = handleLoadCollection;
@@ -807,9 +811,7 @@ export default function WorldWideTelescopeView({
     };
   }, [bgOnly, refreshKey, telescopeTarget]);
 
-  const isHeadless =
-    typeof window !== 'undefined' &&
-    (/HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback'));
+  const isHeadless = isFallbackRuntime();
   const iframeUrl = isHeadless
     ? 'about:blank'
     : typeof window !== 'undefined'
@@ -955,7 +957,8 @@ export default function WorldWideTelescopeView({
         visibleStarCount: visibleStars.length,
         isActiveRegion:
           activePresetId.includes(normalizedConstellationId) ||
-          activePresetName.includes(normalizedConstellationName.split(' ')[0])
+          // Safe: String.split always returns an array with at least one element.
+          activePresetName.includes(normalizedConstellationName.split(' ')[0]!)
       };
     });
   }, [activePreset, activePresetCoordinates, coordinateDate]);
@@ -1004,7 +1007,7 @@ export default function WorldWideTelescopeView({
   };
 
   const renderIframe = () => {
-    if (isFallbackRuntime) {
+    if (fallbackRuntime) {
       return (
         <div className="absolute inset-0 overflow-hidden bg-[#03070b]">
           <svg

@@ -158,7 +158,7 @@ function buildDeveloperVisionContext(): string {
 
     const hw = store.hardwareSpecs;
     const snap = store.latestVisualSnapshot;
-    const sentry = store.sentryEnabled ? 'Active DSN' : 'Local Telemetry Sandbox';
+  const sentry = store.sentryEnabled ? 'DSN configured; delivery unavailable' : 'Local Telemetry Buffer';
     const codeRabbit = store.codeRabbitAudit ? `Profile: ${store.codeRabbitAudit.profile}` : 'Audit Ready';
 
     const parts: string[] = ['\n--- [DEVELOPER HARDWARE & VISUAL CONTEXT] ---'];

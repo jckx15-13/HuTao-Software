@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BookOpen, Search } from 'lucide-react';
 import { INITIAL_CONCEPTS, Concept } from '../../data/learning';
 import { ConceptCard } from './ConceptCard';
@@ -8,9 +8,10 @@ export function LearningHub() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeConcept, setActiveConcept] = useState<Concept | null>(null);
 
-  const filteredConcepts = INITIAL_CONCEPTS.filter(c => 
-    c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredConcepts = INITIAL_CONCEPTS.filter(
+    (c) =>
+      c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.tags.some((t) => t.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -20,7 +21,7 @@ export function LearningHub() {
           <BookOpen className="w-5 h-5" />
           <h2 className="text-xs uppercase font-black tracking-[0.3em]">LEARNING // HUB</h2>
         </div>
-        
+
         <div className="relative group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted group-focus-within:text-secondary transition-colors" />
           <input
@@ -37,21 +38,11 @@ export function LearningHub() {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scroller">
         {filteredConcepts.map((concept, index) => (
-          <ConceptCard
-            key={concept.id}
-            concept={concept}
-            index={index}
-            onClick={() => setActiveConcept(concept)}
-          />
+          <ConceptCard key={concept.id} concept={concept} index={index} onClick={() => setActiveConcept(concept)} />
         ))}
       </div>
 
-      {activeConcept && (
-        <ConceptOverlay
-          concept={activeConcept}
-          onClose={() => setActiveConcept(null)}
-        />
-      )}
+      {activeConcept && <ConceptOverlay concept={activeConcept} onClose={() => setActiveConcept(null)} />}
     </div>
   );
 }

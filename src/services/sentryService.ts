@@ -11,19 +11,13 @@ export interface SentryEvent {
   message: string;
   stack?: string;
   tags?: Record<string, string>;
-  extra?: Record<string, any>;
-  userHardware?: Record<string, any>;
+  extra?: Record<string, unknown>;
+  userHardware?: Record<string, unknown>;
 }
 
 function getEnvVar(key: string): string {
-  try {
-    if (typeof process !== 'undefined' && process.env && process.env[key]) {
-      return process.env[key] || '';
-    }
-  } catch {
-    /* ignore process env access error */
-  }
-  return '';
+  if (key === 'VITE_SENTRY_DSN') return import.meta.env.VITE_SENTRY_DSN || '';
+  return import.meta.env.MODE || '';
 }
 
 class SentryIntegrationService {
@@ -44,15 +38,14 @@ class SentryIntegrationService {
     return this.dsn;
   }
 
-  public setDSN(newDsn: string) {
+  public setDSN(newDsn: string): void {
     this.dsn = newDsn.trim();
     this.enabled = Boolean(this.dsn);
     if (typeof localStorage !== 'undefined') {
-      if (this.dsn) {
-        localStorage.setItem('sw_sentry_dsn', this.dsn);
-      } else {
-        localStorage.removeItem('sw_sentry_dsn');
-      }
+      try {
+        if (this.dsn) localStorage.setItem('sw_sentry_dsn', this.dsn);
+        else localStorage.removeItem('sw_sentry_dsn');
+      } catch { /* Storage can be unavailable in private or restricted contexts. */ }
     }
   }
 
@@ -66,11 +59,11 @@ class SentryIntegrationService {
       enabled: this.enabled,
       eventsSentCount: this.eventsSentCount,
       lastEventTimestamp: this.lastEvent?.timestamp || null,
-      mode: this.enabled ? 'Sentry Remote Cloud' : 'Local Telemetry Sandbox'
+      mode: 'Local Telemetry Buffer'
     };
   }
 
-  public captureException(error: Error | string, extraContext: Record<string, any> = {}): SentryEvent {
+  public captureException(error: Error | string, extraContext: Record<string, unknown> = {}): SentryEvent {
     const message = typeof error === 'string' ? error : error.message || String(error);
     const stack = typeof error === 'object' && error.stack ? error.stack : undefined;
 
@@ -92,7 +85,7 @@ class SentryIntegrationService {
     return event;
   }
 
-  public captureMessage(message: string, level: SentryEvent['level'] = 'info', extraContext: Record<string, any> = {}): SentryEvent {
+  public captureMessage(message: string, level: SentryEvent['level'] = 'info', extraContext: Record<string, unknown> = {}): SentryEvent {
     const event: SentryEvent = {
       eventId: `sntry-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       timestamp: new Date().toISOString(),
@@ -113,26 +106,8 @@ class SentryIntegrationService {
     this.eventsSentCount++;
     this.lastEvent = event;
 
-    if (this.enabled && this.dsn) {
-      // If a real Sentry DSN is present, we attempt HTTP post to the DSN envelope endpoint or console log
-      try {
-        const dsnMatch = this.dsn.match(/https:\/\/([^@]+)@([^/]+)\/(\d+)/);
-        if (dsnMatch) {
-          const [, publicKey, host, projectId] = dsnMatch;
-          const envelopeUrl = `https://${host}/api/${projectId}/envelope/`;
-          fetch(envelopeUrl, {
-            method: 'POST',
-            mode: 'cors',
-            headers: { 'X-Sentry-Auth': `Sentry sentry_version=7, sentry_key=${publicKey}` },
-            body: JSON.stringify(event)
-          }).catch(() => {
-            /* ignore background sentry network transport failures */
-          });
-        }
-      } catch {
-        /* ignore sentry parsing error */
-      }
-    }
+    // This lightweight client is a local diagnostics buffer, not a Sentry SDK.
+    // Do not claim remote delivery or issue malformed envelope requests.
   }
 }
 

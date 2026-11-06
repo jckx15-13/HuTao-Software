@@ -72,17 +72,17 @@ const INITIAL_STORAGE: JsonStorageStructure = {
       config: { autoParse: true },
       enabled: true,
       installedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
+      updatedAt: new Date().toISOString()
+    }
   ],
   settings: {
     theme: 'silverwolf-dark',
     defaultProjection: 'GLOBE',
-    enableOdysseusBridge: 'true',
+    enableOdysseusBridge: 'true'
   },
   telemetryLogs: [],
   hardwareParameters: {},
-  flowcharts: [],
+  flowcharts: []
 };
 
 /**
@@ -139,7 +139,7 @@ export function addFavorite(fav: Omit<StorageFavorite, 'id' | 'lastSeen' | 'user
     id: `fav-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     tenantId: DEFAULT_TENANT_ID,
     userId: SYSTEM_OPERATOR_ID,
-    lastSeen: new Date().toISOString(),
+    lastSeen: new Date().toISOString()
   };
   const existingIdx = store.favorites.findIndex((f) => f.entityId === fav.entityId);
   if (existingIdx >= 0) {
@@ -169,14 +169,15 @@ export function savePluginConfig(pluginId: string, config: Record<string, unknow
   const idx = store.installedPlugins.findIndex((p) => p.pluginId === pluginId);
   const now = new Date().toISOString();
   if (idx >= 0) {
+    // Safe: guarded by `idx >= 0` (findIndex result checked against the same array).
     store.installedPlugins[idx] = {
-      ...store.installedPlugins[idx],
+      ...store.installedPlugins[idx]!,
       config,
       enabled,
-      updatedAt: now,
+      updatedAt: now
     };
     writeJsonStorage(store);
-    return store.installedPlugins[idx];
+    return store.installedPlugins[idx]!;
   }
   const newPlugin: StoragePlugin = {
     id: `plugin-${Date.now()}`,
@@ -186,7 +187,7 @@ export function savePluginConfig(pluginId: string, config: Record<string, unknow
     config,
     enabled,
     installedAt: now,
-    updatedAt: now,
+    updatedAt: now
   };
   store.installedPlugins.push(newPlugin);
   writeJsonStorage(store);
@@ -201,7 +202,7 @@ export function addTelemetryLog(log: Omit<StorageTelemetryLog, 'id' | 'timestamp
   const newLog: StorageTelemetryLog = {
     ...log,
     id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-    timestamp: new Date().toISOString(),
+    timestamp: new Date().toISOString()
   };
   store.telemetryLogs.unshift(newLog);
   // Cap at 1000 logs in JSON
@@ -243,7 +244,7 @@ export function saveFlowchart(title: string, nodesJson: string, edgesJson: strin
     title,
     nodesJson,
     edgesJson,
-    updatedAt: now,
+    updatedAt: now
   };
   if (idx >= 0) {
     store.flowcharts[idx] = chart;

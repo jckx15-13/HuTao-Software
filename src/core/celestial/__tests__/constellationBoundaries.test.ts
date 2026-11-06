@@ -68,8 +68,9 @@ describe('boundaryRingRaDec', () => {
   it('returns a closed ring', () => {
     const ring = boundaryRingRaDec(orion());
     expect(ring.length).toBeGreaterThan(4);
-    expect(ring[0].raHours).toBeCloseTo(ring[ring.length - 1].raHours, 9);
-    expect(ring[0].decDegrees).toBeCloseTo(ring[ring.length - 1].decDegrees, 9);
+    // Safe: boundaryRingRaDec always returns a non-empty ring (asserted above).
+    expect(ring[0]!.raHours).toBeCloseTo(ring[ring.length - 1]!.raHours, 9);
+    expect(ring[0]!.decDegrees).toBeCloseTo(ring[ring.length - 1]!.decDegrees, 9);
   });
 
   it('densifies the constant-declination edges rather than cutting a chord', () => {

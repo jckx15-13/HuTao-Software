@@ -9,14 +9,7 @@ import { resolveDeviceProfile, type DeviceProfile, type ViewportLike } from '../
  * guarantee, and that is exactly how the pre-engine layout ended up rendering
  * the centre column underneath both sidebars.
  */
-export type SlotName =
-  | 'topBar'
-  | 'leftRail'
-  | 'rightRail'
-  | 'hudTop'
-  | 'hudBottom'
-  | 'centreStage'
-  | 'touchDock';
+export type SlotName = 'topBar' | 'leftRail' | 'rightRail' | 'hudTop' | 'hudBottom' | 'centreStage' | 'touchDock';
 
 export type SlotRect = Readonly<{
   top: number;
@@ -91,12 +84,7 @@ function rectFrom(box: Residual): SlotRect {
  */
 export function rectsIntersect(a: SlotRect, b: SlotRect): boolean {
   if (a.width <= 0 || a.height <= 0 || b.width <= 0 || b.height <= 0) return false;
-  return (
-    a.left < b.left + b.width &&
-    a.left + a.width > b.left &&
-    a.top < b.top + b.height &&
-    a.top + a.height > b.top
-  );
+  return a.left < b.left + b.width && a.left + a.width > b.left && a.top < b.top + b.height && a.top + a.height > b.top;
 }
 
 /**
@@ -112,12 +100,12 @@ export function assertNoIntersection(slots: LayoutResult['slots']): void {
 
   for (let i = 0; i < occupied.length; i += 1) {
     for (let j = i + 1; j < occupied.length; j += 1) {
-      const [nameA, rectA] = occupied[i];
-      const [nameB, rectB] = occupied[j];
+      // Safe: i < occupied.length and j < occupied.length.
+      const [nameA, rectA] = occupied[i]!;
+      const [nameB, rectB] = occupied[j]!;
       if (rectsIntersect(rectA, rectB)) {
         throw new Error(
-          `Layout slots "${nameA}" and "${nameB}" intersect: ` +
-            `${JSON.stringify(rectA)} vs ${JSON.stringify(rectB)}`
+          `Layout slots "${nameA}" and "${nameB}" intersect: ` + `${JSON.stringify(rectA)} vs ${JSON.stringify(rectB)}`
         );
       }
     }
@@ -139,9 +127,7 @@ export function resolveLayout(input: LayoutInput): LayoutResult {
   const { viewport, leftPanelOpen, rightPanelOpen, topBarOpen, timelineOpen } = input;
   const safeArea = input.safeArea ?? NO_SAFE_AREA;
 
-  const profile =
-    input.profile ??
-    resolveDeviceProfile(viewport, { dualPanels: leftPanelOpen && rightPanelOpen });
+  const profile = input.profile ?? resolveDeviceProfile(viewport, { dualPanels: leftPanelOpen && rightPanelOpen });
 
   const hidden: SlotName[] = [];
   const slots: Record<SlotName, SlotRect | null> = {
@@ -244,8 +230,7 @@ export function resolveLayout(input: LayoutInput): LayoutResult {
   const wantsTouchDock = (input.coarsePointer ?? profile.coarsePointer) && stageIsSpatial;
   if (wantsTouchDock) {
     const fits =
-      widthOf(residual) - TOUCH_DOCK_SIZE_PX >= MIN_STAGE_WIDTH_PX &&
-      heightOf(residual) >= TOUCH_DOCK_SIZE_PX;
+      widthOf(residual) - TOUCH_DOCK_SIZE_PX >= MIN_STAGE_WIDTH_PX && heightOf(residual) >= TOUCH_DOCK_SIZE_PX;
 
     if (fits) {
       slots.touchDock = {

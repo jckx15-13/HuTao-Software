@@ -1,6 +1,6 @@
 # Silver Wolf VI — QA & Development Architecture
 
-This document describes the Quality Assurance (QA) and Development Architecture for **Silver Wolf VI**, including Sentry telemetry error reporting, CodeRabbit (Code Bunny) automated AI reviews, and the strict test suite harness.
+This document describes local QA checks and the hosted review/dependency services configured for **Silver Wolf VI**. Local contract checks do not prove that GitHub-hosted services ran successfully.
 
 ---
 
@@ -19,24 +19,24 @@ graph TD
     ST --> CC[CodeRabbit Config Schema Validation]
     ST --> IC[Bridge & Integration Contract Verification]
 
-    App[Application Runtime] --> SE[Sentry QA Error Harness]
-    SE --> SB[Sentry Backend / Telemetry Dashboard]
+    App[Application Runtime] --> SE[Local QA Telemetry Buffer]
+    SE -. optional .-> DIAG[Local Diagnostic Engine]
 ```
 
 ---
 
 ## 2. Sentry QA & Telemetry
 
-Client-side and backend exceptions are captured and instrumented through `sentryQA`:
+The current browser telemetry path is local and does not deliver events to Sentry:
 
 - **Client-Side Telemetry (`src/core/qa/sentryQA.ts`)**:
-  - Automatically captures unhandled exceptions with full stack traces.
+  - Captures unhandled exceptions and stores bounded breadcrumbs locally.
   - Maintains a sliding-window buffer of 50 structured breadcrumbs (UI actions, network updates, state mutations).
-  - Operates in **Mock/Development Mode** when `SENTRY_DSN` is not provided (ensuring 0 test failures during offline or local test runs).
+  - Operates without a DSN; the UI must describe it as a local buffer, not a Sentry connection.
 - **React Error Boundaries (`src/components/common/ErrorBoundary.tsx`)**:
   - React component subtree exceptions are caught gracefully and reported to `sentryQA` with event IDs.
-- **Python FastAPI Bridge (`bridge/server.py`)**:
-  - Instrumented with `sentry-sdk` for FastAPI/Starlette request trace sampling and error logging.
+- **Browser remote delivery**: Not implemented by the browser service. A configured browser DSN is not proof of event delivery; the browser UI describes it as a local buffer.
+- **Python FastAPI Bridge (`bridge/server.py`)**: Uses the official `sentry-sdk[fastapi]` when `SENTRY_DSN` is configured. Without the package or DSN, bridge telemetry stays disabled. Hosted event delivery still needs a live DSN-backed check.
 
 ---
 
@@ -46,16 +46,24 @@ Automated pull-request review policies are defined in `.coderabbit.yaml`:
 
 - **Profile**: Assertive QA.
 - **Request Changes**: Enabled for policy or test contract violations.
-- **Path-Specific Policies**:
+- **Path-Specific Policies** (seven configured paths):
   - `src/core/state/**`: Strict Zustand slice isolation & immutability.
   - `src/core/qa/**`: Zero swallowed exceptions & mock mode safety.
   - `src/components/**`: Error boundary wrapping & design token adherence.
   - `bridge/**`: Local-first model prioritization & token efficiency.
+  - `src/plugins/**`: Plugin cleanup and resilient network handling.
+  - `src/lib/**`: Numerical and input edge cases.
   - `scripts/**`: Strict assertion coverage.
+
+The in-app CodeRabbit panel reports configured policy paths only. It cannot report the hosted CodeRabbit review status for a commit.
+
+## 4. Dependabot
+
+`.github/dependabot.yml` checks npm dependencies weekly, groups patch/minor updates, and keeps major updates separate. The local suite can validate repository configuration but cannot determine whether GitHub currently has Dependabot alerts or blocked update PRs.
 
 ---
 
-## 4. Test Commands
+## 5. Test Commands
 
 Run the test suite using the standard npm scripts:
 

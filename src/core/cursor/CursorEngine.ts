@@ -34,7 +34,6 @@ const DEFAULT_CONFIG: CursorEngineConfig = {
   particleEffects: true
 };
 
-const MAX_DRIFT_PX = 110;
 const DRAG_THRESHOLD_PX = 6;
 const WATCHDOG_MS = 500;
 
@@ -426,14 +425,6 @@ export class CursorEngine implements CursorEngineLifecycle {
     }
 
     const lockedTarget = resolved.lockedTarget;
-    const targetPoint =
-      lockedTarget?.screenPosition ??
-      (lockedTarget?.rect
-        ? {
-            x: lockedTarget.rect.left + lockedTarget.rect.width / 2,
-            y: lockedTarget.rect.top + lockedTarget.rect.height / 2
-          }
-        : null);
 
     const targetLockStrength =
       lockedTarget && policy.lockAssistEnabled && !intent.dragging
@@ -496,7 +487,8 @@ export class CursorEngine implements CursorEngineLifecycle {
 
   private spawnTrail(policy: CursorRuntimePolicy): void {
     const slot = this.trailIndex % this.trailPool.length;
-    const sample = this.trailPool[slot];
+    // Safe: slot = trailIndex % trailPool.length is always < trailPool.length.
+    const sample = this.trailPool[slot]!;
     this.trailIndex += 1;
     sample.x = this.reticleVisual.x;
     sample.y = this.reticleVisual.y;
@@ -566,7 +558,9 @@ export class CursorEngine implements CursorEngineLifecycle {
     ctx.clearRect(0, 0, this.canvas.width / dpr, this.canvas.height / dpr);
 
     for (const index of this.activeTrailSamples) {
-      const sample = this.trailPool[index];
+      // Safe: activeTrailSamples only ever holds indices produced by
+      // `trailIndex % trailPool.length` in spawnTrail, always < trailPool.length.
+      const sample = this.trailPool[index]!;
       if (sample.life <= 0) continue;
       const alpha = clamp(sample.life / Math.max(1, frame.policy.trailBudget), 0, 1);
       ctx.beginPath();

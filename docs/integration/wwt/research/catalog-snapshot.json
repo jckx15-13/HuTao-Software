@@ -1,0 +1,47 @@
+{
+  "default_branch": "main",
+  "pushed_at": "2026-06-15T12:15:19Z",
+  "commit": "2c7d96f14bae041501943b9281f71a84a5310f6e",
+  "commit_date": "2026-06-15T12:15:19Z",
+  "message": "Merge pull request #98 from Carifio24/remove-hirise\n\nRemove HiRISE",
+  "truncated": false,
+  "imagesets/": {
+    "files": 45,
+    "metadata_bytes": 4240746
+  },
+  "places/": {
+    "files": 28,
+    "metadata_bytes": 2552583
+  },
+  "catfiles/": {
+    "files": 21,
+    "metadata_bytes": 229588
+  },
+  "feeds/": {
+    "files": 5,
+    "metadata_bytes": 1416
+  },
+  "imageset_entries": 4169,
+  "unique_nonempty_image_urls": 4168,
+  "types": {
+    "Earth": 9,
+    "Panorama": 79,
+    "Planet": 64,
+    "Sky": 4016,
+    "SolarSystem": 1
+  },
+  "bands": {
+    "Visible": 4035,
+    "VisibleNight": 2,
+    "Gamma": 9,
+    "HydrogenAlpha": 1,
+    "IR": 49,
+    "Microwave": 31,
+    "Radio": 11,
+    "Ultraviolet": 11,
+    "XRay": 20
+  },
+  "xml_metadata_bytes": 4240746,
+  "accessed_date": "2026-10-26",
+  "inventory_scope": "All ImageSet element attributes in the imagesets directory at the pinned core-catalog revision; not image media bytes."
+}

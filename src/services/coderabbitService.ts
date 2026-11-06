@@ -22,64 +22,41 @@ export interface CodeRabbitAuditResult {
   }[];
 }
 
-class CodeRabbitAuditService {
-  private configYamlRaw: string = `
-reviews:
-  profile: chill
-  path_instructions:
-    - path: "bridge/**"
-      instructions: "Local-first architecture, FastAPI performance, security."
-    - path: "src/components/**"
-      instructions: "Tactical minimalist design system, single-responsibility (~300 lines)."
-    - path: "src/core/**"
-      instructions: "Zustand best practices, clean plugin contracts."
-    - path: "src/plugins/**"
-      instructions: "PluginManager registration, error boundaries."
-`;
+const CODERABBIT_PROFILE = 'assertive';
+const CODERABBIT_RULES: CodeRabbitPathRule[] = [
+  { path: 'bridge/**', instructions: 'FastAPI bridge, local-first routing, error reporting, and resource safety.' },
+  { path: 'src/core/qa/**', instructions: 'Sentry QA telemetry, breadcrumb tracking, and mock mode safety.' },
+  { path: 'src/core/state/**', instructions: 'Zustand slice isolation, immutable updates, and selector performance.' },
+  { path: 'src/components/**', instructions: 'Component boundaries, error handling, accessibility, and responsive layout.' },
+  { path: 'src/plugins/**', instructions: 'Plugin registration, resource disposal, timeouts, and fallback handling.' },
+  { path: 'src/lib/**', instructions: 'Numerical correctness and invalid input handling.' },
+  { path: 'scripts/**', instructions: 'Strict assertions and complete verification coverage.' },
+];
 
+class CodeRabbitAuditService {
   public getCodeRabbitConfigSummary() {
     return {
-      profile: 'chill',
+      profile: CODERABBIT_PROFILE,
       autoReply: true,
       highLevelSummary: true,
-      pathInstructionCount: 4,
-      targetPaths: ['bridge/**', 'src/components/**', 'src/core/**', 'src/plugins/**']
+      pathInstructionCount: CODERABBIT_RULES.length,
+      targetPaths: CODERABBIT_RULES.map(({ path }) => path)
     };
   }
 
   public runAudit(): CodeRabbitAuditResult {
-    const checks = [
-      {
-        ruleName: 'Bridge Architecture Compliance',
-        path: 'bridge/**',
-        status: 'pass' as const,
-        message: 'FastAPI bridge adheres to local-first fallback chain and stdlib hardware probing.'
-      },
-      {
-        ruleName: 'Tactical Design System & Component Modularity',
-        path: 'src/components/**',
-        status: 'pass' as const,
-        message: 'Tailwind design system tokens configured in design-tokens.tailwind.json.'
-      },
-      {
-        ruleName: 'Core Zustand State Contracts',
-        path: 'src/core/**',
-        status: 'pass' as const,
-        message: 'State stores use decoupled selectors and minimal subscription patterns.'
-      },
-      {
-        ruleName: 'Plugin Sandbox & Error Boundaries',
-        path: 'src/plugins/**',
-        status: 'pass' as const,
-        message: 'PluginManager registration correctly handles cleanup and boundary recovery.'
-      }
-    ];
+    const checks = CODERABBIT_RULES.map(({ path }) => ({
+      ruleName: 'Configured review instruction',
+      path,
+      status: 'warning' as const,
+      message: 'Configuration present. CodeRabbit’s hosted review result is not available in this local audit.'
+    }));
 
     return {
       timestamp: new Date().toISOString(),
-      configFound: true,
-      profile: 'chill',
-      rulesCount: checks.length,
+      configFound: CODERABBIT_RULES.length > 0,
+      profile: CODERABBIT_PROFILE,
+      rulesCount: CODERABBIT_RULES.length,
       checks
     };
   }

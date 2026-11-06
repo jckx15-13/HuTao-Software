@@ -34,11 +34,21 @@ type RepositoryRealityItem = {
   missing_files: string[];
 };
 
+type IntegrationProgress = {
+  id: string;
+  label: string;
+  percent: number;
+  completed_checks: number;
+  total_checks: number;
+  checks: Array<{ label: string; status: 'evidenced' | 'incomplete'; evidence: string }>;
+};
+
 type FeatureRealityLedger = {
   status: string;
   integration_score: number;
   generated_at: string;
   repositories: RepositoryRealityItem[];
+  integrations: IntegrationProgress[];
   features: FeatureRealityItem[];
   runtime_report_status: string;
   partial_reasons: string[];
@@ -235,16 +245,16 @@ export function DeveloperSettings() {
             <div className="space-y-1">
               <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-white/75">
                 <Activity size={14} className="text-primary" />
-                Runtime evidence, not marketing copy
+                Integration evidence
               </span>
               <p className="max-w-2xl font-mono text-[8px] leading-relaxed text-white/35">
-                This ledger reports verified, source-backed, partial, unconfigured, and missing surfaces from the Bridge
-                runtime. It is intentionally not scored as 100 while external credentials or live provider checks are
-                missing.
+                Progress bars show the share of defined evidence checks currently satisfied. They measure checked
+                integration evidence, not overall product completeness; external credentials and live feed checks may
+                remain unavailable.
               </p>
             </div>
             <div className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-mono text-[9px] uppercase tracking-wider text-primary">
-              {featureLedger ? `${featureLedger.integration_score}/100` : featureLedgerStatus}
+              {featureLedger ? `${featureLedger.integrations.length} integrations tracked` : featureLedgerStatus}
             </div>
           </div>
 
@@ -269,6 +279,38 @@ export function DeveloperSettings() {
 
           {featureLedger && (
             <>
+              <div className="grid gap-3 md:grid-cols-3">
+                {featureLedger.integrations.map((integration) => (
+                  <div key={integration.id} className="min-w-0 rounded-xl border border-white/10 bg-black/20 p-3">
+                    <div className="flex items-center justify-between gap-2 font-mono text-[9px] uppercase tracking-wider">
+                      <span className="truncate font-bold text-white/75">{integration.label}</span>
+                      <span className="shrink-0 text-primary">{integration.percent}%</span>
+                    </div>
+                    <div
+                      className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"
+                      role="progressbar"
+                      aria-label={`${integration.label} evidence coverage`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={integration.percent}
+                    >
+                      <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${integration.percent}%` }} />
+                    </div>
+                    <div className="mt-1.5 font-mono text-[8px] text-white/40">
+                      {integration.completed_checks}/{integration.total_checks} evidence checks
+                    </div>
+                    <ul className="mt-2 space-y-1 font-mono text-[8px] leading-relaxed">
+                      {integration.checks.map((check) => (
+                        <li key={check.label} className={check.status === 'evidenced' ? 'text-emerald-200/70' : 'text-amber-100/70'}>
+                          <span aria-hidden="true">{check.status === 'evidenced' ? '✓ ' : '○ '}</span>
+                          {check.label}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+
               <div className="grid gap-2 md:grid-cols-3">
                 {featureLedger.repositories.map((repo) => (
                   <div

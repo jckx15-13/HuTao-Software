@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import * as Cesium from 'cesium';
 import { useConfig } from '../../context/ConfigContext';
 import { useUIStore } from '../../store/uiStore';
+import { isFallbackRuntime } from '@/lib/runtimeMode';
+import { registerCesiumViewer, unregisterCesiumViewer } from '@/lib/cesiumViewerRegistry';
 
 const isLowEndHardware = () => {
   if (typeof navigator === 'undefined') return false;
@@ -36,6 +38,8 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { config, isLoading: configLoading } = useConfig();
+  const configAvailable = Boolean(config);
+  const cesiumIonAccessToken = config?.CESIUM_ION_ACCESS_TOKEN;
 
   // Bumping this rebuilds the viewer from scratch. A lost WebGL context cannot
   // be revived in place: Cesium halts its render loop permanently on the first
@@ -48,7 +52,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
   const [webglError] = useState<string | null>(() => {
     try {
       if (typeof window === 'undefined') return null;
-      if (/HeadlessChrome/i.test(navigator.userAgent) || window.location.search.includes('fallback')) {
+      if (isFallbackRuntime()) {
         return 'WebGL disabled in headless browser environment';
       }
       const canvas = document.createElement('canvas');
@@ -63,7 +67,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
 
   useEffect(() => {
     if (webglError) return;
-    if (!containerRef.current || configLoading || !config) return;
+    if (!containerRef.current || configLoading || !configAvailable) return;
 
     let activeViewer: Cesium.Viewer | null = null;
     let active = true;
@@ -75,8 +79,8 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     let handleContextRestored: (() => void) | null = null;
     let renderErrorHandler: (() => void) | null = null;
 
-    if (config.CESIUM_ION_ACCESS_TOKEN) {
-      Cesium.Ion.defaultAccessToken = config.CESIUM_ION_ACCESS_TOKEN;
+    if (cesiumIonAccessToken) {
+      Cesium.Ion.defaultAccessToken = cesiumIonAccessToken;
     }
 
     try {
@@ -122,6 +126,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
         baseLayer: false
       });
 
+      registerCesiumViewer(activeViewer);
       (window as any).cesiumViewer = activeViewer;
     } catch (err: any) {
       if (!active) return;
@@ -270,10 +275,10 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
       }
     }
 
-    // Start at a global-Earth distance so imagery and orbital tracks are
-    // visible on launch instead of occupying a few pixels against the sky.
+    // Start close enough for the globe to fill the stage while keeping orbital
+    // tracks in view; the previous 20,000 km height left Earth too small.
     viewerInstance.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(0, 20, 20_000_000),
+      destination: Cesium.Cartesian3.fromDegrees(0, 20, 12_000_000),
       orientation: {
         heading: 0,
         pitch: Cesium.Math.toRadians(-90),
@@ -326,11 +331,17 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
           // either way, so drop the reference and let the rebuild proceed.
         }
       }
-      (window as any).cesiumViewer = null;
-      setViewer(null);
-      setIsLoaded(false);
+      unregisterCesiumViewer(viewerInstance);
+      // A stale effect cleanup must not erase a newer viewer published by the
+      // replacement effect. React can recreate this viewer when configuration
+      // or the WebGL context changes.
+      if ((window as any).cesiumViewer === viewerInstance) {
+        (window as any).cesiumViewer = null;
+        setViewer(null);
+        setIsLoaded(false);
+      }
     };
-  }, [containerRef, config, configLoading, webglError, contextGeneration]);
+  }, [containerRef, configAvailable, cesiumIonAccessToken, configLoading, webglError, contextGeneration]);
 
   const status: CesiumViewerStatus = webglError
     ? 'error'

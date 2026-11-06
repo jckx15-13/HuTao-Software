@@ -1,10 +1,10 @@
 import React from 'react';
 import { pluginManager } from '@/core/plugins/PluginManager';
-import { Settings, Puzzle, AlertCircle } from 'lucide-react';
+import { Puzzle, AlertCircle } from 'lucide-react';
 
 export default function PluginSettingsList() {
   const plugins = pluginManager.getAllPlugins();
-  const pluginsWithSettings = plugins.filter(p => p.plugin.getSettingsComponent);
+  const pluginsWithSettings = plugins.filter((p) => p.plugin.getSettingsComponent);
 
   if (pluginsWithSettings.length === 0) {
     return (
@@ -19,12 +19,15 @@ export default function PluginSettingsList() {
     <div className="space-y-6">
       {pluginsWithSettings.map(({ plugin, enabled }) => {
         const SettingsComponent = plugin.getSettingsComponent!();
-        const IconComponent = typeof plugin.icon !== 'string' ? plugin.icon as React.ComponentType<any> : null;
-        
+        const IconComponent = typeof plugin.icon !== 'string' ? (plugin.icon as React.ComponentType<any>) : null;
+
         return (
-          <div key={plugin.id} className={`p-4 rounded-xl border transition-all ${
-            enabled ? 'border-primary/20 bg-primary/5' : 'border-white/5 bg-black/20 opacity-60'
-          }`}>
+          <div
+            key={plugin.id}
+            className={`p-4 rounded-xl border transition-all ${
+              enabled ? 'border-primary/20 bg-primary/5' : 'border-white/5 bg-black/20 opacity-60'
+            }`}
+          >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-white/5">
@@ -36,7 +39,9 @@ export default function PluginSettingsList() {
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-white/90">{plugin.name}</h4>
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider">{plugin.id} v{plugin.version}</p>
+                  <p className="text-[10px] text-white/40 uppercase tracking-wider">
+                    {plugin.id} v{plugin.version}
+                  </p>
                 </div>
               </div>
               {!enabled && (
@@ -46,7 +51,7 @@ export default function PluginSettingsList() {
                 </div>
               )}
             </div>
-            
+
             <div className="pl-12">
               <SettingsComponent pluginId={plugin.id} />
             </div>

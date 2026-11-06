@@ -8,6 +8,8 @@ import { useDiagnosticsStore } from './store/diagnosticsStore';
 const WWVInitializer = lazy(() =>
   import('./core/WWVInitializer').then((m) => ({ default: m.WWVInitializer }))
 );
+const Observatory = lazy(() => import('./components/observatory/Observatory'));
+const observatoryPrototype = new URLSearchParams(window.location.search).get('view') === 'observatory';
 
 function BootFallback() {
   return (
@@ -31,9 +33,9 @@ if (typeof window !== 'undefined') {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Suspense fallback={<BootFallback />}>
-      <WWVInitializer>
+      {observatoryPrototype ? <Observatory /> : <WWVInitializer>
         <App />
-      </WWVInitializer>
+      </WWVInitializer>}
     </Suspense>
   </StrictMode>,
 );

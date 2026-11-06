@@ -5,6 +5,8 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 
+process.env.NEXT_PUBLIC_WWV_EDITION = 'demo';
+
 // Mock browser DOM environment for Zustand state slice testing in Node environment
 const storage = new Map();
 const documentAttributes = new Map();

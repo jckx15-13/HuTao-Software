@@ -1,7 +1,5 @@
-import fs from "fs";
-import path from "path";
-
-
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Vite plugin that auto-generates a WorldPlugin class for static plugins.
@@ -13,99 +11,93 @@ import path from "path";
  * - Renders with the manifest's rendering config
  */
 export function wwvStaticCompiler(): any {
-    let pluginRoot = "";
-    let manifest: any = null;
-    let generatedEntry = "";
+  let pluginRoot = '';
+  let manifest: any = null;
+  let generatedEntry = '';
 
-    return {
-        name: "wwv-static-compiler",
-        enforce: "pre" as const,
+  return {
+    name: 'wwv-static-compiler',
+    enforce: 'pre' as const,
 
-        config(userConfig: any) {
-            pluginRoot = userConfig.root || process.cwd();
-            const pkgPath = path.join(pluginRoot, "package.json");
-            if (!fs.existsSync(pkgPath)) return;
+    config(userConfig: any) {
+      pluginRoot = userConfig.root || process.cwd();
+      const pkgPath = path.join(pluginRoot, 'package.json');
+      if (!fs.existsSync(pkgPath)) return;
 
-            const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-            manifest = pkg.worldwideview || null;
-            if (!manifest) return;
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+      manifest = pkg.worldwideview || null;
+      if (!manifest) return;
 
-            manifest._packageName = pkg.name;
-            manifest._packageVersion = pkg.version;
-            manifest._description = pkg.description || "";
+      manifest._packageName = pkg.name;
+      manifest._packageVersion = pkg.version;
+      manifest._description = pkg.description || '';
 
-            const srcIndex = path.join(pluginRoot, "src", "index.ts");
-            if (fs.existsSync(srcIndex)) return; // real source exists
+      const srcIndex = path.join(pluginRoot, 'src', 'index.ts');
+      if (fs.existsSync(srcIndex)) return; // real source exists
 
-            // Write a generated entry file
-            const srcDir = path.join(pluginRoot, "src");
-            if (!fs.existsSync(srcDir)) fs.mkdirSync(srcDir, { recursive: true });
+      // Write a generated entry file
+      const srcDir = path.join(pluginRoot, 'src');
+      if (!fs.existsSync(srcDir)) fs.mkdirSync(srcDir, { recursive: true });
 
-            generatedEntry = path.join(srcDir, "__generated_entry.js");
-            const source = generateStaticPluginSource(manifest);
-            fs.writeFileSync(generatedEntry, source, "utf-8");
+      generatedEntry = path.join(srcDir, '__generated_entry.js');
+      const source = generateStaticPluginSource(manifest);
+      fs.writeFileSync(generatedEntry, source, 'utf-8');
 
-            // Redirect lib entry to the generated file
-            if (userConfig.build?.lib) {
-                userConfig.build.lib.entry = generatedEntry;
-            }
-        },
+      // Redirect lib entry to the generated file
+      if (userConfig.build?.lib) {
+        userConfig.build.lib.entry = generatedEntry;
+      }
+    },
 
-        buildEnd() {
-            // Clean up the generated file, but ONLY if we are not in watch mode
-            const isWatchMode = process.argv.includes("--watch") || process.argv.includes("-w");
-            if (!isWatchMode && generatedEntry && fs.existsSync(generatedEntry)) {
-                fs.unlinkSync(generatedEntry);
-                generatedEntry = "";
-            }
-        },
+    buildEnd() {
+      // Clean up the generated file, but ONLY if we are not in watch mode
+      const isWatchMode = process.argv.includes('--watch') || process.argv.includes('-w');
+      if (!isWatchMode && generatedEntry && fs.existsSync(generatedEntry)) {
+        fs.unlinkSync(generatedEntry);
+        generatedEntry = '';
+      }
+    },
 
-        closeBundle() {
-            // Also clean up on close (redundant safety)
-            const isWatchMode = process.argv.includes("--watch") || process.argv.includes("-w");
-            if (!isWatchMode && generatedEntry && fs.existsSync(generatedEntry)) {
-                fs.unlinkSync(generatedEntry);
-                generatedEntry = "";
-            }
-        },
-    };
+    closeBundle() {
+      // Also clean up on close (redundant safety)
+      const isWatchMode = process.argv.includes('--watch') || process.argv.includes('-w');
+      if (!isWatchMode && generatedEntry && fs.existsSync(generatedEntry)) {
+        fs.unlinkSync(generatedEntry);
+        generatedEntry = '';
+      }
+    }
+  };
 }
 
 function generateStaticPluginSource(manifest: any): string {
-    const pluginId = manifest.id;
-    const pluginName = manifest.name || pluginId;
-    const description = manifest._description || "";
-    const category = manifest.category || "custom";
-    const icon = manifest.icon || "MapPin";
-    const version = manifest._packageVersion || "1.0.0";
-    const packageName = manifest._packageName;
+  const pluginId = manifest.id;
+  const pluginName = manifest.name || pluginId;
+  const description = manifest._description || '';
+  const category = manifest.category || 'custom';
+  const icon = manifest.icon || 'MapPin';
+  const version = manifest._packageVersion || '1.0.0';
 
-    const color =
-        manifest.rendering?.defaultColor ||
-        manifest.rendering?.color ||
-        "#3b82f6";
-    const entityType = manifest.rendering?.entityType || "point";
-    const clusterEnabled = manifest.rendering?.clusterEnabled ?? true;
-    const clusterDistance = manifest.rendering?.clusterDistance ?? 50;
-    const maxEntities = manifest.rendering?.maxEntities ?? 5000;
-    const labelField = manifest.rendering?.labelField || "name";
+  const color = manifest.rendering?.defaultColor || manifest.rendering?.color || '#3b82f6';
+  const entityType = manifest.rendering?.entityType || 'point';
+  const clusterEnabled = manifest.rendering?.clusterEnabled ?? true;
+  const clusterDistance = manifest.rendering?.clusterDistance ?? 50;
+  const maxEntities = manifest.rendering?.maxEntities ?? 5000;
+  const labelField = manifest.rendering?.labelField || 'name';
 
-    const dataFileName = manifest.dataFile
-        ? path.basename(manifest.dataFile)
-        : "data.json";
+  const dataFileName = manifest.dataFile ? path.basename(manifest.dataFile) : 'data.json';
 
-    const renderBlock =
-        entityType === "billboard"
-            ? `
+  const renderBlock =
+    entityType === 'billboard'
+      ? `
         const cacheKey = "default";
         if (!this._iconUrls[cacheKey]) {
             this._iconUrls[cacheKey] = createSvgIconUrl(${icon}, { color: ${JSON.stringify(color)} });
         }
         return { type: "billboard", iconUrl: this._iconUrls[cacheKey], color: ${JSON.stringify(color)}, iconScale: 0.5 };`
-            : `
+      : `
         return { type: "point", color: ${JSON.stringify(color)}, size: 6 };`;
 
-    return `
+  return `
 import { ${icon} } from "lucide-react";
 import { createSvgIconUrl } from "@worldwideview/wwv-plugin-sdk";
 import dataRaw from "../data/${dataFileName}?raw";

@@ -1,7 +1,7 @@
 import type {
   ParticleWorkerFrameMessage,
   ParticleWorkerMessage,
-  ParticleWorkerResponse,
+  ParticleWorkerResponse
 } from '../types/particleWorker';
 
 const workerScope = self as unknown as Worker;
@@ -47,16 +47,18 @@ function step(deltaMs: number) {
   const dtFactor = Math.max(MIN_DT, Math.min(MAX_DT, deltaMs / BASE_FRAME_MS));
   const count = state.radius.length;
 
+  // Safe: xIdx/yIdx = i*2 / i*2+1 with i < count = radius.length, and
+  // positions/velocity are allocated with length count*2 in createState.
   for (let i = 0; i < count; i += 1) {
     const xIdx = i * 2;
     const yIdx = xIdx + 1;
-    state.positions[xIdx] += state.velocity[xIdx] * dtFactor;
-    state.positions[yIdx] += state.velocity[yIdx] * dtFactor;
+    state.positions[xIdx] = state.positions[xIdx]! + state.velocity[xIdx]! * dtFactor;
+    state.positions[yIdx] = state.positions[yIdx]! + state.velocity[yIdx]! * dtFactor;
 
-    if (state.positions[xIdx] < 0) state.positions[xIdx] = state.width;
-    if (state.positions[xIdx] > state.width) state.positions[xIdx] = 0;
-    if (state.positions[yIdx] < 0) state.positions[yIdx] = state.height;
-    if (state.positions[yIdx] > state.height) state.positions[yIdx] = 0;
+    if (state.positions[xIdx]! < 0) state.positions[xIdx] = state.width;
+    if (state.positions[xIdx]! > state.width) state.positions[xIdx] = 0;
+    if (state.positions[yIdx]! < 0) state.positions[yIdx] = state.height;
+    if (state.positions[yIdx]! > state.height) state.positions[yIdx] = 0;
   }
 }
 
@@ -65,13 +67,15 @@ function toFrameBuffer() {
 
   const count = state.radius.length;
   const frame = new Float32Array(count * 4);
+  // Safe: srcIdx/dstIdx stay within positions (length count*2), radius/alpha
+  // (length count) and frame (length count*4) because i < count.
   for (let i = 0; i < count; i += 1) {
     const srcIdx = i * 2;
     const dstIdx = i * 4;
-    frame[dstIdx] = state.positions[srcIdx];
-    frame[dstIdx + 1] = state.positions[srcIdx + 1];
-    frame[dstIdx + 2] = state.radius[i];
-    frame[dstIdx + 3] = state.alpha[i];
+    frame[dstIdx] = state.positions[srcIdx]!;
+    frame[dstIdx + 1] = state.positions[srcIdx + 1]!;
+    frame[dstIdx + 2] = state.radius[i]!;
+    frame[dstIdx + 3] = state.alpha[i]!;
   }
 
   return frame.buffer;

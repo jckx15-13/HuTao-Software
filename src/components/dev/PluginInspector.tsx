@@ -22,7 +22,6 @@ export default function PluginInspector() {
     layerToggled: () => setPlugins(pluginManager.getAllPlugins())
   });
 
-  const selectedPlugin = plugins.find((p) => p.plugin.id === selectedPluginId);
   const entities = selectedPluginId ? pluginManager.getEntities(selectedPluginId) : [];
 
   return (

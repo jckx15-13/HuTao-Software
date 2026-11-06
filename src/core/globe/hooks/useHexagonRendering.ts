@@ -100,13 +100,22 @@ export function useHexagonRendering(
 
         viewer.scene.requestRender();
 
+        // Do not remove/recreate every cylinder when live plugin data refreshes.
+        // These Cesium entities are keyed by stable source ids and are updated
+        // above; tearing them down in each effect cleanup makes prisms blink on
+        // every feed update. Remove them only when this viewer is replaced.
+        return undefined;
+    }, [viewer, isReady, hexagonEntities]);
+
+    useEffect(() => {
+        const activeHexagons = activeHexagonsRef.current;
         return () => {
-            if (!viewer.isDestroyed()) {
+            if (viewer && !viewer.isDestroyed()) {
                 for (const entity of activeHexagons.values()) {
                     viewer.entities.remove(entity);
                 }
             }
             activeHexagons.clear();
         };
-    }, [viewer, isReady, hexagonEntities]);
+    }, [viewer]);
 }

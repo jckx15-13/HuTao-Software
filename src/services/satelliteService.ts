@@ -137,10 +137,11 @@ class SatelliteService {
       const lines = text.trim().split('\n');
 
       if (lines.length >= 2) {
+        // Safe: length check above guarantees indices 0 and 1 exist.
         // Celestrak might return "No elements found" in plain text even with 200 OK
-        if (lines[0].includes('No elements found')) return 'failed';
+        if (lines[0]!.includes('No elements found')) return 'failed';
 
-        const tle = [id.toUpperCase(), lines[0].trim(), lines[1].trim()];
+        const tle = [id.toUpperCase(), lines[0]!.trim(), lines[1]!.trim()];
         const data: SatelliteData = { tle, timestamp: Date.now() };
 
         useUIStore.getState().setSatelliteData(id, data);

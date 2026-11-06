@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { loadConfig, type AppConfig as Config } from '../lib/config';
 
 interface ConfigContextValue {
@@ -13,12 +13,12 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ConfigContextValue>({
     config: null,
     isLoading: true,
-    error: null,
+    error: null
   });
 
   useEffect(() => {
     let active = true;
-    
+
     loadConfig()
       .then((config) => {
         if (active) {
@@ -36,11 +36,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  return (
-    <ConfigContext.Provider value={state}>
-      {children}
-    </ConfigContext.Provider>
-  );
+  return <ConfigContext.Provider value={state}>{children}</ConfigContext.Provider>;
 }
 
 export function useConfig() {

@@ -6,7 +6,7 @@ const vm = require("node:vm");
 const ts = require("typescript");
 
 require.extensions[".ts"] = function loadTypeScript(module, filename) {
-  const source = fs.readFileSync(filename, "utf8");
+  const source = fs.readFileSync(filename, "utf8").replace(/import\.meta\.env/g, "({ VITE_SENTRY_DSN: '', MODE: 'test' })");
   const output = ts.transpileModule(source, {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,

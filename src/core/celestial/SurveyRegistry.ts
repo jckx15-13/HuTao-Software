@@ -47,7 +47,9 @@ const SURVEYS_BY_LAYER = new Map(SURVEYS.map((survey) => [survey.layerValue, sur
 const SURVEYS_BY_ID = new Map(SURVEYS.map((survey) => [survey.id, survey]));
 
 /** The survey used whenever a layer value is unknown or unset. */
-export const DEFAULT_SURVEY: SurveyDefinition = SURVEYS_BY_LAYER.get('3D Solar System View') ?? SURVEYS[0];
+// Safe: SURVEYS is loaded from the bundled survey catalog data file, which is
+// always non-empty; SURVEYS[0] is the documented ultimate fallback.
+export const DEFAULT_SURVEY: SurveyDefinition = SURVEYS_BY_LAYER.get('3D Solar System View') ?? SURVEYS[0]!;
 
 export function getSurveyByLayerValue(layerValue: string | null | undefined): SurveyDefinition {
   if (!layerValue) return DEFAULT_SURVEY;

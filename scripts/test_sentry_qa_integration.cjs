@@ -5,6 +5,8 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 
+process.env.NODE_ENV = 'test';
+
 require.extensions[".ts"] = function loadTypeScript(module, filename) {
   let source = fs.readFileSync(filename, "utf8");
   source = source.replace(/import\.meta\.env/g, "process.env").replace(/import\.meta/g, "({ env: process.env, url: '' })");
@@ -32,8 +34,15 @@ Module._resolveFilename = function resolveAlias(request, parent, isMain, options
 };
 
 const { sentryQA } = require("../src/core/qa/sentryQA");
+const { sentryService } = require("../src/services/sentryService");
 
 function testSentryQA() {
+  sentryService.setDSN("");
+  const localEvent = sentryService.captureMessage("local telemetry check", "warning");
+  assert.equal(sentryService.isEnabled(), false, "Empty DSN must leave remote telemetry disabled");
+  assert.equal(sentryService.getStats().mode, "Local Telemetry Buffer", "Status must not claim remote delivery");
+  assert.equal(sentryService.getStats().lastEventTimestamp, localEvent.timestamp);
+
   // Test initialization
   sentryQA.init("https://exampleKey@sentry.io/12345");
   assert.equal(sentryQA.isInitialized(), true, "sentryQA should be initialized");

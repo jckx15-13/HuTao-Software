@@ -1,39 +1,31 @@
-import {
-    ScreenSpaceEventHandler,
-    ScreenSpaceEventType,
-    defined,
-    SceneMode,
-    SceneTransforms,
-} from "cesium";
-import type { Viewer as CesiumViewer, Cartesian2 } from "cesium";
-import type { GeoEntity } from "@/core/plugins/PluginTypes";
-import { useStore } from "@/core/state/store";
-import { useUIStore } from "@/store/uiStore";
-import { clearCursorSourceTargets, publishCursorTarget } from "@/core/cursor";
-import {
-    findStackByEntityId, expandStack, collapseStack, getStacks
-} from "./StackManager";
+import { ScreenSpaceEventHandler, ScreenSpaceEventType, defined, SceneMode } from 'cesium';
+import type { Viewer as CesiumViewer, Cartesian2 } from 'cesium';
+import type { GeoEntity } from '@/core/plugins/PluginTypes';
+import { useStore } from '@/core/state/store';
+import { useUIStore } from '@/store/uiStore';
+import { clearCursorSourceTargets, publishCursorTarget } from '@/core/cursor';
+import { findStackByEntityId, expandStack, collapseStack } from './StackManager';
 
 /**
  * Pick a WorldWideView entity at a screen position using the Cesium pick API.
  */
 function findEntityAtPosition(viewer: CesiumViewer, position: { x: number; y: number }): GeoEntity | null {
-    if (!viewer || viewer.isDestroyed()) return null;
-    const picked = viewer.scene.pick(position as Cartesian2);
-    if (defined(picked) && picked.id && picked.id._wwvEntity) {
-        return picked.id._wwvEntity as GeoEntity;
-    }
-    return null;
+  if (!viewer || viewer.isDestroyed()) return null;
+  const picked = viewer.scene.pick(position as Cartesian2);
+  if (defined(picked) && picked.id && picked.id._wwvEntity) {
+    return picked.id._wwvEntity as GeoEntity;
+  }
+  return null;
 }
 
 function syncSatelliteTrackerSelection(entity: GeoEntity | null): void {
-    if (entity?.pluginId === "satellites" && entity.id.startsWith("sat-")) {
-        useUIStore.getState().setActiveSatelliteId(entity.id.slice(4));
-        return;
-    }
-    if (!entity || entity.pluginId !== "satellites") {
-        useUIStore.getState().setActiveSatelliteId(null);
-    }
+  if (entity?.pluginId === 'satellites' && entity.id.startsWith('sat-')) {
+    useUIStore.getState().setActiveSatelliteId(entity.id.slice(4));
+    return;
+  }
+  if (!entity || entity.pluginId !== 'satellites') {
+    useUIStore.getState().setActiveSatelliteId(null);
+  }
 }
 
 /**
@@ -41,177 +33,170 @@ function syncSatelliteTrackerSelection(entity: GeoEntity | null): void {
  * Returns a cleanup function that destroys the handler and resets the cursor.
  */
 export function setupInteractionHandlers(
-    viewer: CesiumViewer,
-    hoveredEntityIdRef: React.MutableRefObject<string | null>
+  viewer: CesiumViewer,
+  hoveredEntityIdRef: React.MutableRefObject<string | null>
 ): () => void {
-    if (!viewer || viewer.isDestroyed() || !viewer.scene) {
-        return () => { };
+  if (!viewer || viewer.isDestroyed() || !viewer.scene) {
+    return () => {};
+  }
+  const { canvas } = viewer.scene;
+  const handler = new ScreenSpaceEventHandler(canvas);
+
+  /** Currently expanded stack id (only one at a time). */
+  let expandedStackId: string | null = null;
+
+  // Click → select entity or expand stack
+  handler.setInputAction((event: { position: { x: number; y: number } }) => {
+    if (!viewer || viewer.isDestroyed()) return;
+    const entity = findEntityAtPosition(viewer, event.position);
+
+    if (entity) {
+      const stack = findStackByEntityId(entity.id);
+      // If clicked entity is in a stack
+      if (stack && stack.children.length > 1) {
+        if (stack.state === 'collapsed' || stack.state === 'collapsing') {
+          // Expand the stack and select the hub
+          expandStack(stack.id);
+          if (expandedStackId && expandedStackId !== stack.id) {
+            collapseStack(expandedStackId);
+          }
+          expandedStackId = stack.id;
+          useStore.getState().setSelectedEntity(entity);
+          syncSatelliteTrackerSelection(entity);
+        } else {
+          // Stack is already expanded, user clicked a leaf node -> select it
+          useStore.getState().setSelectedEntity(entity);
+          syncSatelliteTrackerSelection(entity);
+        }
+      } else {
+        // Clicked a standalone entity -> select it and close any open stack
+        useStore.getState().setSelectedEntity(entity);
+        syncSatelliteTrackerSelection(entity);
+        if (expandedStackId) {
+          collapseStack(expandedStackId);
+          expandedStackId = null;
+        }
+      }
+
+      // Clear activeLocation in UI Store and open the context panel
+      useUIStore.getState().setActiveLocation(null);
+      useUIStore.getState().setRightPanelTab('context');
+      useUIStore.getState().setRightPanelOpen(true);
+    } else {
+      // Clicked empty space -> clear selection and close any open stack
+      useStore.getState().setSelectedEntity(null);
+      syncSatelliteTrackerSelection(null);
+      if (expandedStackId) {
+        collapseStack(expandedStackId);
+        expandedStackId = null;
+      }
     }
-    const {canvas} = viewer.scene;
-    const handler = new ScreenSpaceEventHandler(canvas);
 
-    /** Currently expanded stack id (only one at a time). */
-    let expandedStackId: string | null = null;
+    if (entity) {
+      useStore.getState().setHoveredEntity(null, null);
+      hoveredEntityIdRef.current = null;
+      clearCursorSourceTargets('cesium');
+    }
 
-    let latestMousePos = { x: 0, y: 0 };
+    // Immediately request a render frame to apply highlight changes
+    // or to kickstart the CSS spiderifier animation loop
+    viewer.scene.requestRender();
+  }, ScreenSpaceEventType.LEFT_CLICK);
 
-    // Click → select entity or expand stack
-    handler.setInputAction(
-        (event: { position: { x: number; y: number } }) => {
-            if (!viewer || viewer.isDestroyed()) return;
-            const entity = findEntityAtPosition(viewer, event.position);
+  let latestHoverRequestId = 0;
+  let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
+  let isDragging = false;
 
-            if (entity) {
-                const stack = findStackByEntityId(entity.id);
-                // If clicked entity is in a stack
-                if (stack && stack.children.length > 1) {
-                    if (stack.state === "collapsed" || stack.state === "collapsing") {
-                        // Expand the stack and select the hub
-                        expandStack(stack.id);
-                        if (expandedStackId && expandedStackId !== stack.id) {
-                            collapseStack(expandedStackId);
-                        }
-                        expandedStackId = stack.id;
-                        useStore.getState().setSelectedEntity(entity);
-                        syncSatelliteTrackerSelection(entity);
-                    } else {
-                        // Stack is already expanded, user clicked a leaf node -> select it
-                        useStore.getState().setSelectedEntity(entity);
-                        syncSatelliteTrackerSelection(entity);
-                    }
-                } else {
-                    // Clicked a standalone entity -> select it and close any open stack
-                    useStore.getState().setSelectedEntity(entity);
-                    syncSatelliteTrackerSelection(entity);
-                    if (expandedStackId) {
-                        collapseStack(expandedStackId);
-                        expandedStackId = null;
-                    }
-                }
-                
-                // Clear activeLocation in UI Store and open the context panel
-                useUIStore.getState().setActiveLocation(null);
-                useUIStore.getState().setRightPanelTab('context');
-                useUIStore.getState().setRightPanelOpen(true);
-            } else {
-                // Clicked empty space -> clear selection and close any open stack
-                useStore.getState().setSelectedEntity(null);
-                syncSatelliteTrackerSelection(null);
-                if (expandedStackId) {
-                    collapseStack(expandedStackId);
-                    expandedStackId = null;
-                }
-            }
+  // Track camera movement to avoid expensive picking during camera pan
+  const onMoveStart = () => {
+    isDragging = true;
+  };
+  const onMoveEnd = () => {
+    isDragging = false;
+    clearCursorSourceTargets('system');
+  };
+  viewer.camera.moveStart.addEventListener(onMoveStart);
+  viewer.camera.moveEnd.addEventListener(onMoveEnd);
 
-            if (entity) {
-                useStore.getState().setHoveredEntity(null, null);
-                hoveredEntityIdRef.current = null;
-                clearCursorSourceTargets("cesium");
-            }
+  // Hover → show tooltip card only
+  handler.setInputAction((event: { endPosition: { x: number; y: number } }) => {
+    // Canvas-local coordinates used for Cesium picking
+    const canvasPos = { x: event.endPosition.x, y: event.endPosition.y };
 
-            // Immediately request a render frame to apply highlight changes
-            // or to kickstart the CSS spiderifier animation loop
-            viewer.scene.requestRender();
-        },
-        ScreenSpaceEventType.LEFT_CLICK
-    );
+    // Convert canvas-local coords to viewport/client coords for UI placement
+    const rect = canvas.getBoundingClientRect();
+    const screenPos = { x: Math.round(rect.left + canvasPos.x), y: Math.round(rect.top + canvasPos.y) };
 
-    let latestHoverRequestId = 0;
-    let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
-    let isDragging = false;
+    if (hoveredEntityIdRef.current) {
+      useStore.getState().setHoveredEntity(useStore.getState().hoveredEntity, screenPos);
+      const hovered = useStore.getState().hoveredEntity;
+      if (hovered) {
+        publishCursorTarget({
+          id: `cesium-${hovered.id}`,
+          kind: 'cesiumEntity',
+          source: 'cesium',
+          screenPosition: screenPos,
+          priority: 84,
+          confidence: 0.86,
+          explicitLock: true,
+          expiresAt: performance.now() + 220
+        });
+      }
+    }
 
-    // Track camera movement to avoid expensive picking during camera pan
-    const onMoveStart = () => { isDragging = true; };
-    const onMoveEnd = () => {
-        isDragging = false;
-        clearCursorSourceTargets("system");
-    };
-    viewer.camera.moveStart.addEventListener(onMoveStart);
-    viewer.camera.moveEnd.addEventListener(onMoveEnd);
+    if (!viewer || viewer.isDestroyed()) return;
+    if (viewer.scene.mode === SceneMode.MORPHING) return;
 
-    // Hover → show tooltip card only
-    handler.setInputAction(
-        (event: { endPosition: { x: number; y: number } }) => {
-            // Canvas-local coordinates used for Cesium picking
-            const canvasPos = { x: event.endPosition.x, y: event.endPosition.y };
-            latestMousePos = canvasPos;
+    if (isDragging) return;
 
-            // Convert canvas-local coords to viewport/client coords for UI placement
-            const rect = canvas.getBoundingClientRect();
-            const screenPos = { x: Math.round(rect.left + canvasPos.x), y: Math.round(rect.top + canvasPos.y) };
+    latestHoverRequestId++;
+    const currentRequestId = latestHoverRequestId;
 
-            if (hoveredEntityIdRef.current) {
-                useStore.getState().setHoveredEntity(useStore.getState().hoveredEntity, screenPos);
-                const hovered = useStore.getState().hoveredEntity;
-                if (hovered) {
-                    publishCursorTarget({
-                        id: `cesium-${hovered.id}`,
-                        kind: "cesiumEntity",
-                        source: "cesium",
-                        screenPosition: screenPos,
-                        priority: 84,
-                        confidence: 0.86,
-                        explicitLock: true,
-                        expiresAt: performance.now() + 220,
-                    });
-                }
-            }
+    if (hoverTimeout) clearTimeout(hoverTimeout);
 
-            if (!viewer || viewer.isDestroyed()) return;
-            if (viewer.scene.mode === SceneMode.MORPHING) return;
+    hoverTimeout = setTimeout(() => {
+      if (currentRequestId !== latestHoverRequestId) return;
+      if (!viewer || viewer.isDestroyed() || isDragging) return;
 
-            if (isDragging) return;
+      // Use canvas-local coords for picking
+      const entity = findEntityAtPosition(viewer, canvasPos);
 
-            latestHoverRequestId++;
-            const currentRequestId = latestHoverRequestId;
+      const prevId = hoveredEntityIdRef.current;
+      const newId = entity ? entity.id : null;
 
-            if (hoverTimeout) clearTimeout(hoverTimeout);
-
-            hoverTimeout = setTimeout(() => {
-                if (currentRequestId !== latestHoverRequestId) return;
-                if (!viewer || viewer.isDestroyed() || isDragging) return;
-
-                // Use canvas-local coords for picking
-                const entity = findEntityAtPosition(viewer, canvasPos);
-
-                const prevId = hoveredEntityIdRef.current;
-                const newId = entity ? entity.id : null;
-
-                if (prevId !== newId) {
-                    hoveredEntityIdRef.current = newId;
-                    useStore.getState().setHoveredEntity(entity, entity ? screenPos : null);
-                    if (entity) {
-                        publishCursorTarget({
-                            id: `cesium-${entity.id}`,
-                            kind: "cesiumEntity",
-                            source: "cesium",
-                            screenPosition: screenPos,
-                            priority: 84,
-                            confidence: 0.88,
-                            explicitLock: true,
-                            expiresAt: performance.now() + 220,
-                        });
-                    } else {
-                        clearCursorSourceTargets("cesium");
-                    }
-                    // Trigger render to apply hover highlights immediately
-                    viewer.scene.requestRender();
-                }
-            }, 60);
-        },
-        ScreenSpaceEventType.MOUSE_MOVE
-    );
-
-    return () => {
-        if (hoverTimeout) clearTimeout(hoverTimeout);
-        if (viewer && !viewer.isDestroyed()) {
-            viewer.camera.moveStart.removeEventListener(onMoveStart);
-            viewer.camera.moveEnd.removeEventListener(onMoveEnd);
+      if (prevId !== newId) {
+        hoveredEntityIdRef.current = newId;
+        useStore.getState().setHoveredEntity(entity, entity ? screenPos : null);
+        if (entity) {
+          publishCursorTarget({
+            id: `cesium-${entity.id}`,
+            kind: 'cesiumEntity',
+            source: 'cesium',
+            screenPosition: screenPos,
+            priority: 84,
+            confidence: 0.88,
+            explicitLock: true,
+            expiresAt: performance.now() + 220
+          });
+        } else {
+          clearCursorSourceTargets('cesium');
         }
-        if (handler && !handler.isDestroyed()) {
-            handler.destroy();
-        }
-        clearCursorSourceTargets("cesium");
-        clearCursorSourceTargets("system");
-    };
+        // Trigger render to apply hover highlights immediately
+        viewer.scene.requestRender();
+      }
+    }, 60);
+  }, ScreenSpaceEventType.MOUSE_MOVE);
+
+  return () => {
+    if (hoverTimeout) clearTimeout(hoverTimeout);
+    if (viewer && !viewer.isDestroyed()) {
+      viewer.camera.moveStart.removeEventListener(onMoveStart);
+      viewer.camera.moveEnd.removeEventListener(onMoveEnd);
+    }
+    if (handler && !handler.isDestroyed()) {
+      handler.destroy();
+    }
+    clearCursorSourceTargets('cesium');
+    clearCursorSourceTargets('system');
+  };
 }

@@ -14,6 +14,20 @@ permissions:
   contents: read
 
 jobs:
+  silver-wolf-quality:
+    name: Silver Wolf VI – Typecheck, Lint, and Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:strict
+
   # ─── Security & Dependency Scanning (Snyk) ───────────────────────────
   snyk-frontend:
     name: Snyk – Frontend

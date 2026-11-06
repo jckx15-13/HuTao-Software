@@ -1,7 +1,7 @@
-import { useEffect } from "react";
-import type { Viewer as CesiumViewer, Entity as CesiumEntity } from "cesium";
-import { Cartesian3, CallbackProperty } from "cesium";
-import type { AnimatableItem } from "../EntityRenderer";
+import { useEffect } from 'react';
+import type { Viewer as CesiumViewer, Entity as CesiumEntity } from 'cesium';
+import { Cartesian3, CallbackProperty } from 'cesium';
+import type { AnimatableItem } from '../EntityRenderer';
 
 const SELECTION_BOX_SVG = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
@@ -17,85 +17,85 @@ const SELECTION_BOX_SVG = `data:image/svg+xml;charset=utf-8,${encodeURIComponent
 `)}`;
 
 export function useSelectionAnchor(
-    viewer: CesiumViewer | null,
-    isReady: boolean,
-    selectedEntity: any,
-    lockedEntityId: string | null,
-    selectionEntityRef: React.MutableRefObject<CesiumEntity | null>,
-    animatablesMapRef: React.MutableRefObject<Map<string, AnimatableItem>>
+  viewer: CesiumViewer | null,
+  isReady: boolean,
+  selectedEntity: any,
+  lockedEntityId: string | null,
+  selectionEntityRef: React.MutableRefObject<CesiumEntity | null>,
+  animatablesMapRef: React.MutableRefObject<Map<string, AnimatableItem>>
 ) {
-    // Initialization of Selection Entity
-    useEffect(() => {
-        if (!viewer || viewer.isDestroyed() || !isReady) return;
+  // Initialization of Selection Entity
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed() || !isReady) return;
 
-        let entity: CesiumEntity | null = null;
-        try {
-            // Create a hidden entity for camera tracking/flying
-            if (!viewer.entities) {
-                console.warn("[GlobeView] Viewer entities collection not available during selection anchor init");
-                return;
-            }
+    let entity: CesiumEntity | null = null;
+    try {
+      // Create a hidden entity for camera tracking/flying
+      if (!viewer.entities) {
+        console.warn('[GlobeView] Viewer entities collection not available during selection anchor init');
+        return;
+      }
 
-            entity = viewer.entities.add({
-                id: "__wwv_selection_anchor",
-                point: {
-                    pixelSize: 0,
-                },
-                billboard: {
-                    image: SELECTION_BOX_SVG,
-                    width: 24,
-                    height: 24,
-                    show: false,
-                    disableDepthTestDistance: Number.POSITIVE_INFINITY, // Always rendered on top
-                } as any
-            });
-            selectionEntityRef.current = entity;
-        } catch (error) {
-            console.warn("[GlobeView] Error accessing viewer entities:", error);
-            return;
+      entity = viewer.entities.add({
+        id: '__wwv_selection_anchor',
+        point: {
+          pixelSize: 0
+        },
+        billboard: {
+          image: SELECTION_BOX_SVG,
+          width: 24,
+          height: 24,
+          show: false,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY // Always rendered on top
+        } as any
+      });
+      selectionEntityRef.current = entity;
+    } catch (error) {
+      console.warn('[GlobeView] Error accessing viewer entities:', error);
+      return;
+    }
+
+    return () => {
+      try {
+        if (viewer && !viewer.isDestroyed() && viewer.entities && entity) {
+          viewer.entities.remove(entity);
         }
+      } catch (error) {
+        // Ignore cleanup errors if viewer is partially destroyed
+      }
+    };
+  }, [viewer, isReady, selectionEntityRef]);
 
-        return () => {
-            try {
-                if (viewer && !viewer.isDestroyed() && viewer.entities && entity) {
-                    viewer.entities.remove(entity);
-                }
-            } catch (error) {
-                // Ignore cleanup errors if viewer is partially destroyed
-            }
-        };
-    }, [viewer, isReady, selectionEntityRef]);
+  // Update Selection Entity Position — use CallbackProperty to track extrapolated position
+  useEffect(() => {
+    const selectionEntity = selectionEntityRef.current;
+    if (!selectionEntity) return;
 
-    // Update Selection Entity Position — use CallbackProperty to track extrapolated position
-    useEffect(() => {
-        const selectionEntity = selectionEntityRef.current;
-        if (!selectionEntity) return;
+    if (selectionEntity.billboard) {
+      selectionEntity.billboard.show = (!!selectedEntity && lockedEntityId !== selectedEntity.id) as any;
+    }
 
-        if (selectionEntity.billboard) {
-            selectionEntity.billboard.show = (!!selectedEntity && lockedEntityId !== selectedEntity.id) as any;
-        }
+    if (!selectedEntity) {
+      if (viewer && !viewer.isDestroyed()) viewer.scene.requestRender();
+      return;
+    }
 
-        if (!selectedEntity) {
-            if (viewer && !viewer.isDestroyed()) viewer.scene.requestRender();
-            return;
-        }
+    const entityId = selectedEntity.id;
 
-        const entityId = selectedEntity.id;
+    // Use a CallbackProperty so viewer.trackedEntity follows the
+    // extrapolated position in real-time, not just the polled position.
+    const fallbackPos = Cartesian3.fromDegrees(
+      selectedEntity.longitude,
+      selectedEntity.latitude,
+      selectedEntity.altitude || 0
+    );
 
-        // Use a CallbackProperty so viewer.trackedEntity follows the
-        // extrapolated position in real-time, not just the polled position.
-        const fallbackPos = Cartesian3.fromDegrees(
-            selectedEntity.longitude,
-            selectedEntity.latitude,
-            selectedEntity.altitude || 0
-        );
+    selectionEntity.position = new CallbackProperty((_time, result) => {
+      const item = animatablesMapRef.current?.get(entityId);
+      const pos = item ? item.posRef : fallbackPos;
+      return Cartesian3.clone(pos, result);
+    }, false) as any;
 
-        selectionEntity.position = new CallbackProperty((time, result) => {
-            const item = animatablesMapRef.current?.get(entityId);
-            const pos = item ? item.posRef : fallbackPos;
-            return Cartesian3.clone(pos, result);
-        }, false) as any;
-
-        if (viewer && !viewer.isDestroyed()) viewer.scene.requestRender();
-    }, [selectedEntity, lockedEntityId, selectionEntityRef, animatablesMapRef, viewer]);
+    if (viewer && !viewer.isDestroyed()) viewer.scene.requestRender();
+  }, [selectedEntity, lockedEntityId, selectionEntityRef, animatablesMapRef, viewer]);
 }

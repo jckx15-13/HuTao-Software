@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState, useMemo } from "react";
-import { pluginManager } from "@/core/plugins/PluginManager";
-import { dataBus } from "@/core/data/DataBus";
-import { useStore } from "@/core/state/store";
+import { useEffect, useState } from 'react';
+import { pluginManager } from '@/core/plugins/PluginManager';
+import { dataBus } from '@/core/data/DataBus';
+import { useStore } from '@/core/state/store';
 
 interface Props {
   timeStart: number;
@@ -20,13 +20,13 @@ export default function TimelineLanes({ timeStart, timeEnd }: Props) {
 
   useEffect(() => {
     const refresh = () => setEnabled(pluginManager.getEnabledPlugins());
-    dataBus.on("pluginRegistered", refresh);
-    dataBus.on("pluginUnregistered", refresh);
-    dataBus.on("layerToggled", refresh);
+    dataBus.on('pluginRegistered', refresh);
+    dataBus.on('pluginUnregistered', refresh);
+    dataBus.on('layerToggled', refresh);
     return () => {
-      dataBus.off("pluginRegistered", refresh);
-      dataBus.off("pluginUnregistered", refresh);
-      dataBus.off("layerToggled", refresh);
+      dataBus.off('pluginRegistered', refresh);
+      dataBus.off('pluginUnregistered', refresh);
+      dataBus.off('layerToggled', refresh);
     };
   }, []);
 

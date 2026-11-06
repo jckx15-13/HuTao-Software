@@ -35,7 +35,7 @@ orbital/interstellar visualization.
 | `core/plugins/` | The data-plugin framework: `PluginManager`, `PluginRegistry`, `PluginTypes`, manifest loading/validation |
 | `core/data/` | `DataBus` (pub/sub for plugin data), `WsClient`, `PollingManager`, `CacheLayer`, `SmartFetcher` |
 | `plugins/` | The 7 concrete data plugins: `weather`, `aviation`, `earthquakes`, `satellites`, `military`, `hexagons`, `cameras`, plus `geojson` (import tool) |
-| `store/` | **Legacy state layer** — `uiStore.ts`, `diagnosticsStore.ts`, `learningStore.ts`. Still actively used by ~55 call sites; not yet migrated onto `core/state/*`. See "Known issues" below — do not add new state here. |
+| `store/` | Compatibility and isolated stores: `uiStore.ts` is a facade over domain stores; diagnostics and learning remain standalone. Do not add new UI state here. |
 | `lib/` | Framework-agnostic utilities: math/physics (`physics.ts`), coordinate/projection math, theming, config, AI client |
 | `hooks/` | Cross-cutting React hooks (`cesium/*` for globe-specific ones, top-level for app-wide concerns) |
 | `wwv-sdk/` | WorldWideView plugin manifest types/contracts, consumed by `core/plugins/` |
@@ -43,18 +43,17 @@ orbital/interstellar visualization.
 
 ## State management
 
-There are currently **two parallel state layers** — this is a known problem,
-not an intentional pattern:
+The app has a canonical feature-state layer plus compatibility/isolated stores:
 
-1. `src/core/state/*` — Zustand slices, composed in `core/state/store.ts`.
-   Idiomatic, modular. **Use this for any new state.**
-2. `src/store/*` — three standalone Zustand stores (`uiStore` is 800+
-   lines). Predates the slice pattern. Still has real, active consumers.
+1. `src/core/state/*` — Zustand feature slices composed in `core/state/store.ts`.
+   **Use this for new feature state.**
+2. `src/store/uiStore.ts` — compatibility facade over split UI domain stores;
+   migrate consumers incrementally without changing its public API abruptly.
+3. `src/store/diagnosticsStore.ts` and `learningStore.ts` — isolated domains
+   with their own consumers; keep separate unless a concrete shared-state need
+   justifies moving them.
 
-Consolidating onto (1) is tracked as pending cleanup work — do not casually
-move things between the two without checking all call sites first
-(`grep -rl "store/uiStore"` / `"store/diagnosticsStore"` /
-`"store/learningStore"`).
+Check call sites before changing store boundaries.
 
 ## Plugin contract
 
@@ -99,40 +98,29 @@ cd bridge && ./venv/bin/python3 server.py
 
 This repo went through a cleanup pass; the following remain **open**:
 
-1. **State-store consolidation** — migrate `store/uiStore.ts` and
-   `store/diagnosticsStore.ts` consumers onto `core/state/*` slices, or
-   formally decide they stay separate (e.g. diagnostics/learning as
-   intentionally isolated) and document why here.
-2. **God-files to split** by responsibility (rendering vs. handlers vs.
-   presets/data): `components/learning/WorldWideTelescopeView.tsx` (~1900
-   lines), `components/learning/GoogleEarthRemix.tsx` (~1400),
-   `components/panels/LeftPanel.tsx` (~1350),
-   `components/panels/RightPanel.tsx` (~1200),
-   `components/settings/PersonalisationSettings.tsx` (~850),
-   `store/uiStore.ts` (~800), `components/dev/OdysseusConsole.tsx` (~800).
+1. **Large components to split** around cohesive responsibilities:
+   `components/learning/WorldWideTelescopeView.tsx`,
+   `components/learning/GoogleEarthRemix.tsx`,
+   `components/panels/RightPanel.tsx`,
+   `components/settings/PersonalisationSettings.tsx`, and
+   `components/dev/OdysseusConsole.tsx`. `LeftPanel.tsx` has already been
+   substantially reduced; `uiStore.ts` is now a small compatibility facade.
 3. **Plugin architecture unification** — give all plugins a manifest like
    `geojson`, or drop `geojson`'s manifest and document the imperative
    contract as the standard — pick one.
-4. **Lint/type debt** — `npm run lint` currently reports real errors and a
-   large volume of `no-explicit-any` / `no-unused-vars` warnings.
-   `tsconfig.json` does not have `"strict": true`; turning it on will
-   surface more. Fix incrementally, file by file, not in one sweep.
+4. **Lint/type debt** — TypeScript strict mode and unused checks are enabled
+   in `tsconfig.json`. Resolve compiler and lint findings incrementally,
+   file by file.
 5. **`bridge/` startup** — the frontend expects `127.0.0.1:8001` to be
    reachable. Start it with
    `cd bridge && ./venv/bin/python3 server.py`. No API key is needed when a
    local runtime is available — the bridge prefers Ollama/LM Studio/llama.cpp
    over cloud providers by default. For cloud, copy `.env.example` and fill
    in a provider key. See [docs/LOCAL_LLM.md](docs/LOCAL_LLM.md).
-6. **Cruft removal pending** — `.agents/`, `_archive/`, `diagnostics/`,
-   `incidents/`, `logs/`, `test-results/`, `correct_changes.patch`,
-   `docs/_archive/`, `docs/development_logs/`, `docs/progress.md`,
-   `eslint_report.json`, `eslint_summary.json`, `implementation_plan.md`,
-   `implementation_plans_log.md`, `patch_check.txt`, `src/purescript/` (72
-   files) are excluded in `.gitignore` for anything new, but remain tracked
-   from before the cleanup. `src/purescript/` is confirmed dead — nothing
-   references it; its math now lives natively in `src/lib/physics.ts`.
-   Remove with:
-   `git rm -rq --ignore-unmatch .agents _archive diagnostics incidents logs test-results correct_changes.patch docs/_archive docs/development_logs docs/progress.md eslint_report.json eslint_summary.json implementation_plan.md implementation_plans_log.md patch_check.txt src/purescript`
+6. **Cruft inventory** — temporary/report paths are ignored. Confirm with
+   `git ls-files` before proposing deletion; the previously documented
+   `.agents/`, `_archive/`, diagnostic/log output, plan files and
+   `src/purescript/` cleanup targets are no longer tracked in this checkout.
 
 ## Conventions
 

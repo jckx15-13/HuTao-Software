@@ -27,7 +27,7 @@ class SentryQAService {
 
   constructor() {
     // Read from environment if available
-    this.dsn = (import.meta as any).env?.VITE_SENTRY_DSN || process.env.SENTRY_DSN || null;
+    this.dsn = import.meta.env.VITE_SENTRY_DSN || process.env.SENTRY_DSN || null;
   }
 
   public init(customDsn?: string): void {
@@ -80,7 +80,8 @@ class SentryQAService {
       timestamp: new Date().toISOString(),
     };
 
-    if (process.env.NODE_ENV !== "test") {
+    const isTest = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+    if (!isTest) {
       console.error(`[SentryQA] [${eventId}] Captured Exception:`, formattedPayload);
     }
 

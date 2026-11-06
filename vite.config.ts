@@ -120,6 +120,9 @@ export default defineConfig(({ mode }) => {
     // locally and noise in a published build.
     esbuild: isGithubPages ? { drop: ['console', 'debugger'] } : undefined,
     server: {
+      proxy: {
+        '/api/astronomy': 'http://127.0.0.1:8011'
+      },
       fs: {
         allow: ['..']
       },
@@ -161,14 +164,19 @@ export default defineConfig(({ mode }) => {
       minify: 'esbuild',
       rollupOptions: {
         output: {
-          manualChunks: {
-            'react-core': ['react', 'react-dom', 'zustand', 'react-textarea-autosize'],
-            ai: ['@google/genai'],
-            markdown: ['react-markdown', 'remark-gfm'],
-            motion: ['motion'],
-            lucide: ['lucide-react'],
-            virtualization: ['react-virtuoso'],
-            satellite: ['satellite.js']
+          manualChunks(id) {
+            if (id.includes('/node_modules/cesium/')) return 'cesium-engine';
+            if (id.includes('/node_modules/@wwtelescope/engine/')) return 'wwt-engine';
+            if (id.includes('/node_modules/three/')) return 'three';
+            if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/') || id.includes('/node_modules/react-textarea-autosize/')) return 'react-core';
+            if (id.includes('/node_modules/zustand/')) return 'state';
+            if (id.includes('/node_modules/@google/genai/')) return 'ai';
+            if (id.includes('/node_modules/react-markdown/') || id.includes('/node_modules/remark-gfm/')) return 'markdown';
+            if (id.includes('/node_modules/motion/')) return 'motion';
+            if (id.includes('/node_modules/lucide-react/')) return 'lucide';
+            if (id.includes('/node_modules/react-virtuoso/')) return 'virtualization';
+            if (id.includes('/node_modules/satellite.js/')) return 'satellite';
+            return undefined;
           }
         }
       },

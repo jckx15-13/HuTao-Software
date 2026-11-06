@@ -1,7 +1,9 @@
-# Silver Wolf-Inspired Adaptive AI Chatbox: Concept & Technical Proposal
+# Adaptive theme engine: design background and roadmap
 
-**Product Concept:**
-A hybrid hacker-tech / anime UI chatbox application that feels playful, smart, and adaptive, blending Silver Wolf's canon cyberpunk glitch aesthetic with softer pastel neon elements. It will seamlessly transition into a dynamic theming engine extracting palettes from uploaded character illustrations, and evolving into fully animated motion-reactive themes.
+> **Document status:** Background proposal, not the current interface specification. The implemented runtime palettes and wallpaper sampling are described in `src/lib/themeEngine.ts`, `src/lib/imageTheme.ts`, and the shared [design system](../DESIGN.md). Ideas labeled future below are not shipped capabilities.
+
+**Product context:**
+Silver Wolf VI combines chat and spatial workflows. Its current dark default uses purple and cyan accents, while the theme engine supports alternate palettes and local wallpaper-derived color themes. This note preserves the original adaptive-theme rationale and separates implemented behavior from future exploration.
 
 ---
 
@@ -13,10 +15,8 @@ Silver Wolf relies on a rebellious hacker "Punk" archetype crossed with game-boy
 **Pastel Dream Extension:**
 The attached reference imagery introduces a dream-like, softer, nostalgic extension. By blending high-contrast hacker geometry (sharp corners, thin borders, monospace fonts) with soft pastel glows (lavender, soft cyan, pale lilac), we create an interface that feels high-tech but calming—like an arcade screen glowing softly in a dark room.
 
-**Aesthetic Duality:**
-The app must support two key modes:
-1.  **Cyberpunk Hacker Mode (Default):** Deep space blues/blacks, high contrast (#0F0F23, #00FFFF, #FF00FF).
-2.  **Pastel Dream Mode:** Pale off-whites/purples, soft neon outlines (#F5F0FF, #E6C7F0, #B0E0E6).
+**Palette direction:**
+The application supports dark and light palettes rather than requiring one fixed two-mode pairing. Purple/cyan is the current default direction; pastel palettes are an optional alternate. Palette names and values in this proposal are illustrative where they differ from `src/lib/themeEngine.ts`.
 
 **Art Direction System:**
 *   **Mood:** Futuristic, playful, nostalgic, premium.
@@ -119,7 +119,7 @@ To build the dynamic theming engine, we assessed several color extraction strate
 
 ## 5. Accessibility and Resilience
 
-**WCAG Confidence:** We enforce perceived luminance checks. If the generated `Text Primary` on the generated `Background` fails a WCAG contrast ratio (4.5:1), the system mathematically shifts the `Text Primary` towards pure white or pure black until it passes.
+**Contrast goal:** Theme generation should check text/background contrast and adjust or reject combinations that are hard to read. A contrast calculation for one token pair is not a complete WCAG assessment; interactive states, focus indicators, non-text contrast, and actual rendered surfaces also need review. Do not describe the current extractor as WCAG-certified.
 
 **Fallback Safeties:**
 *   If an image returns monolithic or muddy colors (e.g., a highly compressed grey screenshot), we detect the low variance.
@@ -128,6 +128,8 @@ To build the dynamic theming engine, we assessed several color extraction strate
 ---
 
 ## 6. Future Evolution into Motion and AI-Generated Themes
+
+Everything in this section is exploratory and should not be presented as existing product behavior.
 
 **From Tokens to Motion:**
 Next-gen theming means extracting *movement speed* and *energy* from images.

@@ -155,7 +155,8 @@ describe('angularSeparationDegrees', () => {
     const wide = mediaNear({ raHours: 5.5881, decDegrees: -5.3911 }, 40);
     expect(wide.map((e) => e.id)).toContain('m1-crab-nebula');
     // Nearest-first ordering.
-    expect(wide[0].id).toBe('m42-orion-nebula');
+    // Safe: the `toContain` assertion above guarantees wide is non-empty.
+    expect(wide[0]!.id).toBe('m42-orion-nebula');
   });
 });
 

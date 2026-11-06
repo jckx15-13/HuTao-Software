@@ -80,7 +80,9 @@ export function boundaryRingRaDec(boundary: ConstellationBoundary, segmentsPerEd
     ring.push({ raHours: raAt(i / steps), decDegrees: boundary.decDegreesMax });
   }
   // Explicitly close back onto the first vertex.
-  ring.push({ raHours: ring[0].raHours, decDegrees: ring[0].decDegrees });
+  // Safe: both loops above run at least `steps + 1 >= 3` iterations each
+  // (steps = Math.max(2, ...)), so ring already has entries at this point.
+  ring.push({ raHours: ring[0]!.raHours, decDegrees: ring[0]!.decDegrees });
 
   return ring;
 }

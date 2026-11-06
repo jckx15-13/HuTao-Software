@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { dataBus } from '../core/data/DataBus';
 import { Activity, Clock, Database, Trash2, Terminal } from 'lucide-react';
 

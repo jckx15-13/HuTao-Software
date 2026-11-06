@@ -1,6 +1,56 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
+/* WWV-format left bar tab strip — values (timing, easing, structure) ported
+   exactly from world-wide-view/worldwideview src/app/globals.css .panel-tabs
+   / .panel-tab (150ms transition, same padding/font-size/border-radius
+   scale). Only the active-state colour is SWV's own --theme-primary in place
+   of WWV's --accent-cyan, per "everything other than colors the exact same". */
+.wwv-panel-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.wwv-panel-tabs:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.wwv-panel-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--theme-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  width: 100%;
+  transition: all 150ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.wwv-panel-tab:hover {
+  color: var(--theme-text-main);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.wwv-panel-tab--active,
+.wwv-panel-tab--active:hover {
+  color: var(--theme-primary);
+  background: color-mix(in srgb, var(--theme-primary) 10%, transparent);
+  font-weight: 600;
+}
+
 :root {
   /* HOLOGRAPHIC THEME - SILVERWOLF */
   --theme-bg-base: #0a0b10;
@@ -236,17 +286,17 @@ textarea:disabled {
 
 .mode-switcher-shell {
   position: relative;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100vw - 1rem);
   overflow: hidden;
   isolation: isolate;
-  /* No min-width: the shell is now an unconstrained flex row that hugs
-     whatever its two tabs actually measure — "sleek and hugged" per the
-     design note. It used to force a 188px two-column grid, which padded
-     "Chat" with the same slack "Space" needed for its longer label. */
-  /* The shell carries Tailwind's `rounded-full` in JSX, but it is also a
-     .glass-panel, whose `border-radius: var(--theme-ui-radius)` wins the
-     cascade and flattened it to the generic 10px panel corner. The sliding
-     indicator inside is a 999px pill, so the shell must match it. */
-  border-radius: 999px;
+  /* Keep the shell's corners circular and let it grow around the complete
+     three-button row. Explicitly override glass-panel's lower-specificity
+     radius and prevent its pseudo-element from painting over the button track. */
+  min-width: max-content;
+  border-radius: 9999px !important;
+  background-clip: padding-box;
   box-shadow:
     0 14px 32px rgba(0, 0, 0, 0.32),
     0 0 0 1px color-mix(in srgb, var(--theme-secondary) 10%, transparent),
@@ -257,7 +307,7 @@ textarea:disabled {
   content: "";
   position: absolute;
   inset: -1px;
-  z-index: var(--theme-z-below);
+  z-index: 0;
   border-radius: inherit;
   background:
     radial-gradient(circle at var(--mode-glow-x, 28%) 50%, color-mix(in srgb, var(--theme-primary) 24%, transparent), transparent 34%),
@@ -269,21 +319,21 @@ textarea:disabled {
 .mode-tab {
   position: relative;
   overflow: hidden;
-  z-index: 1;
+  z-index: 2;
   transform: translateZ(0);
   transition: color 180ms ease, transform 180ms ease;
 }
 
 .mode-switcher-indicator {
   position: absolute;
-  z-index: 0;
-  top: 4px;
-  bottom: 4px;
+  z-index: 1;
+  top: 5px;
+  bottom: 5px;
   /* left/width are set inline per-frame from the active tab's *measured*
      box (CenterPanel.tsx), not a fixed 50% half — that measurement is what
      lets the indicator hug "Chat" tightly and "Space" tightly instead of
      both sharing one oversized slot. */
-  border-radius: 999px;
+  border-radius: 9999px;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--theme-primary) 92%, white), var(--theme-primary)),
     var(--theme-primary);

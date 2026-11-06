@@ -67,7 +67,7 @@ export function WorkspaceHeader() {
             <div className="absolute inset-0 rounded-full bg-primary animate-ping opacity-50" />
             <div className="relative h-1.5 w-1.5 rounded-full bg-primary" />
           </div>
-          <h1 className="glow-text inline">Silver Wolf VI</h1>
+          <h1 className="glow-text inline whitespace-nowrap">Silver Wolf VI</h1>
         </div>
 
         <button
@@ -82,8 +82,16 @@ export function WorkspaceHeader() {
           <span className="hidden text-[9px] font-bold uppercase tracking-wider min-[760px]:inline">Modes</span>
         </button>
 
-        {/* System metrics */}
-        <div className="hidden md:flex items-center gap-3 border-l border-white/5 pl-4 h-5">
+        {/* System metrics. `md:flex` alone doesn't help here — it reacts to
+            viewport width, but this header only spans the gap between the
+            two docked side panels, which can narrow to ~526px on a 1366px
+            viewport with both open. At that width these three metrics were
+            the least essential content, so they're the first to drop. */}
+        <div
+          className={`items-center gap-3 border-l border-white/5 pl-4 h-5 ${
+            leftPanelOpen && rightPanelOpen ? 'hidden lg:flex' : 'hidden md:flex'
+          }`}
+        >
           <Metric icon={Cpu} value={cpuLoad * 100} label="CPU" />
           <Metric icon={Wifi} value={metrics.networkLatency * 100} label="NET" />
           <Metric icon={Battery} value={metrics.batteryLevel * 100} label="PWR" />
