@@ -59,10 +59,11 @@ Without that setting the observatory explains the missing service instead of
 requesting Python routes from Pages. The local diagnostic engine is disabled in
 the Pages build unless an explicit endpoint is provided.
 
-Sentry source-map upload requires `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and
-`SENTRY_PROJECT` as Actions secrets (org/project may also be Actions variables).
-Missing configuration is recorded in the job summary. Browser telemetry and the
-optional Python bridge have separate delivery capabilities; see
+Browser Sentry requires `VITE_SENTRY_DSN`; source-map upload also requires
+`SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` as Actions secrets
+(DSN/org/project may also be Actions variables). Source maps are uploaded from
+the actual Pages build, then removed from the public artifact. Browser telemetry
+and the optional Python bridge have separate configuration; see
 [QA architecture](docs/QA_ARCHITECTURE.md).
 
 The optional `@google/design.md` CLI was removed because its dependency chain
@@ -71,5 +72,6 @@ contained unpatched advisories. `DESIGN.md` remains the visual design reference.
 ## Project Notes
 
 - Architecture, critique, and design notes live in [DOCS.md](DOCS.md).
+- Proposed next features and priorities: [feature roadmap](docs/FEATURE_ROADMAP.md).
 - The main app code is split across `src/components`, `src/hooks`, `src/lib`, and `src/store`.
 - Build verification: `npm run lint`, `npm test`, and `npm run build`.

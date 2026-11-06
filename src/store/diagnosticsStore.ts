@@ -46,6 +46,7 @@ const TRACKED_FETCH_PATHS = ['/api/', '/chat', '/status', '/git/status', '/sync'
 function shouldTrackFetchLatency(url: string): boolean {
   if (!url || typeof url !== 'string') return false;
   if (isDiagnosticIngestRequest(url)) return false;
+  if (sentryService.isTelemetryRequest(url)) return false;
   if (url.includes('/log')) return false;
   return TRACKED_FETCH_PATHS.some((path) => url.includes(path));
 }

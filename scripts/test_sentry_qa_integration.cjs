@@ -68,7 +68,7 @@ function testSentryQA() {
     extra: { telemetryUrl: "wss://live.telemetry.org" },
   });
 
-  assert.ok(eventId.startsWith("qa-evt-"), `Invalid eventId format: ${eventId}`);
+  assert.match(eventId, /^[a-f0-9]{32}$/, `Invalid eventId format: ${eventId}`);
 
   const updatedBreadcrumbs = sentryQA.getBreadcrumbs();
   assert.equal(updatedBreadcrumbs.length, 2, "Exception capture should record a breadcrumb");
@@ -76,7 +76,7 @@ function testSentryQA() {
 
   // Test message capture
   const msgId = sentryQA.captureMessage("Bridge fallback activated", "warning");
-  assert.ok(msgId.startsWith("qa-msg-"), `Invalid msgId format: ${msgId}`);
+  assert.match(msgId, /^[a-f0-9]{32}$/, `Invalid msgId format: ${msgId}`);
 
   console.log("✔ Sentry QA telemetry module contract tests passed.");
 }

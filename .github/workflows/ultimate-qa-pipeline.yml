@@ -88,16 +88,16 @@ jobs:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           buildScriptName: build-storybook
           exitZeroOnChanges: false
-          exitOnceUploaded: true
+          exitOnceUploaded: false
           onlyChanged: true
           # Enforce design tokens — any visual diff triggers review
           autoAcceptChanges: false
 
-  # ─── Runtime Telemetry – Sentry Source Maps ──────────────────────────
-  sentry-sourcemaps:
-    name: Sentry – Upload Source Maps
+  # Production source maps are uploaded from the actual Pages artifact.
+  sentry-configuration:
+    name: Sentry – Verify Configuration
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -106,20 +106,14 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Check Sentry configuration
-        id: sentry
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG || vars.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT || vars.SENTRY_PROJECT }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN || vars.VITE_SENTRY_DSN }}
         run: |
-          if [[ -n "$SENTRY_AUTH_TOKEN" && -n "$SENTRY_ORG" && -n "$SENTRY_PROJECT" ]]; then
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "Sentry upload not configured: set SENTRY_AUTH_TOKEN, SENTRY_ORG, and SENTRY_PROJECT." >> "$GITHUB_STEP_SUMMARY"
-          fi
-      - run: npm run build:sourcemaps
-        if: steps.sentry.outputs.configured == 'true'
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG || vars.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT || vars.SENTRY_PROJECT }}
+          : "${SENTRY_AUTH_TOKEN:?Set SENTRY_AUTH_TOKEN}"
+          : "${SENTRY_ORG:?Set SENTRY_ORG}"
+          : "${SENTRY_PROJECT:?Set SENTRY_PROJECT}"
+          : "${VITE_SENTRY_DSN:?Set VITE_SENTRY_DSN}"
+          npx --no-install sentry-cli info

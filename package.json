@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.52.0",
+    "@sentry/browser": "^11.11.0",
     "@tailwindcss/vite": "^4.3.1",
     "@vitejs/plugin-react": "^5.0.4",
     "@wwtelescope/engine": "^7.41.0",
@@ -59,6 +60,7 @@
   },
   "devDependencies": {
     "@chromatic-com/storybook": "latest",
+    "@sentry/cli": "^3.8.2",
     "@storybook/addon-a11y": "^10.6.6",
     "@storybook/addon-docs": "^10.6.6",
     "@storybook/addon-mcp": "^10.6.6",
@@ -87,8 +89,7 @@
     "typescript": "~5.8.2",
     "vite": "^6.4.5",
     "vite-plugin-cesium": "^1.2.23",
-    "vitest": "^4.1.12",
-    "@sentry/cli": "^3.8.2"
+    "vitest": "^4.1.12"
   },
   "engines": {
     "node": ">=22.13.0"

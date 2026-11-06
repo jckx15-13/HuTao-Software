@@ -347,7 +347,7 @@ export function DiagnosticPanel() {
             <div className="text-[8.5px] text-white/60 leading-relaxed">
               Status:{' '}
               <span className={`font-bold ${sentryEnabled ? 'text-green-400' : 'text-yellow-400'}`}>
-                {sentryEnabled ? 'DSN configured · delivery unavailable' : 'Local Telemetry Buffer'}
+                {sentryEnabled ? 'Sentry SDK configured' : 'Local Telemetry Buffer'}
               </span>
               <div className="text-white/30 text-[7.5px] truncate mt-0.5">
                 DSN: {sentryDsn || 'None set (logs captured locally)'}

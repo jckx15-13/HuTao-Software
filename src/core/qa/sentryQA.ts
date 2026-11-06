@@ -4,6 +4,7 @@
  * and client-side error handling for Silver Wolf VI.
  */
 import { reportToEngine } from '../../services/diagnosticEngineClient';
+import { sentryService } from '../../services/sentryService';
 
 export interface QABreadcrumb {
   category: string;
@@ -21,28 +22,16 @@ export interface QAEventContext {
 
 class SentryQAService {
   private initialized = false;
-  private dsn: string | null = null;
   private breadcrumbs: QABreadcrumb[] = [];
   private readonly MAX_BREADCRUMBS = 50;
 
-  constructor() {
-    // Read from environment if available
-    this.dsn = import.meta.env.VITE_SENTRY_DSN ||
-      (typeof process !== 'undefined' ? process.env.SENTRY_DSN : undefined) || null;
-  }
-
   public init(customDsn?: string): void {
     if (customDsn) {
-      this.dsn = customDsn;
+      sentryService.setDSN(customDsn);
     }
     
     this.initialized = true;
     
-    if (this.dsn) {
-      console.log(`[SentryQA] Initialized telemetry with DSN: ${this.dsn.slice(0, 12)}...`);
-    } else {
-      console.log("[SentryQA] Development / QA Mock Mode active (No live SENTRY_DSN provided).");
-    }
   }
 
   public isInitialized(): boolean {
@@ -68,23 +57,10 @@ class SentryQAService {
 
   public captureException(error: Error | unknown, context?: QAEventContext): string {
     const errorObj = error instanceof Error ? error : new Error(String(error));
-    const eventId = `qa-evt-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const eventId = sentryService.captureException(errorObj, context?.extra).eventId;
 
-    const formattedPayload = {
-      eventId,
-      message: errorObj.message,
-      name: errorObj.name,
-      stack: errorObj.stack,
-      tags: context?.tags || {},
-      extra: context?.extra || {},
-      breadcrumbs: this.getBreadcrumbs(),
-      timestamp: new Date().toISOString(),
-    };
-
-    const isTest = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
-    if (!isTest) {
-      console.error(`[SentryQA] [${eventId}] Captured Exception:`, formattedPayload);
-    }
+    // The SDK and diagnostic engine receive this event directly. Logging it to
+    // console.error would be captured again by the diagnostics console listener.
 
     this.addBreadcrumb({
       category: "exception",
@@ -107,7 +83,7 @@ class SentryQAService {
   }
 
   public captureMessage(message: string, level: "info" | "warning" | "error" = "info", context?: QAEventContext): string {
-    const eventId = `qa-msg-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const eventId = sentryService.captureMessage(message, level, context?.extra).eventId;
 
     this.addBreadcrumb({
       category: "message",

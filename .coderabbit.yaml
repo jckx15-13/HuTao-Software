@@ -8,6 +8,11 @@ reviews:
   poem: false
   review_status: true
   collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
   path_instructions:
     - path: "bridge/**"
       instructions: |
