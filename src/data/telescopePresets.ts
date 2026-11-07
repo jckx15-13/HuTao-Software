@@ -49,11 +49,11 @@ export const TELESCOPE_PRESETS: TelescopePreset[] = [
   {
     id: 'andromeda',
     name: 'Andromeda Galaxy (M31)',
-    url: 'https://worldwidetelescope.org/webclient/?ra=0.712&dec=41.27&fov=3.0',
+    url: 'https://worldwidetelescope.org/webclient/?ra=0.712&dec=41.27&fov=60.0',
     ra: '00h 42m 44s',
     dec: '+41° 16\' 09"',
-    fov: '3.00°',
-    description: 'Our nearest major galactic neighbor, located 2.5 million light-years away.',
+    fov: '60.00°',
+    description: 'About 2.5 million light-years away. Its visible disk spans roughly 3° of sky.',
     raHours: 0.712,
     decDegrees: 41.27,
     color: '#FF00AA'

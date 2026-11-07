@@ -348,6 +348,15 @@ textarea:disabled {
   }
 }
 
+.space-sky-backdrop {
+  background: radial-gradient(ellipse at 54% 38%, #101929, #090f1d 56%, #050911);
+}
+
+.space-sky-survey {
+  mix-blend-mode: screen;
+  filter: brightness(1.12);
+}
+
 .cesium-viewer-bottom,
 .cesium-widget-credits,
 .cesium-credit-textContainer,

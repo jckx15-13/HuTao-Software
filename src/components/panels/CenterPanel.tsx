@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useCallback, useRef } from 'react';
-import { MessageSquare, Globe2, ChevronRight } from 'lucide-react';
+import { MessageSquare, Globe2, ChevronRight, Telescope } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
+import { getSpaceFocus, type SpaceFocus } from '@/lib/spaceFocus';
 import { ChatPanel } from '../ChatPanel';
 import { TouchControlOverlay } from '../common/TouchControlOverlay';
 import { useChromeTopAnchor } from '../../hooks/useChromeTopAnchor';
@@ -33,8 +34,13 @@ export function CenterPanel() {
   const setInteractionMode = useUIStore((s) => s.setInteractionMode);
   const spaceInteractionTarget = useUIStore((s) => s.spaceInteractionTarget);
   const setSpaceInteractionTarget = useUIStore((s) => s.setSpaceInteractionTarget);
+  const cosmosBackgroundMode = useUIStore((s) => s.cosmosBackgroundMode);
   const modeSwitcherOpen = useUIStore((s) => s.modeSwitcherOpen);
   const setModeSwitcherOpen = useUIStore((s) => s.setModeSwitcherOpen);
+
+  const spaceFocus = getSpaceFocus(interactionMode, spaceInteractionTarget);
+  const isSpaceMode = spaceFocus !== null;
+  const isTelescopeActive = spaceFocus === 'telescope';
 
   // Track WWT error state for change log reporting
   const handleTelescopeError = useCallback((error: Error) => {
@@ -50,7 +56,7 @@ export function CenterPanel() {
           setModeSwitcherOpen(false);
           return;
         }
-        if (interactionMode === 'telescope' || spaceInteractionTarget === 'telescope') {
+        if (isTelescopeActive) {
           setInteractionMode('orbital');
           setSpaceInteractionTarget('earth');
         }
@@ -58,7 +64,7 @@ export function CenterPanel() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [interactionMode, modeSwitcherOpen, spaceInteractionTarget, setInteractionMode, setSpaceInteractionTarget]);
+  }, [isTelescopeActive, modeSwitcherOpen, setInteractionMode, setModeSwitcherOpen, setSpaceInteractionTarget]);
 
   useEffect(() => {
     const handleModeCommand = (event: KeyboardEvent) => {
@@ -69,9 +75,17 @@ export function CenterPanel() {
     };
     window.addEventListener('keydown', handleModeCommand);
     return () => window.removeEventListener('keydown', handleModeCommand);
-  }, []);
+  }, [setModeSwitcherOpen]);
 
-  const isSpaceMode = interactionMode === 'orbital' || interactionMode === 'telescope';
+  const backgroundSkyEnabled = cosmosBackgroundMode === 'wwt-milkyway' &&
+    typeof window !== 'undefined' &&
+    !/HeadlessChrome/i.test(navigator.userAgent) &&
+    !new URLSearchParams(window.location.search).has('fallback');
+
+  function focusSpace(target: SpaceFocus) {
+    setInteractionMode('orbital');
+    setSpaceInteractionTarget(target);
+  }
 
   const modeSwitcherRef = useRef<HTMLDivElement>(null);
   useChromeTopAnchor(modeSwitcherRef);
@@ -84,7 +98,7 @@ export function CenterPanel() {
       <SidebarTrigger />
 
       {/* Touch device virtual navigation overlay */}
-      <TouchControlOverlay />
+      {!isTelescopeActive && <TouchControlOverlay />}
 
       {/* Dynamic Segmented Mode Switcher (Pill Style) — always interactive.
           `top` still uses the clamp() as its first-paint position (before
@@ -113,7 +127,7 @@ export function CenterPanel() {
                 <span>Space</span>
               </button>
             </div>
-            {interactionMode === 'orbital' && spaceInteractionTarget !== 'telescope' && (
+            {spaceFocus === 'earth' && (
               <div className="mt-1.5 flex justify-center">
                 <SpaceHudPillControls />
               </div>
@@ -144,12 +158,32 @@ export function CenterPanel() {
           className={`fixed inset-0 ${isSpaceMode ? 'z-content' : 'hidden pointer-events-none z-base'}`}
           aria-hidden={!isSpaceMode}
         >
-          {/* WorldWide Telescope controls overlay — wrapped in inline ErrorBoundary for graceful degradation */}
-          {isSpaceMode && (
+          {isSpaceMode && !modeSwitcherOpen && (
+            <div role="group" aria-label="Space input focus" className="glass-panel absolute left-1/2 top-24 z-chrome flex sm:top-16 -translate-x-1/2 gap-1 rounded-full border border-white/10 p-1 pointer-events-auto">
+              <button
+                type="button"
+                aria-pressed={!isTelescopeActive}
+                onClick={() => focusSpace('earth')}
+                className="flex min-h-11 items-center gap-2 rounded-full px-3 text-xs text-white/70 hover:text-white aria-pressed:bg-primary/20 aria-pressed:text-primary"
+              >
+                <Globe2 size={14} /> Earth
+              </button>
+              <button
+                type="button"
+                aria-pressed={isTelescopeActive}
+                onClick={() => focusSpace('telescope')}
+                className="flex min-h-11 items-center gap-2 rounded-full px-3 text-xs text-white/70 hover:text-white aria-pressed:bg-primary/20 aria-pressed:text-primary"
+              >
+                <Telescope size={14} /> Telescope
+              </button>
+            </div>
+          )}
+
+          {isSpaceMode && (isTelescopeActive || backgroundSkyEnabled) && (
             <div className="absolute inset-0 pointer-events-none z-chrome">
               <ErrorBoundary variant="inline" fallbackMessage="Telescope Controls Error" onError={handleTelescopeError}>
                 <Suspense fallback={null}>
-                  <WorldWideTelescopeView controlsOnly />
+                  <WorldWideTelescopeView />
                 </Suspense>
               </ErrorBoundary>
             </div>
@@ -157,7 +191,10 @@ export function CenterPanel() {
 
           {/* GoogleEarthRemix overlay — pointer-events-none so globe underneath gets drags */}
           {isSpaceMode && (
-            <div className="absolute inset-0 pointer-events-none z-content">
+            <div
+              className={`absolute inset-0 pointer-events-none z-content ${isTelescopeActive ? 'invisible' : ''}`}
+              inert={isTelescopeActive}
+            >
               <Suspense fallback={null}>
                 <GoogleEarthRemix />
               </Suspense>

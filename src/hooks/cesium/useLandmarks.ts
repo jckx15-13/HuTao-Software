@@ -16,7 +16,7 @@ const scratchCartesian3 = new Cesium.Cartesian3();
  * - Single ScreenSpaceEventHandler (reused, not recreated)
  * - Flight animation uses preUpdate listener with auto-cleanup
  */
-export function useLandmarks(viewer: Cesium.Viewer | null) {
+export function useLandmarks(viewer: Cesium.Viewer | null, showMarkers: boolean) {
   const activeLocation = useUIStore((s) => s.activeLocation);
   const setActiveLocation = useUIStore((s) => s.setActiveLocation);
   const setIssFeedOpen = useUIStore((s) => s.setIssFeedOpen);
@@ -24,7 +24,7 @@ export function useLandmarks(viewer: Cesium.Viewer | null) {
 
   // Mount all markers in a single batch
   useEffect(() => {
-    if (!viewer || (viewer as any).isDestroyed && (viewer as any).isDestroyed()) return;
+    if (!showMarkers || !viewer || viewer.isDestroyed()) return;
 
     // Batch-create all location entities at once
     const entities = locations.map((loc) =>
@@ -91,7 +91,7 @@ export function useLandmarks(viewer: Cesium.Viewer | null) {
         // swallow cleanup errors
       }
     };
-  }, [viewer, setActiveLocation, setIssFeedOpen]);
+  }, [viewer, showMarkers, setActiveLocation, setIssFeedOpen]);
 
   // Camera flight to selected location using PureScript Math
   useEffect(() => {

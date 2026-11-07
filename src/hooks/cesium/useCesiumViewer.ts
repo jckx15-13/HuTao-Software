@@ -92,7 +92,7 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
         maximumRenderTimeChange: 0.5,
 
         // WWV pattern: Request WebGL2 for better performance + built-in AA
-        contextOptions: { webgl: { antialias: true } },
+        contextOptions: { webgl: { alpha: true, antialias: true } },
 
         // MSAA: 1 sample on Firefox (buggy), 2x elsewhere for quality/perf balance
         msaaSamples: isFirefox || lowEndDevice ? 1 : 2,
@@ -142,21 +142,13 @@ export function useCesiumViewer(containerRef: React.RefObject<HTMLDivElement | n
     viewerInstance.scene.backgroundColor = Cesium.Color.fromCssColorString('#020205'); // Space opera dark background
     viewerInstance.scene.highDynamicRange = !lowEndDevice; // Disable HDR on low-end devices
 
-    // Cool-toned luminous space atmosphere
     const skyAtmosphere = viewerInstance.scene.skyAtmosphere;
     if (skyAtmosphere) {
       skyAtmosphere.show = !lowEndDevice;
-      if (!lowEndDevice) {
-        skyAtmosphere.brightnessShift = 0.15; // Enhanced brightness contrast
-        skyAtmosphere.saturationShift = 0.45; // Luminous saturation
-        skyAtmosphere.hueShift = -0.05; // Cool cyan/purple shift
-      }
     }
 
-    // Configure globe atmospheric lighting
-    viewerInstance.scene.globe.atmosphereBrightnessShift = 0.15;
-    viewerInstance.scene.globe.atmosphereSaturationShift = 0.45;
-    viewerInstance.scene.globe.atmosphereHueShift = -0.05;
+    // Use Cesium's natural scattering colors for the sky and the globe.
+
     viewerInstance.scene.globe.lightingFadeOutDistance = 1e7;
     viewerInstance.scene.globe.lightingFadeInDistance = 2e7;
 

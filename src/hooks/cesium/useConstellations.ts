@@ -82,7 +82,7 @@ export function useConstellations(viewer: Cesium.Viewer | null) {
             position: positionProperty,
             point: {
               pixelSize: pointSize,
-              color: Cesium.Color.fromCssColorString('#5df3ff').withAlpha(pointAlpha),
+              color: Cesium.Color.fromCssColorString('#b8cce4').withAlpha(pointAlpha),
               outlineColor: Cesium.Color.fromCssColorString('#ffffff').withAlpha(Math.min(1, pointAlpha + 0.2)),
               outlineWidth: 1.0,
             },
@@ -114,7 +114,7 @@ export function useConstellations(viewer: Cesium.Viewer | null) {
             polyline: {
               positions,
               width: 1.0,
-              material: Cesium.Color.fromCssColorString('rgba(0, 246, 255, 0.25)'),
+              material: Cesium.Color.fromCssColorString('rgba(108, 143, 181, 0.38)'),
             },
           });
           nodeIds.linePositionProperties.push(positions);

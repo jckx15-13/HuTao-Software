@@ -6,6 +6,8 @@ import { useDiagnosticsStore } from './store/diagnosticsStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useThemeVariables } from './hooks/useThemeVariables';
 import { useUIStore } from './store/uiStore';
+import { getSpaceFocus } from '@/lib/spaceFocus';
+import { WWT_VIEWPORT_ID } from './lib/wwt/researchApp';
 
 const DockedLayout = React.lazy(() =>
   import('./components/layout/DockedLayout').then((m) => ({ default: m.DockedLayout }))
@@ -37,8 +39,6 @@ const SettingsPage = React.lazy(() =>
 
 const MountUnmountHarness = React.lazy(() => import('./components/dev/MountUnmountHarness'));
 const DiagnosticPanel = React.lazy(() => import('./components/dev/DiagnosticPanel'));
-
-const WorldWideTelescopeView = React.lazy(() => import('./components/learning/WorldWideTelescopeView'));
 
 export default function App() {
   useKeyboardShortcuts();
@@ -75,9 +75,10 @@ export default function App() {
   const showDiagnostics = typeof window !== 'undefined' && window.location.search.includes('diagnostics');
   const setCurrentPage = useUIStore((state) => state.setCurrentPage);
   const showLauncher = currentPage === 'launcher' && !launcherDismissed;
-  const isSpaceMode = interactionMode === 'orbital' || interactionMode === 'telescope';
-  const isTelescopeTarget = spaceInteractionTarget === 'telescope' || interactionMode === 'telescope';
-  const isEarthTarget = spaceInteractionTarget === 'earth' && interactionMode !== 'telescope';
+  const spaceFocus = getSpaceFocus(interactionMode, spaceInteractionTarget);
+  const isSpaceMode = spaceFocus !== null;
+  const telescopeFocused = spaceFocus === 'telescope' && !showLauncher;
+  const earthInteractive = spaceFocus === 'earth' && !showLauncher;
 
   React.useEffect(() => {
     if (isHeadless || showHarness || showDiagnostics) {
@@ -136,44 +137,27 @@ export default function App() {
           } ${isHeadless ? 'is-headless' : ''}`}
           style={{ ...appStyle, ...backgroundStyle }}
         >
-          {!customWallpaper && (
-            <div className="absolute inset-0 z-base">
-                {isSpaceMode && (
-                  <div
-                    className={`absolute inset-0 ${cosmosBackgroundMode === 'deep-black' ? 'bg-black' : 'bg-[#02040a]'}`}
-                    aria-hidden="true"
-                  />
-                )}
-                {isSpaceMode && isTelescopeTarget && cosmosBackgroundMode === 'wwt-milkyway' && (!isHeadless || isTelescopeTarget) && (
-                <div
-                  className="absolute inset-0 z-base transition-opacity duration-500"
-                  style={{
-                    opacity: isTelescopeTarget ? 0.26 : 1,
-                    mixBlendMode: isTelescopeTarget ? 'screen' : 'normal'
-                  }}
-                >
-                  <Suspense fallback={null}>
-                    <WorldWideTelescopeView bgOnly />
-                  </Suspense>
-                </div>
-              )}
+          <div className="absolute inset-0 z-base overflow-hidden" {...workspaceIsolationProps}>
+            {isSpaceMode && !customWallpaper && (
               <div
-                className="absolute inset-0 transition-all duration-500 ease-in-out"
-                style={{
-                  zIndex: 'calc(var(--theme-z-base) + 1)',
-                  // Telescope mode belongs to WWT. Keeping Cesium's imagery
-                  // visible here paints its geographic survey tiles over the
-                  // WWT solar-system canvas.
-                  opacity: isSpaceMode && isTelescopeTarget ? 0 : 1.0,
-                  pointerEvents: isSpaceMode && isEarthTarget ? 'auto' : 'none'
-                }}
+                className={`absolute inset-0 ${cosmosBackgroundMode === 'deep-black' ? 'bg-black' : 'space-sky-backdrop'}`}
+                aria-hidden="true"
+              />
+            )}
+            <div id={WWT_VIEWPORT_ID} className="contents" />
+            {(!customWallpaper || isSpaceMode) && (
+              <div
+                data-space-layer="earth"
+                className={`absolute inset-0 z-[1] transition-transform duration-[1600ms] ease-in-out motion-reduce:transition-none
+                  ${earthInteractive ? 'pointer-events-auto' : 'pointer-events-none'}
+                  ${telescopeFocused ? '-translate-x-[22vw] translate-y-[17vh] scale-[0.48] sm:-translate-x-[10vw] sm:scale-[0.64]' : ''}`}
               >
                 <Suspense fallback={null}>
-                  <CesiumBackground interactive={isSpaceMode && isEarthTarget} />
+                  <CesiumBackground interactive={earthInteractive} transparentSky={isSpaceMode} />
                 </Suspense>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {interactionMode === 'chat' && (
             <div className="absolute inset-0 bg-[#06070a]/75 backdrop-blur-[2px] pointer-events-none z-base" />

@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react';
+import { Color, type Scene } from 'cesium';
 import { useCesiumViewer, type CesiumViewerStatus } from '../../hooks/cesium/useCesiumViewer';
 import { useLandmarks } from '../../hooks/cesium/useLandmarks';
 import { useAutoRotation } from '../../hooks/cesium/useAutoRotation';
@@ -14,13 +15,23 @@ import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 interface CesiumBackground3DProps {
   interactive: boolean;
+  transparentSky: boolean;
   onError: (err: string) => void;
   onStatusChange?: (status: CesiumViewerStatus) => void;
 }
 
-export default function CesiumBackground3D({ interactive, onError, onStatusChange }: CesiumBackground3DProps) {
+function configureSky(scene: Scene, transparentSky: boolean) {
+  scene.backgroundColor = transparentSky ? Color.TRANSPARENT : Color.fromCssColorString('#020205');
+  if (scene.skyBox) scene.skyBox.show = !transparentSky;
+  if (scene.sun) scene.sun.show = !transparentSky;
+  if (scene.moon) scene.moon.show = !transparentSky;
+  scene.requestRender();
+}
+
+export default function CesiumBackground3D({ interactive, transparentSky, onError, onStatusChange }: CesiumBackground3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const showBorders = useUIStore((s) => s.showBorders);
+  const wwtSkySelected = useUIStore((s) => s.cosmosBackgroundMode === 'wwt-milkyway');
   const imageryProvider = useUIStore((s) => s.imageryProvider);
   const updateMapConfig = useStore((s) => s.updateMapConfig);
   
@@ -46,11 +57,17 @@ export default function CesiumBackground3D({ interactive, onError, onStatusChang
     }
   }, [error, onError]);
 
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed()) return;
+    configureSky(viewer.scene, transparentSky);
+  }, [viewer, transparentSky]);
+
   // Activate Cesium features
-  useLandmarks(viewer);
-  useAutoRotation(viewer, interactive);
-  useWWVGlobe(viewer);
-  useConstellations(viewer);
+  const showEarthMarkers = !transparentSky || interactive;
+  useLandmarks(viewer, showEarthMarkers);
+  useAutoRotation(viewer, interactive, !transparentSky);
+  useWWVGlobe(viewer, showEarthMarkers);
+  useConstellations(interactive && !wwtSkySelected ? viewer : null);
   useTelescopePresets(viewer);
   
   // Imagery and map data layers integration
@@ -59,8 +76,8 @@ export default function CesiumBackground3D({ interactive, onError, onStatusChang
   useCameraActions(viewer, isLoaded);
 
   return (
-    <div className="absolute inset-0 h-full w-full bg-black animate-fade-in pointer-events-auto" style={{ zIndex: 'var(--theme-z-base)' }}>
-      <div ref={containerRef} className="h-full w-full pointer-events-auto" />
+    <div className={`absolute inset-0 h-full w-full animate-fade-in ${interactive ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+      <div ref={containerRef} className="h-full w-full" />
       
       {!isLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md z-floating">

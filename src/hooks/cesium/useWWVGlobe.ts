@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo } from 'react';
 import type { Viewer } from 'cesium';
 import { useStore } from '@/core/state/store';
 import { pluginManager } from '@/core/plugins/PluginManager';
-import { initPrimitiveCollections, AnimatableItem } from '@/core/globe/EntityRenderer';
+import { getCollections, initPrimitiveCollections, AnimatableItem } from '@/core/globe/EntityRenderer';
 import { setupInteractionHandlers } from '@/core/globe/InteractionHandler';
 import { useEntityRendering } from '@/core/globe/hooks/useEntityRendering';
 import { useModelRendering } from '@/core/globe/hooks/useModelRendering';
@@ -15,7 +15,7 @@ import { GeoEntity, CesiumEntityOptions } from '@/core/plugins/PluginTypes';
 /**
  * Custom hook to bridge the WorldWideView plugin entity renderer to the active Cesium Viewer.
  */
-export function useWWVGlobe(viewer: Viewer | null) {
+export function useWWVGlobe(viewer: Viewer | null, showMarkers: boolean) {
   const isReady = !!viewer;
   const animatablesMapRef = useRef<Map<string, AnimatableItem>>(new Map());
   const hoveredEntityIdRef = useRef<string | null>(null);
@@ -35,6 +35,14 @@ export function useWWVGlobe(viewer: Viewer | null) {
       cleanupInteractions();
     };
   }, [viewer]);
+
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed()) return;
+    for (const collection of Object.values(getCollections(viewer))) {
+      collection.show = showMarkers;
+    }
+    viewer.scene.requestRender();
+  }, [viewer, showMarkers]);
 
   // Derive visible entities list by looking at plugin settings and layers config
   const visibleEntities = useMemo(() => {
@@ -89,8 +97,8 @@ export function useWWVGlobe(viewer: Viewer | null) {
   useTrailRendering(viewer, isReady, animatablesMapRef);
 
   // Hook up selected satellite sensor frustums (conical footprint projection)
-  useSatelliteFrustum(viewer, isReady, selectedEntity, animatablesMapRef);
+  useSatelliteFrustum(viewer, isReady && showMarkers, selectedEntity, animatablesMapRef);
 
   // Hook up 3D hexagonal markers (seismic cylinders with slices: 6)
-  useHexagonRendering(viewer, isReady, hexagonEntities);
+  useHexagonRendering(viewer, isReady && showMarkers, hexagonEntities);
 }

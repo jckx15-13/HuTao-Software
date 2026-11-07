@@ -55,6 +55,7 @@ const {
   TELESCOPE_PRESETS,
   resolveTelescopePresetCoordinates,
 } = require("../src/data/telescopePresets");
+const { normalizeWwtBackgroundLayer, readWwtTelemetry, WWT_SKY_LAYER, WWT_SOLAR_SYSTEM_LAYER } = require("../src/lib/wwt/researchApp");
 const {
   aiChat,
   createLocalAssistantResponse,
@@ -145,6 +146,15 @@ async function run() {
     );
   }
 
+  const viewMessage = {
+    type: "wwt_view_state", raRad: -Math.PI / 2, decRad: Math.PI / 4, fovDeg: 3, rollDeg: -2,
+  };
+  assert.deepEqual(readWwtTelemetry(viewMessage), { ra: 18, dec: 45, fov: 3, roll: -2 });
+  assert.equal(readWwtTelemetry({ ...viewMessage, fovDeg: NaN }), null);
+  assert.equal(readWwtTelemetry({ type: "wwt_view_state", ra: 18, dec: 45, fov: 3 }), null);
+  assert.equal(normalizeWwtBackgroundLayer("Planck Dust & Gas"), "Planck Thermal Dust");
+  assert.equal(normalizeWwtBackgroundLayer("Visible Imagery"), undefined);
+
   const localText = createLocalAssistantResponse("Confirm chat works");
   assert.match(localText, /chat loop verified/i);
   assert.match(localText, /without echoing the prompt text/i);
@@ -161,6 +171,12 @@ async function run() {
   );
 
   const store = useUIStore.getState();
+  store.setWwtBackgroundLayer(WWT_SOLAR_SYSTEM_LAYER);
+  store.setTelescopeTarget(TELESCOPE_PRESETS[1]);
+  assert.equal(useUIStore.getState().wwtBackgroundLayer, WWT_SKY_LAYER);
+  store.setWwtBackgroundLayer("Planck Thermal Dust");
+  store.setTelescopeTarget(TELESCOPE_PRESETS[2]);
+  assert.equal(useUIStore.getState().wwtBackgroundLayer, "Planck Thermal Dust");
   assert.equal(store.aiModel, "local-assistant");
   assert.equal(store.leftPanelOpen, true);
   assert.equal(store.rightPanelOpen, true);

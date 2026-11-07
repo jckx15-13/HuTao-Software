@@ -17,12 +17,16 @@ function asyncCesiumGlobalScript() {
       return html.replace(
         /<script src="([^"]*\/cesium\/Cesium\.js)"><\/script>/,
         (_match: string, src: string) => `<script>
-window.addEventListener('load', function loadCesiumGlobalAfterFirstPaint() {
-  var script = document.createElement('script');
-  script.async = true;
-  script.src = ${JSON.stringify(src)};
-  document.head.appendChild(script);
-}, { once: true });
+window.__cesiumReady = new Promise(function (resolve, reject) {
+  window.addEventListener('load', function loadCesiumGlobalAfterFirstPaint() {
+    var script = document.createElement('script');
+    script.async = true;
+    script.src = ${JSON.stringify(src)};
+    script.onload = resolve;
+    script.onerror = function () { reject(new Error('Unable to load Cesium')); };
+    document.head.appendChild(script);
+  }, { once: true });
+});
 </script>`
       );
     }

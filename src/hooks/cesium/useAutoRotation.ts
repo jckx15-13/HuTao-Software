@@ -16,7 +16,7 @@ function configureCameraController(viewer: Cesium.Viewer, interactive: boolean) 
   sscc.enableLook = interactive;
 }
 
-export function useAutoRotation(viewer: Cesium.Viewer | null, interactive: boolean) {
+export function useAutoRotation(viewer: Cesium.Viewer | null, interactive: boolean, autoRotate: boolean) {
   const userInteractingRef = useRef(false);
 
   // Toggle camera interaction controls
@@ -27,7 +27,7 @@ export function useAutoRotation(viewer: Cesium.Viewer | null, interactive: boole
 
   // Auto-rotation via preUpdate listener (frame-synced, no setInterval drift)
   useEffect(() => {
-    if (interactive || !viewer) return;
+    if (!autoRotate || interactive || !viewer) return;
 
     let lastTime = Date.now();
 
@@ -60,5 +60,5 @@ export function useAutoRotation(viewer: Cesium.Viewer | null, interactive: boole
         }
       } catch (cleanupErr) { /* ignore cleanup error */ }
     };
-  }, [viewer, interactive]);
+  }, [viewer, interactive, autoRotate]);
 }

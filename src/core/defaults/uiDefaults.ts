@@ -20,6 +20,7 @@
  */
 
 import { palettes, type PaletteKey } from '../../lib/themeEngine';
+import { normalizeWwtBackgroundLayer, WWT_SKY_LAYER } from '../../lib/wwt/researchApp';
 import { resolveDeviceProfile, type DeviceClass, type DeviceProfile } from '../layout/deviceProfile';
 import type {
   AiModel,
@@ -277,7 +278,7 @@ export const UI_DEFAULTS: PersistedUiDefaults = {
   cursorDesign: 'reticle-v1',
   spaceBlendOpacity: 0.35,
   cosmosBackgroundMode: 'wwt-milkyway',
-  wwtBackgroundLayer: '3D Solar System View',
+  wwtBackgroundLayer: WWT_SKY_LAYER,
   spaceInteractionTarget: 'earth'
 };
 
@@ -416,12 +417,7 @@ const FIELD_SANITIZERS: {
     typeof v === 'string' && COSMOS_MODES.includes(v as CosmosBackgroundMode)
       ? (v as CosmosBackgroundMode)
       : undefined,
-  wwtBackgroundLayer: (v) => {
-    if (typeof v !== 'string' || v.length === 0) return undefined;
-    // 'Visible Imagery' is an Earth layer that renders as a black sphere in the
-    // cosmos view. Treated as unusable rather than silently kept.
-    return v === 'Visible Imagery' ? undefined : v;
-  },
+  wwtBackgroundLayer: normalizeWwtBackgroundLayer,
   spaceInteractionTarget: (v) =>
     typeof v === 'string' && SPACE_TARGETS.includes(v as PersistedUiDefaults['spaceInteractionTarget'])
       ? (v as PersistedUiDefaults['spaceInteractionTarget'])

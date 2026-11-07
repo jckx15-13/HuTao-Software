@@ -5,6 +5,7 @@ import type { PaletteKey, ThemeVars } from '../lib/themeEngine';
 import { type LocationData } from '../data/locations';
 import { type Tour } from '../data/tours';
 import { type WeatherData } from '../services/weatherService';
+import { normalizeWwtBackgroundLayer, WWT_SKY_LAYER } from '../lib/wwt/researchApp';
 
 export type AiModel =
   | 'gemini-3.5-flash'
@@ -576,7 +577,7 @@ export const useUIStore = create<UIStore>()(
         measureEnd: null,
         setMeasureEnd: (measureEnd) => set({ measureEnd }),
         telescopeTarget: null,
-        setTelescopeTarget: (telescopeTarget) => set({ telescopeTarget }),
+        setTelescopeTarget: (telescopeTarget) => set({ telescopeTarget: telescopeTarget && { ...telescopeTarget } }),
         activeTour: null,
         setActiveTour: (activeTour) => set({ activeTour }),
         activeTourStepIndex: 0,
@@ -684,8 +685,10 @@ export const useUIStore = create<UIStore>()(
         setSpaceBlendOpacity: (spaceBlendOpacity) => set({ spaceBlendOpacity }),
           cosmosBackgroundMode: 'wwt-milkyway',
           setCosmosBackgroundMode: (cosmosBackgroundMode) => set({ cosmosBackgroundMode }),
-          wwtBackgroundLayer: '3D Solar System View',
-          setWwtBackgroundLayer: (wwtBackgroundLayer) => set({ wwtBackgroundLayer }),
+          wwtBackgroundLayer: WWT_SKY_LAYER,
+          setWwtBackgroundLayer: (value) => set((state) => ({
+            wwtBackgroundLayer: normalizeWwtBackgroundLayer(value) ?? state.wwtBackgroundLayer,
+          })),
         spaceInteractionTarget: 'earth',
         setSpaceInteractionTarget: (spaceInteractionTarget) => set({ spaceInteractionTarget }),
 
@@ -800,10 +803,6 @@ export const useUIStore = create<UIStore>()(
         migrated.imageryProvider =
           migrated.imageryProvider === 'cesium' ? 'arcgis-world' : migrated.imageryProvider || 'arcgis-world';
           migrated.cosmosBackgroundMode = migrated.cosmosBackgroundMode || 'wwt-milkyway';
-          migrated.wwtBackgroundLayer =
-            migrated.wwtBackgroundLayer && migrated.wwtBackgroundLayer !== 'Visible Imagery'
-              ? migrated.wwtBackgroundLayer
-              : '3D Solar System View';
         migrated.personalisation = normalizePersonalisation({
           ...migrated.personalisation,
           minimalMode: false,
@@ -818,6 +817,14 @@ export const useUIStore = create<UIStore>()(
           uiDensity: 'compact'
         });
         return migrated;
+      },
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<UIStore> | undefined;
+        return {
+          ...currentState,
+          ...persisted,
+          wwtBackgroundLayer: normalizeWwtBackgroundLayer(persisted?.wwtBackgroundLayer) ?? currentState.wwtBackgroundLayer,
+        };
       },
       partialize: (s) => ({
         activePalette: s.activePalette,

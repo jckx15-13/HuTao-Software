@@ -58,22 +58,13 @@ import { IMAGERY_LAYERS } from '@/core/globe/ImageryProviderFactory';
 import { WWV_ORBITAL_ASSET_BY_CATEGORY } from '@/assets/wwvVisualAssets';
 import { useSatelliteCatalog } from '@/hooks/useSatelliteCatalog';
 import { useViewportSize } from '@/hooks/useViewportSize';
+import { WWT_BACKGROUND_LAYERS } from '@/lib/wwt/researchApp';
 import { buildSpatialPanelGeometry } from './panelGeometry';
 
 const COSMOS_BACKGROUND_OPTIONS = [
   { id: 'deep-black', label: 'DEEP BLACK', description: 'A clean, lightless cosmos.' },
   { id: 'sparkling', label: 'SPARKLING', description: 'Dark space with moving star points.' },
   { id: 'wwt-milkyway', label: 'WWT MILKY WAY', description: 'WorldWide Telescope sky surveys.' },
-] as const;
-
-const WWT_BACKGROUND_OPTIONS = [
-  { value: '3D Solar System View', label: '3D Solar System (Earth-centered)' },
-  { value: 'Visible Imagery', label: 'Visible Imagery' },
-  { value: 'Digitized Sky Survey (Color)', label: 'Digitized Sky Survey' },
-  { value: 'Hubble Space Telescope Imagery', label: 'Hubble' },
-  { value: 'RASS: ROSAT All Sky Survey (X-ray)', label: 'Chandra X-Ray / ROSAT' },
-  { value: 'Planck Dust & Gas', label: 'Planck Dust & Gas' },
-  { value: 'VLSS: VLA Low-frequency Sky Survey (Radio)', label: 'Radio VLSS' },
 ] as const;
 
 // ============================================================================
@@ -720,7 +711,6 @@ export function LeftPanel() {
                         setTelescopeTarget(preset);
                         setInteractionMode('orbital');
                         setSpaceInteractionTarget('telescope');
-                        setSpaceBlendOpacity(0.0);
                         useUIStore
                           .getState()
                           .addChangeLog('TELESCOPE', `Telescope target pointed: ${preset.name}`, 'success');
@@ -738,7 +728,7 @@ export function LeftPanel() {
                 })}
               </div>
               <p className="mt-2 border-t border-white/5 pt-2 text-[9px] leading-relaxed text-white/40">
-                Selecting a target switches to the Earth-facing telescope frame and shows its projection overlay.
+                Select a target to point the telescope while Earth stays in view.
               </p>
             </div>
 
@@ -943,7 +933,7 @@ export function LeftPanel() {
                             onChange={(e) => setWwtBackgroundLayer(e.target.value)}
                             className="min-h-11 w-full rounded border border-white/5 bg-[#111217] px-2 py-1 text-xs text-white focus:border-primary focus:outline-none cursor-pointer"
                           >
-                            {WWT_BACKGROUND_OPTIONS.map((option) => (
+                            {WWT_BACKGROUND_LAYERS.map((option) => (
                               <option key={option.value} value={option.value}>
                                 {option.label}
                               </option>
@@ -1360,7 +1350,7 @@ export function LeftPanel() {
                     </div>
                   </div>
                   <p className="mt-1 line-clamp-1 border-t border-white/5 pt-1 text-[8px] leading-relaxed text-white/40">
-                    Earth anchor and WWT projection shell shown; live imagery depends on the embedded telescope frame.
+                    Catalog coordinates are projected onto the Earth observer frame. Live camera data appears in the telescope viewport.
                   </p>
                 </div>
 
@@ -1382,7 +1372,6 @@ export function LeftPanel() {
                             setTelescopeTarget(preset);
                             setInteractionMode('orbital');
                             setSpaceInteractionTarget('telescope');
-                            setSpaceBlendOpacity(0.0);
                             useUIStore
                               .getState()
                               .addChangeLog('TELESCOPE', `Telescope target pointed: ${preset.name}`, 'success');

@@ -5,9 +5,12 @@ import './index.css';
 import { useUIStore } from './store/uiStore';
 import { useDiagnosticsStore } from './store/diagnosticsStore';
 
-const WWVInitializer = lazy(() =>
-  import('./core/WWVInitializer').then((m) => ({ default: m.WWVInitializer }))
-);
+const WWVInitializer = lazy(async () => {
+  // Production builds load the Cesium global after the initial paint.
+  await (window as Window & { __cesiumReady?: Promise<void> }).__cesiumReady;
+  const { WWVInitializer } = await import('./core/WWVInitializer');
+  return { default: WWVInitializer };
+});
 
 function BootFallback() {
   return (

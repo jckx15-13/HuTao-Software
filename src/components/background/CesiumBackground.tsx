@@ -35,18 +35,19 @@ function TelemetryCoords() {
   );
 }
 
-export function CesiumBackground({ interactive }: { interactive: boolean }) {
+export function CesiumBackground({ interactive, transparentSky }: CesiumBackgroundRealProps) {
   // Unconditional hook call for background telemetry synchronization
   useIssTelemetry();
 
-  return <CesiumBackgroundReal interactive={interactive} />;
+  return <CesiumBackgroundReal interactive={interactive} transparentSky={transparentSky} />;
 }
 
 interface CesiumBackgroundRealProps {
   interactive: boolean;
+  transparentSky: boolean;
 }
 
-function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
+function CesiumBackgroundReal({ interactive, transparentSky }: CesiumBackgroundRealProps) {
   // Scanline/CRT overlay toggle
   const scanlineOverlay = useUIStore((s) => s.scanlineOverlay);
   const telescopeTarget = useUIStore((s) => s.telescopeTarget);
@@ -486,7 +487,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
 
   if (hasError) {
     return (
-      <div className={`absolute inset-0 h-full w-full bg-[#05060b] flex flex-col items-center justify-center overflow-hidden z-base select-none ${
+      <div className={`absolute inset-0 h-full w-full flex flex-col items-center justify-center overflow-hidden z-base select-none ${transparentSky ? '' : 'bg-[#05060b]'} ${
         interactive ? 'pointer-events-auto' : 'pointer-events-none'
       }`}>
         {/* Animated Cyberpunk Grid Space */}
@@ -557,7 +558,7 @@ function CesiumBackgroundReal({ interactive }: CesiumBackgroundRealProps) {
           </div>
         }
       >
-        <CesiumBackground3D interactive={interactive} onError={setCesiumError} />
+        <CesiumBackground3D interactive={interactive} transparentSky={transparentSky} onError={setCesiumError} />
       </Suspense>
     </div>
   );

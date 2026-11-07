@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as Cesium from 'cesium';
 import { useUIStore } from '@/store/uiStore';
+import { getSpaceFocus } from '@/lib/spaceFocus';
 import { useStore } from '@/core/state/store';
 import { TELESCOPE_PRESETS, resolveTelescopePresetCoordinates } from '@/data/telescopePresets';
 import type { TelescopePreset } from '@/data/telescopePresets';
@@ -9,7 +10,7 @@ import { projectTelescopeTargetToEarth } from '@/lib/earthObserverProjection';
 const EARTH_RADIUS_METERS = 6_378_137;
 const TARGET_SHELL_RADIUS_METERS = 8_600_000;
 const EARTH_ANCHOR_RADIUS_METERS = EARTH_RADIUS_METERS * 1.018;
-const CAMERA_STANDOFF_METERS = 192_200_000;
+const TELESCOPE_ORBIT_HEIGHT_METERS = 30_000_000;
 const ENTITY_UPDATE_MS = 500;
 
 interface TelescopeEntityBundle {
@@ -20,11 +21,6 @@ interface TelescopeEntityBundle {
   anchorRingId?: string;
   ringId?: string;
   isSelected: boolean;
-}
-
-function parseProjectionDate(value: unknown): Date {
-  const parsed = value instanceof Date ? value : new Date((value as any) ?? Date.now());
-  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
 function getPresetDirection(preset: TelescopePreset, date: Date): Cesium.Cartesian3 {
@@ -224,61 +220,46 @@ function removeBundleEntities(viewer: Cesium.Viewer, bundle: TelescopeEntityBund
   if (bundle.ringId) viewer.entities.removeById(bundle.ringId);
 }
 
-function applyTelescopeGlobeMode(viewer: Cesium.Viewer, telescopeTarget: unknown, currentTime: unknown) {
-  viewer.scene.globe.show = true;
-  if (viewer.scene.globe.translucency) {
-    viewer.scene.globe.translucency.enabled = true;
-    viewer.scene.globe.translucency.frontFaceAlpha = 0.88;
-    viewer.scene.globe.translucency.backFaceAlpha = 0.25;
-  }
-  if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = true;
-
-  const preset = TELESCOPE_PRESETS.find((p) => p.name === (telescopeTarget as { name?: string } | null)?.name) || TELESCOPE_PRESETS[0];
-  const projectionDate = parseProjectionDate(currentTime);
-  const cameraPosition = Cesium.Cartesian3.multiplyByScalar(
-    getPresetDirection(preset, projectionDate),
-    CAMERA_STANDOFF_METERS,
-    new Cesium.Cartesian3()
-  );
-  const orientation = getEarthFacingOrientation(cameraPosition);
+function moveToTelescopeOrbit(viewer: Cesium.Viewer) {
+  const { camera, scene, trackedEntity } = viewer;
+  const orbitalView = {
+    destination: camera.positionWC.clone(),
+    orientation: { direction: camera.directionWC.clone(), up: camera.upWC.clone() },
+    endTransform: camera.transform.clone(),
+  };
+  const orbit = camera.positionCartographic.clone();
+  orbit.height = TELESCOPE_ORBIT_HEIGHT_METERS;
+  const destination = scene.globe.ellipsoid.cartographicToCartesian(orbit);
 
   viewer.trackedEntity = undefined;
-  viewer.camera.flyTo({
-    destination: cameraPosition,
-    orientation,
-    duration: 2.0,
+  camera.flyTo({
+    destination,
+    orientation: getEarthFacingOrientation(destination),
+    duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1.6,
     easingFunction: Cesium.EasingFunction.QUINTIC_IN_OUT,
-    complete: () => viewer.scene.requestRender(),
   });
-}
 
-function restoreTelescopeGlobeMode(viewer: Cesium.Viewer) {
-  viewer.scene.globe.show = true;
-  if (viewer.scene.globe.translucency) {
-    viewer.scene.globe.translucency.enabled = false;
-  }
-  if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = true;
+  return () => {
+    if (viewer.isDestroyed()) return;
+    camera.cancelFlight();
+    camera.setView(orbitalView);
+    viewer.trackedEntity = trackedEntity;
+    scene.requestRender();
+  };
 }
 
 export function useTelescopePresets(viewer: Cesium.Viewer | null) {
-  const interactionMode = useUIStore((s) => s.interactionMode);
+  const spaceFocus = useUIStore((s) => getSpaceFocus(s.interactionMode, s.spaceInteractionTarget));
   const telescopeTarget = useUIStore((s) => s.telescopeTarget);
-  const spaceInteractionTarget = useUIStore((s) => s.spaceInteractionTarget);
   const hoveredEntityId = useStore((s) => s.hoveredEntity?.id ?? null);
-
+  const telescopeFocused = spaceFocus === 'telescope';
+  const showOrbitalProjections = spaceFocus === 'earth';
   const bundleMap = useRef<Map<string, TelescopeEntityBundle>>(new Map());
 
   useEffect(() => {
-    if (!viewer || viewer.isDestroyed()) return;
+    if (!viewer || viewer.isDestroyed() || !showOrbitalProjections) return;
 
-    const active = interactionMode === 'orbital' || interactionMode === 'telescope';
-    if (!active) {
-      bundleMap.current.forEach((bundle) => removeBundleEntities(viewer, bundle));
-      bundleMap.current.clear();
-      return;
-    }
-
-    const projectionDate = parseProjectionDate(Date.now());
+    const projectionDate = new Date();
     const next = new Map<string, TelescopeEntityBundle>();
 
     try {
@@ -307,16 +288,16 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
         bundleMap.current.clear();
       }
     };
-  }, [viewer, interactionMode, telescopeTarget?.name]);
+  }, [viewer, showOrbitalProjections, telescopeTarget?.name]);
 
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;
-    if (interactionMode !== 'orbital' && interactionMode !== 'telescope') return;
+    if (!showOrbitalProjections) return;
 
     let active = true;
     const update = () => {
       if (!active || !viewer || viewer.isDestroyed()) return;
-      const projectionDate = parseProjectionDate(Date.now());
+      const projectionDate = new Date();
 
       for (const preset of TELESCOPE_PRESETS) {
         const bundle = bundleMap.current.get(preset.id);
@@ -377,11 +358,11 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
       active = false;
       clearInterval(timer);
     };
-  }, [viewer, interactionMode]);
+  }, [viewer, showOrbitalProjections]);
 
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;
-    if (interactionMode !== 'orbital') return;
+    if (!showOrbitalProjections) return;
 
     try {
       TELESCOPE_PRESETS.forEach((preset) => {
@@ -395,32 +376,12 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
     } catch (err) {
       console.warn('[useTelescopePresets] Error updating hover labels:', err);
     }
-  }, [viewer, interactionMode, hoveredEntityId, telescopeTarget]);
+  }, [viewer, showOrbitalProjections, hoveredEntityId, telescopeTarget]);
 
   useEffect(() => {
-    if (!viewer || viewer.isDestroyed()) return;
-
-    try {
-      if (interactionMode === 'telescope' || spaceInteractionTarget === 'telescope') {
-        applyTelescopeGlobeMode(viewer, telescopeTarget, Date.now());
-      } else {
-        restoreTelescopeGlobeMode(viewer);
-      }
-    } catch (err) {
-      console.warn('[useTelescopePresets] Error during mode transition:', err);
-      useUIStore.getState().addChangeLog('TELESCOPE', `Mode transition error: ${(err as Error).message}`, 'error');
-    }
-
-    return () => {
-      if (viewer && !viewer.isDestroyed()) {
-        try {
-          restoreTelescopeGlobeMode(viewer);
-        } catch (err) {
-          console.warn('[useTelescopePresets] Error restoring globe state:', err);
-        }
-      }
-    };
-  }, [viewer, interactionMode, spaceInteractionTarget, telescopeTarget]);
+    if (!viewer || viewer.isDestroyed() || !telescopeFocused) return;
+    return moveToTelescopeOrbit(viewer);
+  }, [viewer, telescopeFocused]);
 
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;
@@ -428,5 +389,5 @@ export function useTelescopePresets(viewer: Cesium.Viewer | null) {
     bundleMap.current.forEach((bundle) => {
       bundle.isSelected = selectedName === TELESCOPE_PRESETS.find((preset) => preset.id === bundle.presetId)?.name;
     });
-  }, [viewer, interactionMode, telescopeTarget?.name]);
+  }, [viewer, telescopeTarget?.name]);
 }

@@ -138,6 +138,7 @@ const cesiumViewerSource = read("src/hooks/cesium/useCesiumViewer.ts");
 const imageryManagerSource = read("src/core/globe/useImageryManager.ts");
 const imageryProviderFactorySource = read("src/core/globe/ImageryProviderFactory.ts");
 const wwtViewSource = read("src/components/learning/WorldWideTelescopeView.tsx");
+const wwtFallbackSource = read("src/components/learning/WwtFallbackView.tsx");
 const googleEarthRemixSource = read("src/components/learning/GoogleEarthRemix.tsx");
 const centerPanelSource = read("src/components/panels/CenterPanel.tsx");
 const leftPanelSource = read("src/components/panels/LeftPanel.tsx");
@@ -161,9 +162,21 @@ const uiAuditSource = read("scripts/ui-audit.mjs");
 assertFile("package.json", "Silver Wolf root package");
 assertFile("public/config.json", "Browser runtime public config");
 assertFile("public/favicon.svg", "Browser favicon asset");
-assertFile("worldwideview/package.json", "WorldWideView package");
-assertFile("odysseus/pyproject.toml", "Odysseus Python package");
-assertFile("odysseus/package.json", "Odysseus frontend package");
+const buildEntries = new Set([".next", "node_modules", "dist", "build"]);
+function hasCheckedOutSource(relativeDir) {
+  const directory = path.join(root, relativeDir);
+  return fs.existsSync(directory) && fs.readdirSync(directory).some((entry) => !buildEntries.has(entry));
+}
+
+// Validate optional source checkouts when present. The mirrored assets are checked below.
+if (hasCheckedOutSource("worldwideview")) {
+  assertFile("worldwideview/package.json", "WorldWideView package");
+}
+const hasOdysseusSource = hasCheckedOutSource("odysseus");
+if (hasOdysseusSource) {
+  assertFile("odysseus/pyproject.toml", "Odysseus Python package");
+  assertFile("odysseus/package.json", "Odysseus frontend package");
+}
 assertFile("bridge/server.py", "Silver Wolf bridge server");
 assertFile("src/lib/credentials/apiCredentialEngine.ts", "API credential management engine");
 assertFile("src/lib/credentials/apiConnectorEngine.ts", "API connector request engine");
@@ -439,8 +452,10 @@ if (odysseusAssetAudit.upstreamMissing.length > 0) {
 
 const odysseusSourceModules = collectMatches(odysseusAssetsSource, /'(odysseus\/(?:src|static)\/[^']+)'/g);
 assert.ok(odysseusSourceModules.length >= 8, "Expected Odysseus source module mappings");
-for (const modulePath of odysseusSourceModules) {
-  assertFile(modulePath, `Odysseus mapped source module ${modulePath}`);
+if (hasOdysseusSource) {
+  for (const modulePath of odysseusSourceModules) {
+    assertFile(modulePath, `Odysseus mapped source module ${modulePath}`);
+  }
 }
 
 for (const route of [
@@ -483,7 +498,7 @@ assert.ok(!imageryProviderFactorySource.includes("navigator.webdriver"), "Imager
 assert.ok(!imageryProviderFactorySource.includes("return {};"), "Imagery provider factory must not return empty mock providers");
 assert.ok(coordinateTransformsSource.includes("precessEquatorialJ2000ToDate"), "Coordinate transforms must expose J2000-to-date precession");
 assert.ok(cesiumConstellationsSource.includes("precessEquatorialJ2000ToDate"), "Cesium constellation rendering must precess J2000 star coordinates");
-assert.ok(wwtViewSource.includes("precessEquatorialJ2000ToDate"), "WWT constellation overlay must precess J2000 star coordinates");
+assert.ok(wwtFallbackSource.includes("precessEquatorialJ2000ToDate"), "WWT constellation overlay must precess J2000 star coordinates");
 assert.ok(cursorEngineSource.includes("this.config.appHighLoad"), "Cursor engine must keep native cursor available during high-load fallback");
 assert.ok(nativeCursorFallbackSource.includes("appHighLoad"), "Native cursor fallback policy must account for app high-load mode");
 assert.ok(nativeCursorFallbackSource.includes("motionReduced"), "Native cursor fallback policy must account for reduced-motion preferences");
@@ -520,7 +535,7 @@ assert.ok(wwtViewSource.includes("{!telemetryTimelineCollapsed &&"), "WWT timeli
 assert.ok(wwtViewSource.includes("left-1/2"), "WWT collapse control must be centered horizontally");
 assert.ok(wwtViewSource.includes("-translate-x-1/2"), "WWT collapse control must apply horizontal translate-centering");
 assert.ok(wwtViewSource.includes("-translate-y-1/2"), "WWT collapse control must anchor at the top edge");
-assert.ok(wwtViewSource.includes("if (!telescopeWindowActive)"), "WWT chrome must not render during the Earth navigation workflow");
+assert.ok(wwtViewSource.includes("{telescopeWindowActive && renderHUDAndTimeline()}"), "WWT chrome must not render during the Earth navigation workflow");
 assert.ok(wwtViewSource.includes("right: 'clamp(4.75rem, 8vw, 6rem)'"), "WWT timeline must reserve the right-side globe navigation rail");
 assert.ok(!wwtViewSource.includes('aria-label="Open spatial HUD sidebar"'), "WWT overlay must not duplicate the main spatial HUD sidebar opener");
 assert.ok(!wwtViewSource.includes('aria-label="Refresh WWT client"'), "WWT drawer must not duplicate telescope refresh controls in the header");
